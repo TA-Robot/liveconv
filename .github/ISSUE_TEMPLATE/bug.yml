@@ -1,0 +1,50 @@
+name: Bug report
+description: Report a reproducible behavior defect without sensitive artifacts.
+title: "[BUG] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not attach private audio, credentials, access tokens, or customer data.
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Include mode, generation state, sample rate, chunking, environment, and exact steps where relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted evidence
+      description: Provide non-sensitive logs, timings, or a synthetic fixture reference.
+    validations:
+      required: true
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      options:
+        - Safety or privacy
+        - Stale or duplicate audio
+        - Conversation interruption
+        - Japanese correctness
+        - Audio integrity
+        - Performance
+        - Tooling or documentation
+    validations:
+      required: true

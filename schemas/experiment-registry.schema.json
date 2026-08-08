@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TA-Robot/liveconv/schemas/experiment-registry.schema.json",
+  "title": "liveconv experiment registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "experiments"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "experiments": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/registry_entry" }
+    }
+  },
+  "$defs": {
+    "registry_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "slug", "title", "status", "phase", "path", "owner"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^EXP-[0-9]{3}$" },
+        "slug": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "title": { "type": "string", "minLength": 3 },
+        "status": {
+          "enum": [
+            "draft",
+            "approved",
+            "running",
+            "analyzed",
+            "decided",
+            "invalidated",
+            "archived"
+          ]
+        },
+        "phase": { "type": "integer", "minimum": 0 },
+        "path": {
+          "type": "string",
+          "pattern": "^experiments/EXP-[0-9]{3}-[a-z0-9][a-z0-9-]*/experiment\\.json$"
+        },
+        "owner": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

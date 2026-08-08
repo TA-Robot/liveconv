@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TA-Robot/liveconv/schemas/experiment.schema.json",
+  "title": "liveconv experiment",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "title",
+    "status",
+    "phase",
+    "owner",
+    "created_at",
+    "updated_at",
+    "question",
+    "hypothesis",
+    "links",
+    "control",
+    "variants",
+    "fixtures",
+    "environment",
+    "procedure",
+    "metrics",
+    "decision_rule",
+    "artifact_policy",
+    "result",
+    "decision"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "type": "string", "pattern": "^EXP-[0-9]{3}$" },
+    "title": { "type": "string", "minLength": 3 },
+    "status": {
+      "enum": [
+        "draft",
+        "approved",
+        "running",
+        "analyzed",
+        "decided",
+        "invalidated",
+        "archived"
+      ]
+    },
+    "phase": { "type": "integer", "minimum": 0 },
+    "owner": { "type": ["string", "null"] },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" },
+    "question": { "type": "string", "minLength": 10 },
+    "hypothesis": { "type": "string", "minLength": 10 },
+    "links": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^(FR|NFR|JP|GOV|ADR|LV|R)-[0-9]+$" },
+      "uniqueItems": true
+    },
+    "control": { "$ref": "#/$defs/variant" },
+    "variants": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/variant" },
+      "minItems": 1
+    },
+    "fixtures": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest", "version", "classification", "frozen"],
+      "properties": {
+        "manifest": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "classification": {
+          "enum": ["synthetic", "redistributable", "internal", "restricted"]
+        },
+        "frozen": { "type": "boolean" }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["git_commit", "runtime", "hardware", "model_revisions"],
+      "properties": {
+        "git_commit": { "type": "string" },
+        "runtime": { "type": "string" },
+        "hardware": { "type": "string" },
+        "model_revisions": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "procedure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "warmup", "sample_count", "commands", "invalidation_conditions"],
+      "properties": {
+        "summary": { "type": "string", "minLength": 10 },
+        "warmup": { "type": "string", "minLength": 1 },
+        "sample_count": { "type": ["integer", "null"], "minimum": 1 },
+        "commands": { "type": "array", "items": { "type": "string" } },
+        "invalidation_conditions": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 3 },
+          "minItems": 1
+        }
+      }
+    },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "kind", "unit", "primary"],
+        "properties": {
+          "name": { "type": "string", "minLength": 2 },
+          "kind": { "enum": ["quality", "latency", "correctness", "reliability", "cost"] },
+          "unit": { "type": "string", "minLength": 1 },
+          "primary": { "type": "boolean" }
+        }
+      },
+      "minItems": 1
+    },
+    "decision_rule": { "type": "string", "minLength": 10 },
+    "artifact_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw_location", "git_contents", "retention", "authorization"],
+      "properties": {
+        "raw_location": { "type": "string", "minLength": 1 },
+        "git_contents": { "type": "string", "minLength": 1 },
+        "retention": { "type": "string", "minLength": 1 },
+        "authorization": { "type": "string", "minLength": 1 }
+      }
+    },
+    "result": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/result" }
+      ]
+    },
+    "decision": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/decision" }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "enum": ["draft", "approved", "running"] } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "result": { "type": "null" },
+          "decision": { "type": "null" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "analyzed" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "result": { "$ref": "#/$defs/result" },
+          "decision": { "type": "null" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "enum": ["decided", "archived"] } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "result": { "$ref": "#/$defs/result" },
+          "decision": { "$ref": "#/$defs/decision" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "invalidated" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "decision": {
+            "allOf": [
+              { "$ref": "#/$defs/decision" },
+              { "properties": { "outcome": { "const": "inconclusive" } } }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "variant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "configuration"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" },
+        "description": { "type": "string", "minLength": 3 },
+        "configuration": { "type": "object" }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "analyzed_at",
+        "sample_count",
+        "metrics",
+        "exclusions",
+        "failures",
+        "artifact_locator",
+        "summary",
+        "uncertainty"
+      ],
+      "properties": {
+        "analyzed_at": { "type": "string", "format": "date-time" },
+        "sample_count": { "type": "integer", "minimum": 1 },
+        "metrics": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": ["number", "integer", "string", "null"]
+          }
+        },
+        "exclusions": { "type": "array", "items": { "type": "string" } },
+        "failures": { "type": "array", "items": { "type": "string" } },
+        "artifact_locator": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 10 },
+        "uncertainty": { "type": "string", "minLength": 3 }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decided_at", "outcome", "rationale", "followups"],
+      "properties": {
+        "decided_at": { "type": "string", "format": "date-time" },
+        "outcome": { "enum": ["adopt", "iterate", "reject", "inconclusive"] },
+        "rationale": { "type": "string", "minLength": 10 },
+        "followups": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

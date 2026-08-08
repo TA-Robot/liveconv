@@ -1,0 +1,61 @@
+name: Experiment
+description: Propose a controlled liveconv experiment.
+title: "[EXP] "
+labels:
+  - experiment
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not attach private audio, reference voices, credentials, or model weights.
+  - type: input
+    id: question
+    attributes:
+      label: Primary question
+      description: State one question this experiment will answer.
+    validations:
+      required: true
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: Falsifiable hypothesis
+      description: State the expected outcome and what would disprove it.
+    validations:
+      required: true
+  - type: input
+    id: links
+    attributes:
+      label: Source-of-truth links
+      description: List requirement, ADR, backlog, or risk IDs.
+    validations:
+      required: true
+  - type: textarea
+    id: method
+    attributes:
+      label: Control, variants, and frozen fixtures
+      description: Identify independent variables and what remains fixed.
+    validations:
+      required: true
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Metrics and decision rule
+      description: Include primary metrics, guardrails, sample count, and pass/fail rule.
+    validations:
+      required: true
+  - type: textarea
+    id: artifacts
+    attributes:
+      label: Artifact policy
+      description: State classification, authorized storage, retention, and what may enter Git.
+    validations:
+      required: true
+  - type: checkboxes
+    id: readiness
+    attributes:
+      label: Readiness
+      options:
+        - label: I will register an EXP-NNN record before collecting final results.
+          required: true
+        - label: I will invalidate the run if the frozen protocol changes.
+          required: true

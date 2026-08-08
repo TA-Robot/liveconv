@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "id": "EXP-001",
+  "title": "Native Japanese prompt baseline",
+  "status": "draft",
+  "phase": 0,
+  "owner": null,
+  "created_at": "2026-08-08T00:00:00Z",
+  "updated_at": "2026-08-08T00:00:00Z",
+  "question": "How much can explicit Japanese speaking guidance improve correctness and perceived naturalness without replacing native realtime audio?",
+  "hypothesis": "A specific Japanese prompt will improve language stability, pacing, and operational readings while preserving native response and interruption latency, but it will not fully solve pitch accent and proper-noun failures.",
+  "links": [
+    "FR-008",
+    "JP-001",
+    "JP-006",
+    "JP-007",
+    "LV-002",
+    "ADR-0001"
+  ],
+  "control": {
+    "id": "native_default",
+    "description": "Native realtime voice with the current default prompt.",
+    "configuration": {}
+  },
+  "variants": [
+    {
+      "id": "native_japanese_prompt",
+      "description": "Native realtime voice with explicit language, accent, mora, pause, number, and pronunciation guidance.",
+      "configuration": {
+        "prompt_revision": "TBD"
+      }
+    }
+  ],
+  "fixtures": {
+    "manifest": "TBD: versioned 40-utterance Japanese smoke manifest",
+    "version": "draft-0",
+    "classification": "synthetic",
+    "frozen": false
+  },
+  "environment": {
+    "git_commit": "TBD",
+    "runtime": "TBD: ChatGPT Web or supported realtime client and version",
+    "hardware": "TBD: browser, OS, audio device, and DaaS path",
+    "model_revisions": {}
+  },
+  "procedure": {
+    "summary": "Render the same randomized smoke utterances under control and prompt variants, collect timing traces, then run blinded Japanese correctness and preference review.",
+    "warmup": "TBD: define session and audio warmup before timing samples.",
+    "sample_count": null,
+    "commands": [],
+    "invalidation_conditions": [
+      "The fixture manifest or prompt changes after approval.",
+      "Control and variant use different model or voice revisions.",
+      "Audio routing records the same output twice or clips a material segment.",
+      "Raters can infer the variant label from filenames or presentation order."
+    ]
+  },
+  "metrics": [
+    {
+      "name": "native_speaker_pairwise_preference",
+      "kind": "quality",
+      "unit": "preference_rate",
+      "primary": true
+    },
+    {
+      "name": "operational_reading_exact_match",
+      "kind": "correctness",
+      "unit": "rate",
+      "primary": true
+    },
+    {
+      "name": "time_to_first_audible_output",
+      "kind": "latency",
+      "unit": "milliseconds",
+      "primary": false
+    },
+    {
+      "name": "interruption_to_audible_stop",
+      "kind": "latency",
+      "unit": "milliseconds",
+      "primary": false
+    },
+    {
+      "name": "language_switch_failures",
+      "kind": "reliability",
+      "unit": "count",
+      "primary": false
+    }
+  ],
+  "decision_rule": "Advance the prompt variant as the new baseline only if blinded preference and operational-reading accuracy improve without a material regression in response start, interruption, or language stability. Freeze exact thresholds before approval.",
+  "artifact_policy": {
+    "raw_location": "TBD: authorized private artifact store",
+    "git_contents": "Plan, redacted fixture manifest, aggregate metrics, failure taxonomy, and decision only.",
+    "retention": "TBD before approval",
+    "authorization": "Synthetic prompts; any captured voice output follows the applicable account and evaluation policy."
+  },
+  "result": null,
+  "decision": null
+}

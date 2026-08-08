@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "experiments": [
+    {
+      "id": "EXP-001",
+      "slug": "prompt-baseline",
+      "title": "Native Japanese prompt baseline",
+      "status": "draft",
+      "phase": 0,
+      "path": "experiments/EXP-001-prompt-baseline/experiment.json",
+      "owner": null
+    }
+  ]
+}

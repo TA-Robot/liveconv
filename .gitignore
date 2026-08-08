@@ -1,0 +1,74 @@
+# Secrets and local configuration
+key
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+.ssh/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/settings.json
+*.swp
+
+# JavaScript
+node_modules/
+.pnpm-store/
+dist/
+coverage/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Models, audio, and experiment artifacts
+models/
+weights/
+checkpoints/
+embeddings/
+indexes/
+artifacts/
+data/private/
+data/raw/
+*.ckpt
+*.onnx
+*.pth
+*.pt
+*.safetensors
+*.index
+*.npy
+*.npz
+*.wav
+*.flac
+*.mp3
+*.m4a
+*.ogg
+*.aac
+*.opus
+*.webm
+*.wma
+*.aiff
+*.aif
+*.caf
+*.pcm
+*.raw
+*.emb
+*.vec
+*.faiss
+*.ann
+*.hnsw
+*.bin
+
+# Local reports and logs
+reports/local/
+*.log
+tmp/
+.tmp/
+experiments/.new-*
+experiments/.registry.*
