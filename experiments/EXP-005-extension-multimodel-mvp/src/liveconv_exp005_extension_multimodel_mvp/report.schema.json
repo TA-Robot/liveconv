@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EXP-005 metadata-only Extension multi-model MVP report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "experiment_id", "evidence_scope", "decision_status", "technical_outcome", "commit", "worktree_clean", "roster", "prompt_plan", "attempts", "metrics", "forced_failure", "claims"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "experiment_id": {"const": "EXP-005"},
+    "evidence_scope": {"const": "technical_extension_multimodel_mvp"},
+    "decision_status": {"const": "inconclusive"},
+    "technical_outcome": {"enum": ["passed", "failed"]},
+    "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "worktree_clean": {"type": "boolean"},
+    "roster": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["roster_revision", "entries"],
+      "properties": {
+        "roster_revision": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "entries": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "prefixItems": [
+            {"$ref": "#/$defs/rvcEntry"},
+            {"$ref": "#/$defs/beatriceEntry"},
+            {"$ref": "#/$defs/xvcEntry"},
+            {"$ref": "#/$defs/openvoiceEntry"}
+          ],
+          "items": false
+        }
+      }
+    },
+    "prompt_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plan_revision", "sample_count_per_model", "automatic_turn_detection", "model_ids"],
+      "properties": {
+        "plan_revision": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "sample_count_per_model": {"const": 1},
+        "automatic_turn_detection": {"const": false},
+        "model_ids": {
+          "type": "array",
+          "prefixItems": [
+            {"const": "rvc-v2"},
+            {"const": "beatrice-2"},
+            {"const": "x-vc"},
+            {"const": "openvoice-v2"}
+          ],
+          "items": false
+        }
+      }
+    },
+    "attempts": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        {"$ref": "#/$defs/rvcAttempt"},
+        {"$ref": "#/$defs/beatriceAttempt"},
+        {"$ref": "#/$defs/xvcAttempt"},
+        {"$ref": "#/$defs/openvoiceAttempt"}
+      ],
+      "items": false
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prepared_models_attempted", "live_profiles_with_audible_changed_output", "openvoice_buffered_preview_completed", "accepted_stale_frames", "forced_failure_native_fallback"],
+      "properties": {
+        "prepared_models_attempted": {"const": 4},
+        "live_profiles_with_audible_changed_output": {"type": "integer", "minimum": 0, "maximum": 3},
+        "openvoice_buffered_preview_completed": {"type": "boolean"},
+        "accepted_stale_frames": {"const": 0},
+        "forced_failure_native_fallback": {"type": "boolean"}
+      }
+    },
+    "forced_failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["remote_failure_forced", "native_fallback_observed", "native_remote_overlap_observed"],
+      "properties": {
+        "remote_failure_forced": {"const": true},
+        "native_fallback_observed": {"type": "boolean"},
+        "native_remote_overlap_observed": {"const": false}
+      }
+    },
+    "claims": {"$ref": "#/$defs/claims"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"technical_outcome": {"const": "passed"}}},
+      "then": {
+        "properties": {
+          "metrics": {
+            "properties": {
+              "live_profiles_with_audible_changed_output": {"minimum": 2},
+              "openvoice_buffered_preview_completed": {"const": true},
+              "forced_failure_native_fallback": {"const": true}
+            }
+          },
+          "forced_failure": {
+            "properties": {"native_fallback_observed": {"const": true}}
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "identity": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_id", "profile_id", "execution_state", "route_mode", "profile_hash", "configuration_hash", "pipeline_hash"],
+      "properties": {
+        "model_id": {"type": "string"},
+        "profile_id": {"type": "string", "pattern": "^vc\\.(rvc-v2|beatrice-2|x-vc|openvoice-v2)\\.[a-z0-9][a-z0-9.-]{0,63}\\.v1$"},
+        "execution_state": {"const": "prepared"},
+        "route_mode": {"enum": ["live", "buffered_preview_after_end"]},
+        "profile_hash": {"$ref": "#/$defs/identity"},
+        "configuration_hash": {"$ref": "#/$defs/identity"},
+        "pipeline_hash": {"$ref": "#/$defs/identity"}
+      }
+    },
+    "rvcEntry": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"model_id": {"const": "rvc-v2"}, "route_mode": {"const": "live"}}}]},
+    "beatriceEntry": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"model_id": {"const": "beatrice-2"}, "route_mode": {"const": "live"}}}]},
+    "xvcEntry": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"model_id": {"const": "x-vc"}, "route_mode": {"const": "live"}}}]},
+    "openvoiceEntry": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"model_id": {"const": "openvoice-v2"}, "route_mode": {"const": "buffered_preview_after_end"}}}]},
+    "attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_id", "route_mode", "attempted", "observation_source", "audible_changed_output", "end_triggered"],
+      "properties": {
+        "model_id": {"type": "string"},
+        "route_mode": {"enum": ["live", "buffered_preview_after_end"]},
+        "attempted": {"const": true},
+        "observation_source": {"enum": ["manual_operator", "deterministic_fake"]},
+        "audible_changed_output": {"type": "boolean"},
+        "end_triggered": {"type": "boolean"}
+      }
+    },
+    "rvcAttempt": {"allOf": [{"$ref": "#/$defs/attempt"}, {"properties": {"model_id": {"const": "rvc-v2"}, "route_mode": {"const": "live"}, "end_triggered": {"const": false}}}]},
+    "beatriceAttempt": {"allOf": [{"$ref": "#/$defs/attempt"}, {"properties": {"model_id": {"const": "beatrice-2"}, "route_mode": {"const": "live"}, "end_triggered": {"const": false}}}]},
+    "xvcAttempt": {"allOf": [{"$ref": "#/$defs/attempt"}, {"properties": {"model_id": {"const": "x-vc"}, "route_mode": {"const": "live"}, "end_triggered": {"const": false}}}]},
+    "openvoiceAttempt": {"allOf": [{"$ref": "#/$defs/attempt"}, {"properties": {"model_id": {"const": "openvoice-v2"}, "route_mode": {"const": "buffered_preview_after_end"}, "end_triggered": {"const": true}}}]},
+    "claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["voice_conversion_established", "speaker_change_established", "japanese_quality_established", "content_preservation_established", "latency_target_established", "authorization_established", "license_established", "security_established", "production_readiness_established"],
+      "properties": {
+        "voice_conversion_established": {"const": false},
+        "speaker_change_established": {"const": false},
+        "japanese_quality_established": {"const": false},
+        "content_preservation_established": {"const": false},
+        "latency_target_established": {"const": false},
+        "authorization_established": {"const": false},
+        "license_established": {"const": false},
+        "security_established": {"const": false},
+        "production_readiness_established": {"const": false}
+      }
+    }
+  }
+}
