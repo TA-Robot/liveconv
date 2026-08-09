@@ -28,6 +28,7 @@ required_files=(
   docs/planning/roadmap.md
   docs/planning/backlog.md
   docs/development/agent-playbook.md
+  docs/development/ssh-tunnel-client-setup.md
   deploy/remote/Dockerfile
   deploy/remote/Dockerfile.dockerignore
   deploy/remote/compose.yaml

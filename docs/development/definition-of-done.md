@@ -65,3 +65,5 @@ or permission to bypass later independent review.
 - Commit scope is coherent.
 - The branch is pushable without local-only artifacts.
 - Rollback or bypass is documented for user-facing audio changes.
+- A client-facing route documents prerequisites, trust boundary, setup,
+  authenticated health checks, disconnect recovery, and one real-client smoke.

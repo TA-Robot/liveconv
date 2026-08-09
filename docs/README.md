@@ -10,7 +10,7 @@ The documentation is organized by the kind of claim it contains.
 | Model packs | Machine-readable onboarding blockers and worker gates | `../workers/README.md` |
 | Experiments | Method, audio validation, metrics, and lifecycle | `experiments/README.md`, `experiments/audio-validation.md` |
 | Planning | Phase gates, critical path, and prioritized work | `planning/roadmap.md`, `planning/critical-path.md` |
-| Development | Agent pipeline, remote delivery, environment, and done criteria | `development/agent-playbook.md`, `development/remote-server-playbook.md` |
+| Development | Agent pipeline, remote delivery, SSH client setup, environment, and done criteria | `development/agent-playbook.md`, `development/remote-server-playbook.md`, `development/ssh-tunnel-client-setup.md` |
 | Risks | Active technical, product, and governance risks | `risks/register.md` |
 
 ## Record types

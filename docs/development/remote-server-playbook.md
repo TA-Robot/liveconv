@@ -50,6 +50,9 @@ model passed Japanese quality or is approved for every use.
 
 - Bind the application to loopback behind TLS termination until ingress is
   explicitly configured.
+- For trusted development clients, keep both application endpoints on loopback
+  and use the accepted OpenSSH local-forwarding procedure in
+  `docs/development/ssh-tunnel-client-setup.md`.
 - Expose only gateway HTTP/WSS ports. Bind worker protocols to Unix sockets or a
   private network.
 - Store API credentials, session-ticket keys, model credentials, and artifact

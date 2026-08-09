@@ -22,6 +22,9 @@ its contract clear.
    before delegating parallel work.
 5. Run `make doctor` and `make check`.
 
+To connect a Chrome client to a loopback-only Gateway on a remote machine, use
+the [SSH tunnel client setup](docs/development/ssh-tunnel-client-setup.md).
+
 ## Common commands
 
 ```bash

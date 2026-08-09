@@ -22,6 +22,11 @@ Startup readiness requires an API token of at least 32 bytes with at least 16
 distinct characters and exact Chrome Extension origins of the form
 `chrome-extension://<32 lowercase a-p characters>`.
 
+A trusted remote development client can reach this loopback listener through an
+OpenSSH local forward without changing the bind address. Follow
+[`docs/development/ssh-tunnel-client-setup.md`](../../docs/development/ssh-tunnel-client-setup.md);
+do not publish port 8765 or bind it to `0.0.0.0` for that workflow.
+
 ## HTTP API
 
 - `GET /health/live` is the only unauthenticated endpoint.

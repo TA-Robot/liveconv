@@ -17,6 +17,13 @@ AudioWorklets, so PCM never crosses extension runtime messaging.
 4. On the tab whose audio should be routed, open the popup and choose **Start**.
    Choose **Stop** before changing configuration or selecting another tab.
 
+For a Gateway running on another machine, keep the Gateway bound to remote
+loopback and forward it to client loopback with OpenSSH. The complete server,
+tunnel, client verification, reconnect, and troubleshooting procedure is in
+[`docs/development/ssh-tunnel-client-setup.md`](../../docs/development/ssh-tunnel-client-setup.md).
+The Extension Gateway origin remains `http://127.0.0.1:<local-forward-port>`;
+both HTTP and WebSocket traffic cross the same tunnel.
+
 The bearer credential is stored only in `chrome.storage.session`. The one-use
 WebSocket ticket exists only in memory while the Service Worker passes it to the
 Offscreen Document. Neither value is returned by status messages.
