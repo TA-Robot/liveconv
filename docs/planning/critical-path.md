@@ -1,126 +1,206 @@
-# Critical path and parallel delivery
+# Personal v1 critical path
 
 Status: Active
 
-This plan controls execution order. The roadmap controls evidence gates, while
-the backlog records issue state. The primary integrator recalculates the Ready
-frontier after every green checkpoint and delegates every independent bounded
-node that fits the current runtime and resource limits.
-
-## Product critical path
-
-The shortest path to a remotely transformed, measurable Japanese voice is:
+The user-delivery path is:
 
 ```text
-F0 foundation checkpoint
-  -> F1 gateway-worker SPI freeze
-  -> F2 supervisor + fake-worker conformance
-  -> F3 Extension/gateway/worker remote-route join
-  -> F4 RVC profile integration
-  -> F5 frozen multi-model evaluation
+MS-1 executable multi-model lab
+  -> MS-2 candidate and Extension architecture freeze
+  -> MS-3 responsiveness and route stability
+  -> MS-4 SSH-only security baseline
+  -> MS-5 personal operations and recovery
+  -> MS-6 personal-use v1 acceptance
 ```
 
-The evidence path runs in parallel and must join before F5:
+[`roadmap.md`](roadmap.md) owns milestone outcomes and gates.
+[`backlog.md`](backlog.md) owns work state. Findings are classified by
+[`review-triage.md`](review-triage.md). This file owns dependency order,
+parallel dispatch, and mutable resource leases.
 
-```text
-E0 40-utterance corpus
-  -> E1 normalization + STT provenance + speaker evaluator
-  -> E2 trace/fault runner + aggregate report
-  -> F5 frozen multi-model evaluation
-```
+## What can stop the path
 
-External approval for target voices, weights, licenses, and model revisions is a
-separate blocker. It must be pursued in parallel because it can become the real
-critical path even when the software path is green.
+Only these classes stop the active milestone:
 
-## Dependency graph
+- native fallback, exclusive playout, generation isolation, or bounded-queue
+  invariant failure in the intended personal workflow;
+- credential/private-audio/reference/checkpoint leakage;
+- broken loopback plus SSH boundary, authentication, Origin, ticket, artifact
+  identity, or worker containment used by personal v1;
+- false authorization, false evidence promotion, or evidence corruption used for
+  a model/release decision;
+- a reproducible expected-path hang, orphan, unbounded resource use, or inability
+  to run the milestone's actual acceptance check.
 
-| Node | Backlog work | Depends on | Unlocks |
-|---|---|---|---|
-| F0 | LV-004, LV-019, LV-020, LV-027 foundation checkpoint | current QA closure | all implementation worktrees from one SHA |
-| F1 | Freeze private gateway-worker SPI inside LV-022 | F0 | supervisor and conformance work |
-| F2a | LV-022 worker supervisor | F1 | gateway-worker bridge |
-| F2b | LV-031 fake-worker conformance | F1 | crash, stall, cancel, and unload proof |
-| F3a | LV-005, LV-006, LV-007, LV-026 Extension route | LV-019; shell can start after F0 | remote-route join |
-| F3b | LV-021 authenticated TLS ingress | LV-020 and threat brief | remote-route join |
-| F3c | LV-028 trace and fault runner | LV-004, LV-019, LV-020 | repeatable route evidence |
-| F3 | Extension + gateway + worker route join | F2a, F2b, F3a, F3b, F3c | real model integration |
-| E0 | LV-001 smoke corpus | JP-001 through JP-008 | normalization and frozen evaluation |
-| E1a | LV-003 deterministic normalization | E0 | content-preservation evaluation |
-| E1b | LV-029 pinned Japanese STT | LV-004 and engine approval | content/integrity evidence |
-| E1c | LV-030 authorized speaker evaluator | authorized pilot voices | speaker evidence |
-| E2 | EXP-002 aggregate route evidence | E0, E1a, E1b, F3c | model comparison |
-| F4 | LV-023 RVC integration | F2, F3, approved revision and target | first real VC result |
-| F5 | LV-024 plus second eligible model comparison | E2, F4, model-specific gates | Phase 2 decision |
+Quality misses, cold-start cost, offline-only candidates, public deployment,
+multi-user operation, production-scale sample counts, HA, and SLA work do not
+stop MS-1. They are scheduled to MS-2/MS-3 or post-v1.
 
-Nodes on the F path receive the first available implementation and test slots.
-Evidence and external-approval nodes receive the remaining slots because delaying
-their join would only move the bottleneck downstream.
+## Model gate vocabulary
 
-## Three-stage pipeline
+These per-model gates are independent of the six `MS-*` user milestones:
 
-Parallelism is demand-driven, not a fixed department chart. For different nodes,
-run these stages at the same time:
-
-1. **Test N+1:** a Luna `test_author` writes accepted failing tests and synthetic
-   fixtures for the next Ready candidate. It edits tests only.
-2. **Implement N:** a Luna implementation worker consumes already accepted tests
-   for the current Ready node in an exclusive worktree.
-3. **Review N-1:** a Sol `qa_reviewer` at `max` reviews the previous integrated
-   checkpoint. Luna output never satisfies independent review.
-
-The primary, running Sol, freezes interfaces, accepts test intent, integrates
-commits, triages findings, and advances backlog state. The same agent must not be
-the implementation author and independent reviewer for one node.
-
-## Dynamic dispatch
-
-After every merge or blocker change, the primary performs this loop:
-
-1. Mark dependencies satisfied by the new integration SHA.
-2. Sort Ready nodes by critical-path position, then by downstream fan-out.
-3. Spawn implementation for every independent Ready node with a distinct write
-   scope, up to six simultaneous writers.
-4. Spawn test authors for the highest-priority Planned nodes whose interfaces are
-   accepted and whose tests do not overlap active writers.
-5. Spawn Sol reviewers for every checkpoint awaiting review, up to three reviews.
-6. Use remaining slots on research or threat work that removes a named blocker.
-7. Stop adding writers when two checkpoints are waiting in the merge queue; use
-   new capacity for review, repair, or integration instead.
-
-One Codex session requests up to 12 child threads. If the active client exposes a
-lower cap, start additional chats in dedicated Git worktrees from the same green
-checkpoint SHA. Runtime capacity never changes the dependency order.
-
-## Worktree and merge rules
-
-- One issue, branch, base SHA, and allowed path set per write-capable agent.
-- Root manifests, lockfiles, protocol, ADRs, registries, and this plan are owned by
-  the primary and merged serially.
-- Test-author branches land before the matching implementation branch starts, or
-  are explicitly cherry-picked as the implementation base.
-- Reviewers inspect the integrated SHA, not an unpublished writer worktree.
-- Integrate in dependency order and run focused consumer checks after every leaf.
-- Run `make check` after two or three leaves, every shared-contract change, and at
-  each checkpoint used as a new worktree base.
-- GPU, browser, ports, and mutable model caches use explicit exclusive leases.
-
-## Current dispatch
-
-F0, F1, F2, F3a, F3c, E0, and the software portion of E1b are implemented. The
-F3b deployment configuration and fail-closed preflight are implemented; its
-remaining join is a live DNS/ACME/WSS deployment plus the audible-tab browser
-check. The real model path cannot advance to F4 until an approved RVC revision,
-every artifact digest, its license record, and an authorized target corpus are
-supplied.
-
-| Pipeline stage | Work that may run now |
+| Gate | Required evidence |
 |---|---|
-| Deploy N | Validate `deploy/remote` on the DNS-owning Docker host and run WSS/Origin smoke |
-| Test N+1 | Run user-gesture tab capture, audible no-replay, and 100-interruption scripts |
-| Review N-1 | Sol reviews Extension, STT, and deployment checkpoints independently |
-| Unblock | Resolve RVC artifacts/voice authorization and LV-030 speaker evaluator approval |
+| M0 provenance | Official source/model revision, license notes, and all downloaded artifact digests |
+| M1 runtime | Isolated pinned environment loads exact artifacts with network disabled |
+| M2 transform | Authorized PCM produces finite, decodable, nonidentical output through the real engine |
+| M3 worker | Worker v1 start/push/end/cancel/timeout/close and identity binding pass through `WorkerSupervisor` |
+| M4 evaluation | Signal, content, speaker, integrity, and cold/warm timing are independently recorded; missing lanes remain unassessed |
+| M5 route | Real profile passes Gateway selection, generation, cancellation, fallback, and teardown |
+| M6 client | Extension completes a real audible or captured-output run through SSH |
 
-The next green deployment checkpoint unlocks a real F3 route, but it still does
-not satisfy Phase 1 sample-count or latency gates. Those remain experiment work,
-not implementation assertions.
+MS-1 needs multiple M2 candidates, at least two M3 adapters, and one M5 route.
+It does not require every candidate to reach M4-M6. MS-2 chooses which one
+continues; rejected candidates release their implementation and GPU lanes.
+
+## MS-1 dependency graph
+
+```text
+ RVC M0..M4 -----\
+ Beatrice M0..M3 --+--> C0 count gate: >=3 M2 and >=2 M3 --\
+ X-VC M0..M2 ------+                                         \
+ OpenVoice M0..M2 -/     F0 safety/evidence closure ----------+--> P0 package/runtime identity
+                                                                    |
+                                                       R0 one RVC technical registry
+                                                                    |
+                                                       R1 real Gateway generation route
+
+ E0 Extension current-tree review ------------------------------\
+ D0 one-platform SSH setup review -------------------------------+--> Q0 integrated Sol audit + make check -> MS-1
+ R1 real Gateway generation route -------------------------------/
+```
+
+Only `(F0 + C0) -> P0 -> R0 -> R1 -> Q0` is serial. `E0` and `D0` are
+independent leaves that join at `Q0`. Model work, Extension work, package
+checks, documentation, and independent review are parallel. A failing candidate
+does not block `C0` once the explicit three-M2/two-M3 cardinality is satisfied.
+
+Backlog mapping: `F0` covers LV-004/LV-029; the MS-2 calibration and fixture
+items LV-030/LV-032 are deliberately excluded. `C0` covers LV-009/LV-010 and
+the candidate items LV-023 through LV-025/LV-033. `P0` covers LV-005 through
+LV-007 plus LV-019/LV-020/LV-022/LV-027/LV-031, `R0/R1` are LV-023/LV-038,
+`E0` is LV-026, `D0` is the current-client documentation portion of LV-021, and `Q0` is
+LV-036/LV-037.
+
+## Current MS-1 frontier
+
+| Lane | Current checkpoint | Next gate | Disposition if it fails |
+|---|---|---|---|
+| Foundation | False-promotion, cross-render replay, schema, STT, and authorization repairs Sol-green | F0 closed | Reopen only for a new current-scope High |
+| RVC v2 | Content-addressed M3/M4 technical worker, network denial, and profile load green; content CER fails | R1 | Keep technical/nonselectable; run one exact route, then compare in MS-2 |
+| Beatrice 2 | Real isolated worker and full installed/runtime identity independently reviewed | M3 closed | Keep technical/nonselectable; product gates remain blocked |
+| X-VC | Real transform and failed-quality evidence exist; full installed-runtime M3 identity remains incomplete | M2 technical failure; revisit only if shortlisted in MS-2 | Preserve failed/nonselectable result; do not block RVC route |
+| OpenVoice V2 | Real Japanese whole-file transform and offline runtime identity are green; no Supervisor evidence | M2 offline comparator; revisit M3 only if shortlisted in MS-2 | Retain offline/nonselectable; never put on streaming route v1 |
+| Extension | MV3 capture/playout/control and restart/underflow/config repairs Sol-green | E0 closed | Audible real-tab run remains MS-6 |
+| Packaging | Nine workspace wheels/sdists, anchored resources, and isolated imports green | P0 closed | Reopen only for a reproducibility blocker |
+| External pool | Concurrent runner and exact symlink repair re-reviewed | not an MS-1 product gate | Fall back to built-in agents or direct tmux immediately |
+
+The immediate serial work is:
+
+1. close F0 and current adapter reviews;
+2. rebuild and validate the isolated RVC technical registry against the current
+   worker wheel, runtime, network isolation, artifacts, pack, and evidence
+   digests;
+3. run a disposable loopback Gateway with technical profiles enabled and
+   `max_sessions=1` through one paced 28-frame generation, private 25-frame
+   Supervisor backpressure, partial-batch drain, cancel, fallback/teardown, and
+   readiness checks;
+4. record the SSH server/profile setup without publishing artifacts or secrets;
+5. run the integrated gate and close or schedule review findings.
+
+Public Caddy DNS/ACME, full blinded experiments, TTS, all-model Gateway switching,
+and an audible external Chrome tab are not in this MS-1 serial list.
+
+## MS-2 through MS-6 joins
+
+| Milestone | Serial join | Parallel preparation |
+|---|---|---|
+| MS-2 | intelligible authorized decision fixtures -> common evidence -> model/Extension ADR | candidate offline renders, operator listening setup, STT/speaker/integrity checks |
+| MS-3 | frozen primary profile -> measured bottleneck -> one tuned configuration -> stability gate | queue tests, jitter/cancel tests, latency tracing, failure injection, soak harness |
+| MS-4 | frozen route -> SSH threat boundary -> real second-shell tunnel check | docs validation, auth/origin/ticket negatives, firewall/account checks, secret/log scan |
+| MS-5 | release inventory -> start/restart/rollback runbook -> recovery and soak gate | actual client-platform docs, diagnostics, cleanup, maintenance checklist; other OS notes are best-effort |
+| MS-6 | frozen server/client bundle -> external audible session -> final audit and release | release notes, known issues, rollback rehearsal, operator acceptance record |
+
+MS-2 is the largest scope-reduction point. Once a primary is selected, alternate
+model writers stop unless their named issue can change the decision inside a
+short timebox. MS-3 never retunes multiple models in parallel.
+
+## Two-tier agent schedule
+
+The built-in subagent API has its own active-thread limit. That is not the
+repository development limit. Overflow work runs through
+[`scripts/codex-pool.sh`](../development/external-codex-pool.md) in detached tmux
+sessions. The pool's supported repository ceiling is 32, and a regression proves
+that the shared ownership lock is held only for state transitions rather than a
+whole Codex run.
+
+Capacity is filled by independent Ready work, not by a fixed target count:
+
+| Lane | Typical concurrent slots | Admission rule |
+|---|---:|---|
+| Primary integration | 1 | Owns shared contracts, planning, registries, root lock, merge, and dispositions |
+| Disjoint implementation | Up to 6 | One issue, one ownership zone, one stop condition |
+| Independent Sol review | Up to 12 | Read-only and pointed at a stable checkpoint or disjoint current zone |
+| Test/evidence/reproduction | Up to 6 | No mutable GPU/browser/port/artifact collision |
+| Research/docs | Remaining host capacity | Must remove a named milestone blocker or complete a named deliverable |
+
+Rules:
+
+- Luna is suitable for bounded implementation, tests, fixtures, and repeatable
+  execution. Sol performs every independent correctness/evidence/security gate.
+- More agents do not justify overlapping writers. Read-only review can overlap
+  only when the reviewed zone is stable or the review is explicitly provisional.
+- The primary keeps at most two completed checkpoints waiting for integration.
+  When that queue is full, start reviewers and fixes instead of more writers.
+- A subagent reports at each model M-gate or milestone checkpoint; it does not
+  hold a slot while waiting for an unrelated external approval.
+- All agents preserve unrelated changes and never read the ignored file `key`.
+
+## Resource leases
+
+| Lease | Capacity | Owners |
+|---|---:|---|
+| `gpu0` | 1 real model load/train/benchmark | one model/evidence runner at a time |
+| `chrome-profile` | 1 mutable browser profile/debug port | one Extension smoke at a time |
+| `gateway:8765` | 1 long-lived local development Gateway | personal route; disposable tests use alternate ports |
+| `gateway:8766+` | 1 per declared port | one disposable real-model route runner |
+| model artifact directory | 1 writer | matching adapter owner; all other lanes read-only |
+| root manifests/lock/planning | 1 writer | primary integrator |
+
+Agents waiting for a lease continue CPU tests, docs, package checks, or read-only
+review. They do not idle while occupying the scarce resource.
+
+## Finding-to-work dispatch
+
+When review returns:
+
+1. Reproduce or reject the finding within two hours.
+2. Apply the four-way disposition in `review-triage.md`.
+3. For `fix-now`, assign one disjoint owner plus a regression and stop condition.
+4. For `scheduled`, create/update the named milestone issue and keep the current
+   merge moving.
+5. For `accepted-risk`, record the trusted-user exposure, detection, recovery,
+   and approver.
+6. For `out-of-scope`, link post-v1 or the rejected architecture and stop work.
+7. Recompute only dependencies affected by that decision; do not restart every
+   review lane.
+
+No current-scope High may cross a milestone. A Medium can cross when its issue
+makes the interim risk operationally bounded. Low polish never consumes the
+serial critical path by default.
+
+## Checkpoint rhythm
+
+At every green leaf:
+
+1. run focused success/failure tests and diff checks;
+2. enqueue one Sol review while the next independent implementation proceeds;
+3. integrate in dependency order;
+4. run consumer tests for shared-contract changes;
+5. run `make check` after two or three leaves and at every milestone;
+6. update the ledger and Ready frontier immediately;
+7. commit/push a coherent checkpoint instead of accumulating an opaque mega-diff.
+
+At MS-1 through MS-5, real browser/GPU/SSH evidence is scoped to that milestone.
+Only MS-6 combines all three into the final personal-use acceptance.

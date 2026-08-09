@@ -21,7 +21,7 @@ from liveconv_protocol import (
 )
 from starlette.websockets import WebSocketDisconnect
 
-from workers.runtime import WorkerProfile, WorkerSupervisor
+from workers.runtime import AudioFrame, WorkerProfile, WorkerSupervisor
 
 from .conftest import AUTH_HEADERS, ORIGIN_HEADERS
 
@@ -172,6 +172,88 @@ def install_fake_worker(
         mode,
         supervisors,
     )
+    return supervisors
+
+
+class DelayedBatch25Supervisor:
+    """Minimal worker double that withholds a full private batch on demand."""
+
+    input_capacity_frames = 25
+
+    def __init__(self) -> None:
+        self._active_generation_id: int | None = None
+        self._inputs: list[AudioFrame] = []
+        self._outputs: asyncio.Queue[AudioFrame] = asyncio.Queue()
+        self._release_first_batch = asyncio.Event()
+        self.maximum_queued_input_frames = 0
+
+    @property
+    def queued_input_frames(self) -> int:
+        return len(self._inputs)
+
+    async def start(self) -> None:
+        return None
+
+    async def start_generation(self, generation_id: int) -> None:
+        self._active_generation_id = generation_id
+        self._inputs.clear()
+        self._outputs = asyncio.Queue()
+        self._release_first_batch = asyncio.Event()
+
+    async def push_audio(self, frame: AudioFrame) -> None:
+        if frame.generation_id != self._active_generation_id:
+            raise RuntimeError("inactive generation")
+        if len(self._inputs) >= self.input_capacity_frames:
+            raise RuntimeError("private worker queue overflow")
+        self._inputs.append(frame)
+        self.maximum_queued_input_frames = max(
+            self.maximum_queued_input_frames,
+            len(self._inputs),
+        )
+        if len(self._inputs) == self.input_capacity_frames:
+            await self._release_first_batch.wait()
+            await self._flush_inputs()
+
+    async def next_output(self) -> AudioFrame:
+        return await self._outputs.get()
+
+    async def end_generation(self, generation_id: int) -> None:
+        if generation_id != self._active_generation_id:
+            raise RuntimeError("inactive generation")
+        self._release_first_batch.set()
+        await self._flush_inputs()
+        self._active_generation_id = None
+
+    async def cancel_generation(self, generation_id: int) -> None:
+        if generation_id == self._active_generation_id:
+            self._active_generation_id = None
+        self._inputs.clear()
+        self._outputs = asyncio.Queue()
+        self._release_first_batch.set()
+
+    async def close(self) -> None:
+        self._active_generation_id = None
+        self._inputs.clear()
+        self._outputs = asyncio.Queue()
+        self._release_first_batch.set()
+
+    def release_first_batch(self) -> None:
+        self._release_first_batch.set()
+
+    async def _flush_inputs(self) -> None:
+        while self._inputs:
+            await self._outputs.put(self._inputs.pop(0))
+
+
+def install_delayed_batch_worker(client: TestClient) -> list[DelayedBatch25Supervisor]:
+    supervisors: list[DelayedBatch25Supervisor] = []
+
+    def create(*_args: object) -> DelayedBatch25Supervisor:
+        supervisor = DelayedBatch25Supervisor()
+        supervisors.append(supervisor)
+        return supervisor
+
+    client.app.state.gateway.worker_supervisor_factory = create
     return supervisors
 
 
@@ -332,6 +414,186 @@ def test_gateway_conversion_never_uses_the_shared_thread_executor(
         source = input_frame(1, 0, 0.25)
         websocket.send_bytes(source.encode())
         assert PcmFrame.decode(websocket.receive_bytes()).payload == source.payload
+    finally:
+        close_websocket(websocket)
+
+
+def test_gateway_pumps_a_full_worker_batch_before_waiting_for_output(
+    client: TestClient,
+    create_session,
+) -> None:
+    supervisors = install_fake_worker(client, "batch-25")
+    profile = client.app.state.gateway.registry.get_selectable("test.passthrough.v1")
+    assert profile is not None
+    profile.timeouts.first_output_ms = 2_000
+    profile.timeouts.stall_ms = 2_000
+    created = create_session()
+    websocket, _ = connect_and_attach(client, created)
+    try:
+        websocket.send_json(
+            control("generation.start", created, "start-batch", generation_id=4)
+        )
+        assert websocket.receive_json()["type"] == "generation.ready"
+
+        for sequence in range(25):
+            websocket.send_bytes(input_frame(4, sequence, sequence / 100).encode())
+        outputs = [PcmFrame.decode(websocket.receive_bytes()) for _ in range(25)]
+        assert [frame.header.sequence for frame in outputs] == list(range(25))
+        assert supervisors[-1].queued_input_frames == 0
+
+        websocket.send_json(
+            control("generation.end", created, "end-batch", generation_id=4)
+        )
+        assert websocket.receive_json()["type"] == "generation.completed"
+    finally:
+        close_websocket(websocket)
+
+
+def test_gateway_holds_a_50_frame_ingress_tail_outside_a_delayed_worker_batch(
+    client: TestClient,
+    create_session,
+) -> None:
+    supervisors = install_delayed_batch_worker(client)
+    profile = client.app.state.gateway.registry.get_selectable("test.passthrough.v1")
+    assert profile is not None
+    profile.minimum_context_ms = 500
+    profile.timeouts.first_output_ms = 2_000
+    profile.timeouts.stall_ms = 2_000
+    created = create_session()
+    assert created["limits"] == {"ingress_budget_ms": 1_000, "max_ingress_frames": 50}
+    websocket, _ = connect_and_attach(client, created)
+    try:
+        websocket.send_json(
+            control("generation.start", created, "start-delayed", generation_id=8)
+        )
+        assert websocket.receive_json()["type"] == "generation.ready"
+        for sequence in range(28):
+            websocket.send_bytes(input_frame(8, sequence, 0.1).encode())
+
+        supervisor = wait_for_worker_queue(supervisors, minimum=25)
+        connection = client.app.state.gateway.connections[created["session_id"]]
+        assert supervisor.maximum_queued_input_frames == 25
+        assert client.portal is not None
+        assert client.portal.call(connection.ingress.qsize) == 3
+        assert client.portal.call(lambda: connection.pending_ingress_frames) == 28
+
+        client.portal.call(supervisor.release_first_batch)
+        websocket.send_json(
+            control("generation.end", created, "end-delayed", generation_id=8)
+        )
+        outputs = [PcmFrame.decode(websocket.receive_bytes()) for _ in range(28)]
+        assert [frame.header.sequence for frame in outputs] == list(range(28))
+        assert supervisor.maximum_queued_input_frames == 25
+        assert websocket.receive_json()["type"] == "generation.completed"
+    finally:
+        close_websocket(websocket)
+
+
+def test_cancel_unblocks_a_worker_capacity_wait_and_next_generation_is_healthy(
+    client: TestClient,
+    create_session,
+) -> None:
+    supervisors = install_delayed_batch_worker(client)
+    profile = client.app.state.gateway.registry.get_selectable("test.passthrough.v1")
+    assert profile is not None
+    profile.minimum_context_ms = 500
+    profile.timeouts.first_output_ms = 2_000
+    profile.timeouts.stall_ms = 2_000
+    created = create_session()
+    websocket, _ = connect_and_attach(client, created)
+    try:
+        websocket.send_json(
+            control("generation.start", created, "start-wait", generation_id=9)
+        )
+        assert websocket.receive_json()["type"] == "generation.ready"
+        for sequence in range(28):
+            websocket.send_bytes(input_frame(9, sequence, 0.1).encode())
+        supervisor = wait_for_worker_queue(supervisors, minimum=25)
+
+        started = time.monotonic()
+        websocket.send_json(
+            control("generation.cancel", created, "cancel-wait", generation_id=9)
+        )
+        assert websocket.receive_json()["type"] == "generation.canceled"
+        assert time.monotonic() - started < 1
+
+        websocket.send_json(
+            control("generation.start", created, "start-after-wait", generation_id=10)
+        )
+        assert websocket.receive_json()["type"] == "generation.ready"
+        for sequence in range(25):
+            websocket.send_bytes(input_frame(10, sequence, 0.2).encode())
+        wait_for_worker_queue([supervisor], minimum=25)
+        assert client.portal is not None
+        client.portal.call(supervisor.release_first_batch)
+        websocket.send_json(
+            control("generation.end", created, "end-after-wait", generation_id=10)
+        )
+        outputs = [PcmFrame.decode(websocket.receive_bytes()) for _ in range(25)]
+        assert {frame.header.generation_id for frame in outputs} == {10}
+        assert [frame.header.sequence for frame in outputs] == list(range(25))
+        assert websocket.receive_json()["type"] == "generation.completed"
+    finally:
+        close_websocket(websocket)
+
+
+def test_generation_end_flushes_a_partial_worker_batch_before_completion(
+    client: TestClient,
+    create_session,
+) -> None:
+    install_fake_worker(client, "batch-25")
+    created = create_session()
+    websocket, _ = connect_and_attach(client, created)
+    try:
+        websocket.send_json(
+            control("generation.start", created, "start-partial", generation_id=5)
+        )
+        assert websocket.receive_json()["type"] == "generation.ready"
+        for sequence in range(4):
+            websocket.send_bytes(input_frame(5, sequence, 0.1 * sequence).encode())
+        websocket.send_json(
+            control("generation.end", created, "end-partial", generation_id=5)
+        )
+
+        outputs = [PcmFrame.decode(websocket.receive_bytes()) for _ in range(4)]
+        assert [frame.header.sequence for frame in outputs] == [0, 1, 2, 3]
+        assert websocket.receive_json()["type"] == "generation.completed"
+    finally:
+        close_websocket(websocket)
+
+
+def test_cancel_discards_a_partial_worker_batch_before_the_next_generation(
+    client: TestClient,
+    create_session,
+) -> None:
+    install_fake_worker(client, "batch-25")
+    profile = client.app.state.gateway.registry.get_selectable("test.passthrough.v1")
+    assert profile is not None
+    profile.timeouts.first_output_ms = 2_000
+    profile.timeouts.stall_ms = 2_000
+    created = create_session()
+    websocket, _ = connect_and_attach(client, created)
+    try:
+        websocket.send_json(
+            control("generation.start", created, "start-cancel", generation_id=6)
+        )
+        assert websocket.receive_json()["type"] == "generation.ready"
+        for sequence in range(5):
+            websocket.send_bytes(input_frame(6, sequence, 0.6).encode())
+        websocket.send_json(
+            control("generation.cancel", created, "cancel-batch", generation_id=6)
+        )
+        assert websocket.receive_json()["type"] == "generation.canceled"
+
+        websocket.send_json(
+            control("generation.start", created, "start-next", generation_id=7)
+        )
+        assert websocket.receive_json()["type"] == "generation.ready"
+        for sequence in range(25):
+            websocket.send_bytes(input_frame(7, sequence, 0.7).encode())
+        outputs = [PcmFrame.decode(websocket.receive_bytes()) for _ in range(25)]
+        assert {frame.header.generation_id for frame in outputs} == {7}
+        assert [frame.header.sequence for frame in outputs] == list(range(25))
     finally:
         close_websocket(websocket)
 
@@ -782,6 +1044,97 @@ class _BlockedOutboundWebSocket:
 
     async def close(self, code: int = 1000) -> None:
         del code
+
+
+class _DisconnectedOutboundWebSocket:
+    async def send_text(self, data: str) -> None:
+        del data
+        raise RuntimeError("client disconnected")
+
+    async def send_bytes(self, data: bytes) -> None:
+        del data
+        raise RuntimeError("client disconnected")
+
+    async def close(self, code: int = 1000) -> None:
+        del code
+
+
+class _PendingAttachmentWebSocket:
+    def __init__(self) -> None:
+        self.headers = {"origin": ORIGIN_HEADERS["Origin"]}
+        self.accepted = asyncio.Event()
+        self.release = asyncio.Event()
+        self.close_code: int | None = None
+
+    async def accept(self) -> None:
+        self.accepted.set()
+
+    async def receive(self) -> dict[str, object]:
+        await self.release.wait()
+        return {"type": "websocket.disconnect"}
+
+    async def send_text(self, data: str) -> None:
+        del data
+
+    async def close(self, code: int = 1000, reason: str = "") -> None:
+        del reason
+        self.close_code = code
+
+
+@pytest.mark.asyncio
+async def test_pending_attachment_capacity_is_bounded_before_accept(
+    settings,
+) -> None:
+    bounded = replace(settings, max_pending_attachments=1)
+    gateway = create_app(bounded).state.gateway
+    first = _PendingAttachmentWebSocket()
+    first_task = asyncio.create_task(gateway.websocket(first))  # type: ignore[arg-type]
+    await asyncio.wait_for(first.accepted.wait(), timeout=1)
+    assert gateway.pending_attachments == 1
+
+    second = _PendingAttachmentWebSocket()
+    await gateway.websocket(second)  # type: ignore[arg-type]
+    assert not second.accepted.is_set()
+    assert second.close_code == 4429
+    assert gateway.pending_attachments == 1
+
+    first.release.set()
+    await asyncio.wait_for(first_task, timeout=1)
+    assert gateway.pending_attachments == 0
+
+
+def test_output_disconnect_retrieves_pump_and_releases_session(
+    client: TestClient,
+    create_session,
+) -> None:
+    created = create_session()
+    websocket, _ = connect_and_attach(client, created)
+    connection = client.app.state.gateway.connections[created["session_id"]]
+    try:
+        websocket.send_json(
+            control("generation.start", created, "start-disconnect", generation_id=25)
+        )
+        assert websocket.receive_json()["type"] == "generation.ready"
+        output_task = connection.output_task
+        assert output_task is not None
+        connection.websocket = _DisconnectedOutboundWebSocket()  # type: ignore[assignment]
+
+        websocket.send_bytes(input_frame(25, 0).encode())
+        deadline = time.monotonic() + 2
+        while time.monotonic() < deadline and not output_task.done():
+            time.sleep(0.005)
+        assert output_task.done()
+        assert output_task.exception() is None
+
+        deadline = time.monotonic() + 2
+        while time.monotonic() < deadline:
+            if created["session_id"] not in client.app.state.gateway.connections:
+                break
+            time.sleep(0.005)
+        assert created["session_id"] not in client.app.state.gateway.connections
+        assert client.app.state.gateway.store.get(created["session_id"]) is None
+    finally:
+        close_websocket(websocket)
 
 
 def test_outbound_send_timeout_wakes_route_and_releases_session(

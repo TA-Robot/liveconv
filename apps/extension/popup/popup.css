@@ -57,6 +57,18 @@ input {
   font: inherit;
 }
 
+small {
+  min-height: 15px;
+  color: GrayText;
+  overflow-wrap: anywhere;
+}
+
+.profile-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
 .controls {
   display: grid;
   grid-template-columns: 1fr 1fr;

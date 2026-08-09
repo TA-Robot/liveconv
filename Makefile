@@ -1,12 +1,13 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: help bootstrap doctor check control-check remote-check remote-check-tools test test-python test-extension lint server git-auth experiment lock-dev luna luna-smoke
+.PHONY: help bootstrap doctor check control-check package-check remote-check remote-check-tools test test-python test-extension lint server git-auth experiment lock-dev luna luna-smoke
 
 help:
 	@printf '%s\n' \
 	  'make bootstrap                         Run local bootstrap and checks' \
 	  'make doctor                            Inspect required and optional tools' \
 	  'make check                             Validate controls, lint, and tests' \
+	  'make package-check                     Build and smoke public Python packages' \
 	  'make remote-check                      Validate remote TLS deployment config' \
 	  'make remote-check-tools ENV_FILE=/path Validate with Compose and Caddy' \
 	  'make test                              Run Python and Extension tests' \
@@ -28,10 +29,14 @@ doctor:
 check:
 	@$(MAKE) control-check
 	@$(MAKE) lint
+	@$(MAKE) package-check
 	@$(MAKE) test
 
 control-check:
 	@bash scripts/check.sh
+
+package-check:
+	@uv run --frozen python scripts/check-packages.py
 
 remote-check:
 	@python3 deploy/remote/validate.py

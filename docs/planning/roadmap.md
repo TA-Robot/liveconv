@@ -1,176 +1,271 @@
-# Roadmap and phase gates
+# Personal SSH-use roadmap
 
 Status: Active
 
-Progress is gate-driven. Dates may be added later, but no phase advances because
-time elapsed or a demo looked promising.
+This roadmap targets one person's usable voice-conversion system, not a public
+service. The final MS-6 system uses one trusted Chrome client, one managed remote
+GPU host, and an SSH local forward to a loopback-only Gateway. Manual maintenance
+and an occasional restart are acceptable. Public Internet ingress, multi-user
+identity, high availability, an uptime SLA, and unattended fleet operations are
+outside these six milestones.
 
-Every gate uses the frozen experiment decision rule and the measurement
-definitions in `docs/product/requirements.md`. A gate is not satisfied by a demo,
-an average without its distribution, or a result collected before approval.
+The product requirements remain measurement targets and safety invariants. A
+milestone may record a measured deviation for this personal-use checkpoint; it
+must not claim that an unmet NFR or experiment gate passed. Model-adapter gates
+`M0` through `M6` in
+[`critical-path.md`](critical-path.md) are separate from the user-delivery
+milestones `MS-1` through `MS-6` below.
 
-## Execution overlay
+## MS-6 target envelope
 
-Phase gates constrain evidence claims, but independent engineering work is
-scheduled by `docs/planning/critical-path.md`. After every green checkpoint, the
-primary recalculates the Ready frontier and delegates all independent nodes that
-fit exclusive write scopes and resource leases.
+The completed personal v1 has this boundary:
 
-Implementation of the current node, test authoring for the next node, and Sol
-review of the previous integrated node run concurrently. Work may prepare a later
-phase without claiming its result; no parallel schedule can bypass a prerequisite
-gate or external authorization.
+```text
+one trusted Chrome Extension
+        |
+        | http://127.0.0.1:8765 + ws://127.0.0.1:8765/v1/ws
+        v
+OpenSSH local forward (-L, host key pinned, forwarding-only account)
+        |
+        v
+remote 127.0.0.1:8765 Gateway -> one selected supervised model worker
+```
 
-Engineering checkpoint (2026-08-09): the deterministic remote-router stack is
-implemented and testable end to end with passthrough and gain profiles. Phase 0
-and Phase 1 remain evidence-open until authorized recordings, full sample counts,
-live TLS, audible continuity, and preregistered measurements are collected.
+Required qualities:
 
-## Phase 0: Native baseline
+- native audio remains immediately available when conversion is unhealthy;
+- native and transformed audio do not play together accidentally;
+- interruption retires the old generation and its queued output;
+- the Gateway stays on loopback and requires its bearer, one-use ticket, and
+  exact Extension Origin in addition to SSH;
+- raw user audio is not retained by default and secrets, voices, weights, and
+  generated audio remain outside Git;
+- one operator can install, start, stop, diagnose, restart, roll back, and
+  reconnect the system from written instructions;
+- a model or process failure may require a manual restart, but the native route
+  remains usable and the documented recovery completes within ten minutes.
 
-Deliver:
+Explicitly not required for MS-6:
 
-- versioned Japanese smoke corpus
-- native realtime recordings under authorized storage
-- prompt-only Japanese baseline
-- deterministic normalization specification
-- timing and rating harness skeleton
+- public DNS, Caddy/ACME, an Internet-facing application port, or public clients;
+- multi-user accounts, per-user authorization, SSO, billing, audit retention, or
+  enterprise secrets management;
+- automatic failover, zero-downtime deployment, an uptime percentage, on-call
+  rotation, autoscaling, or more than one active session;
+- production approval for every researched model, a TTS path, or completion of
+  every historical experiment;
+- native-speaker publication-quality evidence when a result is clearly labelled
+  technical, personal, failed, or unassessed.
 
-Gate:
+## Milestone rules
 
-- the smoke manifest contains exactly 40 versioned utterances and meets every
-  category minimum in `docs/experiments/evaluation.md`
-- the deterministic normalization specification exists, identifies its version,
-  covers JP-001 through JP-006, and passes table-driven expected-spoken-text tests
-- the timing and rating harness runs one canonical fixture end to end and emits
-  schema-valid run metadata with monotonic boundary timestamps and blinded labels
-- EXP-001 was approved before collection, contains no material `TBD`, and is
-  analyzed with at least three renders per fixture per variant (240 eligible
-  renders before exclusions)
-- every latency variant has at least 30 eligible post-warmup samples and reports
-  P50, P95, environment, and exclusions
-- the preregistered numeric preference, correctness, latency, and language-
-  stability decision thresholds have an explicit pass, fail, or inconclusive
-  outcome
-- dominant defect categories are ranked from aggregate results and linked failure
-  examples
-- the artifact inventory accounts for every produced render; each entry has an
-  authorization class, access-controlled locator, retention deadline, checksum,
-  and tested deletion owner, and no artifact-policy field remains `TBD`
+1. Work advances on observable gates, not on a reviewer's desire for general
+   perfection.
+2. Every finding is disposed through
+   [`review-triage.md`](review-triage.md) as `fix-now`, `scheduled`,
+   `accepted-risk`, or `out-of-scope`.
+3. Only a current-milestone invariant, sensitive-data exposure, evidence
+   corruption, unbounded expected-path resource leak, or inability to execute the
+   gate stops the line.
+4. A current-scope High finding must close before the milestone. A Medium may be
+   scheduled or accepted when it has an owner, target milestone, bounded impact,
+   and a concrete detection or recovery procedure. Low findings never block a
+   milestone by themselves.
+5. Each checkpoint gets one independent Sol review and one bounded repair and
+   re-review cycle. A newly discovered non-blocking issue goes to its milestone
+   instead of recursively reopening the checkpoint.
+6. `make check` must pass at every milestone. Focused checks run continuously;
+   expensive real-model and browser checks use explicit GPU, Chrome-profile, and
+   port leases.
 
-## Phase 1: Audio router without a model
+## MS-1: Executable multi-model lab
 
-Deliver:
-
-- Chrome MV3 capture after explicit action
-- Offscreen Document and AudioWorklet loopback
-- native, loopback, and bypass modes
-- sequence, timestamp, and generation tracking
-- bounded jitter buffer and cancellation
-- no double-playback path
-- authenticated remote session gateway and versioned HTTP/WSS PCM contract
-- curated profile registry with passthrough and deterministic DSP profiles
-- generation-bound model selection and worker adapter contract
-
-Gate:
-
-- zero stale-generation frames play in 100 scripted interruptions
-- zero simultaneous native/transformed paths occur in 100 scripted mode changes
-- at least 200 eligible loopback turns meet NFR-004, with P50/P95 added latency
-  and explicit exclusions reported
-- all injected capture and gateway failures return to audible bypass without an
-  unbounded queue or unrecoverable session
-- passthrough preserves PCM payloads across the remote route, deterministic gain
-  is sample-different but rejected as meaningful voice transformation, and both
-  retain valid frame sequence and content fixtures
-- profile switching succeeds only between generations; 100 illegal or stale
-  switching cases produce zero accepted old-pipeline frames
-- TLS/auth/ticket/Origin tests satisfy NFR-011 outside loopback, and injected
-  worker crashes satisfy NFR-012
-
-## Phase 2: Multi-model VC lab
+Outcome: prove what actually runs on this host and establish one real routed VC
+path without making a quality or production claim.
 
 Deliver:
 
-- at least two isolated real VC profile candidates selected through current
-  primary-source and license research
-- authorized target-voice preparation
-- at least one streaming integration with measured warmup and steady state
-- offline frozen-fixture results for every selectable real profile
-- native versus VC and cross-model blind evaluation
+- immutable provenance, isolated runtime, and a real transform attempt for RVC
+  v2, Beatrice 2, X-VC, and OpenVoice V2;
+- at least three successful real PCM-to-PCM transforms and at least two adapters
+  exercised through worker protocol v1;
+- one rolling or streaming candidate selected through the real Gateway with
+  generation start/end/cancel and native fallback intact;
+- loadable MV3 Extension, bounded capture/playout queues, deterministic
+  passthrough and gain routes, packaged Python distributions, and the SSH client
+  setup documents;
+- every candidate labelled `technical`, `failed`, `offline-only`, `unassessed`,
+  or `nonselectable` exactly as its evidence supports.
 
 Gate:
 
-- VC meets NFR-001 and NFR-004 on the frozen set
-- interruption-to-audible-stop meets NFR-003 on at least 100 scripted
-  interruptions, with no stale-generation playback
-- every injected extension, gateway, and VC failure preserves or restores the
-  native path as required by NFR-009
-- zero stale-generation frames play in 100 scripted interruptions
-- blinded Japanese-quality and voice-similarity results are reported separately
-  and satisfy the preregistered decision rule
-- code, weight, and data licenses are recorded, and every voice artifact satisfies
-  GOV-001 through GOV-003
-- every real profile independently passes adapter conformance, signal-change,
-  content-preservation, speaker-evidence, and integrity lanes; a missing lane is
-  `inconclusive`, not a pass
-- selecting, warming, evicting, and reselecting each profile leaves the gateway
-  healthy and keeps measured VRAM below its preregistered budget
+- real artifacts, source, adapter code, runtime lock, worker wheel, and effective
+  configuration identities are bound and independently checked for every model
+  used in a claim;
+- all successful transforms return finite normalized audio and preserve worker
+  generation/sequence/timestamp identity;
+- malformed authorization or evidence cannot promote a profile;
+- at least one real profile passes a disposable local Gateway route smoke;
+- package builds, focused suites, `make check`, and an independent Sol review are
+  green with no open current-scope High.
 
-## Phase 3: First external TTS
+Allowed known issues: poor voice quality, failed STT or speaker lanes, slow cold
+start, whole-file-only inference, no external audible-tab run, and candidates
+that remain nonselectable. These become MS-2 inputs rather than MS-1 blockers.
+
+## MS-2: Candidate and architecture freeze
+
+Outcome: choose one primary personal-use conversion path and stop spending equal
+effort on every model.
 
 Deliver:
 
-- response text commit state
-- deterministic Japanese normalization and pronunciation dictionary
-- one TTS adapter selected through current research
-- synthesis queue, played-text accounting, and interruption cancellation
-- native versus VC versus TTS blind evaluation
+- a same-input comparison of at least two real candidates using an authorized,
+  intelligible Japanese fixture subset plus integrity, STT, speaker, cold/warm
+  timing, and operator listening notes;
+- one primary streaming candidate, one explicit native fallback, and optionally
+  one offline comparator; all other candidates are archived or assigned a
+  bounded follow-up issue;
+- a short ADR freezing the Extension topology: tab capture, always-hot native
+  path, one source playhead, generation isolation, exclusive final playout, and
+  server-returned candidate PCM;
+- frozen model revision, runtime, profile configuration, reference/target
+  authorization, sample rate, frame size, batching, and selection policy.
 
 Gate:
 
-- operational formats meet the preregistered exact-reading thresholds for every
-  JP-001 through JP-006 slice, with no high-consequence identifier omission
-- blinded native-speaker ratings meet the preregistered JP-007 prosody threshold,
-  and every JP-008 code-switching slice meets its language-stability threshold
-- response start meets NFR-002, interruption meets NFR-003, and integrity meets
-  NFR-004 on the frozen set
-- zero of 100 scripted interruptions retain unheard text as played conversation
-  state or play a stale-generation frame
-- all core mode, bypass, start, stop, and interruption controls satisfy NFR-010 in
-  automated keyboard and accessible-name checks plus one manual screen-reader pass
+- the primary is intelligible on the selected personal-use fixtures, has no
+  clipping/repetition/gap failure that makes normal use impractical, and is
+  compared honestly even if it misses a product NFR;
+- the decision records why each alternate is selected, deferred, or rejected;
+- no unassessed lane is represented as a pass and no failed quality result is
+  hidden by a technical route pass;
+- the chosen worker and Extension contract have no unresolved current-scope High.
 
-## Phase 4: Candidate A/B and architecture decision
+Allowed known issues: a documented product-threshold miss, synthetic-reference
+limitations, manual model warmup, and a single selected voice. The chosen
+candidate must still be useful enough for the operator's listening test; a
+clearly unintelligible result cannot be accepted merely to close the milestone.
+
+## MS-3: Responsiveness and route stability
+
+Outcome: tune only the frozen MS-2 path until ordinary conversation feels usable
+and the core audio invariants remain stable.
 
 Deliver:
 
-- at least one meaningful alternate candidate for the winning path
-- long-conversation, noise, and DaaS tests
-- cost and deployment profile
-- architecture ADR selecting VC, TTS, hybrid, or native-only for the next product
+- capture-to-playout, worker, jitter-buffer, and cancellation timing with warmup,
+  P50, P95, sample count, environment, and exclusions;
+- measured and tuned batching/context/crossfade/jitter settings;
+- bounded backpressure and overflow behavior at every queue;
+- retry, disconnect, stale-output, worker-crash, and cancel-during-drain tests;
+- a 30-minute continuous route run and at least 30 post-warmup turns, including
+  25 scripted interruptions and 25 native/remote mode changes.
 
 Gate:
 
-- a product-specific winner passes its preregistered blinded quality rule and all
-  applicable NFR-001 through NFR-013 guardrails
-- the long-session evaluation contains at least 20 sessions of 5-10 minutes and
-  reports failures, memory growth, interruption, and quality slices
-- residual risks have owners and mitigations
+- zero accepted stale-generation frames and zero accidental double playback in
+  the scripted cases;
+- every injected route/worker failure reaches audible native fallback without an
+  unbounded queue or Gateway-process crash;
+- interruption stop targets NFR-003; any measured miss has a recorded personal-
+  use budget and mitigation rather than an invented pass;
+- warm response latency is measured against NFR-001 and reduced to the best
+  stable configuration selected by the operator;
+- the 30-minute run has no unrecoverable state, monotonic memory/queue growth, or
+  required repository change.
 
-## Phase 5: Supported production integration
+Allowed known issues: a cold start around one minute, manual first warmup, and a
+documented conversational delay above the product target when the operator
+accepts it for personal use.
+
+## MS-4: SSH-only security baseline
+
+Outcome: make the intended one-user network boundary explicit and fail closed
+without building an Internet service.
 
 Deliver:
 
-- supported realtime API integration
-- application-owned conversation and playout state
-- authenticated deployment and secrets management
-- telemetry, retention, incident response, and rollback
-- removal of production DOM dependence
+- Gateway bound to remote loopback with `max_sessions=1` and technical-profile
+  opt-in explicit;
+- forwarding-only SSH account/key, `permitopen`, disabled shell/session features,
+  host-key pinning, client-local bind, and firewall verification;
+- exact Extension Origin, visible-ASCII bearer policy, short-lived one-use WSS
+  ticket, request/frame/body caps, worker process containment, and redacted logs;
+- authenticated readiness and negative auth/origin/ticket-replay checks through
+  the real SSH tunnel;
+- a concise threat record scoped to one trusted client and one controlled host.
 
 Gate:
 
-- security and privacy review has no unresolved High finding
-- load, failover, and rollback tests meet preregistered service objectives
-- operational owner accepts runbooks and service objectives
-- release accessibility checks demonstrate NFR-010 with keyboard-only operation,
-  programmatic labels, focus visibility, and no unresolved critical blocker
+- port 8765 is unreachable from the network and reachable only through the local
+  forward;
+- an invalid token, Origin, ticket, profile identity, artifact digest, or worker
+  startup fails closed to native fallback;
+- no raw audio, secret, reference voice, model weight, or credential is committed
+  or emitted in normal logs/traces;
+- the SSH and Gateway setup is reproduced from a second client shell using the
+  documented commands.
+
+Allowed known issues: one manually distributed bearer, no automatic rotation,
+no SSO, no public TLS endpoint, and no defense against the trusted server
+administrator. Public Caddy deployment work is post-v1 unless independently
+useful and must not block this gate.
+
+## MS-5: Personal operations and recovery
+
+Outcome: one person can keep the system usable without remembering repository
+internals.
+
+Deliver:
+
+- preflight, start, readiness, stop, restart, update, rollback, tunnel reconnect,
+  Extension reload, and log-inspection procedures;
+- a pinned release inventory for code, profile, model artifacts, runtime, and
+  client Extension ID;
+- three clean cold-start/restart cycles, three tunnel-loss recoveries, worker
+  crash recovery, and a two-hour personal soak;
+- a known-issues list with detection, workaround, target milestone, and artifact
+  retention/cleanup instructions;
+- a monthly maintenance checklist and a ten-minute manual recovery objective.
+
+Gate:
+
+- a fresh operator shell can restore the route from stopped processes within ten
+  minutes using the runbook;
+- a failure during the soak may require one documented manual restart, but it
+  must not corrupt the profile, retain raw audio, require code editing, or remove
+  native playback;
+- rollback to the previous code/profile/runtime inventory is tested once;
+- all current MS-5 findings are fixed or explicitly accepted in the ledger.
+
+Allowed known issues: no automatic failover, no background pager, monthly manual
+maintenance, and an occasional restart when a clear runbook restores service.
+
+## MS-6: Personal-use v1 acceptance
+
+Outcome: the actual external client and remote server complete a normal audible
+conversation over the SSH-only route, and the result is frozen as personal v1.
+
+Deliver and gate:
+
+- one Chrome client loads the release Extension on a normal audible tab, opens
+  the SSH tunnel, selects the frozen primary profile, and completes at least a
+  30-minute session with 20 generations and five interruptions;
+- forced tunnel loss and worker failure both return to native audio, after which
+  the documented reconnect/restart restores conversion;
+- output is intelligible and subjectively useful to the named operator; this is a
+  personal acceptance record, not a population-level quality claim;
+- release notes state the exact model/profile/runtime revisions, measured
+  latency, failed/unassessed evidence lanes, security boundary, known issues,
+  manual recovery, and rollback;
+- `make check`, package checks, Extension checks, the real SSH route smoke, secret
+  scan, and final independent Sol review are green;
+- every remaining High/Medium has one of the four explicit dispositions and no
+  current-scope High remains.
+
+After MS-6, normal operation is intentionally modest: use the system personally,
+inspect it monthly, restart it when a documented failure occurs, and open a
+targeted issue when repair requires more than the runbook. Public access,
+multi-user operation, stronger quality studies, TTS, automatic recovery, and
+service-level objectives begin only in a separately approved post-v1 roadmap.

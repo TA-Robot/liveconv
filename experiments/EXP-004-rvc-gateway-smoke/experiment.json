@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "id": "EXP-004",
+  "title": "Retained RVC disposable Gateway technical smoke",
+  "status": "approved",
+  "phase": 1,
+  "owner": "primary-integrator",
+  "created_at": "2026-08-09T00:00:00Z",
+  "updated_at": "2026-08-09T00:00:00Z",
+  "question": "Can the current retained one-profile RVC technical profile complete the frozen Gateway v1 lifecycle on a disposable loopback Gateway without accepting malformed or stale PCM?",
+  "hypothesis": "The exact retained RVC technical profile, identified by its profile, configuration, and pipeline hashes, can authenticate and attach through the Gateway, transform one synthetic 28-frame generation at 20 ms pacing (a 25-frame RVC batch plus a three-frame tail before end) into finite normalized changed PCM with preserved frame identity, reject generation-2 stale output after cancel, and close its disposable session cleanly.",
+  "links": [
+    "ADR-0002",
+    "FR-006",
+    "FR-008",
+    "FR-009",
+    "FR-013",
+    "FR-016",
+    "NFR-006",
+    "NFR-007",
+    "NFR-013",
+    "LV-038"
+  ],
+  "control": {
+    "id": "deterministic_fake_rvc_gateway",
+    "description": "A deterministic in-memory Gateway contract fake that batches 25 frames, flushes a short final tail, and injects one post-cancel stale frame for local-gate verification.",
+    "configuration": {
+      "profile_count": 1,
+      "synthetic_pcm": true,
+      "decision_scope": "technical_only"
+    }
+  },
+  "variants": [
+    {
+      "id": "retained_rvc_loopback_gateway",
+      "description": "One explicitly enabled current retained RVC technical-validation profile through an externally launched or auto-launched loopback-only Gateway.",
+      "configuration": {
+        "profile_count": 1,
+        "technical_profile_opt_in": true,
+        "bind_host": "127.0.0.1",
+        "max_sessions": 1,
+        "product_readiness_claim": false
+      }
+    }
+  ],
+  "fixtures": {
+    "manifest": "In-memory deterministic non-speech float32 PCM generator",
+    "version": "exp-004-synthetic-pcm-v1",
+    "classification": "synthetic",
+    "frozen": true
+  },
+  "environment": {
+    "git_commit": "A persisted trace requires the exact clean checked-out Git commit.",
+    "runtime": "Python 3.12 workspace lock, frozen protocol v1, and the current retained ignored RVC profile/runtime inputs.",
+    "hardware": "Record only separately retained operator metadata outside Git; the tracked runner persists no host, artifact-path, credential, or raw-audio fields.",
+    "model_revisions": {
+      "rvc": "Bind through the Gateway's profile, configuration, and pipeline identities; the trace contains only public hashes and no artifact locations."
+    }
+  },
+  "procedure": {
+    "summary": "Run deterministic fake checks first. In an explicitly opted-in live run, load exactly one ignored technical RVC worker profile through ProfileRegistry, bind its public profile and configuration hashes to an exactly-one-entry Gateway catalog before session creation, create an authenticated session, attach with the exact Extension Origin and one-use ticket, require the exact 1000 ms/50-frame Gateway advertisement, run one normal generation of 28 frames at 20 ms pacing (25-frame inference batch plus a three-frame tail) and end it, cancel generation 2 under a local stale-output gate, then close, delete, and confirm 404. Auto-launch pins its base ingress budget to 500 ms; the retained profile's 500 ms minimum context produces the required 1000 ms session budget. Ordinary network and post-start control waits remain short and bounded. Auto-launch readiness and generation.ready use a separate bounded cold-start timeout: the larger of 180 seconds and the selected profile's first_output_ms envelope; it does not change 20 ms pacing. This trace proves only the Gateway-visible 50-frame ingress credit, client high-water bound, and 28-frame drain without overflow or fallback. The separate delayed-worker service regression proves WorkerBridge's private 25-frame accepted cap; both evidence records are required.",
+    "warmup": "Gateway readiness and any worker warmup are operational prerequisites only and are excluded from all latency claims.",
+    "sample_count": 1,
+    "commands": [
+      "uv run --frozen --all-packages pytest -q -c experiments/EXP-004-rvc-gateway-smoke/pyproject.toml experiments/EXP-004-rvc-gateway-smoke/exp004_tests",
+      "LIVECONV_EXP004_RUN_REAL=1 uv run --frozen --all-packages pytest -q -c experiments/EXP-004-rvc-gateway-smoke/pyproject.toml experiments/EXP-004-rvc-gateway-smoke/exp004_tests/test_live.py"
+    ],
+    "invalidation_conditions": [
+      "The persisted trace is not bound to the exact clean checked-out Git commit.",
+      "The live route uses more than one profile, a profile whose catalog/session/attach identities do not bind the current retained RVC technical profile, a Gateway URL whose HTTP or HTTPS host is not loopback, or more than one allowed session.",
+      "The retained profile document or catalog has anything other than exactly one matching technical RVC worker profile; catalog, session, attach, or generation identities disagree; session protocol_version is not 1; authentication or exact-Origin attachment fails; the Gateway advertisement is not exactly 1000 ms and 50 frames or the client high-water exceeds it; the 28-frame generation overflows or falls back instead of draining; the separate delayed-worker service regression does not prove the private 25-frame accepted cap; or a generation accepts malformed, non-finite, out-of-range, reordered, timestamp-mismatched, unchanged, or stale output.",
+      "The trace contains a credential, ticket, voice identifier, artifact/runtime path, worker endpoint, raw PCM, payload digest, free-form server error, or raw sample data.",
+      "A technical result is represented as quality, speaker, content, latency, authorization, licensing, security, deployment, or production-readiness evidence."
+    ]
+  },
+  "metrics": [
+    {
+      "name": "generation_1_validated_frames",
+      "kind": "correctness",
+      "unit": "frames",
+      "primary": true
+    },
+    {
+      "name": "accepted_stale_generation_frames",
+      "kind": "correctness",
+      "unit": "frames",
+      "primary": true
+    },
+    {
+      "name": "session_teardown_status",
+      "kind": "reliability",
+      "unit": "http_status",
+      "primary": true
+    }
+  ],
+  "decision_rule": "The experiment decision is always inconclusive. A technical pass requires one current retained RVC technical worker profile loaded from the ignored configuration through ProfileRegistry, an exactly-one-entry catalog whose profile and configuration hashes match that configuration before session creation, matching catalog/session/attach/generation profile, configuration, and pipeline identities, session protocol_version 1, authenticated exact-Origin attachment, an exact Gateway advertisement of 1000 ms and 50 ingress frames with client high-water at or below 50, one normal 28-frame generation-1 run at 20 ms pacing (25-frame full batch plus a three-frame tail before end) that drains without overflow or fallback and has contiguous sequence and echoed timestamps, finite normalized changed output, a locally gated generation-2 cancellation with zero accepted stale frames, and session.close followed by DELETE 204 and GET 404. The delayed-worker service regression must separately prove WorkerBridge's private 25-frame accepted cap; EXP-004 does not observe that private cap. It does not establish voice conversion quality, target speaker change, Japanese content preservation, latency, authorization, license status, security, deployment, or production readiness.",
+  "artifact_policy": {
+    "raw_location": "Synthetic PCM remains only in process memory. Optional metadata-only traces are written to an operator-selected location outside the repository.",
+    "git_contents": "Plan, runner source, deterministic fake tests, trace schema, and no real-run trace, artifacts, credentials, reference voices, weights, paths, or PCM.",
+    "retention": "Delete optional local trace output after review or within 14 days. The runner does not persist PCM.",
+    "authorization": "Only project-authored synthetic non-speech PCM is sent by this experiment. The separately authorized retained RVC target and runtime remain outside Git and are never named in the trace."
+  },
+  "result": null,
+  "decision": null
+}

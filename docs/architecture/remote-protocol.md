@@ -21,14 +21,19 @@ Extension AudioWorklet
   -> generation gate -> bounded jitter buffer -> exclusive playout selector
 ```
 
-Only the gateway is public. Worker ports, weight paths, model credentials, and
-artifact storage are private.
+Only the Gateway transport boundary is client-facing. Worker ports, weight
+paths, model credentials, and artifact storage are private. A network-reachable
+Gateway uses HTTPS/WSS. ADR-0003 additionally permits HTTP/WS only across client
+and server loopback joined by the constrained SSH local forward.
 
 ## HTTP control plane
 
-All `/v1` endpoints except liveness require an HTTPS bearer credential. The first
-proof of concept may use one manually provisioned development credential stored
-in Extension session memory, never bundled source or persistent sync storage.
+All `/v1` endpoints except liveness require a bearer credential. HTTPS is
+required for a network-reachable Gateway. The ADR-0003 personal deployment may
+use HTTP on client loopback because SSH protects the non-loopback hop and the
+remote Gateway also binds to loopback. The first proof of concept may use one
+manually provisioned development credential stored in Extension session memory,
+never bundled source or persistent sync storage.
 
 ```text
 GET    /health/live
@@ -60,9 +65,10 @@ and an opaque one-use WSS ticket with a 30-second default expiry. The gateway
 stores only a digest of the ticket. The client sends the ticket in the first WSS
 control message so it does not enter a URL or proxy access log.
 
-Production TLS terminates at a reviewed reverse proxy or load balancer. The
-gateway checks the configured `chrome-extension://<extension-id>` Origin before
-accepting WSS. Development defaults bind only to loopback.
+Network-reachable TLS terminates at a reviewed reverse proxy or load balancer.
+The Gateway checks the configured `chrome-extension://<extension-id>` Origin
+before accepting a WebSocket. Development and personal SSH defaults bind only
+to loopback.
 
 ## Model profiles
 

@@ -23,6 +23,7 @@ def _transcripts() -> dict:
         "reference_to_output": compare_transcripts(
             "注文番号123", "注文番号123"
         ).to_dict(),
+        "exact_entities": compare_exact_entities(["123"], "注文番号123"),
     }
 
 
@@ -53,6 +54,8 @@ def _complete_policy(status: str = "approved") -> ThresholdPolicy:
             "max_output_adjacent_sample_delta": 2.0,
             "max_output_interior_silence_run_frames": 0.0,
             "max_output_adjacent_repeated_segment_frames": 1_000.0,
+            "max_cer_degradation": 0.0,
+            "min_exact_entity_match_rate": 1.0,
         },
     )
 
@@ -129,7 +132,7 @@ def test_partial_integrity_policy_cannot_pass_lane():
 def test_missing_speaker_evidence_prevents_overall_pass():
     policy = _complete_policy()
     operations = LaneVerdict(
-        VerdictStatus.PASS, "Calibrated streaming checks passed.", ("trace=run-test",)
+        VerdictStatus.PASS, "Caller-authored streaming pass.", ("trace=run-test",)
     )
 
     verdict = evaluate_measurements(
@@ -144,47 +147,34 @@ def test_missing_speaker_evidence_prevents_overall_pass():
     assert verdict.content_preservation.status is VerdictStatus.PASS
     assert verdict.speaker_change.status is VerdictStatus.UNASSESSED
     assert verdict.audio_integrity.status is VerdictStatus.PASS
-    assert verdict.streaming_operations.status is VerdictStatus.PASS
+    assert verdict.streaming_operations.status is VerdictStatus.UNASSESSED
     assert verdict.overall is VerdictStatus.UNASSESSED
 
 
 def test_proposed_policy_cannot_produce_overall_pass():
     policy = _complete_policy("proposed")
-    passed_external_lane = LaneVerdict(
-        VerdictStatus.PASS, "Caller-supplied calibrated evidence.", ("run=test",)
+    speaker_lane = LaneVerdict(
+        VerdictStatus.PASS, "Caller-authored speaker pass.", ("speaker=test",)
+    )
+    operations_lane = LaneVerdict(
+        VerdictStatus.PASS, "Caller-authored streaming pass.", ("trace=test",)
     )
 
     verdict = evaluate_measurements(
         _changed_audio(),
         _transcripts(),
         policy,
-        speaker_change=passed_external_lane,
-        operations=passed_external_lane,
+        speaker_change=speaker_lane,
+        operations=operations_lane,
         stt_evidence=_stt_evidence(),
     )
 
-    assert all(
-        lane.status is VerdictStatus.PASS
-        for lane in (
-            verdict.transformation_evidence,
-            verdict.content_preservation,
-            verdict.speaker_change,
-            verdict.audio_integrity,
-            verdict.streaming_operations,
-        )
-    )
+    assert verdict.transformation_evidence.status is VerdictStatus.PASS
+    assert verdict.content_preservation.status is VerdictStatus.PASS
+    assert verdict.audio_integrity.status is VerdictStatus.PASS
+    assert verdict.speaker_change.status is VerdictStatus.UNASSESSED
+    assert verdict.streaming_operations.status is VerdictStatus.UNASSESSED
     assert verdict.overall is VerdictStatus.UNASSESSED
-
-    approved_policy = ThresholdPolicy("approved test policy", "approved", policy.values)
-    approved_verdict = evaluate_measurements(
-        _changed_audio(),
-        _transcripts(),
-        approved_policy,
-        speaker_change=passed_external_lane,
-        operations=passed_external_lane,
-        stt_evidence=_stt_evidence(),
-    )
-    assert approved_verdict.overall is VerdictStatus.PASS
 
 
 def test_one_character_exact_entity_corruption_fails_content_lane():
@@ -228,7 +218,7 @@ def test_supplied_integrity_failure_fails_even_when_policy_is_partial():
     assert verdict.audio_integrity.status is VerdictStatus.FAIL
 
 
-def test_calibrated_speaker_verdict_can_be_supplied_by_caller():
+def test_caller_authored_speaker_verdict_is_unassessed_without_contract():
     samples = 0.25 * np.sin(np.linspace(0, 100, 16_000))
     signal = AudioSignal(samples, 16_000)
     speaker = LaneVerdict(
@@ -244,7 +234,8 @@ def test_calibrated_speaker_verdict_can_be_supplied_by_caller():
         speaker_change=speaker,
     )
 
-    assert verdict.speaker_change is speaker
+    assert verdict.speaker_change.status is VerdictStatus.UNASSESSED
+    assert verdict.speaker_change.provenance is None
     assert verdict.overall is VerdictStatus.UNASSESSED
 
 
@@ -266,10 +257,10 @@ def test_empty_transcripts_cannot_produce_overall_pass():
         stt_evidence=_stt_evidence(),
     )
 
-    assert verdict.content_preservation.status is VerdictStatus.UNASSESSED
-    assert verdict.overall is VerdictStatus.UNASSESSED
+    assert verdict.content_preservation.status is VerdictStatus.FAIL
+    assert verdict.overall is VerdictStatus.FAIL
     assert any(
-        "normalized_reference_empty" in item
+        "exact_entity_match_rate unavailable" in item
         for item in verdict.content_preservation.evidence
     )
 
@@ -314,6 +305,27 @@ def test_pass_external_lanes_without_evidence_cannot_produce_overall_pass():
             stt_evidence=_stt_evidence(),
         )
         assert verdict.overall is VerdictStatus.UNASSESSED
+
+
+def test_unbound_external_lane_objects_cannot_produce_overall_pass():
+    unbound = LaneVerdict(
+        VerdictStatus.PASS, "Unbound external pass.", ("caller-claim=true",)
+    )
+    unbound_operations = LaneVerdict(
+        VerdictStatus.PASS, "Unbound operations pass.", ("caller-claim=true",)
+    )
+
+    verdict = evaluate_measurements(
+        _changed_audio(),
+        _transcripts(),
+        _complete_policy(),
+        speaker_change=unbound,
+        operations=unbound_operations,
+        stt_evidence=_stt_evidence(),
+    )
+
+    assert verdict.speaker_change.status is VerdictStatus.UNASSESSED
+    assert verdict.overall is VerdictStatus.UNASSESSED
 
 
 def test_integrity_discontinuity_threshold_consumes_adjacent_delta():

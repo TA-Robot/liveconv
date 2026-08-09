@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TA-Robot/liveconv/packages/evaluation/schemas/aggregate-report.schema.json",
+  "title": "liveconv aggregate evaluation report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_type",
+    "run_id",
+    "variant_id",
+    "render_count",
+    "eligible_render_count",
+    "exclusions",
+    "metric_summaries",
+    "verdict_counts",
+    "decision",
+    "uncertainty"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "report_type": { "const": "aggregate-report" },
+    "run_id": { "type": "string", "minLength": 1 },
+    "variant_id": { "type": "string", "minLength": 1 },
+    "render_count": { "type": "integer", "minimum": 0 },
+    "eligible_render_count": { "type": "integer", "minimum": 0 },
+    "exclusions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["render_id", "reason"],
+        "properties": {
+          "render_id": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "metric_summaries": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/metric_summary" }
+    },
+    "verdict_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "transformation_evidence",
+        "content_preservation",
+        "speaker_change",
+        "audio_integrity",
+        "streaming_operations"
+      ],
+      "properties": {
+        "transformation_evidence": { "$ref": "#/$defs/status_counts" },
+        "content_preservation": { "$ref": "#/$defs/status_counts" },
+        "speaker_change": { "$ref": "#/$defs/status_counts" },
+        "audio_integrity": { "$ref": "#/$defs/status_counts" },
+        "streaming_operations": { "$ref": "#/$defs/status_counts" }
+      }
+    },
+    "decision": { "enum": ["pass", "fail", "inconclusive", "unassessed"] },
+    "uncertainty": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "metric_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "minimum", "maximum", "mean", "p50", "p95"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 1 },
+        "minimum": { "type": "number" },
+        "maximum": { "type": "number" },
+        "mean": { "type": "number" },
+        "p50": { "type": "number" },
+        "p95": { "type": "number" }
+      }
+    },
+    "status_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pass": { "type": "integer", "minimum": 0 },
+        "fail": { "type": "integer", "minimum": 0 },
+        "unassessed": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

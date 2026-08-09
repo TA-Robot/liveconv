@@ -18,6 +18,24 @@
       "phase": 1,
       "path": "experiments/EXP-002-remote-router/experiment.json",
       "owner": null
+    },
+    {
+      "id": "EXP-003",
+      "slug": "real-model-route",
+      "title": "Real-model Gateway route technical smoke",
+      "status": "draft",
+      "phase": 1,
+      "path": "experiments/EXP-003-real-model-route/experiment.json",
+      "owner": null
+    },
+    {
+      "id": "EXP-004",
+      "slug": "rvc-gateway-smoke",
+      "title": "RVC disposable Gateway technical smoke",
+      "status": "approved",
+      "phase": 1,
+      "path": "experiments/EXP-004-rvc-gateway-smoke/experiment.json",
+      "owner": "primary-integrator"
     }
   ]
 }

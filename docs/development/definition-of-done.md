@@ -6,6 +6,11 @@ A change reaches a gate only when every applicable item is satisfied. Small,
 reviewable checkpoints may be committed earlier under the rules below so work
 does not accumulate into one integration batch.
 
+For the personal SSH-use path, "applicable" is determined by the active `MS-*`
+gate in [`../planning/roadmap.md`](../planning/roadmap.md). Public Internet,
+multi-user, HA, SLA, enterprise operations, and post-v1 experiment work do not
+silently become prerequisites for an earlier milestone.
+
 ## Checkpoint versus gate
 
 `Checkpoint` means a coherent slice is safe to commit and push while its backlog
@@ -51,7 +56,15 @@ or permission to bypass later independent review.
 - A read-only Sol reviewer, separate from the Luna implementation and test-author
   roles, checks correctness, regressions, privacy, and test gaps on the integrated
   SHA. Luna self-review is useful but does not satisfy this item.
-- Material findings are fixed or explicitly accepted with an owner.
+- Material findings use the four-way disposition in
+  [`../planning/review-triage.md`](../planning/review-triage.md): `fix-now`,
+  `scheduled`, `accepted-risk`, or `out-of-scope`.
+- Current-scope High findings are fixed and independently re-reviewed. A Medium
+  may move to a named later milestone when its interim impact, detection,
+  workaround, owner, and closure evidence are recorded.
+- One independent review and one bounded repair/re-review cycle are sufficient
+  for a checkpoint unless a new finding meets a stop-the-line condition. Lower-
+  severity future work does not recursively reopen a green milestone.
 
 ## Records
 
@@ -67,3 +80,20 @@ or permission to bypass later independent review.
 - Rollback or bypass is documented for user-facing audio changes.
 - A client-facing route documents prerequisites, trust boundary, setup,
   authenticated health checks, disconnect recovery, and one real-client smoke.
+
+## Milestone close
+
+The primary may close one of the six personal-use milestones when:
+
+- its explicit deliverables and gate in `docs/planning/roadmap.md` have direct
+  current-state evidence;
+- no current-scope High remains and every open Medium has a valid disposition;
+- known failures and unassessed evidence are visible rather than promoted;
+- the next milestone can start from a frozen contract or a named issue;
+- `make check` passes and the milestone-specific real model, browser, SSH, or
+  recovery check has run where required.
+
+This is intentionally different from product or production approval. For
+example, MS-1 may close with quality-failed models, while MS-6 may close with a
+documented manual-restart tolerance and no public deployment. Neither result
+claims that all Draft product NFRs or post-v1 experiments passed.

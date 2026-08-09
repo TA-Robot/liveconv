@@ -96,6 +96,7 @@ class SessionStore:
         configuration_hash: str,
         voice_id: str | None,
         frame_ms: int,
+        ingress_budget_ms: int | None = None,
     ) -> tuple[Session, str]:
         now = time.monotonic()
         ticket = secrets.token_urlsafe(32)
@@ -103,6 +104,10 @@ class SessionStore:
             self._prune_unusable_locked(now)
             if len(self._sessions) >= self._max_sessions:
                 raise SessionCapacityError("maximum concurrent sessions reached")
+            effective_ingress_budget_ms = max(
+                self._ingress_budget_ms,
+                ingress_budget_ms or self._ingress_budget_ms,
+            )
             session = Session(
                 session_id=str(uuid4()),
                 pipeline_id=str(uuid4()),
@@ -112,8 +117,8 @@ class SessionStore:
                 voice_id=voice_id,
                 ticket_digest=_ticket_digest(ticket),
                 ticket_expires_monotonic=now + self._ticket_ttl_seconds,
-                ingress_budget_ms=self._ingress_budget_ms,
-                max_ingress_frames=max(1, self._ingress_budget_ms // frame_ms),
+                ingress_budget_ms=effective_ingress_budget_ms,
+                max_ingress_frames=max(1, effective_ingress_budget_ms // frame_ms),
                 created_monotonic=now,
                 expires_monotonic=now + self._session_lifetime_seconds,
                 request_cache_limit=self._request_cache_limit,

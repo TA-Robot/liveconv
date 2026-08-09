@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EXP-004 metadata-only RVC Gateway trace",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "experiment_id",
+    "evidence_scope",
+    "decision_status",
+    "technical_outcome",
+    "commit",
+    "worktree_clean",
+    "protocol_version",
+    "profile",
+    "claims",
+    "results"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "experiment_id": {"const": "EXP-004"},
+    "evidence_scope": {"const": "technical_rvc_gateway_smoke"},
+    "decision_status": {"const": "inconclusive"},
+    "technical_outcome": {"enum": ["not_run", "passed", "failed"]},
+    "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "worktree_clean": {"type": "boolean"},
+    "protocol_version": {"const": 1},
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_id", "profile_hash", "configuration_hash"],
+      "properties": {
+        "profile_id": {"type": "string", "pattern": "^vc\\.rvc\\.[a-z0-9][a-z0-9.-]*\\.v1$"},
+        "profile_hash": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+        "configuration_hash": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    "claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "voice_conversion_established",
+        "speaker_change_established",
+        "japanese_quality_established",
+        "content_preservation_established",
+        "latency_target_established",
+        "authorization_established",
+        "license_established",
+        "security_established",
+        "production_readiness_established"
+      ],
+      "properties": {
+        "voice_conversion_established": {"const": false},
+        "speaker_change_established": {"const": false},
+        "japanese_quality_established": {"const": false},
+        "content_preservation_established": {"const": false},
+        "latency_target_established": {"const": false},
+        "authorization_established": {"const": false},
+        "license_established": {"const": false},
+        "security_established": {"const": false},
+        "production_readiness_established": {"const": false}
+      }
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["case_id", "passed", "evidence"],
+        "properties": {
+          "case_id": {"type": "string", "pattern": "^[a-z0-9_.-]{1,96}$"},
+          "passed": {"type": "boolean"},
+          "evidence": {"type": "object"}
+        }
+      }
+    }
+  }
+}

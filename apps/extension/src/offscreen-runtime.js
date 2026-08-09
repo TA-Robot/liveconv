@@ -1,5 +1,7 @@
 const UINT32_MAX = 0xffff_ffff;
 const SAMPLE_RATE = 48_000;
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function requireFunction(value, name) {
   if (typeof value !== "function") {
@@ -23,6 +25,10 @@ function defaultNowNanoseconds() {
   return BigInt(Math.round(performance.now() * 1_000_000));
 }
 
+function defaultOffscreenEpoch() {
+  return crypto.randomUUID();
+}
+
 export function createOffscreenRuntime(options = {}) {
   const audioGraphFactory = requireFunction(
     options.audioGraphFactory,
@@ -36,6 +42,10 @@ export function createOffscreenRuntime(options = {}) {
   const nowNanoseconds = requireFunction(
     options.nowNanoseconds ?? defaultNowNanoseconds,
     "nowNanoseconds",
+  );
+  const offscreenEpochFactory = requireFunction(
+    options.offscreenEpochFactory ?? defaultOffscreenEpoch,
+    "offscreenEpochFactory",
   );
   const setTimer = requireFunction(
     options.setTimer ?? globalThis.setTimeout,
@@ -67,9 +77,19 @@ export function createOffscreenRuntime(options = {}) {
   let generationEpoch = 0;
   let graphEpoch = 0;
   let connectionEpoch = 0;
+  let captureCreditFrames = 4;
+  let offscreenEpoch = null;
 
   function snapshot() {
     return Object.freeze({ capture, route, remote, generationId });
+  }
+
+  function snapshotWithEpoch() {
+    const state = { ...snapshot() };
+    if (offscreenEpoch !== null) {
+      state.offscreenEpoch = offscreenEpoch;
+    }
+    return Object.freeze(state);
   }
 
   function notify(event) {
@@ -176,13 +196,70 @@ export function createOffscreenRuntime(options = {}) {
     }
   }
 
+  function retireClosedTransport({
+    candidateClient,
+    candidateEpoch,
+    candidateGraph,
+    event = {},
+  }) {
+    if (
+      connectionEpoch !== candidateEpoch ||
+      client !== candidateClient ||
+      graph !== candidateGraph
+    ) {
+      return false;
+    }
+    const fallbackAlreadyApplied =
+      route === "native" && remote === "degraded" && generationId === null;
+    generationEpoch += 1;
+    if (!fallbackAlreadyApplied) {
+      const currentGenerationId = generationId;
+      handlingFallback = true;
+      try {
+        if (currentGenerationId !== null) {
+          candidateGraph.cancelGeneration(
+            currentGenerationId,
+            event.reasonCode ?? "TRANSPORT_CLOSED",
+          );
+        } else {
+          candidateGraph.fallback(event);
+        }
+      } catch {
+        try {
+          candidateGraph.fallback(event);
+        } catch {
+          // Transport retirement and native state remain authoritative.
+        }
+      } finally {
+        handlingFallback = false;
+      }
+    }
+    route = "native";
+    remote = "degraded";
+    clearGeneration();
+    connectionEpoch = candidateEpoch + 1;
+    client = null;
+    closeClient(candidateClient);
+    const detail = event.message ? `${event.message}. ` : "";
+    notify({
+      capture,
+      route,
+      remote,
+      generationId: null,
+      transportClosed: true,
+      requiresFreshSession: true,
+      error: `${detail}Stop and Start to create a fresh authenticated session.`,
+    });
+    return true;
+  }
+
   function onCaptureFrame(frame) {
     if (frame.generationId !== generationId || generationId === null) {
-      return;
+      return false;
     }
     if (sequence > UINT32_MAX) {
       performFallback({ reasonCode: "QUEUE_OVERFLOW" });
-      return;
+      return false;
     }
     let sent = false;
     try {
@@ -201,15 +278,16 @@ export function createOffscreenRuntime(options = {}) {
       });
     } catch (error) {
       performFallback({ reasonCode: "UNSUPPORTED_AUDIO", message: errorMessage(error) });
-      return;
+      return false;
     }
     if (!sent && generationId !== null) {
       performFallback({ reasonCode: "INVALID_STATE" });
-      return;
+      return false;
     }
     if (sent) {
       sequence += 1;
     }
+    return sent;
   }
 
   function onOutputFrame(frame) {
@@ -238,8 +316,9 @@ export function createOffscreenRuntime(options = {}) {
     candidate = audioGraphFactory({
       onCaptureFrame(event) {
         if (isCurrent()) {
-          onCaptureFrame(event);
+          return onCaptureFrame(event);
         }
+        return false;
       },
       onFallback(event) {
         if (isCurrent()) {
@@ -251,7 +330,7 @@ export function createOffscreenRuntime(options = {}) {
           return;
         }
         route = "remote";
-        remote = "ready";
+        remote = remote === "draining" ? "draining" : "ready";
         notify({ route, remote, generationId });
       },
       onSourceEnded() {
@@ -275,7 +354,14 @@ export function createOffscreenRuntime(options = {}) {
 
   async function startNative({ streamId, tabId } = {}) {
     if (capture === "running") {
-      return snapshot();
+      return snapshotWithEpoch();
+    }
+    const candidateOffscreenEpoch = offscreenEpochFactory();
+    if (
+      typeof candidateOffscreenEpoch !== "string" ||
+      !UUID.test(candidateOffscreenEpoch)
+    ) {
+      throw new Error("offscreenEpochFactory must return a UUID");
     }
     const candidateEpoch = graphEpoch + 1;
     graphEpoch = candidateEpoch;
@@ -291,17 +377,26 @@ export function createOffscreenRuntime(options = {}) {
       }
       capture = "running";
       route = "native";
-      return snapshot();
+      offscreenEpoch = candidateOffscreenEpoch;
+      return snapshotWithEpoch();
     } catch (error) {
       if (graphEpoch === candidateEpoch && graph === candidate) {
         capture = "stopped";
         graph = null;
+        offscreenEpoch = null;
       }
       throw error;
     }
   }
 
-  async function connectRemote({ url, sessionId, ticket, generationId: nextId } = {}) {
+  async function connectRemote({
+    url,
+    sessionId,
+    ticket,
+    generationId: nextId,
+    expectedProfile,
+    expectedLimits,
+  } = {}) {
     requireGenerationId(nextId);
     if (capture !== "running" || !graph) {
       throw new Error("native audio graph must be running before remote connect");
@@ -313,6 +408,7 @@ export function createOffscreenRuntime(options = {}) {
     connectionEpoch = candidateEpoch;
     const candidateGraph = graph;
     let candidateClient;
+    let candidateTransportClosed = false;
     const isCurrent = () =>
       connectionEpoch === candidateEpoch &&
       client === candidateClient &&
@@ -324,6 +420,17 @@ export function createOffscreenRuntime(options = {}) {
           performFallback(event);
         }
       },
+      onTransportClosed(event) {
+        if (isCurrent()) {
+          candidateTransportClosed = true;
+          retireClosedTransport({
+            candidateClient,
+            candidateEpoch,
+            candidateGraph,
+            event,
+          });
+        }
+      },
       onOutputFrame(frame) {
         if (isCurrent()) {
           onOutputFrame(frame);
@@ -332,11 +439,20 @@ export function createOffscreenRuntime(options = {}) {
     });
     client = candidateClient;
     try {
-      await candidateClient.connect({ url, sessionId, ticket });
+      await candidateClient.connect({
+        url,
+        sessionId,
+        ticket,
+        expectedProfile,
+        expectedLimits,
+      });
       if (!isCurrent()) {
         closeClient(candidateClient);
         return snapshot();
       }
+      captureCreditFrames = expectedLimits?.maxIngressFrames ?? 4;
+      remote = "loading";
+      notify({ capture, route, remote, generationId: null });
       await candidateClient.startGeneration(nextId);
       if (!isCurrent()) {
         closeClient(candidateClient);
@@ -347,11 +463,14 @@ export function createOffscreenRuntime(options = {}) {
       sequence = 0;
       sourceFrameBase = null;
       timestampBase = 0n;
-      candidateGraph.beginGeneration(nextId);
+      candidateGraph.beginGeneration(nextId, { captureCreditFrames });
       remote = "pending";
       route = "native";
       return snapshot();
     } catch (error) {
+      if (candidateTransportClosed) {
+        throw error;
+      }
       if (!isCurrent()) {
         closeClient(candidateClient);
         return snapshot();
@@ -374,16 +493,50 @@ export function createOffscreenRuntime(options = {}) {
     if (generationId !== null) {
       throw new Error("a generation is already active");
     }
+    remote = "loading";
+    notify({ capture, route, remote, generationId: null });
     await client.startGeneration(nextId);
     generationEpoch += 1;
     generationId = nextId;
     sequence = 0;
     sourceFrameBase = null;
     timestampBase = 0n;
-    graph.beginGeneration(nextId);
+    graph.beginGeneration(nextId, { captureCreditFrames });
     route = "native";
     remote = "pending";
     return snapshot();
+  }
+
+  async function selectProfile(expectedProfile) {
+    if (!client || remote !== "ready" || generationId !== null) {
+      throw new Error("profile selection requires an idle ready remote session");
+    }
+    if (
+      expectedProfile === null ||
+      typeof expectedProfile !== "object" ||
+      typeof expectedProfile.profileId !== "string"
+    ) {
+      throw new TypeError("expectedProfile must identify a catalog profile");
+    }
+    remote = "selecting";
+    notify({ capture, route, remote, generationId: null });
+    try {
+      await client.selectProfile(expectedProfile.profileId, expectedProfile);
+      remote = "ready";
+      notify({ capture, route, remote, generationId: null });
+      return snapshot();
+    } catch (error) {
+      remote = "degraded";
+      route = "native";
+      notify({
+        capture,
+        route,
+        remote,
+        generationId: null,
+        error: errorMessage(error),
+      });
+      throw error;
+    }
   }
 
   async function endGeneration(endingId) {
@@ -504,6 +657,7 @@ export function createOffscreenRuntime(options = {}) {
     const stoppingClient = client;
     graph = null;
     client = null;
+    offscreenEpoch = null;
     try {
       const currentGenerationId = generationId;
       if (currentGenerationId !== null) {
@@ -512,6 +666,7 @@ export function createOffscreenRuntime(options = {}) {
       }
       route = "native";
       clearGeneration();
+      captureCreditFrames = 4;
       closeClient(stoppingClient);
       await stoppingGraph?.stop();
       if (graphEpoch === stopEpoch) {
@@ -531,7 +686,7 @@ export function createOffscreenRuntime(options = {}) {
     try {
       let state;
       if (message.type === "offscreen.status") {
-        state = snapshot();
+        state = snapshotWithEpoch();
       } else if (message.type === "offscreen.native.start") {
         state = await startNative(message);
       } else if (message.type === "offscreen.remote.connect") {
@@ -542,6 +697,8 @@ export function createOffscreenRuntime(options = {}) {
         state = await endGeneration(message.generationId);
       } else if (message.type === "offscreen.generation.cancel") {
         state = await cancelGeneration(message.generationId);
+      } else if (message.type === "offscreen.model.select") {
+        state = await selectProfile(message.expectedProfile);
       } else if (message.type === "offscreen.stop") {
         state = await stop();
       } else {

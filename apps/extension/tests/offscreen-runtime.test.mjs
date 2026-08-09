@@ -15,8 +15,8 @@ function createHarness(createOffscreenRuntime) {
     async startNativeLoopback(options) {
       calls.push({ name: "graph.startNativeLoopback", options });
     },
-    beginGeneration(generationId) {
-      calls.push({ name: "graph.beginGeneration", generationId });
+    beginGeneration(generationId, options) {
+      calls.push({ name: "graph.beginGeneration", generationId, options });
     },
     endGeneration(generationId) {
       calls.push({ name: "graph.endGeneration", generationId });
@@ -48,6 +48,9 @@ function createHarness(createOffscreenRuntime) {
     },
     async startGeneration(generationId) {
       calls.push({ name: "client.startGeneration", generationId });
+    },
+    async selectProfile(profileId, expectedProfile) {
+      calls.push({ name: "client.selectProfile", profileId, expectedProfile });
     },
     sendFrame(frame) {
       calls.push({ name: "client.sendFrame", frame });
@@ -125,6 +128,15 @@ async function startConnected(harness) {
       sessionId: "11111111-1111-4111-8111-111111111111",
       ticket: "one-use-ticket",
       generationId: 7,
+      expectedProfile: {
+        profileId: "vc.synthetic.v1",
+        profileHash:
+          "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        configurationHash:
+          "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        pipelineId: "22222222-2222-4222-8222-222222222222",
+      },
+      expectedLimits: { ingressBudgetMs: 1_000, maxIngressFrames: 50 },
     },
     sender,
     "extension-id",
@@ -133,12 +145,60 @@ async function startConnected(harness) {
   return sender;
 }
 
+test("Offscreen status binds a UUID epoch to only the current capture graph", async () => {
+  const { createOffscreenRuntime } = await import(moduleUrl);
+  const harness = createHarness(createOffscreenRuntime);
+  const sender = {
+    id: "extension-id",
+    url: "chrome-extension://extension-id/src/background.js",
+  };
+  const started = await harness.runtime.handleMessage(
+    {
+      target: "offscreen",
+      type: "offscreen.native.start",
+      streamId: "tab-stream-id",
+      tabId: 42,
+    },
+    sender,
+    "extension-id",
+  );
+  assert.equal(started.ok, true);
+  assert.match(
+    started.state.offscreenEpoch,
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+  );
+
+  const runningStatus = await harness.runtime.handleMessage(
+    { target: "offscreen", type: "offscreen.status" },
+    sender,
+    "extension-id",
+  );
+  assert.equal(runningStatus.state.offscreenEpoch, started.state.offscreenEpoch);
+
+  await harness.runtime.stop();
+  const stoppedStatus = await harness.runtime.handleMessage(
+    { target: "offscreen", type: "offscreen.status" },
+    sender,
+    "extension-id",
+  );
+  assert.equal(Object.hasOwn(stoppedStatus.state, "offscreenEpoch"), false);
+});
+
 test("Offscreen owns tab media, remote transport, and timestamped uplink without messaging PCM through the service worker", async () => {
   const { createOffscreenRuntime } = await import(moduleUrl);
   const harness = createHarness(createOffscreenRuntime);
   await startConnected(harness);
 
-  assert.deepEqual(harness.calls.slice(0, 4), [
+  assert.deepEqual(
+    harness.calls.filter((call) =>
+      [
+        "graph.startNativeLoopback",
+        "client.connect",
+        "client.startGeneration",
+        "graph.beginGeneration",
+      ].includes(call.name),
+    ).slice(0, 4),
+    [
     {
       name: "graph.startNativeLoopback",
       options: { streamId: "tab-stream-id", tabId: 42 },
@@ -149,22 +209,35 @@ test("Offscreen owns tab media, remote transport, and timestamped uplink without
         url: "wss://audio.example.test/v1/ws",
         sessionId: "11111111-1111-4111-8111-111111111111",
         ticket: "one-use-ticket",
+        expectedProfile: {
+          profileId: "vc.synthetic.v1",
+          profileHash:
+            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          configurationHash:
+            "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          pipelineId: "22222222-2222-4222-8222-222222222222",
+        },
+        expectedLimits: { ingressBudgetMs: 1_000, maxIngressFrames: 50 },
       },
     },
     { name: "client.startGeneration", generationId: 7 },
-    { name: "graph.beginGeneration", generationId: 7 },
+    {
+      name: "graph.beginGeneration",
+      generationId: 7,
+      options: { captureCreditFrames: 50 },
+    },
   ]);
 
-  harness.graphCallbacks.onCaptureFrame({
+  assert.equal(harness.graphCallbacks.onCaptureFrame({
     generationId: 7,
     sourceFrame: 100,
     samples: new Float32Array(960),
-  });
-  harness.graphCallbacks.onCaptureFrame({
+  }), true);
+  assert.equal(harness.graphCallbacks.onCaptureFrame({
     generationId: 7,
     sourceFrame: 1_060,
     samples: new Float32Array(960),
-  });
+  }), true);
   const sent = harness.calls.filter((call) => call.name === "client.sendFrame");
   assert.equal(sent.length, 2);
   assert.equal(sent[0].frame.header.sequence, 0);
@@ -247,6 +320,64 @@ test("fallback and explicit cancellation invalidate local playout before waiting
   const response = await operation;
   assert.equal(response.ok, true);
   assert.equal(response.state.remote, "ready");
+});
+
+test("Offscreen applies a catalog-bound profile selection only after cancellation", async () => {
+  const { createOffscreenRuntime } = await import(moduleUrl);
+  const harness = createHarness(createOffscreenRuntime);
+  const sender = await startConnected(harness);
+  let response = await harness.runtime.handleMessage(
+    {
+      target: "offscreen",
+      type: "offscreen.model.select",
+      expectedProfile: { profileId: "vc.next.v1" },
+    },
+    sender,
+    "extension-id",
+  );
+  assert.equal(response.ok, false);
+  assert.match(response.error, /idle ready remote session/i);
+
+  response = await harness.runtime.handleMessage(
+    {
+      target: "offscreen",
+      type: "offscreen.generation.cancel",
+      generationId: 7,
+    },
+    sender,
+    "extension-id",
+  );
+  assert.equal(response.ok, true);
+  response = await harness.runtime.handleMessage(
+    {
+      target: "offscreen",
+      type: "offscreen.model.select",
+      expectedProfile: {
+        profileId: "vc.next.v1",
+        profileHash:
+          "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        configurationHash:
+          "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      },
+    },
+    sender,
+    "extension-id",
+  );
+  assert.equal(response.ok, true);
+  assert.deepEqual(
+    harness.calls.find((call) => call.name === "client.selectProfile"),
+    {
+      name: "client.selectProfile",
+      profileId: "vc.next.v1",
+      expectedProfile: {
+        profileId: "vc.next.v1",
+        profileHash:
+          "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        configurationHash:
+          "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      },
+    },
+  );
 });
 
 test("normal generation end waits for local Worklet playout drain before clearing the generation", async () => {
@@ -358,6 +489,83 @@ test("worker fallback is native-first and Offscreen stop never waits for remote 
   });
   assert(harness.calls.some((call) => call.name === "graph.stop"));
   closeGate.resolve();
+});
+
+test("idle transport loss retires its epoch and requires Stop before remote recovery", async () => {
+  const { createOffscreenRuntime } = await import(moduleUrl);
+  const harness = createHarness(createOffscreenRuntime);
+  const sender = await startConnected(harness);
+  let response = await harness.runtime.handleMessage(
+    {
+      target: "offscreen",
+      type: "offscreen.generation.end",
+      generationId: 7,
+    },
+    sender,
+    "extension-id",
+  );
+  assert.equal(response.ok, true);
+  assert.equal(response.state.generationId, null);
+  assert.equal(response.state.remote, "ready");
+  harness.graph.fallback = (event) => {
+    harness.calls.push({ name: "graph.fallback", event });
+    harness.graphCallbacks.onFallback(event);
+  };
+
+  harness.remoteCallbacks.onTransportClosed({
+    connectionEpoch: 1,
+    reasonCode: "TRANSPORT_CLOSED",
+    message: "remote WebSocket closed (1006)",
+  });
+  harness.remoteCallbacks.onTransportClosed({
+    connectionEpoch: 1,
+    reasonCode: "TRANSPORT_CLOSED",
+    message: "duplicate close",
+  });
+  await flushMicrotasks();
+
+  assert.deepEqual(harness.runtime.snapshot(), {
+    capture: "running",
+    route: "native",
+    remote: "degraded",
+    generationId: null,
+  });
+  assert.equal(
+    harness.calls.filter((call) => call.name === "graph.fallback").length,
+    1,
+  );
+  assert.equal(
+    harness.calls.filter((call) => call.name === "client.close").length,
+    1,
+  );
+  assert.deepEqual(harness.notifications.at(-1).event, {
+    capture: "running",
+    route: "native",
+    remote: "degraded",
+    generationId: null,
+    transportClosed: true,
+    requiresFreshSession: true,
+    error:
+      "remote WebSocket closed (1006). Stop and Start to create a fresh authenticated session.",
+  });
+
+  response = await harness.runtime.handleMessage(
+    {
+      target: "offscreen",
+      type: "offscreen.generation.start",
+      generationId: 8,
+    },
+    sender,
+    "extension-id",
+  );
+  assert.equal(response.ok, false);
+  assert.match(response.error, /not ready/i);
+  assert.equal(
+    harness.calls.filter(
+      (call) => call.name === "client.startGeneration" && call.generationId === 8,
+    ).length,
+    0,
+  );
 });
 
 test("Offscreen Stop keeps a pending native start from committing running", async () => {

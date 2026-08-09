@@ -27,6 +27,13 @@ def _positive_number(name: str, default: str, *, integer: bool = False) -> float
     return value
 
 
+def _boolean(name: str, default: str = "0") -> bool:
+    raw = os.environ.get(name, default)
+    if raw not in {"0", "1"}:
+        raise ValueError(f"{name} must be 0 or 1")
+    return raw == "1"
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     api_token: str
@@ -36,9 +43,11 @@ class Settings:
     attach_timeout_seconds: float = 5.0
     ingress_budget_ms: int = 500
     max_sessions: int = 64
+    max_pending_attachments: int = 32
     session_lifetime_seconds: float = 1800.0
     request_cache_max: int = 1024
     send_timeout_seconds: float = 1.0
+    allow_technical_profiles: bool = False
     bind_host: str = "127.0.0.1"
     bind_port: int = 8765
 
@@ -67,6 +76,9 @@ class Settings:
             max_sessions=int(
                 _positive_number("LIVECONV_MAX_SESSIONS", "64", integer=True)
             ),
+            max_pending_attachments=int(
+                _positive_number("LIVECONV_MAX_PENDING_ATTACHMENTS", "32", integer=True)
+            ),
             session_lifetime_seconds=float(
                 _positive_number("LIVECONV_SESSION_LIFETIME_SECONDS", "1800")
             ),
@@ -76,6 +88,7 @@ class Settings:
             send_timeout_seconds=float(
                 _positive_number("LIVECONV_SEND_TIMEOUT_SECONDS", "1")
             ),
+            allow_technical_profiles=_boolean("LIVECONV_ALLOW_TECHNICAL_PROFILES"),
             bind_host=os.environ.get("LIVECONV_BIND_HOST", "127.0.0.1"),
             bind_port=int(_positive_number("LIVECONV_BIND_PORT", "8765", integer=True)),
         )
@@ -108,6 +121,14 @@ class Settings:
             )
         if self.ingress_budget_ms < 20:
             errors.append("ingress budget must hold at least one v1 frame")
+        if self.allow_technical_profiles and self.bind_host not in {
+            "127.0.0.1",
+            "::1",
+            "localhost",
+        }:
+            errors.append("technical profiles require a loopback bind host")
+        if self.allow_technical_profiles and self.max_sessions != 1:
+            errors.append("technical profiles require max_sessions=1")
         return tuple(errors)
 
     @property

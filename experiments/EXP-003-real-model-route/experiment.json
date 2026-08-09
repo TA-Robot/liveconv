@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "id": "EXP-003",
+  "title": "Real-model Gateway route technical smoke",
+  "status": "draft",
+  "phase": 1,
+  "owner": null,
+  "created_at": "2026-08-09T09:00:00Z",
+  "updated_at": "2026-08-09T09:00:00Z",
+  "question": "Can explicitly enabled technical real-model profiles traverse the frozen Gateway route while preserving bounded flow, frame integrity, cancellation, final flush, and generation-bound model selection?",
+  "hypothesis": "A real-time-paced client that respects the advertised ingress credit can route full and partial worker batches without accepting malformed, non-finite, unnormalized, out-of-order, timestamp-mismatched, or stale output.",
+  "links": [
+    "ADR-0002",
+    "FR-006",
+    "FR-008",
+    "FR-009",
+    "FR-013",
+    "FR-014",
+    "FR-016",
+    "NFR-006",
+    "NFR-007",
+    "NFR-013",
+    "LV-034"
+  ],
+  "control": {
+    "id": "deterministic_fake_gateway",
+    "description": "The same client state machine against a deterministic fake Gateway with delayed batches, partial flush, model switching, cancellation, and stale output injection.",
+    "configuration": {
+      "route": "in_memory",
+      "profiles": 2,
+      "decision_scope": "technical_only"
+    }
+  },
+  "variants": [
+    {
+      "id": "disposable_real_gateway",
+      "description": "An authenticated disposable Gateway using at least two explicitly enabled technical model profiles and real-time-paced synthetic PCM.",
+      "configuration": {
+        "route": "remote_or_loopback",
+        "minimum_profiles": 2,
+        "technical_profile_opt_in": true,
+        "product_readiness_claim": false
+      }
+    }
+  ],
+  "fixtures": {
+    "manifest": "experiments/EXP-003-real-model-route/exp003_tests/fixtures/profile-registry.json",
+    "version": "exp-003-deterministic-profile-fixture-v1",
+    "classification": "synthetic",
+    "frozen": true
+  },
+  "environment": {
+    "git_commit": "Record the clean reviewed commit before a real run.",
+    "runtime": "Python 3.12 workspace lock, protocol v1, technical profiles explicitly enabled only on a loopback-bound single-session Gateway.",
+    "hardware": "Record server CPU, GPU, driver, CUDA, client host, browser, SSH path, and measured tunnel RTT for every real run.",
+    "model_revisions": {
+      "profiles": "Read exact profile, configuration, pack, evidence, endpoint, implementation, and weight digests from the supplied immutable registry.",
+      "client": "liveconv-real-model-route 0.1.0"
+    }
+  },
+  "procedure": {
+    "summary": "Validate the harness against deterministic faults, then route real-time-paced synthetic PCM through at least two technical profiles; verify catalog/session/worker identity, bounded credit, output headers and samples, partial end flush, stale cancellation exclusion, model switching, and explicit cleanup.",
+    "warmup": "The technical smoke records cold readiness but does not use it as product latency evidence; any model-specific warmup is excluded from latency claims.",
+    "sample_count": 2,
+    "commands": [
+      "uv run --frozen --all-packages pytest -q experiments/EXP-003-real-model-route/exp003_tests",
+      "LIVECONV_EXP003_RUN_REAL=1 uv run --frozen --all-packages pytest -q experiments/EXP-003-real-model-route/exp003_tests/test_live.py"
+    ],
+    "invalidation_conditions": [
+      "The real Gateway does not use an exact reviewed commit, workspace lock, profile registry, model-pack digest, evidence digest, and installed worker wheel.",
+      "Fewer than two distinct profiles complete generation-bound selection and output validation.",
+      "The client exceeds the advertised ingress credit or accepts a stale, duplicate, reordered, timestamp-mismatched, non-finite, out-of-range, or unchanged output.",
+      "A trace contains raw PCM, bearer credentials, tickets, voice IDs, artifact paths, worker endpoints, model configuration values, or free-form server errors.",
+      "A technical pass is represented as a product, quality, speaker, Japanese-content, latency, authorization, license, or deployment-readiness decision."
+    ]
+  },
+  "metrics": [
+    {
+      "name": "technical_profiles_completed",
+      "kind": "correctness",
+      "unit": "count",
+      "primary": true
+    },
+    {
+      "name": "accepted_stale_or_invalid_frames",
+      "kind": "correctness",
+      "unit": "count",
+      "primary": true
+    },
+    {
+      "name": "peak_outstanding_frames",
+      "kind": "reliability",
+      "unit": "frames",
+      "primary": true
+    },
+    {
+      "name": "profiles_with_changed_finite_output",
+      "kind": "correctness",
+      "unit": "count",
+      "primary": false
+    }
+  ],
+  "decision_rule": "The experiment decision is always inconclusive. A technical pass requires at least two distinct profiles, exact catalog/session/worker identity, no credit overrun, no malformed or stale accepted frame, finite normalized changed output, successful partial flush, generation-bound switching, bounded cancellation, and explicit session cleanup. It never advances voice quality, speaker identity, Japanese content, latency, license, authorization, security isolation, deployment, or production-readiness gates.",
+  "artifact_policy": {
+    "raw_location": "Raw synthetic PCM remains in process memory; optional technical traces are written only to an operator-selected path outside Git.",
+    "git_contents": "Harness source, schemas, deterministic fake fixtures, aggregate non-sensitive route results, and an inconclusive decision only.",
+    "retention": "Delete local traces after review or within 14 days; no raw audio is persisted by the harness.",
+    "authorization": "Only project-authored synthetic PCM and separately authorized target/model artifacts may be used. The trace never records target voice identifiers or artifact locations."
+  },
+  "result": null,
+  "decision": null
+}

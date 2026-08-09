@@ -21,7 +21,11 @@ test = [
 liveconv-eval = "liveconv_evaluation.cli:main"
 
 [tool.setuptools.package-data]
-liveconv_evaluation = ["py.typed"]
+liveconv_evaluation = [
+  "py.typed",
+  "authorizations/*.json",
+  "schemas/*.json",
+]
 
 [tool.pytest.ini_options]
 addopts = "-q"

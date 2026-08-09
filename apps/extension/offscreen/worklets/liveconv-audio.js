@@ -4,7 +4,8 @@ import {
 } from "../../src/worklet-buffers.js";
 
 const FRAME_SAMPLES = 960;
-const MAXIMUM_CAPTURE_CREDITS = 4;
+const DEFAULT_MAXIMUM_CAPTURE_CREDITS = 4;
+const MAXIMUM_NEGOTIATED_CAPTURE_CREDITS = 500;
 const NATIVE_DELAY_SAMPLES = 9_600;
 const NATIVE_RING_SAMPLES = 16_384;
 
@@ -14,11 +15,18 @@ class LiveconvCaptureProcessor extends AudioWorkletProcessor {
     this.assembler = new CaptureFrameAssembler(FRAME_SAMPLES);
     this.generationId = null;
     this.credits = 0;
+    this.maximumCredits = DEFAULT_MAXIMUM_CAPTURE_CREDITS;
     this.overflowed = false;
     this.port.onmessage = ({ data }) => {
       if (data?.type === "capture.begin") {
         this.generationId = data.generationId;
         this.credits = 0;
+        this.maximumCredits =
+          Number.isSafeInteger(data.maximumCredits) &&
+          data.maximumCredits > 0 &&
+          data.maximumCredits <= MAXIMUM_NEGOTIATED_CAPTURE_CREDITS
+            ? data.maximumCredits
+            : DEFAULT_MAXIMUM_CAPTURE_CREDITS;
         this.overflowed = false;
         this.assembler.reset();
       } else if (
@@ -28,7 +36,7 @@ class LiveconvCaptureProcessor extends AudioWorkletProcessor {
         data.frames > 0
       ) {
         this.credits = Math.min(
-          MAXIMUM_CAPTURE_CREDITS,
+          this.maximumCredits,
           this.credits + data.frames,
         );
       } else if (data?.type === "capture.cancel") {
@@ -111,7 +119,7 @@ class LiveconvPlayoutProcessor extends AudioWorkletProcessor {
           return;
         }
         this.ending = true;
-        if (!this.buffer.snapshot().audible) {
+        if (this.buffer.snapshot().depth === 0) {
           this.markDrained();
         }
         return;
@@ -164,6 +172,18 @@ class LiveconvPlayoutProcessor extends AudioWorkletProcessor {
     this.port.postMessage({ type: "playout.drained", generationId });
   }
 
+  failClosed(reasonCode) {
+    const generationId = this.buffer.generationId;
+    this.buffer.rebuffer();
+    this.remoteRequested = false;
+    this.readySent = false;
+    this.port.postMessage({
+      type: "playout.fallback",
+      generationId,
+      reasonCode,
+    });
+  }
+
   renderNative(inputChannels, output, quantumStartFrame) {
     for (let index = 0; index < output.length; index += 1) {
       let sample = 0;
@@ -205,11 +225,10 @@ class LiveconvPlayoutProcessor extends AudioWorkletProcessor {
       return true;
     }
     const previousDepth = this.buffer.snapshot().depth;
-    if (
-      !this.remoteRequested &&
-      !this.readySent &&
-      this.buffer.hasTargetFrom(outputSourceFrame)
-    ) {
+    const ready = this.ending
+      ? this.buffer.hasAvailableFrom(outputSourceFrame)
+      : this.buffer.hasTargetFrom(outputSourceFrame);
+    if (!this.remoteRequested && !this.readySent && ready) {
       this.readySent = true;
       this.port.postMessage({
         type: "playout.ready",
@@ -224,8 +243,12 @@ class LiveconvPlayoutProcessor extends AudioWorkletProcessor {
     const result = this.remoteRequested
       ? this.buffer.renderAligned(remote, outputSourceFrame)
       : { aligned: false, underflow: false, rendered: 0 };
-    if (result.aligned && result.rendered > 0) {
-      output.set(remote.subarray(0, result.rendered));
+    if (
+      result.aligned &&
+      !result.underflow &&
+      result.rendered === output.length
+    ) {
+      output.set(remote);
     }
     const depth = this.buffer.snapshot().depth;
     if (depth !== previousDepth) {
@@ -238,12 +261,11 @@ class LiveconvPlayoutProcessor extends AudioWorkletProcessor {
     }
     if (this.ending && (result.underflow || depth === 0)) {
       this.markDrained();
-    } else if (result.underflow && result.aligned) {
-      this.port.postMessage({
-        type: "playout.fallback",
-        generationId: this.buffer.generationId,
-        reasonCode: "QUEUE_OVERFLOW",
-      });
+    } else if (this.remoteRequested && (result.underflow || !result.aligned)) {
+      // Never splice a remote prefix into a native quantum. Drop the stale
+      // jitter window and make a fresh 80 ms readiness decision before remote
+      // playout can be selected again.
+      this.failClosed("QUEUE_OVERFLOW");
     }
     return true;
   }

@@ -6,6 +6,10 @@
 
 <!-- Link FR/NFR/JP/GOV, ADR, EXP, LV, risk, or issue identifiers. -->
 
+## Target milestone
+
+<!-- MS-1 through MS-6, or post-v1. State which milestone gate this advances. -->
+
 ## Changes
 
 <!-- Describe the implementation and its ownership zone. -->
@@ -34,6 +38,10 @@ make check
 
 <!-- Describe residual risk, bypass, rollback, and follow-up work. -->
 
+## Review finding dispositions
+
+<!-- List every open High/Medium as fix-now, scheduled, accepted-risk, or out-of-scope, with its owner and target. -->
+
 ## Checklist
 
 - [ ] Scope is traceable to a source-of-truth record.
@@ -41,4 +49,5 @@ make check
 - [ ] No credential, private audio, model weight, or generated artifact is tracked.
 - [ ] Timing and quality claims include reproducible evidence.
 - [ ] An independent review covered correctness and regressions.
+- [ ] Every material review finding has one explicit disposition and target.
 - [ ] Relevant experiment, ADR, backlog, and risk records are current.

@@ -142,6 +142,7 @@ function createHarness(createAudioGraph, stageHooks = {}) {
     workletModuleUrl: "chrome-extension://extension/offscreen/worklets/liveconv-audio.js",
     onCaptureFrame(frame) {
       captureFrames.push(frame);
+      return stageHooks.captureAccepted?.(frame) ?? true;
     },
     onFallback(event) {
       fallbacks.push(event);
@@ -301,6 +302,7 @@ test("jitter readiness mutes native before making remote audible and capture fra
   assert.deepEqual(captureNode.port.messages.at(-2), {
     type: "capture.begin",
     generationId: 7,
+    maximumCredits: 4,
   });
   assert.deepEqual(captureNode.port.messages.at(-1), {
     type: "capture.credit",
@@ -373,7 +375,7 @@ test("generation cancellation restores native synchronously and releases all med
   assert.equal(harness.graph.snapshot().capture, "stopped");
 });
 
-test("main-to-Worklet downlink messages are bounded at the 200 ms jitter maximum", async () => {
+test("a legitimate 25-frame burst is staged and paced into the 10-frame Worklet bound", async () => {
   const { createAudioGraph } = await import(moduleUrl);
   const harness = createHarness(createAudioGraph);
   await harness.graph.startNativeLoopback({
@@ -382,7 +384,7 @@ test("main-to-Worklet downlink messages are bounded at the 200 ms jitter maximum
   });
   harness.graph.beginGeneration(7);
 
-  for (let sequence = 0; sequence < 10; sequence += 1) {
+  for (let sequence = 0; sequence < 25; sequence += 1) {
     assert.equal(
       harness.graph.enqueueRemoteFrame({
         header: { generation_id: 7, sequence },
@@ -394,14 +396,82 @@ test("main-to-Worklet downlink messages are bounded at the 200 ms jitter maximum
   }
   assert.equal(
     harness.graph.enqueueRemoteFrame({
-      header: { generation_id: 7, sequence: 10 },
-      sourceFrame: 10 * 960,
+      header: { generation_id: 7, sequence: 25 },
+      sourceFrame: 25 * 960,
       samples: new Float32Array(960),
     }),
     false,
   );
   assert.equal(harness.fallbacks.at(-1).reasonCode, "QUEUE_OVERFLOW");
   assert.equal(harness.graph.snapshot().route, "native");
+
+  const playout = harness.node("liveconv-playout");
+  assert.equal(
+    playout.port.messages.filter((message) => message.type === "playout.enqueue")
+      .length,
+    10,
+  );
+  for (let depth = 1; depth <= 10; depth += 1) {
+    playout.port.receive({
+      type: "playout.depth",
+      generationId: 7,
+      acknowledged: true,
+      depth,
+    });
+  }
+  for (let index = 0; index < 15; index += 1) {
+    playout.port.receive({
+      type: "playout.depth",
+      generationId: 7,
+      acknowledged: false,
+      depth: 9,
+    });
+    playout.port.receive({
+      type: "playout.depth",
+      generationId: 7,
+      acknowledged: true,
+      depth: 10,
+    });
+  }
+  assert.equal(
+    playout.port.messages.filter((message) => message.type === "playout.enqueue")
+      .length,
+    25,
+  );
+});
+
+test("negotiated capture credits follow Gateway capacity and replenish only accepted frames", async () => {
+  const { createAudioGraph } = await import(moduleUrl);
+  let accepted = true;
+  const harness = createHarness(createAudioGraph, {
+    captureAccepted() {
+      return accepted;
+    },
+  });
+  await harness.graph.startNativeLoopback({
+    streamId: "synthetic-stream-id",
+    tabId: 42,
+  });
+  harness.graph.beginGeneration(7, { captureCreditFrames: 50 });
+  const capture = harness.node("liveconv-capture");
+  assert.deepEqual(capture.port.messages.slice(-2), [
+    { type: "capture.begin", generationId: 7, maximumCredits: 50 },
+    { type: "capture.credit", generationId: 7, frames: 50 },
+  ]);
+
+  accepted = false;
+  const before = capture.port.messages.length;
+  capture.port.receive({
+    type: "capture.frame",
+    generationId: 7,
+    sourceFrame: 0,
+    samples: new Float32Array(960),
+  });
+  assert.equal(
+    capture.port.messages.length,
+    before,
+    "a rejected uplink frame must not return capture credit",
+  );
 });
 
 test("server completion drains already-accepted Worklet audio before returning to native", async () => {

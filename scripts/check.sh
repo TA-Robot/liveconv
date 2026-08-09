@@ -24,10 +24,14 @@ required_files=(
   docs/product/requirements.md
   docs/architecture/overview.md
   docs/architecture/adr/0001-evaluation-first-hybrid.md
+  docs/architecture/adr/0003-personal-ssh-loopback-transport.md
   docs/experiments/evaluation.md
   docs/planning/roadmap.md
   docs/planning/backlog.md
+  docs/planning/critical-path.md
+  docs/planning/review-triage.md
   docs/development/agent-playbook.md
+  docs/development/definition-of-done.md
   docs/development/ssh-tunnel-client-setup.md
   deploy/remote/Dockerfile
   deploy/remote/Dockerfile.dockerignore

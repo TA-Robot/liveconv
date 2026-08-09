@@ -11,10 +11,13 @@ keeps five questions separate:
 
 Waveform difference is evidence of signal transformation only. It is never
 reported as proof of successful voice conversion or target-speaker similarity.
-Speaker evidence belongs to an independently approved evaluator.
-The two-file CLI cannot produce speaker or streaming evidence, so both lanes are
-explicitly `unassessed`. Library callers may inject a calibrated `LaneVerdict`
-for speaker change and a separately measured streaming verdict.
+Speaker evidence belongs to an independently approved evaluator. The two-file
+CLI cannot produce speaker or streaming evidence, so both lanes are explicitly
+`unassessed` unless independently produced envelopes are attached with
+`--speaker-lane` and `--streaming-lane`. Speaker envelopes must satisfy the
+producer's strict schema, bind the current source/output digests, and bind a
+package-reviewed target-authorization record before they can contribute to an
+overall pass.
 
 ## CLI
 
@@ -68,6 +71,10 @@ When transcripts come from STT, attach separate source/output evidence JSON with
 provider, immutable model revision, decode configuration, language,
 timezone-aware transcription timestamp, and normalization revision. Missing
 evidence is represented as `null`, not silently inferred.
+
+The JSON Schemas are available from installed wheels through
+`importlib.resources.files("liveconv_evaluation").joinpath("schemas", ...)`.
+The retained `schemas/` source copies are byte-equal and checked for drift.
 
 The gap detector reports interior runs of silent analysis frames, excluding
 leading and trailing silence. The repetition detector reports exact, immediately

@@ -3,6 +3,9 @@ import { decodePcmFrame, encodePcmFrame, frameV1 } from "./protocol/frame.js";
 
 const UINT32_MAX = 0xffff_ffff;
 const DEFAULT_UPLINK_FRAMES = Math.floor(250 / 20);
+const DEFAULT_GENERATION_START_TIMEOUT_MILLISECONDS = 190_000;
+const MAXIMUM_GENERATION_START_TIMEOUT_MILLISECONDS = 300_000;
+const RETIRED_REQUEST_LIMIT = 64;
 
 function requireFunction(value, name) {
   if (typeof value !== "function") {
@@ -57,6 +60,10 @@ export function createRemoteClient(options = {}) {
     options.onFallback ?? (() => {}),
     "onFallback",
   );
+  const onTransportClosed = requireFunction(
+    options.onTransportClosed ?? (() => {}),
+    "onTransportClosed",
+  );
   const onOutputFrame = requireFunction(
     options.onOutputFrame ?? (() => {}),
     "onOutputFrame",
@@ -73,6 +80,19 @@ export function createRemoteClient(options = {}) {
   ) {
     throw new TypeError(
       "requestTimeoutMilliseconds must be a positive safe integer",
+    );
+  }
+  const generationStartTimeoutMilliseconds =
+    options.generationStartTimeoutMilliseconds ??
+    DEFAULT_GENERATION_START_TIMEOUT_MILLISECONDS;
+  if (
+    !Number.isSafeInteger(generationStartTimeoutMilliseconds) ||
+    generationStartTimeoutMilliseconds <= 0 ||
+    generationStartTimeoutMilliseconds >
+      MAXIMUM_GENERATION_START_TIMEOUT_MILLISECONDS
+  ) {
+    throw new TypeError(
+      "generationStartTimeoutMilliseconds must be between 1 and 300000",
     );
   }
   const setTimer = requireFunction(
@@ -100,7 +120,10 @@ export function createRemoteClient(options = {}) {
   let connectDeferred = null;
   let closing = false;
   let selectingProfile = false;
+  let connectionEpoch = 0;
+  let notifiedTransportEpoch = -1;
   const pending = new Map();
+  const retiredRequests = new Map();
 
   function snapshot() {
     return Object.freeze({
@@ -126,6 +149,17 @@ export function createRemoteClient(options = {}) {
     }
   }
 
+  function retireRequest(requestId, request) {
+    retiredRequests.set(requestId, {
+      expectedType: request.expectedType,
+      metadata: request.metadata,
+      type: request.type,
+    });
+    while (retiredRequests.size > RETIRED_REQUEST_LIMIT) {
+      retiredRequests.delete(retiredRequests.keys().next().value);
+    }
+  }
+
   function rejectGenerationRequests(canceledGenerationId, error) {
     for (const [requestId, request] of pending) {
       if (
@@ -134,6 +168,7 @@ export function createRemoteClient(options = {}) {
       ) {
         pending.delete(requestId);
         clearTimer(request.timer);
+        retireRequest(requestId, request);
         request.reject(error);
       }
     }
@@ -166,6 +201,23 @@ export function createRemoteClient(options = {}) {
     }
   }
 
+  function notifyTransportClosed(epoch, event = {}) {
+    if (
+      closing ||
+      epoch !== connectionEpoch ||
+      notifiedTransportEpoch === epoch
+    ) {
+      return false;
+    }
+    notifiedTransportEpoch = epoch;
+    onTransportClosed({
+      ...event,
+      connectionEpoch: epoch,
+      reasonCode: "TRANSPORT_CLOSED",
+    });
+    return true;
+  }
+
   function protocolFailure(error) {
     const failure =
       error instanceof Error ? error : new Error("remote protocol failure");
@@ -174,6 +226,7 @@ export function createRemoteClient(options = {}) {
       reason_code: "UNSUPPORTED_AUDIO",
       message: failure.message,
     });
+    rejectConnect(failure);
     rejectPending(failure);
     transport = "degraded";
     closeTransport(1002, "protocol error");
@@ -197,6 +250,7 @@ export function createRemoteClient(options = {}) {
     };
     requestEntry.timer = setTimer(() => {
       if (pending.delete(requestId)) {
+        retireRequest(requestId, requestEntry);
         const error = new Error(`${type} timed out`);
         error.name = "TimeoutError";
         error.code = "REQUEST_TIMEOUT";
@@ -205,9 +259,24 @@ export function createRemoteClient(options = {}) {
           rejectConnect(error);
           transport = "degraded";
           closeTransport(1008, "attach timeout");
+        } else if (
+          type === "generation.start" &&
+          generationId === metadata.generationId
+        ) {
+          invalidateGeneration({
+            generation_id: generationId,
+            reason_code: "MODEL_TIMEOUT",
+            message: `generation ${generationId} did not become ready within ${generationStartTimeoutMilliseconds} ms`,
+          });
+          transport = "degraded";
+          closeTransport(1008, "generation start timeout");
+        } else if (type === "model.select") {
+          selectingProfile = false;
         }
       }
-    }, requestTimeoutMilliseconds);
+    }, type === "generation.start"
+      ? generationStartTimeoutMilliseconds
+      : requestTimeoutMilliseconds);
     pending.set(requestId, requestEntry);
     try {
       socket.send(
@@ -244,6 +313,32 @@ export function createRemoteClient(options = {}) {
     ) {
       throw new Error("server response generation_id does not match the request");
     }
+    const expectedProfile = requestEntry.metadata.expectedProfile;
+    if (expectedProfile) {
+      for (const [eventField, expectedField] of [
+        ["profile_id", "profileId"],
+        ["profile_hash", "profileHash"],
+        ["configuration_hash", "configurationHash"],
+        ["pipeline_id", "pipelineId"],
+      ]) {
+        if (
+          expectedProfile[expectedField] !== undefined &&
+          event[eventField] !== expectedProfile[expectedField]
+        ) {
+          throw new Error(
+            `server response ${eventField} does not match the selected profile`,
+          );
+        }
+      }
+    }
+    const expectedLimits = requestEntry.metadata.expectedLimits;
+    if (
+      expectedLimits &&
+      (event.limits?.ingress_budget_ms !== expectedLimits.ingressBudgetMs ||
+        event.limits?.max_ingress_frames !== expectedLimits.maxIngressFrames)
+    ) {
+      throw new Error("session.ready limits do not match session creation");
+    }
   }
 
   function applyResponse(event, requestEntry) {
@@ -266,9 +361,13 @@ export function createRemoteClient(options = {}) {
       if (event.pipeline_id !== pipelineId) {
         throw new Error("generation.ready changed the selected pipeline");
       }
-      profileId = event.profile_id;
-      profileHash = event.profile_hash;
-      configurationHash = event.configuration_hash;
+      if (
+        event.profile_id !== profileId ||
+        event.profile_hash !== profileHash ||
+        event.configuration_hash !== configurationHash
+      ) {
+        throw new Error("generation.ready changed the selected profile identity");
+      }
       if (generationState === "starting") {
         generationState = "streaming";
       }
@@ -339,6 +438,12 @@ export function createRemoteClient(options = {}) {
       if (event.type === "pong") {
         return;
       }
+      const retired = retiredRequests.get(event.request_id);
+      if (retired) {
+        verifyResponse(event, retired);
+        retiredRequests.delete(event.request_id);
+        return;
+      }
       throw new Error(`unsolicited server event: ${event.type}`);
     }
     pending.delete(event.request_id);
@@ -383,6 +488,9 @@ export function createRemoteClient(options = {}) {
       });
       return;
     }
+    if (frame.header.generation_id < generationId) {
+      return;
+    }
     if (frame.header.generation_id !== generationId) {
       invalidateGeneration({
         generation_id: generationId,
@@ -406,7 +514,10 @@ export function createRemoteClient(options = {}) {
     }
   }
 
-  function onSocketError(event) {
+  function onSocketError(event, epoch, candidateSocket) {
+    if (epoch !== connectionEpoch || socket !== candidateSocket) {
+      return;
+    }
     const error = event?.error instanceof Error
       ? event.error
       : new Error("remote WebSocket failed");
@@ -418,9 +529,13 @@ export function createRemoteClient(options = {}) {
     transport = "degraded";
     rejectConnect(error);
     rejectPending(error);
+    notifyTransportClosed(epoch, { message: error.message });
   }
 
-  function onSocketClose(event) {
+  function onSocketClose(event, epoch, candidateSocket) {
+    if (epoch !== connectionEpoch || socket !== candidateSocket) {
+      return;
+    }
     const wasClosing = closing;
     const error = new Error(
       `remote WebSocket closed (${event?.code ?? "unknown"})`,
@@ -436,9 +551,21 @@ export function createRemoteClient(options = {}) {
     transport = wasClosing ? "closed" : "disconnected";
     socket = null;
     connectOperation = null;
+    if (!wasClosing) {
+      notifyTransportClosed(epoch, {
+        closeCode: event?.code,
+        message: error.message,
+      });
+    }
   }
 
-  function connect({ url, sessionId: nextSessionId, ticket } = {}) {
+  function connect({
+    url,
+    sessionId: nextSessionId,
+    ticket,
+    expectedProfile,
+    expectedLimits,
+  } = {}) {
     if (transport === "ready") {
       if (nextSessionId === sessionId) {
         return Promise.resolve();
@@ -455,30 +582,54 @@ export function createRemoteClient(options = {}) {
     sessionId = nextSessionId;
     transport = "connecting";
     closing = false;
+    const candidateEpoch = connectionEpoch + 1;
+    connectionEpoch = candidateEpoch;
     const deferred = createDeferred();
     connectDeferred = deferred;
-    connectOperation = deferred.promise.finally(() => {
+    const operation = deferred.promise.finally(() => {
       if (connectDeferred === deferred) {
         connectDeferred = null;
       }
-      connectOperation = null;
+      if (connectOperation === operation) {
+        connectOperation = null;
+      }
     });
+    connectOperation = operation;
     try {
-      socket = socketFactory(url);
-      if (socket === null || typeof socket !== "object") {
+      const candidateSocket = socketFactory(url);
+      if (candidateSocket === null || typeof candidateSocket !== "object") {
         throw new TypeError("socketFactory must return a WebSocket-like object");
       }
-      socket.binaryType = "arraybuffer";
-      socket.addEventListener("message", onMessage);
-      socket.addEventListener("error", onSocketError);
-      socket.addEventListener("close", onSocketClose);
-      socket.addEventListener("open", () => {
+      socket = candidateSocket;
+      candidateSocket.binaryType = "arraybuffer";
+      candidateSocket.addEventListener("message", (event) => {
+        if (
+          candidateEpoch === connectionEpoch &&
+          socket === candidateSocket
+        ) {
+          onMessage(event);
+        }
+      });
+      candidateSocket.addEventListener("error", (event) => {
+        onSocketError(event, candidateEpoch, candidateSocket);
+      });
+      candidateSocket.addEventListener("close", (event) => {
+        onSocketClose(event, candidateEpoch, candidateSocket);
+      });
+      candidateSocket.addEventListener("open", () => {
+        if (
+          candidateEpoch !== connectionEpoch ||
+          socket !== candidateSocket
+        ) {
+          return;
+        }
         let attach;
         try {
           attach = request(
             "session.attach",
             { ticket },
             "session.ready",
+            { expectedLimits, expectedProfile },
           );
         } catch (error) {
           deferred.reject(error);
@@ -496,7 +647,7 @@ export function createRemoteClient(options = {}) {
     return connectOperation ?? deferred.promise;
   }
 
-  function selectProfile(nextProfileId) {
+  function selectProfile(nextProfileId, expectedProfile) {
     if (transport !== "ready") {
       throw new Error("remote transport is not ready");
     }
@@ -512,6 +663,7 @@ export function createRemoteClient(options = {}) {
         "model.select",
         { profile_id: nextProfileId },
         "model.selected",
+        { expectedProfile },
       );
     } catch (error) {
       selectingProfile = false;
@@ -537,12 +689,33 @@ export function createRemoteClient(options = {}) {
     lastGenerationId = nextGenerationId;
     generationState = "starting";
     try {
-      return request(
+      const operation = request(
         "generation.start",
         { generation_id: nextGenerationId },
         "generation.ready",
-        { generationId: nextGenerationId },
+        {
+          generationId: nextGenerationId,
+          expectedProfile: {
+            profileId,
+            profileHash,
+            configurationHash,
+            pipelineId,
+          },
+        },
       );
+      return operation.catch((error) => {
+        if (
+          generationId === nextGenerationId &&
+          generationState === "starting"
+        ) {
+          invalidateGeneration({
+            generation_id: nextGenerationId,
+            reason_code: error?.code ?? "MODEL_UNAVAILABLE",
+            message: error instanceof Error ? error.message : undefined,
+          });
+        }
+        throw error;
+      });
     } catch (error) {
       generationState = "failed";
       throw error;

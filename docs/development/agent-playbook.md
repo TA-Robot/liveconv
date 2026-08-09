@@ -10,13 +10,22 @@ default for narrow, high-volume work. The primary remains responsible for
 checking their evidence.
 
 Project configuration lives in `.codex/config.toml`; custom roles live in
-`.codex/agents/`.
+`.codex/agents/`. Built-in subagents are the low-latency coordination tier. The
+[external Codex pool](external-codex-pool.md) is the overflow tier for disjoint
+implementation, test, documentation, and read-only Sol review tasks; its tmux
+processes remain subject to the same ownership and evidence rules.
 
 ## Critical-path pipeline
 
-Use the dependency graph and dispatcher in `docs/planning/critical-path.md`. The
-repository requests up to 12 child threads, excluding the primary, but work is
-spawned from the Ready frontier rather than to fill a fixed team chart.
+Use the dependency graph and dispatcher in `docs/planning/critical-path.md`.
+The active user outcome and six delivery gates are in
+`docs/planning/roadmap.md`; review findings use
+`docs/planning/review-triage.md`. Agents judge a finding against that milestone
+rather than silently importing post-v1 production requirements. Built-in and
+external execution tiers may expose different limits. Work is
+spawned from the Ready frontier rather than to fill a fixed team chart; the
+external pool can be raised as high as 32 only when host resources and exclusive
+leases permit it.
 
 For different backlog nodes, keep three engineering stages active at once:
 
@@ -28,9 +37,9 @@ For different backlog nodes, keep three engineering stages active at once:
    checkpoint for races, security, regressions, privacy, and missing evidence.
 
 The primary recomputes dependencies after every merge. It first assigns nodes on
-the product critical path, then nodes with the greatest downstream fan-out, then
+the active milestone critical path, then nodes with the greatest downstream fan-out, then
 research or test work that removes a named blocker. It may run up to six disjoint
-writers and three Sol reviewers. If two checkpoints wait for integration, new
+writers and eight Sol reviewers. If two checkpoints wait for integration, new
 writer slots rotate to review and repair until the merge queue drains.
 
 Keep a slice small enough to review in one pass. It should normally have one
@@ -213,9 +222,33 @@ contract tests before end-to-end tests.
 2. Owning Luna worker runs focused checks and self-reviews its diff.
 3. Sol parent inspects the diff and integrates contracts.
 4. Sol `qa_reviewer` reviews the integrated behavior read-only.
-5. Owning worker addresses accepted findings; the reviewer does not author fixes.
-6. Parent runs `make check` and any phase-specific end-to-end checks.
-7. `docs_curator` updates approved records only after the decision is clear.
+5. Parent reproduces or rejects each material finding, then assigns exactly one
+   disposition: `fix-now`, `scheduled`, `accepted-risk`, or `out-of-scope`.
+6. Owning worker addresses only `fix-now` findings; the reviewer does not author
+   fixes. Scheduled work gets a named `MS-*` issue rather than holding the merge.
+7. Reviewer performs one bounded re-review. A new non-stop-line Medium or Low is
+   scheduled or accepted rather than recursively reopening the checkpoint.
+8. Parent runs `make check` and the active milestone's real acceptance checks.
+9. `docs_curator` updates approved records only after the decision is clear.
+
+## Milestone replanning
+
+After every green checkpoint or material blocker change, the primary:
+
+1. updates the finding ledger and removes completed owners;
+2. freezes what the checkpoint proved and what it did not prove;
+3. marks newly satisfied dependencies in the active `MS-*` gate;
+4. schedules later quality, performance, security, operations, or public-service
+   concerns to their owning milestone;
+5. dispatches all independent Ready work that fits ownership and resource leases;
+6. stops alternate-model work after MS-2 unless a bounded issue can change the
+   recorded model decision.
+
+Default triage is fast: two hours to reproduce and normally one owner-day for a
+current-milestone fix. Larger findings are split into the smallest safety fix
+needed now plus a scheduled follow-up. Native fallback, exclusive playout,
+generation isolation, sensitive-data handling, current SSH/auth boundaries,
+evidence integrity, and expected-path boundedness remain stop-the-line concerns.
 
 ## Example kickoff prompt
 

@@ -1,0 +1,14 @@
+--extra-index-url https://download.pytorch.org/whl/cu128
+
+av==15.1.0
+faiss-cpu==1.13.0
+ffmpeg-python==0.2.0
+librosa==0.10.2.post1
+numpy==1.26.4
+praat-parselmouth==0.4.6
+scikit-learn==1.7.1
+scipy==1.16.1
+soundfile==0.13.1
+torch==2.7.1+cu128
+torchaudio==2.7.1+cu128
+transformers==4.49.0

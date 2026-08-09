@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import importlib.metadata
 import importlib.resources
+import io
+import wave
 from collections.abc import Mapping
 from functools import lru_cache
 from pathlib import Path
@@ -153,6 +155,7 @@ class FasterWhisperBackend:
 
         try:
             from faster_whisper import WhisperModel
+            from faster_whisper.audio import decode_audio
 
             self._model = WhisperModel(
                 str(self._model_path),
@@ -162,6 +165,7 @@ class FasterWhisperBackend:
                 num_workers=num_workers,
                 local_files_only=True,
             )
+            self._decode_audio = decode_audio
         except ConfigurationError:
             raise
         except Exception:
@@ -230,8 +234,21 @@ class FasterWhisperBackend:
     ) -> str:
         import numpy as np
 
-        samples = np.frombuffer(audio.pcm_s16le, dtype="<i2").astype(np.float32)
-        samples /= 32768.0
+        encoded = io.BytesIO()
+        with wave.open(encoded, "wb") as wav:
+            wav.setnchannels(1)
+            wav.setsampwidth(2)
+            wav.setframerate(audio.artifact.sample_rate_hz)
+            wav.writeframes(audio.pcm_s16le)
+        encoded.seek(0)
+        samples = self._decode_audio(encoded, sampling_rate=16_000)
+        if (
+            not isinstance(samples, np.ndarray)
+            or samples.dtype != np.float32
+            or samples.ndim != 1
+            or not np.isfinite(samples).all()
+        ):
+            raise RuntimeError("backend audio decoder returned invalid samples")
         options = {
             key: value
             for key, value in decode_config.items()

@@ -19,6 +19,18 @@ test("gateway and WebSocket URLs stay on the explicitly granted origin", async (
     websocketUrl("https://audio.example.test", "/v1/ws"),
     "wss://audio.example.test/v1/ws",
   );
+  assert.equal(
+    normalizeGatewayUrl("http://127.0.0.1:8765"),
+    "http://127.0.0.1:8765",
+  );
+  assert.equal(
+    gatewayPermissionOrigin("http://127.0.0.1:8765"),
+    "http://127.0.0.1/*",
+  );
+  assert.equal(
+    websocketUrl("http://127.0.0.1:8765", "/v1/ws"),
+    "ws://127.0.0.1:8765/v1/ws",
+  );
 
   for (const path of [
     "/\\evil.example/ws",

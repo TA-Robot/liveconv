@@ -1,8 +1,10 @@
 import { createExclusiveSelector } from "./exclusive-selector.js";
 
 const SAMPLE_RATE = 48_000;
-const MAXIMUM_REMOTE_FRAMES = 10;
-const CAPTURE_CREDIT_FRAMES = 4;
+const MAXIMUM_WORKLET_REMOTE_FRAMES = 10;
+const MAXIMUM_STAGED_REMOTE_FRAMES = 25;
+const DEFAULT_CAPTURE_CREDIT_FRAMES = 4;
+const MAXIMUM_CAPTURE_CREDIT_FRAMES = 500;
 
 function requireFunction(value, name) {
   if (typeof value !== "function") {
@@ -77,9 +79,11 @@ export function createAudioGraph(options = {}) {
   let playoutNode = null;
   let selector = null;
   let activeGenerationId = null;
+  let stagedRemoteFrames = [];
   let pendingRemoteFrames = 0;
   let workletRemoteDepth = 0;
   let draining = false;
+  let playoutEndPosted = false;
   let drainOperation = null;
   let capture = "stopped";
   let startEpoch = 0;
@@ -104,6 +108,46 @@ export function createAudioGraph(options = {}) {
     onFallback({ generationId: activeGenerationId, ...event });
   }
 
+  function postRemoteFrame(frame) {
+    pendingRemoteFrames += 1;
+    playoutNode.port.postMessage(
+      {
+        type: "playout.enqueue",
+        generationId: activeGenerationId,
+        sequence: frame.header.sequence,
+        sourceFrame: frame.sourceFrame,
+        samples: frame.samples,
+      },
+      [frame.samples.buffer],
+    );
+  }
+
+  function maybeEndPlayout() {
+    if (
+      draining &&
+      !playoutEndPosted &&
+      stagedRemoteFrames.length === 0 &&
+      pendingRemoteFrames === 0 &&
+      activeGenerationId !== null
+    ) {
+      playoutEndPosted = true;
+      playoutNode.port.postMessage({
+        type: "playout.end",
+        generationId: activeGenerationId,
+      });
+    }
+  }
+
+  function pumpRemoteFrames() {
+    while (
+      stagedRemoteFrames.length > 0 &&
+      pendingRemoteFrames + workletRemoteDepth < MAXIMUM_WORKLET_REMOTE_FRAMES
+    ) {
+      postRemoteFrame(stagedRemoteFrames.shift());
+    }
+    maybeEndPlayout();
+  }
+
   function handlePlayoutMessage({ data }) {
     if (
       data?.generationId !== activeGenerationId ||
@@ -118,7 +162,8 @@ export function createAudioGraph(options = {}) {
       if (Number.isInteger(data.depth) && data.depth >= 0) {
         workletRemoteDepth = data.depth;
       }
-    } else if (data.type === "playout.ready" && !draining) {
+      pumpRemoteFrames();
+    } else if (data.type === "playout.ready") {
       playoutNode.port.postMessage({ type: "playout.audible", audible: true });
       selector.select("remote");
       onRemoteReady({ generationId: activeGenerationId });
@@ -147,12 +192,12 @@ export function createAudioGraph(options = {}) {
     ) {
       return;
     }
-    onCaptureFrame({
+    const accepted = onCaptureFrame({
       generationId: activeGenerationId,
       sourceFrame: data.sourceFrame,
       samples: data.samples,
-    });
-    if (data.generationId === activeGenerationId) {
+    }) !== false;
+    if (accepted && data.generationId === activeGenerationId) {
       captureNode.port.postMessage({
         type: "capture.credit",
         generationId: activeGenerationId,
@@ -187,9 +232,11 @@ export function createAudioGraph(options = {}) {
   async function release() {
     fallback({ reasonCode: "SESSION_STOP" });
     activeGenerationId = null;
+    stagedRemoteFrames = [];
     pendingRemoteFrames = 0;
     workletRemoteDepth = 0;
     draining = false;
+    playoutEndPosted = false;
     drainOperation?.resolve();
     drainOperation = null;
     const resources = {
@@ -349,7 +396,10 @@ export function createAudioGraph(options = {}) {
     }
   }
 
-  function beginGeneration(generationId) {
+  function beginGeneration(
+    generationId,
+    { captureCreditFrames = DEFAULT_CAPTURE_CREDIT_FRAMES } = {},
+  ) {
     if (capture !== "running") {
       throw new Error("audio graph is not running");
     }
@@ -359,17 +409,30 @@ export function createAudioGraph(options = {}) {
     if (activeGenerationId !== null) {
       throw new Error("an audio generation is already active");
     }
+    if (
+      !Number.isSafeInteger(captureCreditFrames) ||
+      captureCreditFrames <= 0 ||
+      captureCreditFrames > MAXIMUM_CAPTURE_CREDIT_FRAMES
+    ) {
+      throw new TypeError("captureCreditFrames must be between 1 and 500");
+    }
     activeGenerationId = generationId;
+    stagedRemoteFrames = [];
     pendingRemoteFrames = 0;
     workletRemoteDepth = 0;
     draining = false;
+    playoutEndPosted = false;
     drainOperation = null;
     selector.fallback();
-    captureNode.port.postMessage({ type: "capture.begin", generationId });
+    captureNode.port.postMessage({
+      type: "capture.begin",
+      generationId,
+      maximumCredits: captureCreditFrames,
+    });
     captureNode.port.postMessage({
       type: "capture.credit",
       generationId,
-      frames: CAPTURE_CREDIT_FRAMES,
+      frames: captureCreditFrames,
     });
     playoutNode.port.postMessage({ type: "playout.begin", generationId });
   }
@@ -390,8 +453,9 @@ export function createAudioGraph(options = {}) {
       return drainOperation.promise;
     }
     draining = true;
+    playoutEndPosted = false;
     drainOperation = createDeferred();
-    playoutNode.port.postMessage({ type: "playout.end", generationId });
+    pumpRemoteFrames();
     return drainOperation.promise;
   }
 
@@ -402,9 +466,11 @@ export function createAudioGraph(options = {}) {
     playoutNode.port.postMessage({ type: "playout.cancel", generationId });
     fallback({ reasonCode: "GENERATION_COMPLETE" });
     activeGenerationId = null;
+    stagedRemoteFrames = [];
     pendingRemoteFrames = 0;
     workletRemoteDepth = 0;
     draining = false;
+    playoutEndPosted = false;
     drainOperation?.resolve();
     drainOperation = null;
     return true;
@@ -418,9 +484,11 @@ export function createAudioGraph(options = {}) {
     playoutNode.port.postMessage({ type: "playout.cancel", generationId });
     fallback({ reasonCode });
     activeGenerationId = null;
+    stagedRemoteFrames = [];
     pendingRemoteFrames = 0;
     workletRemoteDepth = 0;
     draining = false;
+    playoutEndPosted = false;
     drainOperation?.resolve();
     drainOperation = null;
     return true;
@@ -434,21 +502,15 @@ export function createAudioGraph(options = {}) {
     ) {
       return false;
     }
-    if (pendingRemoteFrames + workletRemoteDepth >= MAXIMUM_REMOTE_FRAMES) {
+    if (
+      stagedRemoteFrames.length + pendingRemoteFrames + workletRemoteDepth >=
+      MAXIMUM_STAGED_REMOTE_FRAMES
+    ) {
       fallback({ reasonCode: "QUEUE_OVERFLOW" });
       return false;
     }
-    pendingRemoteFrames += 1;
-    playoutNode.port.postMessage(
-      {
-        type: "playout.enqueue",
-        generationId: activeGenerationId,
-        sequence: frame.header.sequence,
-        sourceFrame: frame.sourceFrame,
-        samples: frame.samples,
-      },
-      [frame.samples.buffer],
-    );
+    stagedRemoteFrames.push(frame);
+    pumpRemoteFrames();
     return true;
   }
 

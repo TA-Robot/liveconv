@@ -14,6 +14,7 @@ def main() -> None:
         host=settings.bind_host,
         port=settings.bind_port,
         access_log=False,
+        ws="websockets",
         ws_max_size=MAX_CONTROL_MESSAGE_BYTES,
     )
 

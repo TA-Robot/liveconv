@@ -80,18 +80,22 @@ queue_limits_ms
 capture_started_at
 ```
 
-Every audio frame carries at least:
+Every logical audio frame carries this context across its connection and active
+generation:
 
 ```text
-session_id
 generation_id
 sequence
 capture_timestamp
 sample_rate
 channels
-sample_format
 payload
 ```
+
+Protocol v1's 32-byte binary header carries the fields from `generation_id`
+through payload shape and timestamp. `session_id` is implied by the attached
+WebSocket connection, and `sample_format=f32le` is negotiated for that session;
+neither is repeated in every binary header.
 
 The version 1 wire encoding and session API are accepted in
 `docs/architecture/remote-protocol.md`. A codec or incompatible field change
@@ -165,14 +169,17 @@ delegated to an unconstrained model on the hot path.
 ## Security boundary
 
 - The Extension never contains long-lived cloud credentials.
-- Audio transport is authenticated and encrypted outside localhost.
+- Audio transport is authenticated; personal v1 uses HTTP/WS only on each
+  loopback endpoint joined by the encrypted SSH local forward from ADR-0003.
 - Reference voice authorization is checked before adapter preparation.
 - Logs contain identifiers and timings, not raw text or audio by default.
 - Large artifacts use an access-controlled store with retention rules.
-- The browser creates sessions over authenticated HTTPS, then attaches WSS with a
-  one-use ticket whose digest is stored for at most its short lifetime.
-- Only the gateway is public; model workers bind to private interfaces or Unix
-  sockets and run in isolated environments.
+- The browser creates sessions over authenticated loopback HTTP, then attaches
+  loopback WS with a one-use ticket whose digest is stored for at most its short
+  lifetime. A future network-reachable deployment must use HTTPS/WSS.
+- Personal v1 exposes no public application port. The Gateway binds remote
+  loopback behind SSH; model workers use supervised local subprocess channels in
+  isolated environments.
 
 ## Deferred decisions
 

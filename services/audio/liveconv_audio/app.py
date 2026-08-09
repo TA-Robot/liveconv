@@ -50,6 +50,8 @@ from liveconv_protocol import (
     parse_control_message,
 )
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from starlette.responses import JSONResponse
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .profiles import ModelProfile, ProfileRegistry
 from .sessions import CachedResponse, Session, SessionCapacityError, SessionStore
@@ -61,6 +63,109 @@ from .worker_bridge import (
 )
 
 _bearer = HTTPBearer(auto_error=False)
+MAX_HTTP_BODY_BYTES = 16 * 1024
+
+
+class HttpIngressGuard:
+    """Authenticate and bound HTTP API bodies before FastAPI parses them."""
+
+    def __init__(self, app: ASGIApp, *, settings: Settings) -> None:
+        self.app = app
+        self.settings = settings
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http" or not scope.get("path", "").startswith("/v1/"):
+            await self.app(scope, receive, send)
+            return
+        if not self.settings.token_is_acceptable:
+            await self._reject(
+                scope,
+                receive,
+                send,
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+                "gateway credential is not safely configured",
+            )
+            return
+        headers = dict(scope.get("headers", []))
+        authorization = headers.get(b"authorization", b"")
+        try:
+            scheme, credential = authorization.split(b" ", 1)
+        except ValueError:
+            scheme, credential = b"", b""
+        if scheme.lower() != b"bearer" or not secrets.compare_digest(
+            credential,
+            self.settings.api_token.encode("utf-8"),
+        ):
+            await self._reject(
+                scope,
+                receive,
+                send,
+                status.HTTP_401_UNAUTHORIZED,
+                "invalid bearer credential",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            return
+
+        content_length = headers.get(b"content-length")
+        if content_length is not None:
+            try:
+                declared_length = int(content_length)
+            except ValueError:
+                declared_length = MAX_HTTP_BODY_BYTES + 1
+            if declared_length < 0 or declared_length > MAX_HTTP_BODY_BYTES:
+                await self._reject(
+                    scope,
+                    receive,
+                    send,
+                    status.HTTP_413_CONTENT_TOO_LARGE,
+                    "request body exceeds 16 KiB",
+                )
+                return
+
+        buffered: list[Message] = []
+        body_bytes = 0
+        while True:
+            message = await receive()
+            buffered.append(message)
+            if message["type"] != "http.request":
+                break
+            body = message.get("body", b"")
+            body_bytes += len(body)
+            if body_bytes > MAX_HTTP_BODY_BYTES:
+                await self._reject(
+                    scope,
+                    receive,
+                    send,
+                    status.HTTP_413_CONTENT_TOO_LARGE,
+                    "request body exceeds 16 KiB",
+                )
+                return
+            if not message.get("more_body", False):
+                break
+
+        messages = iter(buffered)
+
+        async def replay() -> Message:
+            return next(messages, {"type": "http.disconnect"})
+
+        await self.app(scope, replay, send)
+
+    @staticmethod
+    async def _reject(
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+        status_code: int,
+        detail: str,
+        *,
+        headers: dict[str, str] | None = None,
+    ) -> None:
+        response = JSONResponse(
+            {"detail": detail},
+            status_code=status_code,
+            headers=headers,
+        )
+        await response(scope, receive, send)
 
 
 class AudioFormat(BaseModel):
@@ -138,14 +243,20 @@ class Connection:
         self.send_lock = asyncio.Lock()
         self.terminal_event = asyncio.Event()
         self.worker_task: asyncio.Task[None] | None = None
+        self.output_task: asyncio.Task[None] | None = None
         self.drain_task: asyncio.Task[None] | None = None
-        self.active_frame_task: asyncio.Task[PcmFrame] | None = None
+        self.active_frame_task: asyncio.Task[None] | None = None
         self.active_frame_generation_id: int | None = None
         self.worker_bridge = WorkerBridge(
             gateway.worker_supervisor_factory,
             queue_budget_ms=session.ingress_budget_ms,
         )
         self.pending_ingress_frames = 0
+        self.generation_input_frames = 0
+        self.generation_output_frames = 0
+        self.output_available = asyncio.Event()
+        self.output_drained = asyncio.Event()
+        self.output_drained.set()
         self.closed = False
         self.stopping = False
         self.silent_terminal = False
@@ -316,6 +427,7 @@ class Connection:
     def invalidate_generation(self, generation_id: int) -> None:
         self.session.invalidated_generations.add(generation_id)
         self._discard_queued_ingress()
+        self.pending_ingress_frames = 0
         if self.session.order.active_generation_id == generation_id or (
             self.session.order.active_generation_id is None
             and self.session.order.last_generation_id == generation_id
@@ -401,6 +513,7 @@ class Connection:
     async def worker(self) -> None:
         while True:
             frame = await self.ingress.get()
+            expects_output = False
             try:
                 generation_id = frame.header.generation_id
                 if not self._generation_is_current(generation_id):
@@ -416,18 +529,19 @@ class Connection:
                         ErrorCode.MODEL_UNAVAILABLE,
                         "active profile is not ready",
                     )
-                frame_task = asyncio.create_task(
-                    self.worker_bridge.process_frame(frame)
-                )
+                frame_task = asyncio.create_task(self.worker_bridge.push_frame(frame))
                 self.active_frame_task = frame_task
                 self.active_frame_generation_id = generation_id
                 try:
-                    output = await frame_task
+                    await frame_task
                 finally:
                     if self.active_frame_task is frame_task:
                         self.active_frame_task = None
                         self.active_frame_generation_id = None
-                await self.send_frame_if_current(output)
+                expects_output = True
+                self.generation_input_frames += 1
+                self.output_drained.clear()
+                self.output_available.set()
             except asyncio.CancelledError:
                 if self.stopping or self._generation_is_current(
                     frame.header.generation_id
@@ -441,7 +555,32 @@ class Connection:
                     )
             finally:
                 self.ingress.task_done()
-                self.pending_ingress_frames -= 1
+                if not expects_output:
+                    self._release_pending_frame()
+
+    async def output_worker(self, generation_id: int) -> None:
+        while True:
+            while self.generation_output_frames >= self.generation_input_frames:
+                self.output_available.clear()
+                if self.generation_output_frames < self.generation_input_frames:
+                    break
+                await self.output_available.wait()
+            try:
+                output = await self.worker_bridge.next_frame(generation_id)
+                await self.send_frame_if_current(output)
+                self.generation_output_frames += 1
+                self._release_pending_frame()
+                if self.generation_output_frames == self.generation_input_frames:
+                    self.output_drained.set()
+            except asyncio.CancelledError:
+                raise
+            except ProtocolValidationError as error:
+                if self._generation_is_current(generation_id):
+                    await self.send_generation_failure(error, generation_id)
+                return
+            except RuntimeError:
+                self._mark_terminal(silent=True)
+                return
 
     async def handle_control(self, message: object) -> None:
         request_id = getattr(message, "request_id", None)
@@ -579,6 +718,13 @@ class Connection:
             except ProtocolValidationError:
                 self.invalidate_generation(message.generation_id)
                 raise
+            self.generation_input_frames = 0
+            self.generation_output_frames = 0
+            self.output_available.clear()
+            self.output_drained.set()
+            self.output_task = asyncio.create_task(
+                self.output_worker(message.generation_id)
+            )
             return GenerationReadyEvent(
                 protocol_version=1,
                 session_id=self.session.session_id,
@@ -769,11 +915,35 @@ class Connection:
                 self.pending_end = None
             return
 
+        try:
+            await asyncio.wait_for(
+                self.output_drained.wait(),
+                timeout=max(0.1, stall_seconds),
+            )
+        except TimeoutError:
+            if self._generation_is_current(generation_id):
+                error = ProtocolValidationError(
+                    ErrorCode.MODEL_TIMEOUT,
+                    "generation output drain exceeded the profile stall timeout",
+                )
+                event = await self.send_generation_failure(
+                    error,
+                    generation_id,
+                    request_id=request_id,
+                )
+                self._set_cached_response(request_id, fingerprint, event)
+                self.pending_end = None
+            return
+
+        await self._stop_output_task()
+
         if (
             not self._generation_is_current(generation_id)
             or self.session.draining_generation_id != generation_id
         ):
             return
+
+        await self.worker_bridge.finish_generation(generation_id)
 
         self.session.order.finish_generation(generation_id)
         pipeline_id = self.session.active_pipeline_id
@@ -811,9 +981,29 @@ class Connection:
             except asyncio.QueueEmpty:
                 return
             self.ingress.task_done()
-            self.pending_ingress_frames -= 1
+            self._release_pending_frame()
+
+    def _release_pending_frame(self) -> None:
+        self.pending_ingress_frames = max(0, self.pending_ingress_frames - 1)
+
+    async def _stop_output_task(self) -> None:
+        task = self.output_task
+        if task is None or task is asyncio.current_task():
+            return
+        self.output_task = None
+        if not task.done():
+            task.cancel()
+        with contextlib.suppress(
+            asyncio.CancelledError,
+            ProtocolValidationError,
+            RuntimeError,
+        ):
+            await task
 
     async def abort_generation(self, generation_id: int) -> None:
+        await self._stop_output_task()
+        self.output_drained.set()
+        self.output_available.set()
         frame_task = self.active_frame_task
         if (
             frame_task is not None
@@ -842,10 +1032,10 @@ class Connection:
 
     async def stop_tasks(self) -> None:
         self.stopping = True
-        for task in (self.drain_task, self.worker_task):
+        for task in (self.drain_task, self.worker_task, self.output_task):
             if task is not None and not task.done():
                 task.cancel()
-        for task in (self.drain_task, self.worker_task):
+        for task in (self.drain_task, self.worker_task, self.output_task):
             if task is not None:
                 with contextlib.suppress(
                     asyncio.CancelledError,
@@ -854,6 +1044,8 @@ class Connection:
                 ):
                     await task
         self._discard_queued_ingress()
+        self.pending_ingress_frames = 0
+        self.output_task = None
         await self.worker_bridge.close()
 
 
@@ -868,7 +1060,10 @@ class Gateway:
     ) -> None:
         self.settings = settings
         self.worker_supervisor_factory = worker_supervisor_factory
-        self.registry = ProfileRegistry.load(settings.profile_config)
+        self.registry = ProfileRegistry.load(
+            settings.profile_config,
+            allow_technical_profiles=settings.allow_technical_profiles,
+        )
         self.store = SessionStore(
             ticket_ttl_seconds=settings.ticket_ttl_seconds,
             ingress_budget_ms=settings.ingress_budget_ms,
@@ -878,6 +1073,8 @@ class Gateway:
         )
         self.clock_id = str(uuid4())
         self.connections: dict[str, Connection] = {}
+        self.pending_attachments = 0
+        self.pending_attachment_lock = asyncio.Lock()
 
     @property
     def ready(self) -> bool:
@@ -930,9 +1127,20 @@ class Gateway:
             await websocket.close(code=4403, reason="origin is not allowed")
             return
 
-        await websocket.accept()
         connection: Connection | None = None
+        pending_attachment = False
         try:
+            async with self.pending_attachment_lock:
+                if self.pending_attachments >= self.settings.max_pending_attachments:
+                    has_capacity = False
+                else:
+                    self.pending_attachments += 1
+                    pending_attachment = True
+                    has_capacity = True
+            if not has_capacity:
+                await websocket.close(code=4429, reason="attachment capacity reached")
+                return
+            await websocket.accept()
             try:
                 first = await asyncio.wait_for(
                     websocket.receive(), timeout=self.settings.attach_timeout_seconds
@@ -962,6 +1170,8 @@ class Gateway:
                 )
                 return
 
+            await self._release_pending_attachment()
+            pending_attachment = False
             connection = Connection(self, websocket, session)
             self.connections[session.session_id] = connection
             await connection.send_event(
@@ -1027,6 +1237,8 @@ class Gateway:
         except WebSocketDisconnect:
             pass
         finally:
+            if pending_attachment:
+                await self._release_pending_attachment()
             if connection is not None:
                 with anyio.CancelScope(shield=True):
                     await connection.stop_tasks()
@@ -1036,6 +1248,10 @@ class Gateway:
                     ):
                         self.connections.pop(connection.session.session_id, None)
                     self.store.delete(connection.session.session_id)
+
+    async def _release_pending_attachment(self) -> None:
+        async with self.pending_attachment_lock:
+            self.pending_attachments = max(0, self.pending_attachments - 1)
 
     async def _expire_connection(self, connection: Connection) -> None:
         active = connection.session.order.active_generation_id
@@ -1088,6 +1304,7 @@ def create_app(
         openapi_url=None,
     )
     app.state.gateway = gateway
+    app.add_middleware(HttpIngressGuard, settings=gateway.settings)
 
     @app.get("/health/live")
     async def health_live() -> dict[str, str]:
@@ -1139,6 +1356,10 @@ def create_app(
                 profile.configuration_hash,
                 request.voice_id,
                 request.input.frame_ms,
+                max(
+                    gateway.settings.ingress_budget_ms,
+                    profile.minimum_context_ms * 2,
+                ),
             )
         except SessionCapacityError as exc:
             raise HTTPException(

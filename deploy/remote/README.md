@@ -49,8 +49,19 @@ docker compose --env-file /absolute/path/liveconv.env \
 ```
 
 `deploy/remote/check-tools.sh /absolute/path/liveconv.env` combines the
-preflight with authoritative Docker Compose and pinned-Caddy parsing. When the
-optional profile path is populated, it validates the merged override too.
+preflight, a clean-context frozen Gateway install, authoritative Docker Compose,
+and pinned-Caddy parsing. When the optional profile path is populated, it
+validates the merged override too. Run the install proof directly after changing
+the workspace or Docker packaging layout:
+
+```bash
+python3 deploy/remote/validate-build-context.py
+```
+
+The proof reconstructs the Docker allowlisted context in a temporary directory,
+applies the Dockerfile's pre-sync `COPY` layout, and runs the same frozen,
+non-editable `liveconv-audio` sync used by the builder. It rejects ignored files,
+symlinks, unused allowlist entries, and sensitive artifact types.
 
 Caddy obtains and renews the public certificate automatically. The external
 base URL is `https://<LIVECONV_PUBLIC_HOST>` and the WebSocket URL is
@@ -65,6 +76,12 @@ The base deployment uses the `default-model-profiles.json` bundled in the
 installed `liveconv-audio` wheel. It contains only deterministic passthrough and
 gain profiles, so it works without a host registry file.
 
+This image provisions only that deterministic Gateway. Adapter Python files are
+present because the Gateway's worker-runtime dependency currently packages the
+adapter namespaces; the image deliberately installs no model-specific runtime,
+CUDA stack, source checkout, model weight, or GPU allocation. Their presence is
+not evidence that a real profile is runnable.
+
 Real model artifacts remain external and are mounted read-only at
 `/opt/liveconv/artifacts`. To use a separately reviewed registry, add the
 override and set `LIVECONV_PROFILE_CONFIG_FILE` to an absolute host path:
@@ -77,8 +94,11 @@ docker compose --env-file /absolute/path/liveconv.env \
 
 A registry or artifact mount does not approve a model. Real profiles still need
 artifact provenance, licensing, adapter conformance, frozen evaluation, and an
-explicit readiness decision. The current Gateway selects only its implemented
-adapters.
+explicit readiness decision. Real models require separate, revision-pinned GPU
+worker images or environments with read-only digest-bound artifacts. Those
+workers must remain on a private network and connect to the public Gateway only
+through the private worker protocol or an authenticated tunnel; this Compose
+file does not provision that worker/tunnel topology.
 
 ## Operations
 

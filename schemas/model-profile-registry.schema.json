@@ -71,6 +71,41 @@
         "warmup_policy": { "enum": ["none", "eager", "lazy"] },
         "resource_class": { "enum": ["cpu", "gpu", "external"] },
         "license_record": { "type": "string", "minLength": 1 },
+        "promotion": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "status",
+                "pack_id",
+                "pack_sha256",
+                "evidence_sha256",
+                "endpoint_sha256"
+              ],
+              "properties": {
+                "status": { "enum": ["technical_validation", "approved"] },
+                "pack_id": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                },
+                "pack_sha256": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "evidence_sha256": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "endpoint_sha256": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                }
+              }
+            }
+          ]
+        },
         "timeouts": {
           "type": "object",
           "additionalProperties": false,
@@ -98,7 +133,24 @@
             "max_vram_mb": { "type": "integer", "minimum": 0, "maximum": 32607 }
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "runtime": {
+                "properties": { "adapter": { "const": "worker" } },
+                "required": ["adapter"]
+              }
+            },
+            "required": ["runtime"]
+          },
+          "then": { "required": ["promotion"] },
+          "else": {
+            "properties": { "promotion": { "type": "null" } }
+          }
+        }
+      ]
     }
   }
 }

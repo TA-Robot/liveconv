@@ -12,6 +12,8 @@
 !packages/evaluation/pyproject.toml
 !packages/stt/
 !packages/stt/pyproject.toml
+!packages/speaker/
+!packages/speaker/pyproject.toml
 
 !services/
 !services/audio/
@@ -22,11 +24,28 @@
 
 !workers/
 !workers/__init__.py
+!workers/README.md
+!workers/model-pack.schema.json
 !workers/pyproject.toml
+!workers/packs/
+!workers/packs/*.py
+!workers/packs/*.json
 !workers/runtime/
 !workers/runtime/*.py
 !workers/conformance/
 !workers/conformance/*.py
+!workers/adapters/
+!workers/adapters/__init__.py
+!workers/adapters/beatrice_2/
+!workers/adapters/beatrice_2/*.py
+!workers/adapters/openvoice_v2/
+!workers/adapters/openvoice_v2/*.py
+!workers/adapters/rvc_v2/
+!workers/adapters/rvc_v2/*.py
+!workers/adapters/rvc_v2/tools/
+!workers/adapters/rvc_v2/tools/__init__.py
+!workers/adapters/x_vc/
+!workers/adapters/x_vc/*.py
 
 !experiments/
 !experiments/EXP-002-remote-router/

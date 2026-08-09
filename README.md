@@ -10,17 +10,19 @@ The project evaluates two complementary paths:
 
 The repository starts with the operating system for the work: product
 requirements, architecture decisions, experiment records, Codex subagents,
-and repeatable checks. Application code is added only after a phase gate makes
+and repeatable checks. Application code is added only after a milestone gate makes
 its contract clear.
 
 ## Start here
 
 1. Read [AGENTS.md](AGENTS.md) for repository-wide execution rules.
 2. Read [docs/product/brief.md](docs/product/brief.md) for the product intent.
-3. Read [docs/planning/roadmap.md](docs/planning/roadmap.md) for phase gates.
+3. Read [docs/planning/roadmap.md](docs/planning/roadmap.md) for milestone gates.
 4. Read [docs/development/agent-playbook.md](docs/development/agent-playbook.md)
    before delegating parallel work.
-5. Run `make doctor` and `make check`.
+5. Use [review finding triage](docs/planning/review-triage.md) to decide what
+   blocks now, moves to a later milestone, is accepted, or is post-v1.
+6. Run `make doctor` and `make check`.
 
 To connect a Chrome client to a loopback-only Gateway on a remote machine, use
 the [SSH tunnel client setup](docs/development/ssh-tunnel-client-setup.md).
@@ -64,9 +66,14 @@ custom-agent spawn surface currently exposes only Sol and Terra overrides.
 
 ## Current stage
 
-The bounded remote-router engineering foundation is implemented with
-deterministic passthrough and gain profiles. Phase 0 and Phase 1 evidence remain
-open until the authorized corpus, live TLS route, audible browser checks, and
-preregistered sample counts are collected. Real voice-conversion profiles stay
-unavailable until immutable weights, voice authorization, license records, and
-frozen Japanese evaluation inputs are approved.
+The project is closing MS-1, the executable multi-model lab. The bounded remote
+router, Extension, worker supervisor, evaluation/STT packages, package gate, and
+SSH client path are implemented. Multiple real model engines have technical
+execution evidence; RVC is the first rolling Gateway integration candidate.
+Current model quality failures and unassessed lanes keep those profiles technical
+and nonselectable until MS-2 chooses a useful primary.
+
+The six-milestone target is a lightweight personal v1 reached through an SSH
+local forward to a loopback-only remote Gateway. Public DNS/TLS ingress,
+multi-user operation, HA, an uptime SLA, and enterprise operations are post-v1
+and do not block this path.

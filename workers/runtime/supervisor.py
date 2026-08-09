@@ -97,7 +97,10 @@ class WorkerSupervisor:
 
         self._active_generation_id: int | None = None
         self._last_generation_id: int | None = None
+        self._generation_input_sealed = False
         self._accepted_frames: dict[int, AudioFrame] = {}
+        self._last_accepted_sequence: int | None = None
+        self._last_accepted_source_monotonic_ns: int | None = None
         self._canceled_generations: set[int] = set()
         self._first_accepted_ns: int | None = None
         self._pending_since_ns: int | None = None
@@ -194,7 +197,10 @@ class WorkerSupervisor:
         self._require_echoed_generation(response, generation_id)
         self._active_generation_id = generation_id
         self._last_generation_id = generation_id
+        self._generation_input_sealed = False
         self._accepted_frames.clear()
+        self._last_accepted_sequence = None
+        self._last_accepted_source_monotonic_ns = None
         self._first_accepted_ns = None
         self._pending_since_ns = None
         self._last_output_ns = None
@@ -207,19 +213,21 @@ class WorkerSupervisor:
             raise self._error("INVALID_STATE", "no generation is active")
         if frame.generation_id != self._active_generation_id:
             raise self._error("INVALID_STATE", "audio generation_id is not active")
+        if self._generation_input_sealed:
+            raise self._error("INVALID_STATE", "generation input is sealed")
         expected_samples = frame.sample_rate * self._profile.frame_ms // 1000
         if (
             frame.sample_rate * self._profile.frame_ms % 1000
             or frame.samples_per_channel != expected_samples
         ):
             raise self._error("INVALID_STATE", "audio is not one negotiated frame")
-        if frame.sequence in self._accepted_frames:
-            raise self._error("INVALID_STATE", "audio sequence was already accepted")
-        if self._accepted_frames:
-            prior = next(reversed(self._accepted_frames.values()))
-            if frame.sequence <= prior.sequence:
+        prior_sequence = self._last_accepted_sequence
+        prior_timestamp = self._last_accepted_source_monotonic_ns
+        if prior_sequence is not None:
+            if frame.sequence <= prior_sequence:
                 raise self._error("INVALID_STATE", "audio sequence must increase")
-            if frame.source_monotonic_ns < prior.source_monotonic_ns:
+            assert prior_timestamp is not None
+            if frame.source_monotonic_ns < prior_timestamp:
                 raise self._error("INVALID_STATE", "source timestamp must not decrease")
         if len(self._accepted_frames) >= self.input_capacity_frames:
             raise self._error(
@@ -228,6 +236,8 @@ class WorkerSupervisor:
 
         accepted_at_ns = self._clock.now_ns()
         self._accepted_frames[frame.sequence] = frame
+        self._last_accepted_sequence = frame.sequence
+        self._last_accepted_source_monotonic_ns = frame.source_monotonic_ns
         if self._first_accepted_ns is None:
             self._first_accepted_ns = accepted_at_ns
         if self._pending_since_ns is None:
@@ -311,6 +321,9 @@ class WorkerSupervisor:
 
     async def end_generation(self, generation_id: int) -> GenerationResult:
         self._require_active_generation(generation_id)
+        if self._generation_input_sealed:
+            raise self._error("INVALID_STATE", "generation end is already pending")
+        self._generation_input_sealed = True
         try:
             response = await self._request(
                 self._control_message("generation.end", generation_id=generation_id),
@@ -334,6 +347,9 @@ class WorkerSupervisor:
             await self._terminate_failed_process(error, restart=True)
             raise error
         self._active_generation_id = None
+        self._generation_input_sealed = False
+        self._last_accepted_sequence = None
+        self._last_accepted_source_monotonic_ns = None
         return GenerationResult(generation_id)
 
     async def cancel_generation(self, generation_id: int) -> GenerationResult:
@@ -342,7 +358,10 @@ class WorkerSupervisor:
         if len(self._canceled_generations) > 64:
             self._canceled_generations.remove(min(self._canceled_generations))
         self._active_generation_id = None
+        self._generation_input_sealed = False
         self._accepted_frames.clear()
+        self._last_accepted_sequence = None
+        self._last_accepted_source_monotonic_ns = None
         self._first_accepted_ns = None
         self._pending_since_ns = None
         self._clear_output_queue()
@@ -446,6 +465,9 @@ class WorkerSupervisor:
         self._accepted_frames.clear()
         self._pending_since_ns = None
         self._active_generation_id = None
+        self._generation_input_sealed = False
+        self._last_accepted_sequence = None
+        self._last_accepted_source_monotonic_ns = None
         self._ready = None
         self._available = False
         self._process = None
@@ -501,48 +523,52 @@ class WorkerSupervisor:
         self._process_group_id = process.pid
         self._ready = None
         self._available = False
-        self._reader_task = asyncio.create_task(self._reader_loop(process, epoch))
-        self._stderr_task = asyncio.create_task(self._drain_stderr(process))
-
-        message = self._control_message(
-            "worker.hello",
-            profile_id=self._profile.profile_id,
-            pipeline_id=self._profile.pipeline_id,
-            configuration_hash=self._profile.configuration_hash,
-        )
         try:
-            response = await self._request(
-                message,
-                expected_type="worker.ready",
-                timeout_ms=self._profile.startup_timeout_ms,
-                deadline_ns=startup_deadline_ns,
+            self._reader_task = asyncio.create_task(self._reader_loop(process, epoch))
+            self._stderr_task = asyncio.create_task(self._drain_stderr(process))
+            message = self._control_message(
+                "worker.hello",
+                profile_id=self._profile.profile_id,
+                pipeline_id=self._profile.pipeline_id,
+                configuration_hash=self._profile.configuration_hash,
             )
-        except TimeoutError as error:
-            runtime_error = self._error(
-                "MODEL_TIMEOUT", "worker readiness deadline expired", True
+            try:
+                response = await self._request(
+                    message,
+                    expected_type="worker.ready",
+                    timeout_ms=self._profile.startup_timeout_ms,
+                    deadline_ns=startup_deadline_ns,
+                )
+            except TimeoutError as error:
+                raise self._error(
+                    "MODEL_TIMEOUT", "worker readiness deadline expired", True
+                ) from error
+            ready = WorkerReady(
+                profile_id=str(response["profile_id"]),
+                pipeline_id=str(response["pipeline_id"]),
+                implementation_revision=str(response["implementation_revision"]),
+                weight_revision=response["weight_revision"],  # type: ignore[arg-type]
+                configuration_hash=str(response["configuration_hash"]),
             )
-            await self._terminate_failed_process(runtime_error, restart=False)
-            raise runtime_error from error
-        ready = WorkerReady(
-            profile_id=str(response["profile_id"]),
-            pipeline_id=str(response["pipeline_id"]),
-            implementation_revision=str(response["implementation_revision"]),
-            weight_revision=response["weight_revision"],  # type: ignore[arg-type]
-            configuration_hash=str(response["configuration_hash"]),
-        )
-        expected = WorkerReady(
-            profile_id=self._profile.profile_id,
-            pipeline_id=self._profile.pipeline_id,
-            implementation_revision=self._profile.implementation_revision,
-            weight_revision=self._profile.weight_revision,
-            configuration_hash=self._profile.configuration_hash,
-        )
-        if ready != expected:
-            error = self._error(
-                "WORKER_PROTOCOL", "worker identity did not match profile"
+            expected = WorkerReady(
+                profile_id=self._profile.profile_id,
+                pipeline_id=self._profile.pipeline_id,
+                implementation_revision=self._profile.implementation_revision,
+                weight_revision=self._profile.weight_revision,
+                configuration_hash=self._profile.configuration_hash,
             )
-            await self._terminate_failed_process(error, restart=False)
-            raise error
+            if ready != expected:
+                raise self._error(
+                    "WORKER_PROTOCOL", "worker identity did not match profile"
+                )
+        except BaseException as error:
+            cleanup_error = (
+                error
+                if isinstance(error, WorkerRuntimeError)
+                else self._error("MODEL_UNAVAILABLE", "worker handshake failed")
+            )
+            await self._terminate_failed_process(cleanup_error, restart=False)
+            raise
         self._ready = ready
         self._available = True
         return ready
@@ -737,8 +763,11 @@ class WorkerSupervisor:
             self._available = False
             self._ready = None
             self._active_generation_id = None
+            self._generation_input_sealed = False
             had_pending_output = bool(self._accepted_frames)
             self._accepted_frames.clear()
+            self._last_accepted_sequence = None
+            self._last_accepted_source_monotonic_ns = None
             self._pending_since_ns = None
             self._clear_output_queue()
             if notify_output and had_pending_output:

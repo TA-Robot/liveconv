@@ -132,6 +132,10 @@ def build_render_report(
     source_signal = read_wav(source_path)
     output_signal = read_wav(output_path)
     audio = compare_signals(source_signal, output_signal, analysis_parameters)
+    source_artifact = _artifact(source_path, audio["source"], source_locator)
+    output_artifact = _artifact(output_path, audio["output"], output_locator)
+    source_hash = source_artifact["sha256"]
+    output_hash = output_artifact["sha256"]
     transcripts = _transcript_metrics(
         reference_transcript,
         source_transcript,
@@ -149,9 +153,9 @@ def build_render_report(
         speaker_change=speaker_change,
         operations=streaming_operations,
         stt_evidence=stt_evidence,
+        source_sha256=source_hash,
+        output_sha256=output_hash,
     )
-    source_hash = sha256_file(source_path)
-    output_hash = sha256_file(output_path)
     limitations = ["Waveform difference alone does not prove voice conversion."]
     if speaker_change is None:
         limitations.append(
@@ -171,8 +175,8 @@ def build_render_report(
         "report_type": "render-comparison",
         "render_id": render_id or f"render-{source_hash[:12]}-{output_hash[:12]}",
         "artifacts": {
-            "source": _artifact(source_path, audio["source"], source_locator),
-            "output": _artifact(output_path, audio["output"], output_locator),
+            "source": source_artifact,
+            "output": output_artifact,
         },
         "measurements": {
             "analysis_parameters": audio["analysis_parameters"],

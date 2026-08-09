@@ -17,7 +17,8 @@ transport safety to model behavior and make cross-model experiments unreliable.
 
 ## Decision
 
-Build a public authenticated HTTP/WSS gateway with four boundaries:
+Build an authenticated HTTP/WebSocket gateway behind a protected transport with
+four boundaries:
 
 1. The Extension owns capture, the always-available native path, exclusive final
    playout, stale-frame rejection, and emergency fallback.
@@ -34,8 +35,10 @@ A selected `pipeline_id` is immutable for one generation. Switching a model is
 legal only while no generation is active. Mid-utterance switching and crossfade
 are excluded from protocol version 1.
 
-Protocol version 1 uses authenticated HTTPS for session creation, a single-use
-short-lived WSS ticket, JSON control messages, and binary little-endian float32
+Protocol version 1 uses authenticated HTTPS for session creation and a
+single-use short-lived WSS ticket when the Gateway is network-reachable. The
+personal loopback plus SSH deployment exception is defined by ADR-0003. Both
+transports carry the same JSON control messages and binary little-endian float32
 PCM frames with a fixed 32-byte network-order header. The initial negotiated
 format is mono 48 kHz with 20 ms frames. Codec transport is a later independent
 experiment.

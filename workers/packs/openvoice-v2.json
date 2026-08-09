@@ -4,6 +4,10 @@
   "display_name": "OpenVoice V2",
   "status": "research",
   "ready_for_runtime": false,
+  "promotion_evidence": {
+    "status": "unavailable",
+    "evidence_sha256": null
+  },
   "role": "offline_control",
   "implementation_priority": 4,
   "canonical_source_url": "https://github.com/myshell-ai/OpenVoice",

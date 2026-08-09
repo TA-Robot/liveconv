@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import math
+import threading
+import weakref
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
+from types import MappingProxyType
 from typing import Any
 
 from .transcript import NORMALIZATION_REVISION
@@ -22,13 +25,96 @@ class LaneVerdict:
     status: VerdictStatus
     summary: str
     evidence: tuple[str, ...] = ()
+    provenance: Mapping[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        value = {
             "status": self.status.value,
             "summary": self.summary,
             "evidence": list(self.evidence),
         }
+        if self.provenance is not None:
+            value["provenance"] = _plain_data(self.provenance)
+        return value
+
+
+@dataclass(frozen=True)
+class _ValidatedLaneIdentity:
+    reference: weakref.ReferenceType[LaneVerdict]
+    report_type: str
+    status: VerdictStatus
+    summary: str
+    evidence: tuple[str, ...]
+    provenance: Mapping[str, Any]
+
+
+_VALIDATED_EXTERNAL_EVIDENCE: dict[int, _ValidatedLaneIdentity] = {}
+_VALIDATED_EXTERNAL_EVIDENCE_LOCK = threading.Lock()
+
+
+def _freeze_data(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return MappingProxyType(
+            {key: _freeze_data(child) for key, child in value.items()}
+        )
+    if isinstance(value, list | tuple):
+        return tuple(_freeze_data(child) for child in value)
+    return value
+
+
+def _plain_data(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {key: _plain_data(child) for key, child in value.items()}
+    if isinstance(value, list | tuple):
+        return [_plain_data(child) for child in value]
+    return value
+
+
+def _validated_external_lane(
+    lane: LaneVerdict, provenance: Mapping[str, Any]
+) -> LaneVerdict:
+    """Issue a lane only after external.py completes the full evidence contract."""
+
+    validated = LaneVerdict(
+        lane.status,
+        lane.summary,
+        lane.evidence,
+        _freeze_data(provenance),
+    )
+    identity = id(validated)
+
+    def discard(reference: weakref.ReferenceType[LaneVerdict]) -> None:
+        with _VALIDATED_EXTERNAL_EVIDENCE_LOCK:
+            current = _VALIDATED_EXTERNAL_EVIDENCE.get(identity)
+            if current is not None and current.reference is reference:
+                _VALIDATED_EXTERNAL_EVIDENCE.pop(identity, None)
+
+    reference = weakref.ref(validated, discard)
+    record = _ValidatedLaneIdentity(
+        reference,
+        str(provenance["report_type"]),
+        validated.status,
+        validated.summary,
+        validated.evidence,
+        validated.provenance,
+    )
+    with _VALIDATED_EXTERNAL_EVIDENCE_LOCK:
+        _VALIDATED_EXTERNAL_EVIDENCE[identity] = record
+    return validated
+
+
+def _has_exact_validated_identity(lane: LaneVerdict, report_type: str) -> bool:
+    with _VALIDATED_EXTERNAL_EVIDENCE_LOCK:
+        record = _VALIDATED_EXTERNAL_EVIDENCE.get(id(lane))
+        return (
+            record is not None
+            and record.reference() is lane
+            and record.report_type == report_type
+            and lane.status is record.status
+            and lane.summary == record.summary
+            and lane.evidence == record.evidence
+            and lane.provenance is record.provenance
+        )
 
 
 @dataclass(frozen=True)
@@ -40,25 +126,56 @@ class EvaluationVerdict:
     streaming_operations: LaneVerdict
     policy_status: str | None = None
     content_evidence_complete: bool = False
+    threshold_policy: ThresholdPolicy | None = None
+    source_sha256: str | None = None
+    output_sha256: str | None = None
     overall: VerdictStatus = field(init=False)
 
     def __post_init__(self) -> None:
+        speaker_change = _unassessed_external_lane(
+            self.speaker_change,
+            "speaker-change-evidence",
+            source_sha256=self.source_sha256,
+            output_sha256=self.output_sha256,
+        )
+        streaming_operations = _unassessed_external_lane(
+            self.streaming_operations,
+            "streaming-operations-evidence",
+            source_sha256=self.source_sha256,
+            output_sha256=self.output_sha256,
+        )
+        object.__setattr__(self, "speaker_change", speaker_change)
+        object.__setattr__(self, "streaming_operations", streaming_operations)
         statuses = (
             self.transformation_evidence.status,
             self.content_preservation.status,
-            self.speaker_change.status,
+            speaker_change.status,
             self.audio_integrity.status,
-            self.streaming_operations.status,
+            streaming_operations.status,
         )
         external_evidence_complete = all(
-            _has_nonempty_evidence(lane)
-            for lane in (self.speaker_change, self.streaming_operations)
+            _has_bound_evidence(
+                lane,
+                report_type,
+                source_sha256=self.source_sha256,
+                output_sha256=self.output_sha256,
+            )
+            for lane, report_type in (
+                (self.speaker_change, "speaker-change-evidence"),
+                (self.streaming_operations, "streaming-operations-evidence"),
+            )
+        )
+        policy_complete = (
+            isinstance(self.threshold_policy, ThresholdPolicy)
+            and self.threshold_policy.status == "approved"
+            and self.policy_status == self.threshold_policy.status
+            and _REQUIRED_PASS_THRESHOLDS <= set(self.threshold_policy.values)
         )
         if VerdictStatus.FAIL in statuses:
             overall = VerdictStatus.FAIL
         elif (
             all(status is VerdictStatus.PASS for status in statuses)
-            and self.policy_status == "approved"
+            and policy_complete
             and self.content_evidence_complete
             and external_evidence_complete
         ):
@@ -111,6 +228,8 @@ _REQUIRED_INTEGRITY_THRESHOLDS = {
     "max_output_adjacent_repeated_segment_frames",
 }
 
+_REQUIRED_PASS_THRESHOLDS = _THRESHOLD_NAMES
+
 _REQUIRED_STT_FIELDS = {
     "provider",
     "model_revision",
@@ -124,6 +243,60 @@ _REQUIRED_STT_FIELDS = {
 def _has_nonempty_evidence(lane: LaneVerdict) -> bool:
     return lane.status is not VerdictStatus.PASS or any(
         isinstance(item, str) and item.strip() for item in lane.evidence
+    )
+
+
+def _has_bound_evidence(
+    lane: LaneVerdict,
+    report_type: str,
+    *,
+    source_sha256: str | None,
+    output_sha256: str | None,
+) -> bool:
+    if not _has_nonempty_evidence(lane):
+        return False
+    if lane.status is VerdictStatus.UNASSESSED:
+        return False
+    provenance = lane.provenance
+    if not isinstance(provenance, Mapping):
+        return False
+    binding = provenance.get("binding")
+    policy = provenance.get("policy")
+    return (
+        provenance.get("report_type") == report_type
+        and _has_exact_validated_identity(lane, report_type)
+        and isinstance(binding, Mapping)
+        and binding.get("verified") is True
+        and isinstance(source_sha256, str)
+        and binding.get("source_sha256") == source_sha256
+        and isinstance(output_sha256, str)
+        and binding.get("output_sha256") == output_sha256
+        and isinstance(policy, Mapping)
+        and (lane.status is VerdictStatus.FAIL or policy.get("status") == "approved")
+    )
+
+
+def _unassessed_external_lane(
+    lane: LaneVerdict,
+    report_type: str,
+    *,
+    source_sha256: str | None,
+    output_sha256: str | None,
+) -> LaneVerdict:
+    if lane.status is VerdictStatus.UNASSESSED and lane.provenance is None:
+        return lane
+    if _has_bound_evidence(
+        lane,
+        report_type,
+        source_sha256=source_sha256,
+        output_sha256=output_sha256,
+    ):
+        return lane
+    return LaneVerdict(
+        VerdictStatus.UNASSESSED,
+        "External evidence was not validated against the packaged contract.",
+        tuple(item for item in lane.evidence if isinstance(item, str) and item.strip())
+        + ("evidence_gap=external_contract_missing_or_invalid",),
     )
 
 
@@ -260,6 +433,8 @@ def evaluate_measurements(
     speaker_change: LaneVerdict | None = None,
     operations: LaneVerdict | None = None,
     stt_evidence: Mapping[str, Any] | None = None,
+    source_sha256: str | None = None,
+    output_sha256: str | None = None,
 ) -> EvaluationVerdict:
     """Build five independent lanes; no policy means no implicit verdict."""
 
@@ -283,6 +458,9 @@ def evaluate_measurements(
             streaming_operations=operations,
             policy_status=None,
             content_evidence_complete=False,
+            threshold_policy=None,
+            source_sha256=source_sha256,
+            output_sha256=output_sha256,
         )
 
     values = policy.values
@@ -455,4 +633,7 @@ def evaluate_measurements(
         streaming_operations=operations,
         policy_status=policy.status,
         content_evidence_complete=not content_evidence_issues,
+        threshold_policy=policy,
+        source_sha256=source_sha256,
+        output_sha256=output_sha256,
     )

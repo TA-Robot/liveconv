@@ -72,10 +72,15 @@ test("playout buffer waits for 80 ms, rejects gaps, and invalidates on underflow
   short.begin(9);
   short.enqueue({ generationId: 9, sequence: 0, samples: new Float32Array(4) });
   short.setAudible(true);
-  assert.deepEqual(short.render(new Float32Array(8)), {
+  const shortOutput = new Float32Array(8);
+  assert.deepEqual(short.render(shortOutput), {
     underflow: true,
-    rendered: 4,
+    rendered: 0,
   });
+  assert(
+    shortOutput.every((sample) => sample === 0),
+    "an incomplete remote quantum must not render a partial prefix",
+  );
   assert.equal(short.snapshot().accepting, false);
   assert.equal(short.snapshot().depth, 0);
 });
@@ -114,8 +119,13 @@ test("registered AudioWorklets forward capture, downmix stereo native playout, a
     assert.equal(typeof PlayoutProcessor, "function");
 
     const capture = new CaptureProcessor();
-    capture.port.receive({ type: "capture.begin", generationId: 7 });
-    capture.port.receive({ type: "capture.credit", generationId: 7, frames: 4 });
+    capture.port.receive({
+      type: "capture.begin",
+      generationId: 7,
+      maximumCredits: 50,
+    });
+    capture.port.receive({ type: "capture.credit", generationId: 7, frames: 50 });
+    assert.equal(capture.credits, 50);
     for (let block = 0; block < 8; block += 1) {
       globalThis.currentFrame = block * 128;
       capture.process([[new Float32Array(128).fill(0.25)]], [[new Float32Array(128)]]);
@@ -240,6 +250,193 @@ test("registered AudioWorklets forward capture, downmix stereo native playout, a
     const drainEvents = draining.port.sent.map((entry) => entry.message.type);
     assert(drainEvents.includes("playout.drained"));
     assert.equal(drainEvents.includes("playout.fallback"), false);
+
+    const preAudibleFinal = new PlayoutProcessor();
+    preAudibleFinal.port.receive({ type: "playout.begin", generationId: 9 });
+    for (let sequence = 0; sequence < 4; sequence += 1) {
+      preAudibleFinal.port.receive({
+        type: "playout.enqueue",
+        generationId: 9,
+        sequence,
+        sourceFrame: sequence * 960,
+        samples: new Float32Array(960).fill(0.75),
+      });
+    }
+    preAudibleFinal.port.receive({ type: "playout.end", generationId: 9 });
+    assert.equal(
+      preAudibleFinal.port.sent.some(
+        (entry) => entry.message.type === "playout.drained",
+      ),
+      false,
+      "End must not cancel queued final PCM before it becomes audible",
+    );
+    globalThis.currentFrame = 9_600;
+    preAudibleFinal.process(
+      [[new Float32Array(128).fill(1)]],
+      [[new Float32Array(128)]],
+    );
+    assert.equal(preAudibleFinal.port.sent.at(-1).message.type, "playout.ready");
+    preAudibleFinal.port.receive({ type: "playout.audible", audible: true });
+    let renderedRemoteSamples = 0;
+    for (let quantum = 1; quantum < 32; quantum += 1) {
+      globalThis.currentFrame = 9_600 + quantum * 128;
+      const output = new Float32Array(128);
+      preAudibleFinal.process([], [[output]]);
+      renderedRemoteSamples += output.filter((sample) => sample === 0.75).length;
+    }
+    assert(renderedRemoteSamples > 0);
+    assert(
+      preAudibleFinal.port.sent.some(
+        (entry) => entry.message.type === "playout.drained",
+      ),
+    );
+
+    const partialUnderflow = new PlayoutProcessor();
+    partialUnderflow.port.receive({ type: "playout.begin", generationId: 10 });
+    for (let sequence = 0; sequence < 5; sequence += 1) {
+      partialUnderflow.port.receive({
+        type: "playout.enqueue",
+        generationId: 10,
+        sequence,
+        sourceFrame: sequence * 960,
+        samples: new Float32Array(960).fill(0.5),
+      });
+    }
+    for (let quantum = 0; quantum < 75; quantum += 1) {
+      globalThis.currentFrame = quantum * 128;
+      partialUnderflow.process(
+        [[new Float32Array(128).fill(1)]],
+        [[new Float32Array(128)]],
+      );
+    }
+    globalThis.currentFrame = 9_600;
+    partialUnderflow.process(
+      [[new Float32Array(128).fill(1)]],
+      [[new Float32Array(128)]],
+    );
+    partialUnderflow.port.receive({ type: "playout.audible", audible: true });
+    for (let quantum = 1; quantum <= 36; quantum += 1) {
+      globalThis.currentFrame = 9_600 + quantum * 128;
+      partialUnderflow.process(
+        [[new Float32Array(128).fill(1)]],
+        [[new Float32Array(128)]],
+      );
+    }
+    const partialOutput = new Float32Array(128);
+    globalThis.currentFrame = 9_600 + 37 * 128;
+    partialUnderflow.process(
+      [[new Float32Array(128).fill(1)]],
+      [[partialOutput]],
+    );
+    assert(
+      partialOutput.every((sample) => sample === 1),
+      "a partial remote quantum must leave the native quantum intact",
+    );
+    assert.deepEqual(partialUnderflow.port.sent.at(-1).message, {
+      type: "playout.fallback",
+      generationId: 10,
+      reasonCode: "QUEUE_OVERFLOW",
+    });
+
+    const exactBoundary = new PlayoutProcessor();
+    exactBoundary.port.receive({ type: "playout.begin", generationId: 11 });
+    for (let sequence = 0; sequence < 4; sequence += 1) {
+      exactBoundary.port.receive({
+        type: "playout.enqueue",
+        generationId: 11,
+        sequence,
+        sourceFrame: sequence * 960,
+        samples: new Float32Array(960).fill(0.75),
+      });
+    }
+    for (let quantum = 0; quantum < 75; quantum += 1) {
+      globalThis.currentFrame = quantum * 128;
+      exactBoundary.process(
+        [[new Float32Array(128).fill(1)]],
+        [[new Float32Array(128)]],
+      );
+    }
+    globalThis.currentFrame = 9_600;
+    exactBoundary.process(
+      [[new Float32Array(128).fill(1)]],
+      [[new Float32Array(128)]],
+    );
+    exactBoundary.port.receive({ type: "playout.audible", audible: true });
+    for (let quantum = 1; quantum < 30; quantum += 1) {
+      globalThis.currentFrame = 9_600 + quantum * 128;
+      exactBoundary.process(
+        [[new Float32Array(128).fill(1)]],
+        [[new Float32Array(128)]],
+      );
+    }
+    const exactUnderflowOutput = new Float32Array(128);
+    globalThis.currentFrame = 9_600 + 30 * 128;
+    exactBoundary.process(
+      [[new Float32Array(128).fill(1)]],
+      [[exactUnderflowOutput]],
+    );
+    assert(exactUnderflowOutput.every((sample) => sample === 1));
+    assert.deepEqual(exactBoundary.port.sent.at(-1).message, {
+      type: "playout.fallback",
+      generationId: 11,
+      reasonCode: "QUEUE_OVERFLOW",
+    });
+
+    exactBoundary.port.receive({
+      type: "playout.enqueue",
+      generationId: 11,
+      sequence: 4,
+      sourceFrame: 3_840,
+      samples: new Float32Array(960).fill(0.75),
+    });
+    const beforeFreshReady = exactBoundary.port.sent.filter(
+      (entry) => entry.message.type === "playout.ready",
+    ).length;
+    const insufficientOutput = new Float32Array(128);
+    globalThis.currentFrame = 9_600 + 31 * 128;
+    exactBoundary.process(
+      [[new Float32Array(128).fill(1)]],
+      [[insufficientOutput]],
+    );
+    assert(
+      insufficientOutput.every((sample) => sample === 1),
+      "one post-underflow frame must not resume remote playout",
+    );
+    assert.equal(
+      exactBoundary.port.sent.filter(
+        (entry) => entry.message.type === "playout.ready",
+      ).length,
+      beforeFreshReady,
+    );
+    for (let sequence = 5; sequence < 9; sequence += 1) {
+      exactBoundary.port.receive({
+        type: "playout.enqueue",
+        generationId: 11,
+        sequence,
+        sourceFrame: sequence * 960,
+        samples: new Float32Array(960).fill(0.75),
+      });
+    }
+    globalThis.currentFrame = 9_600 + 32 * 128;
+    exactBoundary.process(
+      [[new Float32Array(128).fill(1)]],
+      [[new Float32Array(128)]],
+    );
+    assert.equal(
+      exactBoundary.port.sent.filter(
+        (entry) => entry.message.type === "playout.ready",
+      ).length,
+      beforeFreshReady + 1,
+      "remote playout must receive a fresh 80 ms readiness signal",
+    );
+    exactBoundary.port.receive({ type: "playout.audible", audible: true });
+    const recoveredRemote = new Float32Array(128);
+    globalThis.currentFrame = 9_600 + 33 * 128;
+    exactBoundary.process(
+      [[new Float32Array(128).fill(1)]],
+      [[recoveredRemote]],
+    );
+    assert(recoveredRemote.every((sample) => sample === 0.75));
   } finally {
     delete globalThis.AudioWorkletProcessor;
     delete globalThis.registerProcessor;

@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import os
 import signal
+import sys
 import time
 from pathlib import Path
 
@@ -13,6 +14,18 @@ from workers.runtime import ArtifactSpec
 from workers.runtime.errors import WorkerRuntimeError
 
 from ._support import ARTIFACT_PATH, FIXTURE, make_frame, make_profile, run_async
+
+_HANDSHAKE_ERROR_PROGRAM = "\n".join(
+    (
+        "import json, os, sys",
+        "request = json.loads(sys.stdin.buffer.readline())",
+        "response = {'type': 'worker.error', 'worker_protocol_version': 1, "
+        "'rpc_id': request['rpc_id'], 'code': 'MODEL_UNAVAILABLE', "
+        "'message': str(os.getpid()), 'recoverable': False}",
+        "print(json.dumps(response, separators=(',', ':')), flush=True)",
+        "for _ in sys.stdin.buffer: pass",
+    )
+)
 
 
 def process_group_exists(process_group_id: int) -> bool:
@@ -57,6 +70,26 @@ def test_matching_artifact_digest_allows_spawn() -> None:
         try:
             ready = await supervisor.start()
             assert ready.profile_id == FIXTURE["profile"]["profile_id"]
+        finally:
+            await supervisor.close()
+
+    run_async(scenario())
+
+
+def test_handshake_worker_error_kills_the_process_group() -> None:
+    async def scenario() -> None:
+        supervisor, _ = make_profile(
+            "passthrough",
+            command=(sys.executable, "-c", _HANDSHAKE_ERROR_PROGRAM),
+        )
+        try:
+            with pytest.raises(WorkerRuntimeError) as rejected:
+                await supervisor.start()
+            process_group_id = int(str(rejected.value))
+            assert rejected.value.code == "MODEL_UNAVAILABLE"
+            assert supervisor.pid is None
+            assert supervisor.process_group_id is None
+            assert not process_group_exists(process_group_id)
         finally:
             await supervisor.close()
 

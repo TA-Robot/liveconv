@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TA-Robot/liveconv/packages/speaker/schemas/speaker-evidence.schema.json",
+  "title": "liveconv bound speaker-change evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_type",
+    "evaluator",
+    "artifacts",
+    "target_authorization",
+    "policy",
+    "speaker_change",
+    "evaluation_lane",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "report_type": { "const": "speaker-change-evidence" },
+    "evaluator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "implementation",
+        "model_revision",
+        "model_sha256",
+        "runtime_lock",
+        "device",
+        "embedding_dimensions",
+        "embeddings_persisted"
+      ],
+      "properties": {
+        "implementation": { "const": "liveconv-speaker-ecapa-v1" },
+        "model_revision": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:/+\\-]{0,191}@sha256:[0-9a-f]{64}$"
+        },
+        "model_sha256": { "$ref": "#/$defs/sha256" },
+        "runtime_lock": { "$ref": "#/$defs/runtime_lock" },
+        "device": { "enum": ["cpu", "cuda"] },
+        "embedding_dimensions": { "const": 192 },
+        "embeddings_persisted": { "const": false }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "target", "output"],
+      "properties": {
+        "source": { "$ref": "#/$defs/audio_artifact" },
+        "target": { "$ref": "#/$defs/audio_artifact" },
+        "output": { "$ref": "#/$defs/audio_artifact" }
+      }
+    },
+    "target_authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "authorization_id",
+        "record_sha256",
+        "target_artifact_sha256",
+        "status"
+      ],
+      "properties": {
+        "type": {
+          "enum": ["target-voice-authorization", "synthetic-corpus-manifest"]
+        },
+        "authorization_id": { "type": "string", "minLength": 1 },
+        "record_sha256": { "$ref": "#/$defs/sha256" },
+        "target_artifact_sha256": { "$ref": "#/$defs/sha256" },
+        "status": { "const": "approved" }
+      }
+    },
+    "policy": { "$ref": "#/$defs/policy" },
+    "speaker_change": { "$ref": "#/$defs/speaker_change" },
+    "evaluation_lane": { "$ref": "#/$defs/lane" },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "runtime_lock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "sha256", "packages"],
+      "properties": {
+        "revision": { "const": "liveconv-speaker-hash-locked-runtime-v1" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "packages": {
+          "type": "object",
+          "minProperties": 4,
+          "required": ["requests", "speechbrain", "torch", "torchaudio"],
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[0-9][A-Za-z0-9_.+\\-]*$"
+          },
+          "properties": {
+            "requests": { "const": "2.32.5" },
+            "speechbrain": { "const": "1.0.3" },
+            "torch": { "const": "2.6.0" },
+            "torchaudio": { "const": "2.6.0" }
+          }
+        }
+      }
+    },
+    "audio_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sha256",
+        "bytes",
+        "duration_seconds",
+        "sample_rate_hz",
+        "channels",
+        "sample_width_bytes"
+      ],
+      "properties": {
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "type": "integer", "minimum": 45 },
+        "duration_seconds": { "type": "number", "exclusiveMinimum": 0 },
+        "sample_rate_hz": { "type": "integer", "minimum": 1 },
+        "channels": { "type": "integer", "minimum": 1 },
+        "sample_width_bytes": { "const": 2 }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "status",
+        "min_target_similarity",
+        "min_target_gain",
+        "min_target_advantage"
+      ],
+      "properties": {
+        "label": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["proposed", "approved"] },
+        "min_target_similarity": { "type": "number", "minimum": -1, "maximum": 1 },
+        "min_target_gain": { "type": "number", "minimum": -1, "maximum": 1 },
+        "min_target_advantage": { "type": "number", "minimum": -1, "maximum": 1 }
+      }
+    },
+    "speaker_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_to_target",
+        "source_to_output",
+        "target_to_output",
+        "target_similarity_gain",
+        "target_advantage",
+        "status",
+        "evidence"
+      ],
+      "properties": {
+        "source_to_target": { "type": "number", "minimum": -1, "maximum": 1 },
+        "source_to_output": { "type": "number", "minimum": -1, "maximum": 1 },
+        "target_to_output": { "type": "number", "minimum": -1, "maximum": 1 },
+        "target_similarity_gain": { "type": "number", "minimum": -2, "maximum": 2 },
+        "target_advantage": { "type": "number", "minimum": -2, "maximum": 2 },
+        "status": { "enum": ["pass", "fail"] },
+        "evidence": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "type": "string", "pattern": "\\S" }
+        }
+      }
+    },
+    "lane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "summary", "evidence"],
+      "properties": {
+        "status": { "enum": ["pass", "fail"] },
+        "summary": { "type": "string", "minLength": 1 },
+        "evidence": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "type": "string", "pattern": "\\S" }
+        }
+      }
+    }
+  }
+}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections import UserList
 from datetime import UTC, datetime
 
 import pytest
@@ -116,6 +117,74 @@ def test_rejects_empty_sensitive_or_non_json_decode_configuration(
 ):
     with pytest.raises(ConfigurationError):
         run(pcm_wav, decode_config=decode_config)
+
+
+def test_allows_pinned_tokenizers_runtime_package_provenance(pcm_wav):
+    class RuntimeProvenanceBackend(FakeBackend):
+        def canonicalize_decode_config(self, config):
+            return {
+                **config,
+                "runtime_packages": {"tokenizers": "0.23.1"},
+            }
+
+    bundle = run(pcm_wav, RuntimeProvenanceBackend())
+
+    assert bundle.stt_evidence.decode_config["runtime_packages"] == {
+        "tokenizers": "0.23.1"
+    }
+
+
+@pytest.mark.parametrize(
+    "sensitive_key",
+    [
+        "api_key",
+        "api-key",
+        "access_key",
+        "access-key",
+        "private_key",
+        "private-key",
+    ],
+)
+def test_rejects_common_credential_key_names_at_any_depth(pcm_wav, sensitive_key):
+    with pytest.raises(ConfigurationError, match="forbidden sensitive field"):
+        run(pcm_wav, decode_config={"nested": {sensitive_key: "not-recordable"}})
+
+
+@pytest.mark.parametrize(
+    "decode_config",
+    [
+        {"tokenizers": "0.23.1"},
+        {"other": {"tokenizers": "0.23.1"}},
+        {"runtime_packages": {"nested": {"tokenizers": "0.23.1"}}},
+        {"Runtime_Packages": {"tokenizers": "0.23.1"}},
+        {"runtime_packages": {"Tokenizers": "0.23.1"}},
+    ],
+)
+def test_tokenizers_exception_is_restricted_to_runtime_package_provenance(
+    pcm_wav, decode_config
+):
+    with pytest.raises(ConfigurationError, match="forbidden sensitive field"):
+        run(pcm_wav, decode_config=decode_config)
+
+
+@pytest.mark.parametrize(
+    "container",
+    [
+        ({"api_key": "not-recordable"},),
+        UserList([{"private-key": "not-recordable"}]),
+    ],
+)
+def test_rejects_sensitive_keys_inside_every_sequence_container(pcm_wav, container):
+    with pytest.raises(ConfigurationError, match="forbidden sensitive field"):
+        run(pcm_wav, decode_config={"safe": container})
+
+
+def test_tokenizers_exception_cannot_be_reached_through_a_sequence(pcm_wav):
+    with pytest.raises(ConfigurationError, match="forbidden sensitive field"):
+        run(
+            pcm_wav,
+            decode_config={"runtime_packages": ({"tokenizers": "0.23.1"},)},
+        )
 
 
 def test_backend_exception_detail_is_redacted(pcm_wav, caplog, capsys):

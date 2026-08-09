@@ -1,0 +1,2 @@
+include experiment.json
+include src/liveconv_exp004_rvc_gateway_smoke/trace.schema.json

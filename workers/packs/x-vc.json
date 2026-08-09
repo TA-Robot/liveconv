@@ -4,6 +4,10 @@
   "display_name": "X-VC",
   "status": "research",
   "ready_for_runtime": false,
+  "promotion_evidence": {
+    "status": "unavailable",
+    "evidence_sha256": null
+  },
   "role": "streaming_candidate",
   "implementation_priority": 2,
   "canonical_source_url": "https://github.com/Jerrister/X-VC",

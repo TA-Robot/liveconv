@@ -1,0 +1,80 @@
+name: Review finding
+description: Classify a concrete review finding without blocking unrelated milestones.
+title: "[REVIEW] "
+labels:
+  - review
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not attach credentials, private audio, reference voices, model weights, or sensitive host details.
+        Use one disposition: fix-now, scheduled, accepted-risk, or out-of-scope.
+  - type: input
+    id: source
+    attributes:
+      label: Source review and finding ID
+      description: Link the review, commit, test, ADR, EXP, LV, FR, NFR, GOV, or existing issue.
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Reproduced severity
+      options:
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Current reproduction and violated gate
+      description: Give synthetic steps, expected behavior, actual behavior, and the current milestone invariant.
+    validations:
+      required: true
+  - type: dropdown
+    id: disposition
+    attributes:
+      label: Disposition
+      options:
+        - fix-now
+        - scheduled
+        - accepted-risk
+        - out-of-scope
+    validations:
+      required: true
+  - type: dropdown
+    id: target
+    attributes:
+      label: Target milestone
+      options:
+        - MS-1 executable multi-model lab
+        - MS-2 candidate and architecture freeze
+        - MS-3 responsiveness and route stability
+        - MS-4 SSH-only security baseline
+        - MS-5 personal operations and recovery
+        - MS-6 personal-use v1 acceptance
+        - post-v1
+    validations:
+      required: true
+  - type: input
+    id: owner
+    attributes:
+      label: Owner and ownership zone
+      description: Name one owner and one non-overlapping file or operational boundary.
+    validations:
+      required: true
+  - type: textarea
+    id: interim
+    attributes:
+      label: Impact, detection, and workaround until target
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Closure evidence
+      description: List the regression, measurement, independent review, or explicit risk acceptance required to close.
+    validations:
+      required: true

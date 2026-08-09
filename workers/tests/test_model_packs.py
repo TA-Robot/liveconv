@@ -74,6 +74,78 @@ class ModelPackManifestTests(unittest.TestCase):
                     self.assertIsNone(artifact["sha256"])
                     self.assertIsNone(artifact["provenance_url"])
 
+    def test_promotion_evidence_matches_the_current_review_state(self) -> None:
+        for manifest in self.manifests:
+            with self.subTest(pack_id=manifest["pack_id"]):
+                if manifest["pack_id"] == "rvc-v2":
+                    self.assertEqual(
+                        manifest["promotion_evidence"],
+                        {
+                            "status": "technical_validation",
+                            "evidence_sha256": (
+                                "sha256:48aeffc090c1255f2d06194164e0ef730493606a1e0"
+                                "edae1a1c7b707548465e6"
+                            ),
+                        },
+                    )
+                else:
+                    self.assertEqual(
+                        manifest["promotion_evidence"],
+                        {"status": "unavailable", "evidence_sha256": None},
+                    )
+
+    def test_runtime_ready_pack_requires_every_promotion_gate(self) -> None:
+        manifest = deepcopy(self.manifests[0])
+        manifest["ready_for_runtime"] = True
+        with self.assertRaises(ValidationError):
+            self.validator.validate(manifest)
+
+    def test_technical_or_approved_evidence_requires_a_digest(self) -> None:
+        manifest = deepcopy(self.manifests[0])
+        manifest["promotion_evidence"]["status"] = "technical_validation"
+        with self.assertRaises(ValidationError):
+            self.validator.validate(manifest)
+
+    def test_fully_approved_runtime_state_is_schema_reachable(self) -> None:
+        manifest = deepcopy(self.manifests[0])
+        manifest["status"] = "approved"
+        manifest["ready_for_runtime"] = True
+        manifest["promotion_evidence"] = {
+            "status": "approved",
+            "evidence_sha256": f"sha256:{'d' * 64}",
+        }
+        manifest["immutability_gate"] = {
+            "status": "approved",
+            "source_revision": "a" * 40,
+            "weight_sha256": "b" * 64,
+            "approval_record_url": "https://example.test/approval/rvc-v2",
+            "blocking_reasons": [],
+        }
+        for component in ("code", "weights", "training_data", "inference_runtime"):
+            manifest["license_gate"][component] = {
+                "status": "approved",
+                "declared_license": "approved-test-license",
+                "evidence_urls": [f"https://example.test/license/{component}"],
+                "notes": "Synthetic schema reachability fixture.",
+            }
+        manifest["license_gate"]["overall_status"] = "approved"
+        for artifact in manifest["artifact_env"]:
+            artifact["sha256"] = "c" * 64
+            artifact["provenance_url"] = "https://example.test/artifact"
+        manifest["resource_budget_hypothesis"]["evidence_status"] = "measured"
+        manifest["blockers"] = []
+        manifest["mode_gates"]["streaming"] = {
+            "status": "passed",
+            "blocker_ids": [],
+            "acceptance_scope": ["schema reachability only"],
+        }
+        for name, item in manifest["acceptance_checklist"].items():
+            item["status"] = "passed"
+            item["blocked_by"] = []
+            item["evidence_url"] = f"https://example.test/evidence/{name}"
+
+        self.validator.validate(manifest)
+
     def test_license_and_acceptance_lanes_are_complete(self) -> None:
         for manifest in self.manifests:
             with self.subTest(pack_id=manifest["pack_id"]):
@@ -109,9 +181,26 @@ class ModelPackManifestTests(unittest.TestCase):
             "xvc-japanese-offline",
             manifests["x-vc"]["mode_gates"]["streaming"]["blocker_ids"],
         )
-        self.assertIn(
+        beatrice = manifests["beatrice-2"]
+        self.assertEqual(
+            beatrice["canonical_source_url"],
+            "https://huggingface.co/fierce-cats/beatrice-trainer",
+        )
+        self.assertNotIn(
             "beatrice-server-permission",
-            manifests["beatrice-2"]["mode_gates"]["offline"]["blocker_ids"],
+            {blocker["id"] for blocker in beatrice["blockers"]},
+        )
+        self.assertEqual(
+            beatrice["license_gate"]["inference_runtime"]["declared_license"],
+            "MIT",
+        )
+        self.assertEqual(
+            beatrice["acceptance_checklist"]["adapter_conformance"]["status"],
+            "pending",
+        )
+        self.assertIn(
+            "beatrice-quality",
+            beatrice["mode_gates"]["offline"]["blocker_ids"],
         )
         self.assertEqual(manifests["openvoice-v2"]["role"], "offline_control")
         self.assertEqual(

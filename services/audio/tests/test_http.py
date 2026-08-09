@@ -5,10 +5,12 @@ import json
 from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
 from liveconv_audio import Settings, create_app
+from liveconv_audio import __main__ as audio_main
 from liveconv_audio.profiles import ProfileRegistry
 
 from .conftest import ALLOWED_ORIGIN, API_TOKEN, AUTH_HEADERS
@@ -28,6 +30,113 @@ def session_request() -> dict[str, object]:
     }
 
 
+def rvc_configuration() -> dict[str, object]:
+    return {
+        "worker_module": "workers.adapters.rvc_v2.worker",
+        "adapter_revision": "liveconv-rvc-v2-worker-v1.4",
+        "source_revision": "a" * 40,
+        "artifacts": {
+            "checkpoint_sha256": "b" * 64,
+            "index_sha256": None,
+            "hubert_config_sha256": "c" * 64,
+            "hubert_preprocessor_sha256": "d" * 64,
+            "hubert_weights_sha256": "e" * 64,
+            "rmvpe_sha256": "f" * 64,
+            "worker_wheel_sha256": "1" * 64,
+            "worker_wheel_record_sha256": "2" * 64,
+            "worker_module_sha256": "3" * 64,
+            "backend_module_sha256": "4" * 64,
+            "network_isolation_module_sha256": "5" * 64,
+            "requirements_lock_sha256": "6" * 64,
+        },
+        "settings": {
+            "speaker_id": 0,
+            "pitch_shift": 0,
+            "f0_method": "rmvpe",
+            "index_rate": 0.0,
+            "rms_mix_rate": 1.0,
+            "sample_rate": 48_000,
+            "block_ms": 500,
+            "crossfade_ms": 50,
+            "context_ms": 2_500,
+            "frame_ms": 20,
+            "inference_batch_frames": 25,
+            "queue_capacity_frames": 25,
+            "resident_capacity_frames": 50,
+            "formant_shift": 0.0,
+            "threshold_dbfs": -60.0,
+        },
+    }
+
+
+def write_promotion_pack(
+    directory: Path,
+    *,
+    status: str = "technical_validation",
+    evidence_sha256: str = f"sha256:{'c' * 64}",
+    ready_for_runtime: bool = False,
+) -> Path:
+    directory.mkdir(exist_ok=True)
+    pack = directory / "rvc-v2.json"
+    pack.write_text(
+        json.dumps(
+            {
+                "pack_id": "rvc-v2",
+                "ready_for_runtime": ready_for_runtime,
+                "promotion_evidence": {
+                    "status": status,
+                    "evidence_sha256": evidence_sha256,
+                },
+            }
+        )
+    )
+    return pack
+
+
+async def invoke_chunked_session_request(
+    app,
+    *,
+    authorization: bytes | None,
+    chunks: tuple[bytes, ...],
+) -> tuple[list[dict[str, object]], int]:
+    headers = [(b"content-type", b"application/json")]
+    if authorization is not None:
+        headers.append((b"authorization", authorization))
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "POST",
+        "scheme": "http",
+        "path": "/v1/sessions",
+        "raw_path": b"/v1/sessions",
+        "query_string": b"",
+        "root_path": "",
+        "headers": headers,
+        "client": ("127.0.0.1", 12345),
+        "server": ("testserver", 80),
+    }
+    calls = 0
+
+    async def receive() -> dict[str, object]:
+        nonlocal calls
+        index = calls
+        calls += 1
+        return {
+            "type": "http.request",
+            "body": chunks[index],
+            "more_body": index + 1 < len(chunks),
+        }
+
+    sent: list[dict[str, object]] = []
+
+    async def send(message: dict[str, object]) -> None:
+        sent.append(message)
+
+    await app(scope, receive, send)
+    return sent, calls
+
+
 def test_liveness_is_public_and_every_other_api_requires_bearer(
     client: TestClient,
 ) -> None:
@@ -37,7 +146,6 @@ def test_liveness_is_public_and_every_other_api_requires_bearer(
     assert client.post("/v1/sessions", json={}).status_code == 401
     assert client.get("/docs").status_code == 404
     assert client.get("/openapi.json").status_code == 404
-
     response = client.get(
         "/health/ready",
         headers={"Authorization": "Bearer wrong-token"},
@@ -47,6 +155,59 @@ def test_liveness_is_public_and_every_other_api_requires_bearer(
     assert client.get("/health/ready", headers=AUTH_HEADERS).json() == {
         "status": "ready"
     }
+
+
+def test_module_entrypoint_imports_and_selects_the_websockets_backend(
+    monkeypatch: pytest.MonkeyPatch,
+    settings: Settings,
+) -> None:
+    __import__("websockets")
+    captured: dict[str, object] = {}
+    sentinel_app = object()
+
+    monkeypatch.setattr(
+        audio_main,
+        "Settings",
+        SimpleNamespace(from_env=lambda: settings),
+    )
+    monkeypatch.setattr(audio_main, "create_app", lambda value: sentinel_app)
+    monkeypatch.setattr(
+        audio_main.uvicorn,
+        "run",
+        lambda app, **kwargs: captured.update(app=app, **kwargs),
+    )
+
+    audio_main.main()
+
+    assert captured["app"] is sentinel_app
+    assert captured["ws"] == "websockets"
+    assert captured["ws_max_size"] == 16 * 1024
+
+
+@pytest.mark.asyncio
+async def test_unauthenticated_v1_request_body_is_not_consumed(
+    settings: Settings,
+) -> None:
+    sent, calls = await invoke_chunked_session_request(
+        create_app(settings),
+        authorization=None,
+        chunks=(b"x" * 1_000_000, b"y" * 1_000_000, b"z" * 1_000_000),
+    )
+    assert calls == 0
+    assert sent[0]["status"] == 401
+
+
+@pytest.mark.asyncio
+async def test_authenticated_chunked_v1_body_stops_at_16_kib(
+    settings: Settings,
+) -> None:
+    sent, calls = await invoke_chunked_session_request(
+        create_app(settings),
+        authorization=f"Bearer {API_TOKEN}".encode(),
+        chunks=(b"x" * 8_192, b"y" * 8_193, b"z" * 1_000_000),
+    )
+    assert calls == 2
+    assert sent[0]["status"] == 413
 
 
 def test_model_catalog_exposes_only_ready_builtin_capabilities(
@@ -260,6 +421,33 @@ def test_nonfinite_duration_settings_fail_closed(
         Settings.from_env()
 
 
+def test_technical_profile_opt_in_is_exact_and_fail_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LIVECONV_ALLOW_TECHNICAL_PROFILES", "1")
+    assert Settings.from_env().allow_technical_profiles is True
+    monkeypatch.setenv("LIVECONV_ALLOW_TECHNICAL_PROFILES", "true")
+    with pytest.raises(ValueError, match="must be 0 or 1"):
+        Settings.from_env()
+
+
+def test_technical_profiles_cannot_be_enabled_on_a_non_loopback_bind(
+    settings: Settings,
+) -> None:
+    exposed = replace(
+        settings,
+        allow_technical_profiles=True,
+        bind_host="0.0.0.0",
+    )
+    assert "technical profiles require a loopback bind host" in (
+        exposed.configuration_errors
+    )
+    concurrent = replace(settings, allow_technical_profiles=True, max_sessions=2)
+    assert "technical profiles require max_sessions=1" in (
+        concurrent.configuration_errors
+    )
+
+
 def test_packaged_default_profile_registry_matches_repository_config(
     monkeypatch: pytest.MonkeyPatch,
     settings: Settings,
@@ -300,3 +488,101 @@ def test_profile_hash_excludes_worker_endpoint_and_rejects_private_config(
     unsafe_path.write_text(json.dumps(unsafe_document))
     with pytest.raises(ValueError, match="private key names are forbidden"):
         ProfileRegistry.load(unsafe_path)
+
+
+def test_ready_external_worker_profile_is_explicit_and_publicly_redacted(
+    settings: Settings,
+    tmp_path: Path,
+) -> None:
+    source = json.loads(settings.profile_config.read_text())
+    profile = deepcopy(source["profiles"][0])
+    profile.update(
+        {
+            "profile_id": "vc.rvc.synthetic-ja.v1",
+            "kind": "voice_conversion",
+            "implementation_revision": "liveconv-rvc-v2-worker-v1.4+rvc." + "a" * 40,
+            "weight_revision": f"sha256:{'b' * 64}",
+            "minimum_context_ms": 500,
+            "voice_requirement": "pretrained_voice",
+            "resource_class": "gpu",
+        }
+    )
+    profile["runtime"] = {
+        "adapter": "worker",
+        "configuration": rvc_configuration(),
+        "worker_endpoint": str(tmp_path / "python"),
+        "max_vram_mb": 2_048,
+    }
+    worker_endpoint = tmp_path / "python"
+    worker_endpoint.write_text("#!/bin/sh\nexit 0\n")
+    worker_endpoint.chmod(0o700)
+    pack_directory = tmp_path / "packs"
+    pack = write_promotion_pack(pack_directory)
+    profile["promotion"] = {
+        "status": "technical_validation",
+        "pack_id": "rvc-v2",
+        "pack_sha256": f"sha256:{hashlib.sha256(pack.read_bytes()).hexdigest()}",
+        "evidence_sha256": f"sha256:{'c' * 64}",
+        "endpoint_sha256": (
+            f"sha256:{hashlib.sha256(worker_endpoint.read_bytes()).hexdigest()}"
+        ),
+    }
+    document = {"schema_version": 1, "profiles": [profile]}
+    path = tmp_path / "profiles.json"
+    path.write_text(json.dumps(document))
+
+    loaded = ProfileRegistry.load(path, model_pack_directory=pack_directory)
+    assert loaded.get_selectable(profile["profile_id"]) is None
+    assert loaded.public_profiles() == []
+
+    technical = ProfileRegistry.load(
+        path,
+        allow_technical_profiles=True,
+        model_pack_directory=pack_directory,
+    )
+    selected = technical.get_selectable(profile["profile_id"])
+    assert selected is not None
+    public = technical.public_profiles()[0]
+    assert public["profile_id"] == profile["profile_id"]
+    assert "runtime" not in public
+
+    document["profiles"][0]["promotion"]["evidence_sha256"] = f"sha256:{'0' * 64}"
+    path.write_text(json.dumps(document))
+    with pytest.raises(ValueError, match="promotion evidence digest differs"):
+        ProfileRegistry.load(path, model_pack_directory=pack_directory)
+    document["profiles"][0]["promotion"]["evidence_sha256"] = f"sha256:{'c' * 64}"
+
+    document["profiles"][0]["promotion"]["status"] = "approved"
+    path.write_text(json.dumps(document))
+    with pytest.raises(
+        ValueError,
+        match="promotion evidence does not authorize profile",
+    ):
+        ProfileRegistry.load(path, model_pack_directory=pack_directory)
+
+    pack = write_promotion_pack(
+        pack_directory,
+        status="approved",
+        ready_for_runtime=False,
+    )
+    document["profiles"][0]["promotion"]["pack_sha256"] = (
+        f"sha256:{hashlib.sha256(pack.read_bytes()).hexdigest()}"
+    )
+    path.write_text(json.dumps(document))
+    with pytest.raises(ValueError, match="model pack is not approved"):
+        ProfileRegistry.load(path, model_pack_directory=pack_directory)
+    document["profiles"][0]["promotion"]["status"] = "technical_validation"
+    path.write_text(json.dumps(document))
+    assert (
+        ProfileRegistry.load(
+            path,
+            allow_technical_profiles=True,
+            model_pack_directory=pack_directory,
+        ).get_selectable(profile["profile_id"])
+        is not None
+    )
+
+    document["profiles"][0]["runtime"]["worker_endpoint"] = "relative/python"
+    path.write_text(json.dumps(document))
+    with pytest.raises(ValueError, match="worker_endpoint must be an absolute path"):
+        ProfileRegistry.load(path, model_pack_directory=pack_directory)

@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "liveconv-exp004-rvc-gateway-smoke"
+version = "0.1.0"
+description = "Opt-in, metadata-redacted EXP-004 RVC Gateway technical smoke"
+requires-python = ">=3.12"
+dependencies = [
+  "httpx>=0.28,<1",
+  "liveconv-audio==0.1.0",
+  "liveconv-protocol==0.1.0",
+  "websockets>=15,<17",
+]
+
+[project.optional-dependencies]
+test = [
+  "jsonschema>=4.23,<5",
+  "pytest>=8,<9",
+  "pytest-asyncio>=0.25,<2",
+  "ruff==0.16.2",
+]
+
+[project.scripts]
+liveconv-exp004-rvc-gateway-smoke = "liveconv_exp004_rvc_gateway_smoke.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+liveconv_exp004_rvc_gateway_smoke = ["trace.schema.json"]
+
+[tool.uv.sources]
+liveconv-audio = { workspace = true }
+liveconv-protocol = { workspace = true }
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+asyncio_mode = "auto"
+pythonpath = ["src"]
+testpaths = ["exp004_tests"]
+markers = [
+  "live: requires an explicitly enabled disposable RVC Gateway and ignored runtime inputs",
+]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

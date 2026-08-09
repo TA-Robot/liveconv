@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import os
 import sys
+import wave
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 from liveconv_stt import ArtifactVerificationError, read_pcm_wav, sha256_model_tree
@@ -64,10 +66,22 @@ def test_faster_whisper_uses_verified_local_model_and_lazy_segments(
 
             return segments(), SimpleNamespace(language="ja")
 
+    def decode_audio(input_file, *, sampling_rate):
+        with wave.open(input_file, "rb") as wav:
+            observed["decode_source_rate"] = wav.getframerate()
+            observed["decode_source_frames"] = wav.getnframes()
+            target_frames = round(wav.getnframes() * sampling_rate / wav.getframerate())
+        observed["decode_target_rate"] = sampling_rate
+        return np.zeros(target_frames, dtype=np.float32)
+
     runtime_digest, runtime_versions = _runtime_lock()
     monkeypatch.setattr("importlib.metadata.version", runtime_versions.__getitem__)
+    faster_whisper = SimpleNamespace(WhisperModel=WhisperModel, __path__=[])
+    monkeypatch.setitem(sys.modules, "faster_whisper", faster_whisper)
     monkeypatch.setitem(
-        sys.modules, "faster_whisper", SimpleNamespace(WhisperModel=WhisperModel)
+        sys.modules,
+        "faster_whisper.audio",
+        SimpleNamespace(decode_audio=decode_audio),
     )
 
     backend = FasterWhisperBackend(root, expected_sha256=digest)
@@ -79,6 +93,9 @@ def test_faster_whisper_uses_verified_local_model_and_lazy_segments(
     assert observed["init"]["local_files_only"] is True
     assert observed["model_path"] == str(root)
     assert observed["sample_count"] > 0
+    assert observed["decode_source_rate"] == 16_000
+    assert observed["decode_source_frames"] == observed["sample_count"]
+    assert observed["decode_target_rate"] == 16_000
     assert observed["transcribe"]["language"] == "ja"
     assert observed["transcribe"]["log_progress"] is False
     assert config["runtime_packages"]["ctranslate2"] == "4.8.1"
@@ -88,6 +105,57 @@ def test_faster_whisper_uses_verified_local_model_and_lazy_segments(
     assert config["runtime_packages"]["tqdm"] == "4.70.0"
     assert config["runtime_lock_sha256"] == runtime_digest
     assert transcript == "日本語です"
+
+
+@pytest.mark.parametrize("sample_rate", [24_000, 48_000])
+def test_faster_whisper_resamples_pcm_array_from_declared_rate(
+    tmp_path, monkeypatch, sample_rate
+):
+    root = model_tree(tmp_path)
+    digest = sha256_model_tree(root)
+    wav_path = tmp_path / f"source-{sample_rate}.wav"
+    with wave.open(str(wav_path), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(sample_rate)
+        wav.writeframes(bytes(sample_rate * 2))
+    observed = {}
+
+    class WhisperModel:
+        def __init__(self, model_path, **options):
+            pass
+
+        def transcribe(self, samples, **options):
+            observed["sample_count"] = len(samples)
+            return iter([SimpleNamespace(text="日本語")]), SimpleNamespace(
+                language="ja"
+            )
+
+    def decode_audio(input_file, *, sampling_rate):
+        with wave.open(input_file, "rb") as wav:
+            source_rate = wav.getframerate()
+            source_frames = wav.getnframes()
+        target_frames = round(source_frames * sampling_rate / source_rate)
+        return np.zeros(target_frames, dtype=np.float32)
+
+    _, runtime_versions = _runtime_lock()
+    monkeypatch.setattr("importlib.metadata.version", runtime_versions.__getitem__)
+    monkeypatch.setitem(
+        sys.modules,
+        "faster_whisper",
+        SimpleNamespace(WhisperModel=WhisperModel, __path__=[]),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "faster_whisper.audio",
+        SimpleNamespace(decode_audio=decode_audio),
+    )
+    backend = FasterWhisperBackend(root, expected_sha256=digest)
+    config = backend.canonicalize_decode_config({"beam_size": 1})
+
+    backend.transcribe(read_pcm_wav(wav_path), language="ja", decode_config=config)
+
+    assert observed["sample_count"] == 16_000
 
 
 def test_faster_whisper_rejects_mismatched_transitive_runtime(tmp_path, monkeypatch):

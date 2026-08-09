@@ -20,9 +20,12 @@ package = false
 [tool.uv.workspace]
 members = [
   "experiments/EXP-002-remote-router/runner",
+  "experiments/EXP-003-real-model-route",
+  "experiments/EXP-004-rvc-gateway-smoke",
   "packages/protocol",
   "packages/evaluation",
   "packages/stt",
+  "packages/speaker",
   "services/audio",
   "workers",
 ]
@@ -36,10 +39,18 @@ testpaths = [
   "packages/protocol/tests",
   "packages/evaluation/tests",
   "packages/stt/tests",
+  "packages/speaker/tests",
   "experiments/EXP-002-remote-router/runner/tests",
+  "experiments/EXP-003-real-model-route/exp003_tests",
+  "experiments/EXP-004-rvc-gateway-smoke/exp004_tests",
+  "scripts/tests",
   "services/audio/tests",
   "workers/tests",
   "workers/runtime/tests",
+  "workers/adapters/beatrice_2/tests",
+  "workers/adapters/openvoice_v2/tests",
+  "workers/adapters/rvc_v2/tests",
+  "workers/adapters/x_vc/tests",
 ]
 
 [tool.ruff]

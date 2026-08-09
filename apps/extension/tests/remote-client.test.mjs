@@ -80,6 +80,7 @@ function createHarness(createRemoteClient, requestIds, clientOptions = {}) {
   let requestIndex = 0;
   const fallbacks = [];
   const outputFrames = [];
+  const transportClosures = [];
   const client = createRemoteClient({
     ...clientOptions,
     socketFactory(url) {
@@ -97,6 +98,9 @@ function createHarness(createRemoteClient, requestIds, clientOptions = {}) {
     onFallback(event) {
       fallbacks.push(event);
     },
+    onTransportClosed(event) {
+      transportClosures.push(event);
+    },
     onOutputFrame(frame) {
       outputFrames.push(frame);
     },
@@ -105,6 +109,7 @@ function createHarness(createRemoteClient, requestIds, clientOptions = {}) {
     client,
     fallbacks,
     outputFrames,
+    transportClosures,
     get socket() {
       return socket;
     },
@@ -201,6 +206,67 @@ test("pre-open WebSocket error and close always settle the connect operation", a
   }
 });
 
+test("idle WebSocket error and close notify once per current connection epoch", async () => {
+  const { createRemoteClient } = await import(moduleUrl);
+  const fixture = await readJson(fixtureUrl);
+  const harness = createHarness(createRemoteClient, [
+    "attach-1",
+    "start-7",
+    "end-7",
+    "attach-2",
+  ]);
+  await connectReady(harness, fixture);
+  let operation = harness.client.startGeneration(7);
+  harness.socket.receive(
+    JSON.stringify(generationReady(fixture, "start-7", 7)),
+  );
+  await operation;
+  operation = harness.client.endGeneration(7);
+  harness.socket.receive(
+    JSON.stringify(
+      generationTerminal(fixture, "generation.completed", "end-7", 7),
+    ),
+  );
+  await operation;
+  assert.equal(harness.client.snapshot().generationId, null);
+
+  const retiredSocket = harness.socket;
+  retiredSocket.fail(new Error("idle tunnel disappeared"));
+  assert.deepEqual(harness.transportClosures, [
+    {
+      connectionEpoch: 1,
+      reasonCode: "TRANSPORT_CLOSED",
+      message: "idle tunnel disappeared",
+    },
+  ]);
+  assert.equal(harness.fallbacks.length, 0);
+
+  operation = harness.client.connect({
+    url: fixture.url,
+    sessionId: fixture.session_id,
+    ticket: "fresh-one-use-ticket",
+  });
+  const currentSocket = harness.socket;
+  currentSocket.open();
+  currentSocket.receive(
+    JSON.stringify(sessionReady(fixture, "attach-2")),
+  );
+  await operation;
+
+  retiredSocket.close(1006, "late close from retired epoch");
+  assert.equal(harness.client.snapshot().transport, "ready");
+  assert.equal(harness.transportClosures.length, 1);
+
+  currentSocket.close(1006, "current idle close");
+  assert.equal(harness.client.snapshot().transport, "disconnected");
+  assert.deepEqual(harness.transportClosures.at(-1), {
+    connectionEpoch: 2,
+    reasonCode: "TRANSPORT_CLOSED",
+    closeCode: 1006,
+    message: "remote WebSocket closed (1006)",
+  });
+});
+
 test("close aborts a connecting socket without waiting for open", async () => {
   const { createRemoteClient } = await import(moduleUrl);
   const fixture = await readJson(fixtureUrl);
@@ -245,6 +311,79 @@ test("attach and control requests have deterministic deadlines", async () => {
   [...timers.values()][0]();
   await assert.rejects(operation, /session\.attach timed out/);
   assert.equal(harness.client.snapshot().transport, "disconnected");
+});
+
+test("cold generation start uses its bounded deadline and ignores a valid late ready response", async () => {
+  const { createRemoteClient } = await import(moduleUrl);
+  const fixture = await readJson(fixtureUrl);
+  const timers = new Map();
+  let nextTimer = 0;
+  const harness = createHarness(
+    createRemoteClient,
+    ["attach-1", "cold-start-7"],
+    {
+      requestTimeoutMilliseconds: 5_000,
+      generationStartTimeoutMilliseconds: 50,
+      setTimer(callback, milliseconds) {
+        nextTimer += 1;
+        timers.set(nextTimer, { callback, milliseconds });
+        return nextTimer;
+      },
+      clearTimer(timer) {
+        timers.delete(timer);
+      },
+    },
+  );
+  await connectReady(harness, fixture);
+
+  const start = harness.client.startGeneration(7);
+  const timer = [...timers.values()][0];
+  assert.equal(timer.milliseconds, 50);
+  timer.callback();
+  await assert.rejects(start, /generation\.start timed out/);
+  assert.equal(harness.client.snapshot().generationState, "failed");
+  assert.equal(harness.fallbacks.at(-1).reason_code, "MODEL_TIMEOUT");
+  assert.deepEqual(harness.socket.closeCalls.at(-1), {
+    code: 1008,
+    reason: "generation start timeout",
+  });
+
+  harness.socket.receive(
+    JSON.stringify(generationReady(fixture, "cold-start-7", 7)),
+  );
+  assert.equal(harness.client.snapshot().generationState, "failed");
+  assert.equal(harness.fallbacks.length, 1);
+});
+
+test("session.ready must preserve the HTTP-negotiated profile identity and limits", async () => {
+  const { createRemoteClient } = await import(moduleUrl);
+  const fixture = await readJson(fixtureUrl);
+  const harness = createHarness(createRemoteClient, ["attach-1"]);
+  const operation = harness.client.connect({
+    url: fixture.url,
+    sessionId: fixture.session_id,
+    ticket: fixture.ticket,
+    expectedProfile: {
+      profileId: fixture.profile_id,
+      profileHash: fixture.profile_hash,
+      configurationHash: fixture.configuration_hash,
+      pipelineId: fixture.pipeline_id,
+    },
+    expectedLimits: {
+      ingressBudgetMs: fixture.limits.ingress_budget_ms,
+      maxIngressFrames: fixture.limits.max_ingress_frames,
+    },
+  });
+  harness.socket.open();
+  harness.socket.receive(
+    JSON.stringify({
+      ...sessionReady(fixture, "attach-1"),
+      profile_hash:
+        "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    }),
+  );
+  await assert.rejects(operation, /profile_hash does not match/);
+  assert.notEqual(harness.client.snapshot().transport, "ready");
 });
 
 test("generation start, end, and cancel use acknowledged v1 controls", async () => {
@@ -448,6 +587,43 @@ test("server fallback invalidates a generation before later binary output arrive
     [],
     "late output after fallback must never reach the jitter queue",
   );
+});
+
+test("late output from a canceled generation is discarded without poisoning its successor", async () => {
+  const { createRemoteClient } = await import(moduleUrl);
+  const { encodePcmFrame } = await import("../src/protocol/frame.js");
+  const fixture = await readJson(fixtureUrl);
+  const harness = createHarness(createRemoteClient, [
+    "attach-1",
+    "start-7",
+    "cancel-7",
+    "start-8",
+  ]);
+  await connectReady(harness, fixture);
+  let operation = harness.client.startGeneration(7);
+  harness.socket.receive(
+    JSON.stringify(generationReady(fixture, "start-7", 7)),
+  );
+  await operation;
+  operation = harness.client.cancelGeneration(7);
+  harness.socket.receive(
+    JSON.stringify(
+      generationTerminal(fixture, "generation.canceled", "cancel-7", 7),
+    ),
+  );
+  await operation;
+  operation = harness.client.startGeneration(8);
+  harness.socket.receive(
+    JSON.stringify(generationReady(fixture, "start-8", 8)),
+  );
+  await operation;
+
+  const stale = createSyntheticFrame({ generationId: 7 });
+  harness.socket.receive(encodePcmFrame(stale.header, stale.samples));
+  assert.equal(harness.client.snapshot().generationState, "streaming");
+  assert.equal(harness.client.snapshot().generationId, 8);
+  assert.equal(harness.fallbacks.length, 0);
+  assert.equal(harness.outputFrames.length, 0);
 });
 
 test("uplink WebSocket buffering is bounded before another PCM frame is accepted", async () => {

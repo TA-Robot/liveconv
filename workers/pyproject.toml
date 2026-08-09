@@ -6,14 +6,41 @@ build-backend = "setuptools.build_meta"
 name = "liveconv-worker-runtime"
 version = "0.1.0"
 description = "Isolated subprocess supervisor and conformance worker for liveconv"
+readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
 
 [tool.setuptools]
-packages = ["workers", "workers.runtime", "workers.conformance"]
+packages = [
+  "workers",
+  "workers.runtime",
+  "workers.conformance",
+  "workers.packs",
+  "workers.adapters",
+  "workers.adapters.beatrice_2",
+  "workers.adapters.openvoice_v2",
+  "workers.adapters.rvc_v2",
+  "workers.adapters.rvc_v2.tools",
+  "workers.adapters.x_vc",
+]
 package-dir = { workers = "." }
+
+[tool.setuptools.package-data]
+"workers" = ["model-pack.schema.json"]
+"workers.packs" = ["*.json"]
+"workers.adapters.beatrice_2" = ["*.md", "requirements-runtime*"]
+"workers.adapters.openvoice_v2" = ["*.md", "requirements-runtime*"]
+"workers.adapters.rvc_v2" = ["*.md", "requirements-runtime*"]
+"workers.adapters.x_vc" = ["*.md", "requirements-runtime*"]
 
 [tool.pytest.ini_options]
 addopts = "-ra"
 pythonpath = [".."]
-testpaths = ["runtime/tests", "tests"]
+testpaths = [
+  "runtime/tests",
+  "tests",
+  "adapters/beatrice_2/tests",
+  "adapters/openvoice_v2/tests",
+  "adapters/rvc_v2/tests",
+  "adapters/x_vc/tests",
+]

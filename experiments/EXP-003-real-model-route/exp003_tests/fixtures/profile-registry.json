@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "profiles": [
+    {
+      "profile_id": "vc.fake.alpha.v1",
+      "kind": "voice_conversion",
+      "readiness": "ready",
+      "adapter_api_version": 1,
+      "implementation_revision": "fake-alpha-revision",
+      "weight_revision": "fake-alpha-weight",
+      "streaming": true,
+      "cancellation": "immediate",
+      "input_sample_rates": [48000],
+      "output_sample_rates": [48000],
+      "frame_ms": 20,
+      "minimum_context_ms": 60,
+      "voice_requirement": "none",
+      "warmup_policy": "eager",
+      "resource_class": "gpu",
+      "license_record": "Synthetic deterministic test fixture only.",
+      "timeouts": {
+        "first_output_ms": 1000,
+        "stall_ms": 1000
+      },
+      "runtime": {
+        "adapter": "worker",
+        "configuration": {
+          "worker_module": "tests.fake.alpha",
+          "settings": {
+            "batch_ms": 60,
+            "fixture_mode": "gain"
+          }
+        },
+        "worker_endpoint": "/private/fake-alpha-python",
+        "max_vram_mb": 1024
+      }
+    },
+    {
+      "profile_id": "vc.fake.beta.v1",
+      "kind": "voice_conversion",
+      "readiness": "ready",
+      "adapter_api_version": 1,
+      "implementation_revision": "fake-beta-revision",
+      "weight_revision": "fake-beta-weight",
+      "streaming": true,
+      "cancellation": "immediate",
+      "input_sample_rates": [48000],
+      "output_sample_rates": [48000],
+      "frame_ms": 20,
+      "minimum_context_ms": 40,
+      "voice_requirement": "none",
+      "warmup_policy": "eager",
+      "resource_class": "gpu",
+      "license_record": "Synthetic deterministic test fixture only.",
+      "timeouts": {
+        "first_output_ms": 1000,
+        "stall_ms": 1000
+      },
+      "runtime": {
+        "adapter": "worker",
+        "configuration": {
+          "worker_module": "tests.fake.beta",
+          "settings": {
+            "batch_ms": 60,
+            "fixture_mode": "gain"
+          }
+        },
+        "worker_endpoint": "/private/fake-beta-python",
+        "max_vram_mb": 1024
+      }
+    }
+  ]
+}

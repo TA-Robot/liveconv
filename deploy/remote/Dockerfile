@@ -18,15 +18,32 @@ COPY pyproject.toml uv.lock ./
 COPY packages/protocol/pyproject.toml packages/protocol/pyproject.toml
 COPY packages/evaluation/pyproject.toml packages/evaluation/pyproject.toml
 COPY packages/stt/pyproject.toml packages/stt/pyproject.toml
+COPY packages/speaker/pyproject.toml packages/speaker/pyproject.toml
 COPY services/audio/pyproject.toml services/audio/pyproject.toml
 COPY workers/pyproject.toml workers/pyproject.toml
 COPY experiments/EXP-002-remote-router/runner/pyproject.toml experiments/EXP-002-remote-router/runner/pyproject.toml
 
-COPY packages/protocol/liveconv_protocol packages/protocol/liveconv_protocol
-COPY services/audio/liveconv_audio services/audio/liveconv_audio
+COPY packages/protocol/liveconv_protocol/*.py packages/protocol/liveconv_protocol/
+COPY services/audio/liveconv_audio/*.py services/audio/liveconv_audio/
+COPY services/audio/liveconv_audio/default-model-profiles.json services/audio/liveconv_audio/default-model-profiles.json
 COPY workers/__init__.py workers/__init__.py
-COPY workers/runtime workers/runtime
-COPY workers/conformance workers/conformance
+COPY workers/README.md workers/README.md
+COPY workers/model-pack.schema.json workers/model-pack.schema.json
+COPY workers/packs/*.py workers/packs/
+COPY workers/packs/*.json workers/packs/
+COPY workers/runtime/*.py workers/runtime/
+COPY workers/conformance/*.py workers/conformance/
+
+# The worker distribution currently enumerates each adapter package. Include
+# only its importable Python sources so setuptools can build that dependency;
+# model libraries, runtime locks, repositories, and weights stay out of this
+# deterministic Gateway image.
+COPY workers/adapters/__init__.py workers/adapters/__init__.py
+COPY workers/adapters/beatrice_2/*.py workers/adapters/beatrice_2/
+COPY workers/adapters/openvoice_v2/*.py workers/adapters/openvoice_v2/
+COPY workers/adapters/rvc_v2/*.py workers/adapters/rvc_v2/
+COPY workers/adapters/rvc_v2/tools/__init__.py workers/adapters/rvc_v2/tools/__init__.py
+COPY workers/adapters/x_vc/*.py workers/adapters/x_vc/
 
 RUN uv sync \
     --frozen \

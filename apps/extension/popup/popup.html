@@ -28,11 +28,14 @@
           <input
             type="text"
             name="profileId"
+            list="profile-options"
             value="test.passthrough.v1"
             required
             autocomplete="off"
             spellcheck="false"
           >
+          <datalist id="profile-options"></datalist>
+          <small data-role="profile-identity">Load the Gateway catalog to verify a profile.</small>
         </label>
         <label>
           Session token
@@ -44,6 +47,10 @@
             autocomplete="off"
           >
         </label>
+        <div class="profile-actions">
+          <button type="button" data-action="models" aria-label="Load Gateway profiles">Load profiles</button>
+          <button type="button" data-action="select-profile" aria-label="Select profile for next generation">Select profile</button>
+        </div>
         <button type="submit" data-action="configure" disabled>Save session</button>
       </form>
       <div class="controls" role="group" aria-label="Session controls">

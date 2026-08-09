@@ -143,6 +143,13 @@ def run(mode: str, gain: float | None) -> int:
                     _emit(_output(queued[0], None))
                     queued.clear()
                 continue
+            if mode == "batch-25":
+                queued.append(message)
+                if len(queued) == _CAPACITY_FRAMES:
+                    for frame in queued:
+                        _emit(_output(frame, None))
+                    queued.clear()
+                continue
             if mode == "one-output-then-stall" and output_count > 0:
                 queued.append(message)
                 continue
@@ -151,12 +158,18 @@ def run(mode: str, gain: float | None) -> int:
         elif message_type == "generation.end":
             if mode == "ignore-end":
                 continue
+            if mode == "cancellation-race":
+                continue
             if mode == "delayed":
                 for frame in queued:
                     _emit(_output(frame, None))
                 queued.clear()
             elif mode in {"stalled", "one-output-then-stall"} and queued:
                 continue
+            elif mode == "batch-25":
+                for frame in queued:
+                    _emit(_output(frame, None))
+                queued.clear()
             _emit(
                 _control(
                     "generation.completed",
@@ -228,6 +241,7 @@ def main(argv: list[str] | None = None) -> int:
             "ignore-end",
             "orphan-child",
             "reverse-order",
+            "batch-25",
         ),
     )
     parser.add_argument("--gain", type=float)

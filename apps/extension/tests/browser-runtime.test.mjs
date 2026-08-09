@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 const moduleUrl = new URL("../src/browser-runtime.js", import.meta.url);
+const gatewayUrlModuleUrl = new URL("../src/gateway-url.js", import.meta.url);
+const popupStateModuleUrl = new URL("../popup/popup-state.js", import.meta.url);
 
 function createHarness(stageHooks = {}) {
   const calls = [];
@@ -15,6 +17,7 @@ function createHarness(stageHooks = {}) {
   };
   const extensionId = "abcdefghijklmnopabcdefghijklmnop";
   let activeTabId = 42;
+  let offscreenEpoch = 0;
   const chromeApi = {
     runtime: {
       id: extensionId,
@@ -33,6 +36,9 @@ function createHarness(stageHooks = {}) {
         }
         if (message.type === "offscreen.native.start") {
           offscreenState.capture = "running";
+          offscreenEpoch += 1;
+          offscreenState.offscreenEpoch =
+            `00000000-0000-4000-8000-${String(offscreenEpoch).padStart(12, "0")}`;
         } else if (message.type === "offscreen.remote.connect") {
           offscreenState.remote = "pending";
           offscreenState.generationId = message.generationId;
@@ -48,6 +54,9 @@ function createHarness(stageHooks = {}) {
           offscreenState.route = "native";
           offscreenState.remote = "pending";
           offscreenState.generationId = message.generationId;
+        } else if (message.type === "offscreen.model.select") {
+          offscreenState.route = "native";
+          offscreenState.remote = "ready";
         } else if (message.type === "offscreen.stop") {
           Object.assign(offscreenState, {
             capture: "stopped",
@@ -55,6 +64,7 @@ function createHarness(stageHooks = {}) {
             remote: "disconnected",
             generationId: null,
           });
+          delete offscreenState.offscreenEpoch;
         }
         return { ok: true, state: { ...offscreenState } };
       },
@@ -106,6 +116,7 @@ function createHarness(stageHooks = {}) {
         },
         async remove(key) {
           calls.push({ name: "storage.session.remove", key });
+          await stageHooks.storageRemove?.(key);
           sessionStorage.delete(key);
         },
       },
@@ -166,11 +177,53 @@ function okJson(value, status = 201) {
 
 function sessionResponse() {
   return {
+    protocol_version: 1,
     session_id: "11111111-1111-4111-8111-111111111111",
     pipeline_id: "22222222-2222-4222-8222-222222222222",
+    profile_id: "test.passthrough.v1",
+    profile_hash:
+      "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    configuration_hash:
+      "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    limits: { ingress_budget_ms: 500, max_ingress_frames: 25 },
     websocket_path: "/v1/ws",
     ticket: "one-use-ticket-never-persisted",
   };
+}
+
+function catalogProfile(profileId = "test.passthrough.v1") {
+  return {
+    profile_id: profileId,
+    kind: profileId === "test.gain.v1" ? "deterministic_test" : "voice_conversion",
+    adapter_api_version: 1,
+    implementation_revision: "synthetic-v1",
+    weight_revision: null,
+    streaming: true,
+    cancellation: "immediate",
+    input_sample_rates: [48_000],
+    output_sample_rates: [48_000],
+    frame_ms: 20,
+    minimum_context_ms: 0,
+    voice_requirement: "none",
+    readiness: "ready",
+    warmup_policy: "none",
+    resource_class: "cpu",
+    profile_hash:
+      "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    configuration_hash:
+      "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  };
+}
+
+function modelCatalog() {
+  return {
+    protocol_version: 1,
+    profiles: [catalogProfile(), catalogProfile("test.gain.v1")],
+  };
+}
+
+function gatewayDocument(url, session = sessionResponse()) {
+  return url.endsWith("/v1/models") ? modelCatalog() : session;
 }
 
 test("explicit start establishes Offscreen native loopback before any optional remote work", async () => {
@@ -265,7 +318,7 @@ test("configured start creates an authenticated session and passes only the one-
       if (options.method === "DELETE") {
         return { ok: true, status: 204 };
       }
-      return okJson(sessionResponse());
+      return okJson(gatewayDocument(url));
     },
   });
   const token = "0123456789abcdefghijklmnopqrstuv";
@@ -277,10 +330,12 @@ test("configured start creates an authenticated session and passes only the one-
 
   await runtime.start({ userGesture: true });
 
-  assert.equal(requests[0].url, "https://audio.example.test/v1/sessions");
-  assert.equal(requests[0].options.method, "POST");
-  assert.equal(requests[0].options.headers.authorization, `Bearer ${token}`);
-  assert.deepEqual(JSON.parse(requests[0].options.body), {
+  assert.equal(requests[0].url, "https://audio.example.test/v1/models");
+  assert.equal(requests[0].options.method, "GET");
+  assert.equal(requests[1].url, "https://audio.example.test/v1/sessions");
+  assert.equal(requests[1].options.method, "POST");
+  assert.equal(requests[1].options.headers.authorization, `Bearer ${token}`);
+  assert.deepEqual(JSON.parse(requests[1].options.body), {
     protocol_version: 1,
     profile_id: "test.passthrough.v1",
     input: {
@@ -297,15 +352,25 @@ test("configured start creates an authenticated session and passes only the one-
   assert.equal(remoteMessage.url, "wss://audio.example.test/v1/ws");
   assert.equal(remoteMessage.ticket, sessionResponse().ticket);
   assert.equal(remoteMessage.generationId, 1);
+  assert.deepEqual(remoteMessage.expectedLimits, {
+    ingressBudgetMs: 500,
+    maxIngressFrames: 25,
+  });
+  assert.deepEqual(remoteMessage.expectedProfile, {
+    profileId: "test.passthrough.v1",
+    profileHash: sessionResponse().profile_hash,
+    configurationHash: sessionResponse().configuration_hash,
+    pipelineId: sessionResponse().pipeline_id,
+  });
   assert.equal(
     JSON.stringify([...harness.sessionStorage.values()]).includes(sessionResponse().ticket),
     false,
   );
 
   await runtime.stop();
-  assert.equal(requests[1].options.method, "DELETE");
+  assert.equal(requests[2].options.method, "DELETE");
   assert.equal(
-    requests[1].url,
+    requests[2].url,
     "https://audio.example.test/v1/sessions/11111111-1111-4111-8111-111111111111",
   );
 });
@@ -334,13 +399,54 @@ test("gateway failure degrades to the already-running native path", async () => 
   assert.match(state.lastError, /HTTP 503/);
 });
 
+test("remote attach failure removes the persisted captured-tab session binding", async () => {
+  const { createBrowserRuntime, sessionStorageKeys } = await import(moduleUrl);
+  const harness = createHarness({
+    sendMessage(message) {
+      if (message.type === "offscreen.remote.connect") {
+        throw new Error("synthetic remote attach failure");
+      }
+    },
+  });
+  const runtime = createBrowserRuntime({
+    chromeApi: harness.chromeApi,
+    async fetchFn(url, options) {
+      if (options?.method === "DELETE") {
+        return { ok: true, status: 204 };
+      }
+      return okJson(gatewayDocument(url));
+    },
+  });
+  await runtime.configure({
+    gatewayUrl: "https://audio.example.test",
+    profileId: "test.passthrough.v1",
+    token: "0123456789abcdefghijklmnopqrstuv",
+  });
+
+  await runtime.start({ userGesture: true });
+
+  const state = await runtime.snapshot();
+  assert.equal(state.capture, "running");
+  assert.equal(state.remote, "degraded");
+  assert.equal(
+    harness.sessionStorage.has(sessionStorageKeys.activeSession),
+    false,
+    "remote failure must remove the session and its captured-tab binding together",
+  );
+});
+
 test("malicious websocket paths cannot escape the configured gateway origin", async () => {
   const { createBrowserRuntime } = await import(moduleUrl);
   const harness = createHarness();
   const runtime = createBrowserRuntime({
     chromeApi: harness.chromeApi,
-    async fetchFn() {
-      return okJson({ ...sessionResponse(), websocket_path: "/\\evil.test/ws" });
+    async fetchFn(url) {
+      return okJson(
+        gatewayDocument(url, {
+          ...sessionResponse(),
+          websocket_path: "/\\evil.test/ws",
+        }),
+      );
     },
   });
   await runtime.configure({
@@ -367,7 +473,10 @@ test("Stop preempts a session POST that never resolves", async () => {
   let fetchStarted = false;
   const runtime = createBrowserRuntime({
     chromeApi: harness.chromeApi,
-    fetchFn: async () => {
+    fetchFn: async (url) => {
+      if (url.endsWith("/v1/models")) {
+        return okJson(modelCatalog());
+      }
       fetchStarted = true;
       return new Promise(() => {});
     },
@@ -566,7 +675,7 @@ test("a second Stop preserves Stop A gateway cleanup while canceling Start B", a
         deleteSignal = options.signal;
         return deleteGate.promise;
       }
-      return okJson(sessionResponse());
+      return okJson(gatewayDocument(url));
     },
     requestTimeoutMilliseconds: 10_000,
   });
@@ -789,7 +898,7 @@ for (const stage of pendingGatewayMetadataStages) {
         if (options.method === "DELETE") {
           return { ok: true, status: 204 };
         }
-        return okJson(sessionResponse());
+        return okJson(gatewayDocument(url));
       },
     });
     await runtime.configure({
@@ -873,7 +982,9 @@ test("a late session write from Start A restores Start B metadata", async () => 
       if (options.method === "DELETE") {
         return { ok: true, status: 204 };
       }
-      return okJson(pendingResponses.shift());
+      return okJson(
+        url.endsWith("/v1/models") ? modelCatalog() : pendingResponses.shift(),
+      );
     },
   });
   await runtime.configure({
@@ -960,12 +1071,372 @@ test("Stop recovers persisted session metadata after a service-worker reload", a
   );
 });
 
+test("Stop expresses native stopped intent before a restarted worker metadata read fails", async () => {
+  const { createBrowserRuntime, sessionStorageKeys } = await import(moduleUrl);
+  let rejectActiveSessionRead = false;
+  const harness = createHarness({
+    storageGet(key) {
+      if (rejectActiveSessionRead && key === sessionStorageKeys.activeSession) {
+        throw new Error("synthetic active-session read failure");
+      }
+    },
+  });
+  const token = "0123456789abcdefghijklmnopqrstuv";
+  harness.sessionStorage.set(sessionStorageKeys.configuration, {
+    gatewayUrl: "https://audio.example.test",
+    profileId: "test.passthrough.v1",
+    token,
+  });
+  harness.sessionStorage.set(sessionStorageKeys.activeSession, {
+    gatewayUrl: "https://audio.example.test",
+    sessionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    generationId: 7,
+  });
+  await harness.chromeApi.offscreen.createDocument({});
+  harness.offscreenState.capture = "running";
+  harness.offscreenState.route = "remote";
+  harness.offscreenState.remote = "ready";
+  harness.offscreenState.generationId = 7;
+
+  const runtime = createBrowserRuntime({
+    chromeApi: harness.chromeApi,
+    fetchFn: async () => assert.fail("unread session metadata cannot be deleted"),
+  });
+  rejectActiveSessionRead = true;
+
+  const stop = runtime.stop();
+  assert.deepEqual(await runtime.snapshot(), {
+    capture: "stopping",
+    route: "native",
+    remote: "disconnected",
+    generationId: null,
+    configuration: {
+      configured: true,
+      gatewayUrl: "https://audio.example.test",
+      profileId: "test.passthrough.v1",
+    },
+  });
+  await assert.rejects(stop, /active-session read failure/i);
+
+  const offscreenStop = harness.calls.findIndex(
+    (call) =>
+      call.name === "runtime.sendMessage" && call.message.type === "offscreen.stop",
+  );
+  const failedRead = harness.calls.findIndex(
+    (call) =>
+      call.name === "storage.session.get" && call.key === sessionStorageKeys.activeSession,
+  );
+  assert(offscreenStop >= 0, "Stop must reach Offscreen native fallback");
+  assert(harness.calls.some((call) => call.name === "offscreen.closeDocument"));
+  assert(offscreenStop < failedRead, "Offscreen shutdown must precede metadata recovery");
+  assert.equal(harness.offscreenOpen, false);
+  assert.equal((await runtime.snapshot()).capture, "stopped");
+});
+
+test("Stop closes native playout and attempts Gateway cleanup when metadata removal fails", async () => {
+  const { createBrowserRuntime, sessionStorageKeys } = await import(moduleUrl);
+  const harness = createHarness({
+    storageRemove(key) {
+      if (key === sessionStorageKeys.activeSession) {
+        throw new Error("synthetic active-session removal failure");
+      }
+    },
+  });
+  const requests = [];
+  const runtime = createBrowserRuntime({
+    chromeApi: harness.chromeApi,
+    async fetchFn(url, options) {
+      requests.push({ url, options });
+      if (options.method === "DELETE") {
+        return { ok: true, status: 204 };
+      }
+      return okJson(gatewayDocument(url));
+    },
+  });
+  await runtime.configure({
+    gatewayUrl: "https://audio.example.test",
+    profileId: "test.passthrough.v1",
+    token: "0123456789abcdefghijklmnopqrstuv",
+  });
+  await runtime.start({ userGesture: true });
+
+  await assert.rejects(runtime.stop(), /active-session removal failure/i);
+
+  assert.equal(harness.offscreenOpen, false);
+  assert.equal((await runtime.snapshot()).capture, "stopped");
+  assert(
+    harness.calls.some(
+      (call) =>
+        call.name === "runtime.sendMessage" && call.message.type === "offscreen.stop",
+    ),
+  );
+  assert(
+    requests.some((request) => request.options.method === "DELETE"),
+    "Stop must retain best-effort Gateway cleanup after local metadata failure",
+  );
+});
+
+test("configuration commit does not reread storage after the authoritative write", async () => {
+  const { createBrowserRuntime, sessionStorageKeys } = await import(moduleUrl);
+  let configurationWritten = false;
+  const harness = createHarness({
+    storageSet(values) {
+      if (Object.hasOwn(values, sessionStorageKeys.configuration)) {
+        configurationWritten = true;
+      }
+    },
+    storageGet(key) {
+      if (configurationWritten && key === sessionStorageKeys.configuration) {
+        throw new Error("synthetic post-write configuration read failure");
+      }
+    },
+  });
+  const runtime = createBrowserRuntime({
+    chromeApi: harness.chromeApi,
+    fetchFn: async () => assert.fail("configuration does not fetch"),
+  });
+
+  const state = await runtime.configure({
+    gatewayUrl: "https://next.example.test",
+    profileId: "test.passthrough.v1",
+    token: "0123456789abcdefghijklmnopqrstuv",
+  });
+
+  assert.deepEqual(state.configuration, {
+    configured: true,
+    gatewayUrl: "https://next.example.test",
+    profileId: "test.passthrough.v1",
+  });
+  assert.equal(
+    harness.sessionStorage.get(sessionStorageKeys.configuration).gatewayUrl,
+    "https://next.example.test",
+  );
+  assert.equal(
+    harness.calls.filter(
+      (call) =>
+        call.name === "storage.session.get" &&
+        call.key === sessionStorageKeys.configuration,
+    ).length,
+    0,
+  );
+});
+
+test("a committed configuration keeps only its new optional host permission after a post-write read failure", async () => {
+  const { createBrowserRuntime, sessionStorageKeys } = await import(moduleUrl);
+  const { replaceGatewayPermission } = await import(gatewayUrlModuleUrl);
+  let rejectConfigurationRead = false;
+  const harness = createHarness({
+    storageGet(key) {
+      if (rejectConfigurationRead && key === sessionStorageKeys.configuration) {
+        throw new Error("synthetic post-write configuration read failure");
+      }
+    },
+  });
+  const runtime = createBrowserRuntime({
+    chromeApi: harness.chromeApi,
+    fetchFn: async () => assert.fail("configuration does not fetch"),
+  });
+  const oldOrigin = "https://old.example.test/*";
+  const nextOrigin = "https://next.example.test/*";
+  const grants = new Set([oldOrigin]);
+  const permissionCalls = [];
+  const permissions = {
+    async contains({ origins }) {
+      return origins.every((origin) => grants.has(origin));
+    },
+    async request({ origins }) {
+      permissionCalls.push({ name: "request", origins });
+      for (const origin of origins) {
+        grants.add(origin);
+      }
+      return true;
+    },
+    async remove({ origins }) {
+      permissionCalls.push({ name: "remove", origins });
+      for (const origin of origins) {
+        grants.delete(origin);
+      }
+      return true;
+    },
+  };
+
+  await runtime.configure({
+    gatewayUrl: "https://old.example.test",
+    profileId: "test.passthrough.v1",
+    token: "0123456789abcdefghijklmnopqrstuv",
+  });
+  rejectConfigurationRead = true;
+
+  const result = await replaceGatewayPermission({
+    permissions,
+    nextOrigin,
+    previousOrigin: oldOrigin,
+    commit: async () => ({
+      ok: true,
+      state: await runtime.configure({
+        gatewayUrl: "https://next.example.test",
+        profileId: "test.passthrough.v1",
+        token: "0123456789abcdefghijklmnopqrstuv",
+      }),
+    }),
+  });
+
+  assert.equal(result.granted, true);
+  assert.equal(grants.has(nextOrigin), true);
+  assert.equal(grants.has(oldOrigin), false);
+  assert.deepEqual(permissionCalls, [
+    { name: "request", origins: [nextOrigin] },
+    { name: "remove", origins: [oldOrigin] },
+  ]);
+  assert.equal(
+    harness.sessionStorage.get(sessionStorageKeys.configuration).gatewayUrl,
+    "https://next.example.test",
+  );
+});
+
+test("Stop clears the captured-tab session binding when Offscreen shutdown fails", async () => {
+  const { createBrowserRuntime, sessionStorageKeys } = await import(moduleUrl);
+  const harness = createHarness({
+    closeDocument() {
+      throw new Error("synthetic Offscreen close failure");
+    },
+  });
+  const runtime = createBrowserRuntime({
+    chromeApi: harness.chromeApi,
+    fetchFn: async (url) => okJson(gatewayDocument(url)),
+  });
+  await runtime.configure({
+    gatewayUrl: "https://audio.example.test",
+    profileId: "test.passthrough.v1",
+    token: "0123456789abcdefghijklmnopqrstuv",
+  });
+  await runtime.start({ userGesture: true });
+  assert.equal(
+    harness.sessionStorage.has(sessionStorageKeys.activeSession),
+    true,
+  );
+
+  await assert.rejects(runtime.stop(), /Offscreen close failure/i);
+
+  assert.equal(
+    harness.sessionStorage.has(sessionStorageKeys.activeSession),
+    false,
+    "Stop failure must still remove the session and its captured-tab binding",
+  );
+});
+
+test("fresh service-worker runtime restores the Offscreen-bound captured tab for every generation control", async () => {
+  const { createBrowserRuntime, sessionStorageKeys } = await import(moduleUrl);
+  const harness = createHarness();
+  const fetchFn = async (url, options) => {
+    if (options?.method === "DELETE") {
+      return { ok: true, status: 204 };
+    }
+    return okJson(gatewayDocument(url));
+  };
+  const originalRuntime = createBrowserRuntime({
+    chromeApi: harness.chromeApi,
+    fetchFn,
+  });
+  await originalRuntime.configure({
+    gatewayUrl: "https://audio.example.test",
+    profileId: "test.passthrough.v1",
+    token: "0123456789abcdefghijklmnopqrstuv",
+  });
+  await originalRuntime.start({ userGesture: true });
+
+  const persisted = harness.sessionStorage.get(sessionStorageKeys.activeSession);
+  assert.equal(persisted.capturedTabId, 42);
+  assert.equal(persisted.offscreenEpoch, harness.offscreenState.offscreenEpoch);
+
+  harness.sessionStorage.set(sessionStorageKeys.activeSession, {
+    ...persisted,
+    offscreenEpoch: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+  });
+  const mismatchedRuntime = createBrowserRuntime({
+    chromeApi: harness.chromeApi,
+    fetchFn,
+  });
+  const sender = {
+    id: harness.extensionId,
+    url: `chrome-extension://${harness.extensionId}/popup/popup.html`,
+  };
+  const mismatched = await mismatchedRuntime.handleMessage(
+    { type: "generation.end" },
+    sender,
+  );
+  assert.equal(mismatched.ok, false);
+  assert.match(mismatched.error, /captured tab/i);
+  harness.sessionStorage.set(sessionStorageKeys.activeSession, persisted);
+
+  const recoveredRuntime = createBrowserRuntime({
+    chromeApi: harness.chromeApi,
+    fetchFn,
+  });
+
+  assert.equal(
+    (await recoveredRuntime.handleMessage({ type: "generation.end" }, sender)).ok,
+    true,
+  );
+  assert.equal(
+    (await recoveredRuntime.handleMessage({ type: "generation.start" }, sender)).ok,
+    true,
+  );
+  assert.equal(
+    (await recoveredRuntime.handleMessage({ type: "generation.cancel" }, sender)).ok,
+    true,
+  );
+  const selected = await recoveredRuntime.handleMessage(
+    { type: "model.select", profileId: "test.gain.v1" },
+    sender,
+  );
+  assert.equal(selected.ok, true);
+
+  assert.equal(
+    (await recoveredRuntime.handleMessage({ type: "generation.start" }, sender)).ok,
+    true,
+  );
+  harness.setActiveTabId(84);
+  for (const type of ["generation.end", "generation.cancel"]) {
+    const rejected = await recoveredRuntime.handleMessage({ type }, sender);
+    assert.equal(rejected.ok, false, `${type} must reject a different active tab`);
+    assert.match(rejected.error, /captured tab/i);
+  }
+
+  harness.setActiveTabId(42);
+  assert.equal(
+    (await recoveredRuntime.handleMessage({ type: "generation.end" }, sender)).ok,
+    true,
+  );
+  harness.setActiveTabId(84);
+  for (const message of [
+    { type: "generation.start" },
+    { type: "model.select", profileId: "test.passthrough.v1" },
+  ]) {
+    const rejected = await recoveredRuntime.handleMessage(message, sender);
+    assert.equal(
+      rejected.ok,
+      false,
+      `${message.type} must reject a different active tab`,
+    );
+    assert.match(rejected.error, /captured tab/i);
+  }
+
+  harness.setActiveTabId(42);
+  await recoveredRuntime.stop();
+  assert.equal(
+    harness.sessionStorage.has(sessionStorageKeys.activeSession),
+    false,
+    "Stop must atomically remove the session and its captured-tab binding",
+  );
+});
+
 test("generation controls are bound to the captured tab", async () => {
   const { createBrowserRuntime } = await import(moduleUrl);
   const harness = createHarness();
   const runtime = createBrowserRuntime({
     chromeApi: harness.chromeApi,
-    fetchFn: async () => okJson(sessionResponse()),
+    fetchFn: async (url) => okJson(gatewayDocument(url)),
   });
   await runtime.configure({
     gatewayUrl: "https://audio.example.test",
@@ -988,7 +1459,7 @@ test("popup generation End, Next, and Interrupt reach the Offscreen lifecycle", 
   const harness = createHarness();
   const runtime = createBrowserRuntime({
     chromeApi: harness.chromeApi,
-    fetchFn: async () => okJson(sessionResponse()),
+    fetchFn: async (url) => okJson(gatewayDocument(url)),
   });
   await runtime.configure({
     gatewayUrl: "https://audio.example.test",
@@ -1027,6 +1498,221 @@ test("popup generation End, Next, and Interrupt reach the Offscreen lifecycle", 
       "offscreen.generation.cancel",
     ],
   );
+});
+
+test("idle disconnect reaches popup controls and only fresh Stop-Start authentication recovers", async () => {
+  const { createBrowserRuntime, sessionStorageKeys } = await import(moduleUrl);
+  const { derivePopupView } = await import(popupStateModuleUrl);
+  const harness = createHarness();
+  const sessions = [
+    sessionResponse(),
+    {
+      ...sessionResponse(),
+      session_id: "33333333-3333-4333-8333-333333333333",
+      pipeline_id: "44444444-4444-4444-8444-444444444444",
+      ticket: "fresh-one-use-ticket-never-persisted",
+    },
+  ];
+  let sessionCreations = 0;
+  const runtime = createBrowserRuntime({
+    chromeApi: harness.chromeApi,
+    async fetchFn(url, options) {
+      if (url.endsWith("/v1/models")) {
+        return okJson(modelCatalog(), 200);
+      }
+      if (options?.method === "DELETE") {
+        return { ok: true, status: 204 };
+      }
+      const session = sessions[sessionCreations];
+      sessionCreations += 1;
+      return okJson(session);
+    },
+  });
+  await runtime.configure({
+    gatewayUrl: "https://audio.example.test",
+    profileId: "test.passthrough.v1",
+    token: "0123456789abcdefghijklmnopqrstuv",
+  });
+  const popupSender = {
+    id: harness.extensionId,
+    url: `chrome-extension://${harness.extensionId}/popup/popup.html`,
+  };
+  const offscreenSender = {
+    id: harness.extensionId,
+    url: `chrome-extension://${harness.extensionId}/offscreen/offscreen.html`,
+  };
+
+  assert.equal(
+    (await runtime.handleMessage(
+      { type: "session.start", userGesture: true },
+      popupSender,
+    )).ok,
+    true,
+  );
+  assert.equal(
+    (await runtime.handleMessage({ type: "generation.end" }, popupSender)).ok,
+    true,
+  );
+  Object.assign(harness.offscreenState, {
+    capture: "running",
+    route: "native",
+    remote: "degraded",
+    generationId: null,
+  });
+  const disconnected = await runtime.handleMessage(
+    {
+      target: "background",
+      type: "offscreen.event",
+      event: {
+        capture: "running",
+        route: "native",
+        remote: "degraded",
+        generationId: null,
+        transportClosed: true,
+        requiresFreshSession: true,
+        error:
+          "remote WebSocket closed (1006). Stop and Start to create a fresh authenticated session.",
+      },
+    },
+    offscreenSender,
+  );
+  assert.equal(disconnected.ok, true);
+  assert.equal(disconnected.state.remote, "degraded");
+  assert.equal(disconnected.state.generationId, null);
+
+  const popupNotification = harness.calls
+    .filter(
+      (call) =>
+        call.name === "runtime.sendMessage" &&
+        call.message.target === "popup" &&
+        call.message.type === "session.state",
+    )
+    .at(-1).message;
+  assert.deepEqual(popupNotification.state, disconnected.state);
+  const popupView = derivePopupView(popupNotification.state, {
+    statusSynchronized: true,
+  });
+  assert.match(popupView.status, /fresh authenticated session/i);
+  assert.equal(popupView.startDisabled, true);
+  assert.equal(popupView.stopDisabled, false);
+  assert.equal(popupView.endDisabled, true);
+  assert.equal(popupView.cancelDisabled, true);
+  assert.equal(popupView.nextDisabled, true);
+  assert.equal(popupView.selectProfileDisabled, true);
+
+  const generationStartsBefore = harness.calls.filter(
+    (call) =>
+      call.name === "runtime.sendMessage" &&
+      call.message.type === "offscreen.generation.start",
+  ).length;
+  const staleNext = await runtime.handleMessage(
+    { type: "generation.start" },
+    popupSender,
+  );
+  assert.equal(staleNext.ok, false);
+  assert.match(staleNext.error, /not available/i);
+  assert.equal(
+    harness.calls.filter(
+      (call) =>
+        call.name === "runtime.sendMessage" &&
+        call.message.type === "offscreen.generation.start",
+    ).length,
+    generationStartsBefore,
+  );
+  assert.equal(
+    harness.sessionStorage.get(sessionStorageKeys.activeSession).generationId,
+    1,
+  );
+
+  assert.equal(
+    (await runtime.handleMessage({ type: "session.stop" }, popupSender)).ok,
+    true,
+  );
+  assert.equal(
+    (await runtime.handleMessage(
+      { type: "session.start", userGesture: true },
+      popupSender,
+    )).ok,
+    true,
+  );
+  assert.equal(sessionCreations, 2);
+  const connections = harness.calls
+    .filter(
+      (call) =>
+        call.name === "runtime.sendMessage" &&
+        call.message.type === "offscreen.remote.connect",
+    )
+    .map((call) => ({
+      sessionId: call.message.sessionId,
+      ticket: call.message.ticket,
+    }));
+  assert.deepEqual(connections, [
+    {
+      sessionId: sessions[0].session_id,
+      ticket: sessions[0].ticket,
+    },
+    {
+      sessionId: sessions[1].session_id,
+      ticket: sessions[1].ticket,
+    },
+  ]);
+  assert.notEqual(connections[0].ticket, connections[1].ticket);
+});
+
+test("catalog profiles switch only at a generation boundary with bound identity", async () => {
+  const { createBrowserRuntime, sessionStorageKeys } = await import(moduleUrl);
+  const harness = createHarness();
+  const runtime = createBrowserRuntime({
+    chromeApi: harness.chromeApi,
+    fetchFn: async (url) => okJson(gatewayDocument(url)),
+  });
+  const configuration = {
+    gatewayUrl: "https://audio.example.test",
+    profileId: "test.passthrough.v1",
+    token: "0123456789abcdefghijklmnopqrstuv",
+  };
+  await runtime.configure(configuration);
+  const sender = {
+    id: harness.extensionId,
+    url: `chrome-extension://${harness.extensionId}/popup/popup.html`,
+  };
+  const listed = await runtime.handleMessage({ type: "models.list" }, sender);
+  assert.equal(listed.ok, true);
+  assert.deepEqual(
+    listed.profiles.filter((profile) => profile.compatible).map(
+      (profile) => profile.profileId,
+    ),
+    ["test.passthrough.v1", "test.gain.v1"],
+  );
+  await runtime.start({ userGesture: true });
+
+  const activeSelection = await runtime.handleMessage(
+    { type: "model.select", profileId: "test.gain.v1" },
+    sender,
+  );
+  assert.equal(activeSelection.ok, false);
+  assert.match(activeSelection.error, /generation boundary/i);
+
+  await runtime.handleMessage({ type: "generation.end" }, sender);
+  const selected = await runtime.handleMessage(
+    { type: "model.select", profileId: "test.gain.v1" },
+    sender,
+  );
+  assert.equal(selected.ok, true);
+  assert.equal(
+    harness.sessionStorage.get(sessionStorageKeys.configuration).profileId,
+    "test.gain.v1",
+  );
+  const message = harness.calls.find(
+    (call) =>
+      call.name === "runtime.sendMessage" &&
+      call.message.type === "offscreen.model.select",
+  ).message;
+  assert.deepEqual(message.expectedProfile, {
+    profileId: "test.gain.v1",
+    profileHash: catalogProfile("test.gain.v1").profile_hash,
+    configurationHash: catalogProfile("test.gain.v1").configuration_hash,
+  });
 });
 
 test("message dispatch rejects foreign senders and carries the explicit gesture bit", async () => {

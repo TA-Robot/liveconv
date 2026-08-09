@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "registry_type": "liveconv-reviewed-target-authorizations",
+  "records": [
+    {
+      "schema_version": 1,
+      "record_type": "reviewed-target-authorization",
+      "type": "synthetic-corpus-manifest",
+      "authorization_id": "liveconv-project-authored-synthetic-ja-v1",
+      "status": "approved",
+      "owner": "liveconv project",
+      "permitted_purpose": "technical voice-conversion validation only",
+      "retention_policy": "retain the redistributable synthetic target while referenced by technical evidence",
+      "deletion_path": "remove this reviewed record before deleting generated artifact copies",
+      "target_artifact_sha256": "a92aaa78a600be0afa2425e55a8adb57dc0630789ce9a50284bf467345631ff7",
+      "source_id": "liveconv-project-authored-synthetic-ja-v1"
+    }
+  ],
+  "integrity": {
+    "algorithm": "sha256",
+    "canonicalization": "utf8-json-sort-keys-compact-excluding-integrity-v1",
+    "sha256": "53376eee1175d2bd6855924d55a6ebb159127cbeea1ee5a6598e5c7a5faf41af"
+  }
+}

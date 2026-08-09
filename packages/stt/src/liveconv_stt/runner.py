@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import math
 import re
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
@@ -26,9 +26,13 @@ _MODEL_REVISION = re.compile(
     r"^[A-Za-z0-9][A-Za-z0-9_.:/+-]{0,191}@sha256:([0-9a-f]{64})$"
 )
 _SENSITIVE_KEY = re.compile(
-    r"(?:authorization|credential|hotword|password|prompt|raw_audio|secret|token|transcript)",
+    r"(?:"
+    r"authorization|credential|hotword|password|prompt|raw[_-]?audio|secret|"
+    r"token|transcript|(?:api|access|private)[_-]?key"
+    r")",
     re.IGNORECASE,
 )
+_TOKENIZERS_PROVENANCE_PATH = ("runtime_packages", "tokenizers")
 MAX_DECODE_CONFIG_BYTES = 64 * 1024
 MAX_TRANSCRIPT_CHARACTERS = 200_000
 
@@ -66,19 +70,20 @@ def validate_model_revision(revision: str, artifact_sha256: str | None) -> None:
         )
 
 
-def _validate_no_sensitive_keys(value: Any) -> None:
-    if isinstance(value, dict):
+def _validate_no_sensitive_keys(value: Any, path: tuple[str, ...] = ()) -> None:
+    if isinstance(value, Mapping):
         for key, child in value.items():
             if not isinstance(key, str):
                 raise ConfigurationError("decode configuration keys must be strings")
-            if _SENSITIVE_KEY.search(key):
+            child_path = (*path, key)
+            if child_path != _TOKENIZERS_PROVENANCE_PATH and _SENSITIVE_KEY.search(key):
                 raise ConfigurationError(
                     "decode configuration contains a forbidden sensitive field"
                 )
-            _validate_no_sensitive_keys(child)
-    elif isinstance(value, list):
+            _validate_no_sensitive_keys(child, child_path)
+    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         for child in value:
-            _validate_no_sensitive_keys(child)
+            _validate_no_sensitive_keys(child, (*path, "<sequence>"))
     elif isinstance(value, float) and not math.isfinite(value):
         raise ConfigurationError("decode configuration numbers must be finite")
 

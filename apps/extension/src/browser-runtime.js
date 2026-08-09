@@ -9,6 +9,14 @@ const OFFSCREEN_PATH = "offscreen/offscreen.html";
 const PROFILE_ID = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/;
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const HASH = /^sha256:[0-9a-f]{64}$/;
+const MAXIMUM_CATALOG_PROFILES = 128;
+const MAXIMUM_INGRESS_FRAMES = 500;
+const PROFILE_KINDS = new Set([
+  "deterministic_test",
+  "voice_conversion",
+  "text_to_speech",
+]);
 
 function requireMethod(value, owner, method) {
   if (value === null || typeof value !== "object") {
@@ -58,12 +66,158 @@ function publicConfiguration(configuration) {
   });
 }
 
-function requireSessionResponse(value) {
+function requireString(value, name, { pattern, maximumLength = 256 } = {}) {
+  if (
+    typeof value !== "string" ||
+    value.length === 0 ||
+    value.length > maximumLength ||
+    (pattern && !pattern.test(value))
+  ) {
+    throw new Error(`gateway returned an invalid ${name}`);
+  }
+  return value;
+}
+
+function requireCatalogProfile(value, index) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`gateway returned an invalid profile at index ${index}`);
+  }
+  const profileId = requireString(value.profile_id, "profile_id", {
+    pattern: PROFILE_ID,
+    maximumLength: 128,
+  });
+  if (!PROFILE_KINDS.has(value.kind) || value.adapter_api_version !== 1) {
+    throw new Error(`gateway returned incompatible metadata for ${profileId}`);
+  }
+  if (value.readiness !== "ready") {
+    throw new Error(`gateway catalog included non-ready profile ${profileId}`);
+  }
+  const integerArray = (candidate, name) => {
+    if (
+      !Array.isArray(candidate) ||
+      candidate.length === 0 ||
+      !candidate.every((entry) => Number.isSafeInteger(entry) && entry > 0)
+    ) {
+      throw new Error(`gateway returned invalid ${name} for ${profileId}`);
+    }
+    return [...candidate];
+  };
+  const inputSampleRates = integerArray(
+    value.input_sample_rates,
+    "input_sample_rates",
+  );
+  const outputSampleRates = integerArray(
+    value.output_sample_rates,
+    "output_sample_rates",
+  );
+  if (
+    typeof value.streaming !== "boolean" ||
+    !Number.isSafeInteger(value.frame_ms) ||
+    value.frame_ms <= 0 ||
+    !Number.isSafeInteger(value.minimum_context_ms) ||
+    value.minimum_context_ms < 0
+  ) {
+    throw new Error(`gateway returned invalid streaming metadata for ${profileId}`);
+  }
+  const profile = {
+    profileId,
+    kind: value.kind,
+    readiness: value.readiness,
+    implementationRevision: requireString(
+      value.implementation_revision,
+      "implementation_revision",
+    ),
+    weightRevision:
+      value.weight_revision === null
+        ? null
+        : requireString(value.weight_revision, "weight_revision"),
+    streaming: value.streaming,
+    cancellation: requireString(value.cancellation, "cancellation"),
+    inputSampleRates,
+    outputSampleRates,
+    frameMs: value.frame_ms,
+    minimumContextMs: value.minimum_context_ms,
+    voiceRequirement: requireString(
+      value.voice_requirement,
+      "voice_requirement",
+    ),
+    warmupPolicy: requireString(value.warmup_policy, "warmup_policy"),
+    resourceClass: requireString(value.resource_class, "resource_class"),
+    profileHash: requireString(value.profile_hash, "profile_hash", {
+      pattern: HASH,
+    }),
+    configurationHash: requireString(
+      value.configuration_hash,
+      "configuration_hash",
+      { pattern: HASH },
+    ),
+  };
+  profile.compatible =
+    profile.streaming &&
+    profile.frameMs === 20 &&
+    profile.inputSampleRates.includes(48_000) &&
+    profile.outputSampleRates.includes(48_000) &&
+    profile.voiceRequirement === "none";
+  return Object.freeze(profile);
+}
+
+function requireCatalogResponse(value) {
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    value.protocol_version !== 1 ||
+    !Array.isArray(value.profiles) ||
+    value.profiles.length === 0 ||
+    value.profiles.length > MAXIMUM_CATALOG_PROFILES
+  ) {
+    throw new Error("gateway returned an invalid model catalog");
+  }
+  const profiles = value.profiles.map(requireCatalogProfile);
+  if (new Set(profiles.map((profile) => profile.profileId)).size !== profiles.length) {
+    throw new Error("gateway returned duplicate profile IDs");
+  }
+  return Object.freeze(profiles);
+}
+
+function expectedProfileIdentity(profile, pipelineId) {
+  return Object.freeze({
+    profileId: profile.profileId,
+    profileHash: profile.profileHash,
+    configurationHash: profile.configurationHash,
+    ...(pipelineId ? { pipelineId } : {}),
+  });
+}
+
+function requireSessionResponse(value, expectedProfile) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("gateway returned an invalid session response");
   }
   if (typeof value.session_id !== "string" || !UUID.test(value.session_id)) {
     throw new Error("gateway returned an invalid session_id");
+  }
+  if (
+    value.protocol_version !== 1 ||
+    typeof value.pipeline_id !== "string" ||
+    !UUID.test(value.pipeline_id) ||
+    value.profile_id !== expectedProfile.profileId ||
+    value.profile_hash !== expectedProfile.profileHash ||
+    value.configuration_hash !== expectedProfile.configurationHash
+  ) {
+    throw new Error("gateway session identity does not match the selected catalog profile");
+  }
+  if (
+    value.limits === null ||
+    typeof value.limits !== "object" ||
+    !Number.isSafeInteger(value.limits.ingress_budget_ms) ||
+    value.limits.ingress_budget_ms <= 0 ||
+    !Number.isSafeInteger(value.limits.max_ingress_frames) ||
+    value.limits.max_ingress_frames <= 0 ||
+    value.limits.max_ingress_frames > MAXIMUM_INGRESS_FRAMES ||
+    value.limits.max_ingress_frames !==
+      Math.floor(value.limits.ingress_budget_ms / 20)
+  ) {
+    throw new Error("gateway returned invalid ingress limits");
   }
   if (
     typeof value.ticket !== "string" ||
@@ -146,11 +300,13 @@ export function createBrowserRuntime(options = {}) {
   let requestedTransition = transition;
   let creatingOffscreen = null;
   let capturedTabId = null;
+  let capturedOffscreenEpoch = null;
   let activeStartController = null;
   let stopOperation = null;
   let sessionMetadataKnown = false;
   let currentSession = null;
   let sessionMetadataEpoch = 0;
+  let catalogProfiles = [];
   const requestControllers = new Set();
 
   function createStartController() {
@@ -287,6 +443,42 @@ export function createBrowserRuntime(options = {}) {
     return persistSessionMetadata(currentSession, sessionMetadataEpoch);
   }
 
+  function clearActiveSession() {
+    capturedTabId = null;
+    capturedOffscreenEpoch = null;
+    return setActiveSession(null);
+  }
+
+  async function restoreCapturedTab(state, startController = null) {
+    if (state?.capture !== "running") {
+      capturedTabId = null;
+      capturedOffscreenEpoch = null;
+      return;
+    }
+    if (
+      Number.isInteger(capturedTabId) &&
+      capturedTabId >= 0 &&
+      typeof capturedOffscreenEpoch === "string" &&
+      UUID.test(capturedOffscreenEpoch) &&
+      capturedOffscreenEpoch === state.offscreenEpoch
+    ) {
+      return;
+    }
+    capturedTabId = null;
+    capturedOffscreenEpoch = null;
+    const session = await activeSession(startController);
+    if (
+      Number.isInteger(session?.capturedTabId) &&
+      session.capturedTabId >= 0 &&
+      typeof session?.offscreenEpoch === "string" &&
+      UUID.test(session?.offscreenEpoch) &&
+      session.offscreenEpoch === state.offscreenEpoch
+    ) {
+      capturedTabId = session.capturedTabId;
+      capturedOffscreenEpoch = session.offscreenEpoch;
+    }
+  }
+
   async function reconcileSessionMetadata() {
     if (!sessionMetadataKnown) {
       return;
@@ -400,7 +592,60 @@ export function createBrowserRuntime(options = {}) {
     return response.state;
   }
 
-  async function createGatewaySession(configuration, startController) {
+  async function fetchModelCatalog(configuration, startController = null) {
+    const operation = fetchWithDeadline(
+      `${configuration.gatewayUrl}/v1/models`,
+      {
+        method: "GET",
+        cache: "no-store",
+        credentials: "omit",
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+        headers: authorizedHeaders(configuration.token),
+      },
+      "model catalog",
+    );
+    const response = startController
+      ? await waitForStart(startController, operation)
+      : await operation;
+    const document = startController
+      ? await waitForStart(
+          startController,
+          jsonResponse(response, "model catalog"),
+        )
+      : await jsonResponse(response, "model catalog");
+    catalogProfiles = [...requireCatalogResponse(document)];
+    return catalogProfiles;
+  }
+
+  function selectedCatalogProfile(profileId) {
+    const profile = catalogProfiles.find(
+      (candidate) => candidate.profileId === profileId,
+    );
+    if (!profile) {
+      throw new Error(`profile ${profileId} is not in the current Gateway catalog`);
+    }
+    if (!profile.compatible) {
+      throw new Error(`profile ${profileId} is not compatible with audio route v1`);
+    }
+    return profile;
+  }
+
+  async function listModels(configurationValue = null) {
+    const configuration = configurationValue
+      ? normalizeConfiguration(configurationValue)
+      : await storedConfiguration();
+    if (!configuration) {
+      throw new Error("configure Gateway credentials before loading profiles");
+    }
+    return fetchModelCatalog(configuration);
+  }
+
+  async function createGatewaySession(
+    configuration,
+    profile,
+    startController,
+  ) {
     const response = await waitForStart(
       startController,
       fetchWithDeadline(
@@ -432,6 +677,7 @@ export function createBrowserRuntime(options = {}) {
         startController,
         jsonResponse(response, "session creation"),
       ),
+      profile,
     );
   }
 
@@ -486,6 +732,8 @@ export function createBrowserRuntime(options = {}) {
         route = "native";
         remote = "disconnected";
         generationId = null;
+        capturedTabId = null;
+        capturedOffscreenEpoch = null;
       }
       return;
     }
@@ -498,6 +746,7 @@ export function createBrowserRuntime(options = {}) {
       route = state.route;
       remote = state.remote;
       generationId = state.generationId ?? null;
+      await restoreCapturedTab(state, startController);
     } catch (error) {
       if (startController?.canceled) {
         throw error;
@@ -506,11 +755,14 @@ export function createBrowserRuntime(options = {}) {
     }
   }
 
-  async function snapshot({ synchronizeState = false } = {}) {
+  async function snapshot({ synchronizeState = false, knownConfiguration } = {}) {
     if (synchronizeState) {
       await synchronize();
     }
-    const configuration = await storedConfiguration();
+    const configuration =
+      knownConfiguration === undefined
+        ? await storedConfiguration()
+        : knownConfiguration;
     const state = {
       capture,
       route,
@@ -524,15 +776,33 @@ export function createBrowserRuntime(options = {}) {
     return Object.freeze(state);
   }
 
+  async function notifyPopup(state) {
+    try {
+      await chromeApi.runtime.sendMessage({
+        target: "popup",
+        type: "session.state",
+        state,
+      });
+    } catch {
+      // The popup is usually closed; its next status request resynchronizes state.
+    }
+  }
+
   async function configure(value) {
     const configuration = normalizeConfiguration(value);
     await synchronize();
     if (capture !== "stopped") {
       throw new Error("configuration can change only while capture is stopped");
     }
+    if (catalogProfiles.length > 0) {
+      selectedCatalogProfile(configuration.profileId);
+    }
     await chromeApi.storage.session.set({ [CONFIGURATION_KEY]: configuration });
     lastError = null;
-    return snapshot();
+    // The successful storage write is the authoritative configuration commit.
+    // Avoid a second read turning that committed result into an ambiguous failure
+    // for the optional-host-permission transaction in the popup.
+    return snapshot({ knownConfiguration: configuration });
   }
 
   async function performStart(startController) {
@@ -548,7 +818,7 @@ export function createBrowserRuntime(options = {}) {
       if (typeof streamId !== "string" || streamId.length === 0) {
         throw new Error("tabCapture returned an invalid stream ID");
       }
-      await sendOffscreen(
+      const nativeState = await sendOffscreen(
         {
           type: "offscreen.native.start",
           streamId,
@@ -556,7 +826,11 @@ export function createBrowserRuntime(options = {}) {
         },
         startController,
       );
+      if (!UUID.test(nativeState?.offscreenEpoch)) {
+        throw new Error("Offscreen returned an invalid capture epoch");
+      }
       capturedTabId = tabId;
+      capturedOffscreenEpoch = nativeState.offscreenEpoch;
       capture = "running";
       route = "native";
 
@@ -569,13 +843,22 @@ export function createBrowserRuntime(options = {}) {
       remote = "connecting";
       let gatewaySession = null;
       try {
-        gatewaySession = await createGatewaySession(configuration, startController);
+        await fetchModelCatalog(configuration, startController);
+        const profile = selectedCatalogProfile(configuration.profileId);
+        gatewaySession = await createGatewaySession(
+          configuration,
+          profile,
+          startController,
+        );
         const previous = await activeSession(startController);
         const nextGenerationId = Math.max(previous?.generationId ?? 0, 0) + 1;
         const session = {
           gatewayUrl: configuration.gatewayUrl,
           sessionId: gatewaySession.session_id,
           generationId: nextGenerationId,
+          profileId: profile.profileId,
+          capturedTabId: tabId,
+          offscreenEpoch: capturedOffscreenEpoch,
         };
         const sessionWrite = setActiveSession(session);
         await waitForStart(
@@ -593,6 +876,14 @@ export function createBrowserRuntime(options = {}) {
             sessionId: gatewaySession.session_id,
             ticket: gatewaySession.ticket,
             generationId: nextGenerationId,
+            expectedProfile: expectedProfileIdentity(
+              profile,
+              gatewaySession.pipeline_id,
+            ),
+            expectedLimits: {
+              ingressBudgetMs: gatewaySession.limits.ingress_budget_ms,
+              maxIngressFrames: gatewaySession.limits.max_ingress_frames,
+            },
           },
           startController,
         );
@@ -616,7 +907,7 @@ export function createBrowserRuntime(options = {}) {
             }
           : null;
         await deleteGatewaySession(session);
-        await setActiveSession(null);
+        await clearActiveSession();
       }
     } catch (error) {
       if (startController.canceled) {
@@ -626,7 +917,11 @@ export function createBrowserRuntime(options = {}) {
       route = "native";
       remote = "disconnected";
       generationId = null;
-      capturedTabId = null;
+      try {
+        await clearActiveSession();
+      } catch {
+        // Preserve the capture failure while the metadata epoch prevents stale repair.
+      }
       lastError = errorMessage(error);
       if (await hasOffscreenDocument()) {
         try {
@@ -689,25 +984,60 @@ export function createBrowserRuntime(options = {}) {
     return operation;
   }
 
+  async function stopOffscreenDocument() {
+    if (!(await hasOffscreenDocument())) {
+      return;
+    }
+    let stopError = null;
+    try {
+      await sendOffscreen({ type: "offscreen.stop" });
+    } catch (error) {
+      stopError = error;
+    }
+    try {
+      await chromeApi.offscreen.closeDocument();
+    } catch (error) {
+      if (stopError === null) {
+        stopError = error;
+      }
+    }
+    if (stopError !== null) {
+      throw stopError;
+    }
+  }
+
   async function performStop() {
     capture = "stopping";
     route = "native";
-    const session = await activeSession();
-    if (await hasOffscreenDocument()) {
-      try {
-        await sendOffscreen({ type: "offscreen.stop" });
-      } finally {
-        await chromeApi.offscreen.closeDocument();
-      }
-    }
-    await deleteGatewaySession(session);
-    await setActiveSession(null);
-    capture = "stopped";
-    route = "native";
     remote = "disconnected";
     generationId = null;
-    capturedTabId = null;
-    lastError = null;
+    let session = null;
+    const failures = [];
+    const recordFailure = async (operation) => {
+      try {
+        return await operation();
+      } catch (error) {
+        failures.push(error);
+        return undefined;
+      }
+    };
+    try {
+      // Local native fallback and teardown are authoritative. Never serialize
+      // them behind best-effort metadata recovery after an MV3 restart.
+      await recordFailure(stopOffscreenDocument);
+      session = await recordFailure(activeSession);
+      await recordFailure(() => deleteGatewaySession(session));
+    } finally {
+      await recordFailure(clearActiveSession);
+      capture = "stopped";
+      route = "native";
+      remote = "disconnected";
+      generationId = null;
+      lastError = null;
+    }
+    if (failures.length > 0) {
+      throw failures[0];
+    }
   }
 
   function stop() {
@@ -747,7 +1077,8 @@ export function createBrowserRuntime(options = {}) {
     if (
       capture !== "running" ||
       remote === "disconnected" ||
-      remote === "disabled"
+      remote === "disabled" ||
+      remote === "degraded"
     ) {
       throw new Error("remote transport is not available");
     }
@@ -769,6 +1100,49 @@ export function createBrowserRuntime(options = {}) {
     });
     remote = state.remote;
     generationId = state.generationId ?? null;
+    return state;
+  }
+
+  async function selectProfile(profileId) {
+    if (typeof profileId !== "string" || !PROFILE_ID.test(profileId)) {
+      throw new TypeError("profileId has an invalid format");
+    }
+    await synchronize();
+    if (
+      capture !== "running" ||
+      remote !== "ready" ||
+      generationId !== null
+    ) {
+      throw new Error("profile selection is allowed only at a ready generation boundary");
+    }
+    if ((await activeTabId()) !== capturedTabId) {
+      throw new Error("profile selection must originate from the captured tab");
+    }
+    const configuration = await storedConfiguration();
+    if (!configuration) {
+      throw new Error("session configuration is unavailable");
+    }
+    if (catalogProfiles.length === 0) {
+      await fetchModelCatalog(configuration);
+    }
+    const profile = selectedCatalogProfile(profileId);
+    const state = await sendOffscreen({
+      type: "offscreen.model.select",
+      expectedProfile: expectedProfileIdentity(profile),
+    });
+    remote = state.remote;
+    const nextConfiguration = Object.freeze({
+      ...configuration,
+      profileId: profile.profileId,
+    });
+    await chromeApi.storage.session.set({
+      [CONFIGURATION_KEY]: nextConfiguration,
+    });
+    const session = await activeSession();
+    if (session) {
+      await setActiveSession({ ...session, profileId: profile.profileId });
+    }
+    lastError = null;
     return state;
   }
 
@@ -806,15 +1180,25 @@ export function createBrowserRuntime(options = {}) {
       if (event.sourceEnded === true) {
         await stop();
       }
-      return { ok: true, state: await snapshot() };
+      const state = await snapshot();
+      await notifyPopup(state);
+      return { ok: true, state };
     }
 
     try {
       if (message?.type === "session.status") {
         return { ok: true, state: await snapshot({ synchronizeState: true }) };
       }
+      if (message?.type === "models.list") {
+        const profiles = await listModels(message.configuration ?? null);
+        return { ok: true, state: await snapshot(), profiles };
+      }
       if (message?.type === "session.configure") {
-        return { ok: true, state: await configure(message.configuration) };
+        return {
+          ok: true,
+          state: await configure(message.configuration),
+          profiles: catalogProfiles,
+        };
       }
       if (message?.type === "session.start") {
         await start({ userGesture: message.userGesture === true });
@@ -835,6 +1219,14 @@ export function createBrowserRuntime(options = {}) {
       if (message?.type === "generation.cancel") {
         await generationCommand("offscreen.generation.cancel");
         return { ok: true, state: await snapshot() };
+      }
+      if (message?.type === "model.select") {
+        await selectProfile(message.profileId);
+        return {
+          ok: true,
+          state: await snapshot(),
+          profiles: catalogProfiles,
+        };
       }
       return null;
     } catch (error) {

@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://liveconv.invalid/schemas/exp-003-real-model-route-trace-v1.json",
+  "title": "EXP-003 metadata-redacted technical route trace",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "experiment_id",
+    "evidence_scope",
+    "decision_status",
+    "technical_outcome",
+    "coverage",
+    "claims",
+    "environment",
+    "registry_document_hash",
+    "client_clock_id",
+    "profiles",
+    "events",
+    "results"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "experiment_id": {"const": "EXP-003"},
+    "evidence_scope": {"const": "technical_route_smoke"},
+    "decision_status": {"const": "inconclusive"},
+    "technical_outcome": {"enum": ["not_run", "passed", "failed"]},
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["full_experiment_eligible", "completed_case_ids", "missing_decision_lanes"],
+      "properties": {
+        "full_experiment_eligible": {"const": false},
+        "completed_case_ids": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1, "maxLength": 384},
+          "uniqueItems": true
+        },
+        "missing_decision_lanes": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "voice_conversion_established",
+        "speaker_change_established",
+        "japanese_quality_established",
+        "content_preservation_established",
+        "latency_target_established",
+        "production_readiness_established"
+      ],
+      "properties": {
+        "voice_conversion_established": {"const": false},
+        "speaker_change_established": {"const": false},
+        "japanese_quality_established": {"const": false},
+        "content_preservation_established": {"const": false},
+        "latency_target_established": {"const": false},
+        "production_readiness_established": {"const": false}
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runner_revision", "python_version", "platform_system", "platform_machine", "git_commit", "worktree_clean"],
+      "properties": {
+        "runner_revision": {"const": "0.1.0"},
+        "python_version": {"type": "string", "minLength": 1},
+        "platform_system": {"type": "string", "minLength": 1},
+        "platform_machine": {"type": "string", "minLength": 1},
+        "git_commit": {"anyOf": [{"pattern": "^[0-9a-f]{40}$"}, {"const": "unrecorded"}]},
+        "worktree_clean": {"type": "boolean"}
+      }
+    },
+    "registry_document_hash": {"pattern": "^sha256:[0-9a-f]{64}$"},
+    "client_clock_id": {"$ref": "#/$defs/clockId"},
+    "profiles": {
+      "type": "array",
+      "minItems": 2,
+      "items": {"$ref": "#/$defs/profile"},
+      "uniqueItems": true
+    },
+    "events": {"type": "array", "items": {"$ref": "#/$defs/event"}},
+    "results": {"type": "array", "items": {"$ref": "#/$defs/result"}}
+  },
+  "$defs": {
+    "clockId": {"type": "string", "pattern": "^[A-Za-z0-9._:-]{1,128}$"},
+    "clockReading": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clock_id", "monotonic_ns"],
+      "properties": {
+        "clock_id": {"$ref": "#/$defs/clockId"},
+        "monotonic_ns": {"type": "integer", "minimum": 0}
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id", "kind", "readiness", "implementation_revision",
+        "weight_revision", "streaming", "cancellation", "frame_ms",
+        "minimum_context_ms", "voice_requirement", "resource_class",
+        "profile_hash", "configuration_hash"
+      ],
+      "properties": {
+        "profile_id": {"type": "string", "minLength": 1},
+        "kind": {"type": "string", "minLength": 1},
+        "readiness": {"const": "ready"},
+        "implementation_revision": {"type": "string", "minLength": 1},
+        "weight_revision": {"type": ["string", "null"]},
+        "streaming": {"const": true},
+        "cancellation": {"type": "string", "minLength": 1},
+        "frame_ms": {"const": 20},
+        "minimum_context_ms": {"type": "integer", "minimum": 0},
+        "voice_requirement": {"type": "string", "minLength": 1},
+        "resource_class": {"type": "string", "minLength": 1},
+        "profile_hash": {"pattern": "^sha256:[0-9a-f]{64}$"},
+        "configuration_hash": {"pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    "safeObject": {
+      "type": "object",
+      "propertyNames": {
+        "not": {
+          "pattern": "(?i)(^|_)(api_?key|authorization|bearer|credential|password|private_?key|raw_?audio|secret|ticket|token|voice_?id|worker_?endpoint|registry_?path|pcm_?payload|raw_?samples)($|_)"
+        }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "case_id", "kind", "client_time", "details"],
+      "properties": {
+        "index": {"type": "integer", "minimum": 0},
+        "case_id": {"type": "string", "minLength": 1, "maxLength": 384},
+        "kind": {"type": "string", "minLength": 1, "maxLength": 128},
+        "client_time": {"$ref": "#/$defs/clockReading"},
+        "details": {"$ref": "#/$defs/safeObject"}
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "passed", "evidence"],
+      "properties": {
+        "case_id": {"type": "string", "minLength": 1, "maxLength": 384},
+        "passed": {"type": "boolean"},
+        "evidence": {"$ref": "#/$defs/safeObject"}
+      }
+    }
+  }
+}

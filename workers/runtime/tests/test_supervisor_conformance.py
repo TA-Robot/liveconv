@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 
 import pytest
 
@@ -142,6 +143,64 @@ def test_generation_end_drains_all_accepted_input_asynchronously() -> None:
             assert [output.sequence for output in outputs] == [0, 1]
             assert supervisor.queued_input_frames == 0
         finally:
+            await supervisor.close()
+
+    run_async(scenario())
+
+
+def test_sequence_and_timestamp_validation_survives_dispatched_output() -> None:
+    async def scenario() -> None:
+        supervisor, _ = make_profile("passthrough")
+        generation_id = FIXTURE["audio"]["generation_id"]
+        first = make_frame(sequence=0)
+        try:
+            await supervisor.start()
+            await supervisor.start_generation(generation_id)
+            await supervisor.push_audio(first)
+            assert (await supervisor.next_output()).sequence == 0
+
+            with pytest.raises(WorkerRuntimeError) as duplicate:
+                await supervisor.push_audio(first)
+            assert_runtime_error(duplicate, "INVALID_STATE")
+
+            decreasing_timestamp = replace(
+                make_frame(sequence=1),
+                source_monotonic_ns=first.source_monotonic_ns - 1,
+            )
+            with pytest.raises(WorkerRuntimeError) as decreasing:
+                await supervisor.push_audio(decreasing_timestamp)
+            assert_runtime_error(decreasing, "INVALID_STATE")
+            assert supervisor.queued_input_frames == 0
+        finally:
+            await supervisor.close()
+
+    run_async(scenario())
+
+
+def test_generation_end_seals_input_while_cancellation_remains_available() -> None:
+    async def scenario() -> None:
+        supervisor, _ = make_profile("ignore-end")
+        generation_id = FIXTURE["audio"]["generation_id"]
+        end_task: asyncio.Task[object] | None = None
+        try:
+            await supervisor.start()
+            await supervisor.start_generation(generation_id)
+            end_task = asyncio.create_task(supervisor.end_generation(generation_id))
+
+            # The health response is a FIFO barrier after generation.end.
+            health = await supervisor.health()
+            assert health.active_generation_id == generation_id
+            with pytest.raises(WorkerRuntimeError) as sealed:
+                await supervisor.push_audio(make_frame())
+            assert_runtime_error(sealed, "INVALID_STATE")
+
+            canceled = await supervisor.cancel_generation(generation_id)
+            assert canceled.generation_id == generation_id
+        finally:
+            if end_task is not None and not end_task.done():
+                end_task.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await end_task
             await supervisor.close()
 
     run_async(scenario())

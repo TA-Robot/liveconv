@@ -4,6 +4,10 @@
   "display_name": "RVC v2",
   "status": "planned",
   "ready_for_runtime": false,
+  "promotion_evidence": {
+    "status": "technical_validation",
+    "evidence_sha256": "sha256:48aeffc090c1255f2d06194164e0ef730493606a1e0edae1a1c7b707548465e6"
+  },
   "role": "streaming_candidate",
   "implementation_priority": 1,
   "canonical_source_url": "https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI",

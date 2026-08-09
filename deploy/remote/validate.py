@@ -215,6 +215,12 @@ def _validate_environment(path: Path, failures: list[str]) -> None:
             )
             _validate_profile_registry(profile_path, failures)
 
+    require(
+        values.get("LIVECONV_ALLOW_TECHNICAL_PROFILES", "0") == "0",
+        "remote deployment must not enable technical model profiles",
+        failures,
+    )
+
     _validate_numeric_settings(values, failures)
 
 
@@ -224,6 +230,7 @@ def _validate_numeric_settings(values: dict[str, str], failures: list[str]) -> N
         "LIVECONV_ATTACH_TIMEOUT_SECONDS": (False, 0),
         "LIVECONV_INGRESS_BUDGET_MS": (True, 20),
         "LIVECONV_MAX_SESSIONS": (True, 1),
+        "LIVECONV_MAX_PENDING_ATTACHMENTS": (True, 1),
         "LIVECONV_SESSION_LIFETIME_SECONDS": (False, 0),
         "LIVECONV_REQUEST_CACHE_MAX": (True, 1),
         "LIVECONV_SEND_TIMEOUT_SECONDS": (False, 0),
@@ -335,6 +342,7 @@ def main(argv: list[str] | None = None) -> int:
     caddyfile = (HERE / "Caddyfile").read_text(encoding="utf-8")
     env_example = (HERE / ".env.example").read_text(encoding="utf-8")
     dockerignore = (HERE / "Dockerfile.dockerignore").read_text(encoding="utf-8")
+    check_tools = (HERE / "check-tools.sh").read_text(encoding="utf-8")
 
     from_lines = re.findall(r"(?m)^FROM\s+(\S+)", dockerfile)
     require(
@@ -354,6 +362,14 @@ def main(argv: list[str] | None = None) -> int:
         "--no-editable",
         "--package liveconv-audio",
         "default-model-profiles.json",
+        "packages/speaker/pyproject.toml",
+        "workers/model-pack.schema.json",
+        "workers/packs/*.json",
+        "workers/adapters/beatrice_2/*.py",
+        "workers/adapters/openvoice_v2/*.py",
+        "workers/adapters/rvc_v2/*.py",
+        "workers/adapters/rvc_v2/tools/__init__.py",
+        "workers/adapters/x_vc/*.py",
         "USER 10001:10001",
         "HEALTHCHECK",
         'ENTRYPOINT ["/opt/liveconv/bin/entrypoint.sh"]',
@@ -464,6 +480,8 @@ def main(argv: list[str] | None = None) -> int:
         "admin off",
         "{$LIVECONV_PUBLIC_HOST}",
         "reverse_proxy gateway:8765",
+        "request_body",
+        "max_size 16KB",
         "health_uri /health/live",
         'Cache-Control "no-store"',
         "Strict-Transport-Security",
@@ -539,6 +557,38 @@ def main(argv: list[str] | None = None) -> int:
             f"Docker build context contains broad re-include {broad_reinclude!r}",
             failures,
         )
+
+    required_context_includes = (
+        "!packages/speaker/pyproject.toml",
+        "!workers/README.md",
+        "!workers/model-pack.schema.json",
+        "!workers/packs/*.py",
+        "!workers/packs/*.json",
+        "!workers/adapters/__init__.py",
+        "!workers/adapters/beatrice_2/*.py",
+        "!workers/adapters/openvoice_v2/*.py",
+        "!workers/adapters/rvc_v2/*.py",
+        "!workers/adapters/rvc_v2/tools/__init__.py",
+        "!workers/adapters/x_vc/*.py",
+    )
+    for include in required_context_includes:
+        require(
+            include in dockerignore,
+            f"Docker build context allowlist is missing {include!r}",
+            failures,
+        )
+
+    context_validator = HERE / "validate-build-context.py"
+    require(
+        context_validator.is_file(),
+        "clean Docker build-context validator is missing",
+        failures,
+    )
+    require(
+        'python3 "$HERE/validate-build-context.py"' in check_tools,
+        "official remote tool check must run the clean build-context validator",
+        failures,
+    )
 
     if arguments.env_file is not None:
         _validate_environment(arguments.env_file, failures)

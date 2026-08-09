@@ -75,7 +75,15 @@ test("popup exposes session and generation lifecycle controls and visible state"
   const html = await readFile(popupUrl, "utf8");
   const buttons = openingTags(html, "button");
 
-  for (const action of ["start", "stop", "end", "cancel", "next"]) {
+  for (const action of [
+    "start",
+    "stop",
+    "end",
+    "cancel",
+    "next",
+    "models",
+    "select-profile",
+  ]) {
     const button = buttons.find((tag) => hasAttribute(tag, "data-action", action));
     assert(button, `popup must expose a ${action} button`);
     assert.match(button, /\baria-label\s*=\s*(["']).+?\1/i);
@@ -112,6 +120,12 @@ test("popup exposes session and generation lifecycle controls and visible state"
 
 test("manifest requests no broad host or secret-bearing browser permissions", async () => {
   const manifest = await readJson(manifestUrl);
+  assert.deepEqual(manifest.host_permissions, undefined);
+  assert.deepEqual(new Set(manifest.optional_host_permissions), new Set([
+    "http://127.0.0.1/*",
+    "http://localhost/*",
+    "https://*/*",
+  ]));
   const forbiddenPermissions = new Set([
     "cookies",
     "debugger",

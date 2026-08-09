@@ -10,6 +10,7 @@
     "display_name",
     "status",
     "ready_for_runtime",
+    "promotion_evidence",
     "role",
     "implementation_priority",
     "canonical_source_url",
@@ -33,8 +34,9 @@
       "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
     },
     "display_name": { "type": "string", "minLength": 1 },
-    "status": { "enum": ["research", "blocked", "planned"] },
-    "ready_for_runtime": { "const": false },
+    "status": { "enum": ["research", "blocked", "planned", "approved"] },
+    "ready_for_runtime": { "type": "boolean" },
+    "promotion_evidence": { "$ref": "#/$defs/promotion_evidence" },
     "role": { "enum": ["streaming_candidate", "offline_control"] },
     "implementation_priority": { "type": "integer", "minimum": 1 },
     "canonical_source_url": { "$ref": "#/$defs/https_uri" },
@@ -57,13 +59,75 @@
     "mode_gates": { "$ref": "#/$defs/mode_gates" },
     "blockers": {
       "type": "array",
-      "minItems": 1,
       "items": { "$ref": "#/$defs/blocker" }
     },
     "acceptance_checklist": { "$ref": "#/$defs/acceptance_checklist" },
     "decision_notes": { "type": "string", "minLength": 1 }
   },
   "allOf": [
+    {
+      "if": {
+        "properties": { "ready_for_runtime": { "const": true } },
+        "required": ["ready_for_runtime"]
+      },
+      "then": {
+        "properties": {
+          "status": { "const": "approved" },
+          "immutability_gate": {
+            "properties": { "status": { "const": "approved" } },
+            "required": ["status"]
+          },
+          "license_gate": {
+            "properties": { "overall_status": { "const": "approved" } },
+            "required": ["overall_status"]
+          },
+          "resource_budget_hypothesis": {
+            "properties": { "evidence_status": { "const": "measured" } },
+            "required": ["evidence_status"]
+          },
+          "promotion_evidence": {
+            "properties": { "status": { "const": "approved" } },
+            "required": ["status"]
+          },
+          "blockers": { "maxItems": 0 },
+          "acceptance_checklist": {
+            "properties": {
+              "adapter_conformance": { "$ref": "#/$defs/passed_acceptance_item" },
+              "warmup": { "$ref": "#/$defs/passed_acceptance_item" },
+              "cancel": { "$ref": "#/$defs/passed_acceptance_item" },
+              "unload": { "$ref": "#/$defs/passed_acceptance_item" },
+              "vram": { "$ref": "#/$defs/passed_acceptance_item" },
+              "stt": { "$ref": "#/$defs/passed_acceptance_item" },
+              "speaker": { "$ref": "#/$defs/passed_acceptance_item" },
+              "integrity": { "$ref": "#/$defs/passed_acceptance_item" }
+            }
+          },
+          "mode_gates": {
+            "anyOf": [
+              {
+                "properties": {
+                  "offline": {
+                    "properties": { "status": { "const": "passed" } },
+                    "required": ["status"]
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "streaming": {
+                    "properties": { "status": { "const": "passed" } },
+                    "required": ["status"]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": { "blockers": { "minItems": 1 } }
+      }
+    },
     {
       "if": {
         "properties": {
@@ -98,6 +162,41 @@
     "nullable_nonnegative_integer": {
       "type": ["integer", "null"],
       "minimum": 0
+    },
+    "promotion_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "evidence_sha256"],
+      "properties": {
+        "status": {
+          "enum": ["unavailable", "technical_validation", "approved"]
+        },
+        "evidence_sha256": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "const": "unavailable" } },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": { "evidence_sha256": { "type": "null" } }
+          },
+          "else": {
+            "properties": {
+              "evidence_sha256": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      ]
     },
     "japanese_evidence": {
       "type": "object",
@@ -328,7 +427,7 @@
       "additionalProperties": false,
       "required": ["evidence_status", "cpu", "gpu", "notes"],
       "properties": {
-        "evidence_status": { "const": "hypothesis" },
+        "evidence_status": { "enum": ["hypothesis", "measured"] },
         "cpu": {
           "type": "object",
           "additionalProperties": false,
@@ -423,6 +522,18 @@
             "properties": {
               "evidence_url": { "$ref": "#/$defs/https_uri" }
             }
+          }
+        }
+      ]
+    },
+    "passed_acceptance_item": {
+      "allOf": [
+        { "$ref": "#/$defs/acceptance_item" },
+        {
+          "properties": {
+            "status": { "const": "passed" },
+            "blocked_by": { "maxItems": 0 },
+            "evidence_url": { "$ref": "#/$defs/https_uri" }
           }
         }
       ]

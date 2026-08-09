@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TA-Robot/liveconv/packages/evaluation/schemas/fixture-manifest.schema.json",
+  "title": "liveconv evaluation fixture manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "fixture_set_id",
+    "status",
+    "classification",
+    "language",
+    "normalization_revision",
+    "source_generation",
+    "base_utterances",
+    "render_conditions",
+    "schedule"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "fixture_set_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9.-]+$" },
+    "status": { "enum": ["draft", "frozen", "retired"] },
+    "classification": { "enum": ["synthetic", "redistributable", "internal", "restricted"] },
+    "language": { "const": "ja-JP" },
+    "normalization_revision": { "const": "liveconv-jp-nfkc-kana-v1" },
+    "source_generation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine", "model_revision", "voice_revisions", "artifact_policy"],
+      "properties": {
+        "engine": { "type": ["string", "null"] },
+        "model_revision": { "type": ["string", "null"] },
+        "voice_revisions": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "artifact_policy": { "type": "string", "minLength": 1 }
+      }
+    },
+    "base_utterances": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "reference_text", "canonical_kana", "exact_entities", "tags"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^jp-[0-9]{2}$" },
+          "reference_text": { "type": "string", "minLength": 1 },
+          "canonical_kana": { "type": "string", "minLength": 1 },
+          "exact_entities": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "uniqueItems": true
+          },
+          "tags": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 },
+            "uniqueItems": true
+          }
+        }
+      }
+    },
+    "render_conditions": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "voice_revision", "speaking_rate"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^synth-[a-d]$" },
+          "voice_revision": { "type": ["string", "null"] },
+          "speaking_rate": { "type": "number", "exclusiveMinimum": 0 }
+        }
+      }
+    },
+    "schedule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expansion", "fixture_count", "repetitions_per_fixture", "eligible_turns_per_variant", "shuffle_seed"],
+      "properties": {
+        "expansion": { "const": "base_utterances_x_render_conditions" },
+        "fixture_count": { "const": 40 },
+        "repetitions_per_fixture": { "const": 15 },
+        "eligible_turns_per_variant": { "const": 600 },
+        "shuffle_seed": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "frozen" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "source_generation": {
+            "properties": {
+              "engine": { "type": "string", "minLength": 1 },
+              "model_revision": { "type": "string", "minLength": 1 },
+              "voice_revisions": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "string", "minLength": 1 },
+                "uniqueItems": true
+              }
+            }
+          },
+          "render_conditions": {
+            "items": {
+              "properties": {
+                "voice_revision": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

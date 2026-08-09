@@ -119,6 +119,11 @@ export class GenerationPlayoutBuffer {
     this.audible = false;
   }
 
+  rebuffer() {
+    this.clear();
+    this.readyNotified = false;
+  }
+
   bufferedSamples() {
     if (this.queue.length === 0) {
       return 0;
@@ -216,6 +221,11 @@ export class GenerationPlayoutBuffer {
     );
   }
 
+  hasAvailableFrom(sourceFrame) {
+    const firstAvailable = this.trimBeforeSourceFrame(sourceFrame);
+    return firstAvailable === sourceFrame && this.bufferedSamples() > 0;
+  }
+
   renderAligned(output, sourceFrame) {
     requireSamples(output);
     requireSourceFrame(sourceFrame);
@@ -225,7 +235,10 @@ export class GenerationPlayoutBuffer {
     }
     const firstAvailable = this.trimBeforeSourceFrame(sourceFrame);
     if (firstAvailable !== sourceFrame) {
-      return Object.freeze({ aligned: false, underflow: false, rendered: 0 });
+      return Object.freeze({ aligned: false, underflow: true, rendered: 0 });
+    }
+    if (this.bufferedSamples() < output.length) {
+      return Object.freeze({ aligned: true, underflow: true, rendered: 0 });
     }
     const result = this.render(output);
     return Object.freeze({ aligned: true, ...result });
@@ -236,6 +249,12 @@ export class GenerationPlayoutBuffer {
     output.fill(0);
     if (!this.audible) {
       return Object.freeze({ underflow: false, rendered: 0 });
+    }
+    if (this.bufferedSamples() < output.length) {
+      this.audible = false;
+      this.accepting = false;
+      this.clear();
+      return Object.freeze({ underflow: true, rendered: 0 });
     }
     let rendered = 0;
     while (rendered < output.length && this.queue.length > 0) {

@@ -4,13 +4,17 @@
   "display_name": "Beatrice 2",
   "status": "blocked",
   "ready_for_runtime": false,
+  "promotion_evidence": {
+    "status": "unavailable",
+    "evidence_sha256": null
+  },
   "role": "streaming_candidate",
   "implementation_priority": 3,
-  "canonical_source_url": "https://github.com/prj-beatrice/beatrice-vst",
+  "canonical_source_url": "https://huggingface.co/fierce-cats/beatrice-trainer",
   "upstream_urls": [
     "https://prj-beatrice.com/",
     "https://huggingface.co/fierce-cats/beatrice-trainer",
-    "https://github.com/aq2r/beatrice-client"
+    "https://github.com/prj-beatrice/beatrice-vst"
   ],
   "japanese_evidence": {
     "level": "indirect_provenance",
@@ -27,7 +31,7 @@
     "weight_sha256": null,
     "approval_record_url": null,
     "blocking_reasons": [
-      "Obtain written permission for independent server inference before selecting a runtime revision.",
+      "Select a reviewed MIT trainer graph revision, target artifact digest, and immutable product approval record.",
       "Select an approved trained model directory and record a deterministic artifact digest."
     ]
   },
@@ -37,9 +41,9 @@
       "status": "declared",
       "declared_license": "MIT",
       "evidence_urls": [
-        "https://github.com/prj-beatrice/beatrice-vst/blob/master/LICENSE"
+        "https://huggingface.co/fierce-cats/beatrice-trainer"
       ],
-      "notes": "The VST host code is declared MIT; this does not grant rights to the separate inference library."
+      "notes": "The implemented technical graph is the MIT Beatrice Trainer distribution, not the VST host."
     },
     "weights": {
       "status": "declared",
@@ -58,12 +62,12 @@
       "notes": "Review ReazonSpeech conditions, LibriTTS-R, VocalSet, noise sources, and the target corpus separately."
     },
     "inference_runtime": {
-      "status": "permission_required",
-      "declared_license": null,
+      "status": "declared",
+      "declared_license": "MIT",
       "evidence_urls": [
-        "https://github.com/aq2r/beatrice-client#license---beatrice"
+        "https://huggingface.co/fierce-cats/beatrice-trainer"
       ],
-      "notes": "Independent server use of beatrice.lib requires written Project Beatrice permission for the intended deployment."
+      "notes": "The current adapter uses the trainer graph directly and explicitly excludes restricted beatrice.lib."
     }
   },
   "audio_contract": {
@@ -74,7 +78,7 @@
     "minimum_context_ms": null,
     "processing_window_ms": null,
     "lookahead_ms": null,
-    "notes": "The official material demonstrates streaming use but does not provide a stable public server sample-rate or context contract; derive and freeze both after permission."
+    "notes": "The trainer graph supports the technical worker path, but a product sample-rate and context contract still require an immutable selected artifact."
   },
   "target_preparation": {
     "mode": "trained_model_directory",
@@ -98,7 +102,7 @@
       "provenance_url": null
     },
     {
-      "purpose": "Approved Beatrice inference runtime",
+      "purpose": "Pinned MIT Beatrice Trainer graph and checkpoints",
       "env_var": "LIVECONV_BEATRICE2_RUNTIME_PATH",
       "required_for": "all_modes",
       "sha256": null,
@@ -121,27 +125,21 @@
   "mode_gates": {
     "offline": {
       "status": "blocked",
-      "blocker_ids": ["beatrice-server-permission", "beatrice-approval", "beatrice-data", "beatrice-target"],
-      "acceptance_scope": ["permission before execution", "Japanese content", "target-speaker change"]
+      "blocker_ids": ["beatrice-approval", "beatrice-data", "beatrice-target", "beatrice-quality"],
+      "acceptance_scope": ["MIT trainer technical execution", "Japanese content", "target-speaker change"]
     },
     "streaming": {
       "status": "blocked",
-      "blocker_ids": ["beatrice-server-permission", "beatrice-approval", "beatrice-data", "beatrice-target"],
-      "acceptance_scope": ["permission before integration", "CPU latency", "generation cancellation"]
+      "blocker_ids": ["beatrice-approval", "beatrice-data", "beatrice-target", "beatrice-quality"],
+      "acceptance_scope": ["MIT trainer technical execution", "CPU latency", "generation cancellation"]
     }
   },
   "blockers": [
     {
-      "id": "beatrice-server-permission",
-      "category": "license",
-      "summary": "Independent server inference permission has not been obtained.",
-      "clear_when": "Written Project Beatrice permission explicitly covers the intended server deployment and experiment."
-    },
-    {
       "id": "beatrice-approval",
       "category": "approval",
       "summary": "Source revision and weight digest are not approved or pinned.",
-      "clear_when": "After permission, a reviewed commit, artifact SHA-256, and approval record are recorded."
+      "clear_when": "A reviewed trainer revision, artifact SHA-256, and product approval record are recorded."
     },
     {
       "id": "beatrice-data",
@@ -154,65 +152,71 @@
       "category": "artifact",
       "summary": "No authorized target model directory has been selected.",
       "clear_when": "Authorized artifacts are produced, provenance-recorded, and digest-verified."
+    },
+    {
+      "id": "beatrice-quality",
+      "category": "japanese_evidence",
+      "summary": "Technical execution does not establish Japanese content preservation or an authorized-target quality result.",
+      "clear_when": "Frozen Japanese content, authorized-target speaker, and audio-integrity gates pass for the selected product artifact."
     }
   ],
   "acceptance_checklist": {
     "adapter_conformance": {
       "required": true,
-      "status": "blocked",
-      "criterion": "Pass the common adapter contract without exposing the proprietary runtime outside the worker.",
-      "blocked_by": ["beatrice-server-permission", "beatrice-approval"],
+      "status": "pending",
+      "criterion": "Pass the common adapter contract through the MIT trainer graph without loading beatrice.lib.",
+      "blocked_by": [],
       "evidence_url": null
     },
     "warmup": {
       "required": true,
-      "status": "blocked",
+      "status": "pending",
       "criterion": "CPU worker warmup reaches readiness within a frozen timeout.",
-      "blocked_by": ["beatrice-server-permission", "beatrice-target"],
+      "blocked_by": [],
       "evidence_url": null
     },
     "cancel": {
       "required": true,
-      "status": "blocked",
+      "status": "pending",
       "criterion": "Cancel prevents any later output from the canceled generation.",
-      "blocked_by": ["beatrice-server-permission"],
+      "blocked_by": [],
       "evidence_url": null
     },
     "unload": {
       "required": true,
-      "status": "blocked",
+      "status": "pending",
       "criterion": "Unload releases runtime state and repeated reload leaves the worker healthy.",
-      "blocked_by": ["beatrice-server-permission"],
+      "blocked_by": [],
       "evidence_url": null
     },
     "vram": {
       "required": true,
-      "status": "blocked",
+      "status": "pending",
       "criterion": "Confirm zero inference VRAM allocation and record peak and recovered CPU RAM.",
-      "blocked_by": ["beatrice-server-permission"],
+      "blocked_by": [],
       "evidence_url": null
     },
     "stt": {
       "required": true,
       "status": "blocked",
       "criterion": "Japanese STT preservation and exact high-consequence entities pass the frozen rule.",
-      "blocked_by": ["beatrice-server-permission", "beatrice-target"],
+      "blocked_by": ["beatrice-quality", "beatrice-target"],
       "evidence_url": null
     },
     "speaker": {
       "required": true,
       "status": "blocked",
       "criterion": "Authorized-target similarity improves under the calibrated preregistered rule.",
-      "blocked_by": ["beatrice-server-permission", "beatrice-target"],
+      "blocked_by": ["beatrice-quality", "beatrice-target"],
       "evidence_url": null
     },
     "integrity": {
       "required": true,
       "status": "blocked",
       "criterion": "Finite samples, clipping, duration, silence, repetition, and discontinuity guardrails pass.",
-      "blocked_by": ["beatrice-server-permission", "beatrice-target"],
+      "blocked_by": ["beatrice-quality"],
       "evidence_url": null
     }
   },
-  "decision_notes": "Potential lightweight Japanese candidate, but server permission is a hard blocker and no integration may begin before it is cleared."
+  "decision_notes": "The MIT trainer graph can support technical execution without beatrice.lib, but target authorization, data and license review, immutable product approval, quality, and selection remain blocked."
 }

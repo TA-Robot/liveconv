@@ -12,8 +12,9 @@ AudioWorklets, so PCM never crosses extension runtime messaging.
    `chrome-extension://<id>` origin.
 2. Open `chrome://extensions`, enable Developer mode, and load this directory as
    an unpacked extension.
-3. Open the popup, enter the gateway origin, profile, and development token, then
-   choose **Save session**. Chrome grants only that gateway host at runtime.
+3. Open the popup, enter the gateway origin and development token, choose
+   **Load profiles**, select a verified compatible catalog profile, then choose
+   **Save session**. Chrome grants only that gateway host at runtime.
 4. On the tab whose audio should be routed, open the popup and choose **Start**.
    Choose **Stop** before changing configuration or selecting another tab.
 
@@ -33,9 +34,19 @@ bounded 200 ms native shadow lets each quantum fall back locally without moving
 backward on the captured source timeline; remote PCM replaces native PCM only
 when its echoed source frame aligns with that same playhead.
 
+The client accepts the real route's 25-frame/500 ms output batch into one bounded
+staging budget and paces at most 10 frames/200 ms into the AudioWorklet. Capture
+credits come from the session's negotiated ingress capacity and are replenished
+only after the WebSocket client accepts a frame. Cold `generation.start` waits
+up to 190 seconds while native remains audible; the popup reports the profile as
+loading and returns to native fallback on timeout.
+
 The popup exposes the supported manual generation lifecycle: End performs a
 bounded drain, Interrupt invalidates local remote playout before cancellation is
-acknowledged, and Next starts the next strictly increasing generation. Automatic
+acknowledged, and Next starts the next strictly increasing generation. A catalog
+profile can be selected only after End or Interrupt, and its hashes are checked
+across catalog, HTTP session creation, WSS attachment, selection, and generation
+start. Automatic
 conversation boundaries require a future supported application or Realtime API
 contract and are not inferred by DOM scraping.
 
