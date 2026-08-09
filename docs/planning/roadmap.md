@@ -126,6 +126,27 @@ that remain nonselectable. These become MS-2 inputs rather than MS-1 blockers.
 
 Status: **Active.** This milestone puts hands-on use before model selection.
 
+Automation checkpoint (2026-08-09): the exact four-model registry, Gateway
+dispatch, Extension UI/receipt path, and SSH preflight are implemented, fully
+checked, and independently reviewed. On clean commit `365e2a4`, all four real
+technical profiles completed the intended one-run Gateway smoke: RVC, Beatrice
+2, and X-VC returned 28 ordered changed frames in a schema-valid replayable
+trace; the operator-observed OpenVoice aggregate reports 25 ordered changed
+frames only after End. Cancellation, stale-output rejection, teardown, and GPU
+cleanup were observed. A final isolated Chrome 151 load smoke also passed with no popup or
+Service Worker error. The remaining close gate is the operator's actual SSH-forwarded,
+authenticated audible ChatGPT session; server-side route output is not a
+substitute for that audible acceptance.
+
+The metadata-only raw route records remain outside Git at
+`/tmp/exp003-ms2-live-three-365e2a4.json` (SHA-256
+`4a72fbf6ebaf35f4ce94fd25bfe569f4819146b77023bcd3fd2e135414c9c49e`) and
+`/tmp/openvoice-ms2-gateway-buffered-365e2a4.json` (SHA-256
+`b11133b79a6ae05238c00a8071671689a1223f322c9485d9a5d27f7640ae15e8`).
+The OpenVoice record is an internally consistent aggregate without a committed
+event transcript or reusable runner, so it is not treated as general stability
+evidence; EXP-005 remains the client-level acceptance gate.
+
 Outcome: use the actual liveconv Extension on an audible `chatgpt.com` voice tab
 through the SSH-loopback route, hear multiple real conversion models, and learn
 their operational shape without making a quality or production claim.

@@ -92,12 +92,12 @@ LV-036/LV-037.
 
 | Lane | Current checkpoint | MS-2 gate | Disposition if it fails |
 |---|---|---|---|
-| RVC v2 | Content-addressed M3/M5 technical route green; quality failed | Extension trial compatibility and real ChatGPT-tab attempt | Keep technical/nonselectable; failure must fall back native |
-| Beatrice 2 | Isolated M3 worker and identity green; no Gateway profile | Technical profile/bridge and real trial | One bounded repair; otherwise visible unavailable state blocks the two-model count |
-| X-VC | M3 worker smoke exists; quality failed and shared route absent | Technical live profile and actual attempt | Do not promote quality; a missing route blocks MS-2 unless the user changes the roster |
-| OpenVoice V2 | Real offline M2 whole-utterance transform | Bounded End-triggered Extension preview and actual attempt | Keep it explicitly non-live and exclude it from latency/streaming claims |
-| Extension | Capture/playout and idle-boundary model selection exist; incompatible profiles are hidden | Honest all-model roster UI plus actual ChatGPT tab | Native fallback remains the one-action recovery |
-| SSH route | Linux loopback/tunnel instructions reviewed | Minimal preflight plus actual tunnel run | Full threat/negative matrix remains MS-4 |
+| RVC v2 | Exact clean-commit 28-frame Gateway route green; quality failed | Actual ChatGPT-tab attempt | Keep technical/nonselectable; failure must fall back native |
+| Beatrice 2 | Exact clean-commit 28-frame Gateway route green | Actual ChatGPT-tab attempt | Record operational result; quality selection waits for MS-3 |
+| X-VC | Exact clean-commit 28-frame Gateway route green; quality failed | Actual ChatGPT-tab attempt | Do not promote quality; record the audible result honestly |
+| OpenVoice V2 | Exact clean-commit 25-frame Gateway preview green, with output only after End | Actual bounded Extension preview | Keep it explicitly non-live and exclude it from latency/streaming claims |
+| Extension | Four-model live/buffered chooser, receipt persistence, failure injection, and 148 tests green | Actual audible ChatGPT tab | Native fallback remains the one-action recovery |
+| SSH route | Strict Linux preflight implementation and Sol review green | Execute against the actual client/server pair | Full threat/negative matrix remains MS-4 |
 | MS-3 evidence | Fixture and speaker work is Ready | Parallel preparation only | Cannot delay first audible technical MVP |
 
 MS-2 dependency graph:
@@ -124,12 +124,12 @@ MS-2 dependency graph:
  MS-3 fixtures/speaker calibration prepare in parallel and do not join Q0.
 ```
 
-R0, LV-049 SSH preflight, and MS-3 fixtures are the first parallel roots. After
-R0, Extension UI, experiment runner, and G0 run in parallel. After G0, RVC
-compatibility, Beatrice, X-VC, and OpenVoice use disjoint leaves. D0 and the
-final browser/GPU run are serial.
-GPU model attempts remain sequential; failed quality does not consume the serial
-path unless it breaks audio safety or prevents invocation.
+R0, U0, X0, G0, the four model leaves, D0, and the deterministic SSH preflight
+are green. The sole remaining serial path is LV-048: execute the preflight on the
+operator client, attach the actual audible authenticated ChatGPT tab, attempt all
+four entries sequentially, inject the fifth OpenVoice failure probe, and join the
+runtime receipt with manual audible judgments. Failed quality is recorded and
+does not reopen implementation unless it breaks audio safety or invocation.
 
 ## MS-2 through MS-6 joins
 

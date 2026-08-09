@@ -44,7 +44,7 @@ name one owner and ownership zone below.
 | LV-032 | Ready | P1 | MS-3 | Prepare authorized intelligible Japanese source/target decision fixtures | Parallel preparation only; RF-008 cannot block the first audible MVP |
 | LV-033 | Done | P1 | MS-1 | Complete OpenVoice V2 M2 offline technical adapter | Clean-checkout M2 repair reviewed; MS-2 shows it offline-only and does not require Supervisor M3 |
 | LV-034 | Planned | P0 | MS-3 | Emit common evidence for shortlisted real candidates | LV-030, LV-032, MS-2 trial roster, and reviewed adapters |
-| LV-035 | Planned | P0 | MS-2 | Integrate all four prepared models through Extension and the SSH route | LV-044 through LV-047, LV-049 through LV-051, and LV-053; unlocks LV-048 |
+| LV-035 | Review | P0 | MS-2 | Integrate all four prepared models through Extension and the SSH route | Four exact technical routes and the Extension integration are green; the actual client SSH/ChatGPT join remains LV-048 |
 | LV-036 | Done | P0 | MS-1 | Independently review integrated real-model checkpoint | Final Sol audit found no current-scope High/Medium and approved MS-1 closure |
 | LV-037 | Done | P0 | MS-1 | Install six-milestone roadmap and review disposition process | Control-check green and independent Sol re-review found no High/Medium |
 | LV-038 | Done | P0 | MS-1 | Run the current isolated RVC technical profile through a disposable Gateway | Clean commit 868ae462: EXP-004 passed 28/28 drain, cancel/stale isolation, and teardown; decision remains inconclusive for quality |
@@ -53,22 +53,22 @@ name one owner and ownership zone below.
 | LV-041 | Planned | P0 | MS-4 | Verify the real one-client SSH-only security boundary | Frozen MS-3 route and second client shell |
 | LV-042 | Planned | P0 | MS-5 | Package personal start/restart/rollback/maintenance operations | MS-4 boundary and release inventory |
 | LV-043 | Planned | P0 | MS-6 | Run audible external-client acceptance and freeze personal v1 | LV-035, LV-042, final review |
-| LV-044 | Ready | P0 | MS-2 | Define the versioned safe model-roster schema and authenticated API contract | Separate execution/decision axes; keep `/v1/models` v1 routable-only and add a non-sensitive roster surface |
-| LV-045 | Planned | P0 | MS-2 | Show all model states in the Extension and permit technical-only invocation | LV-044; accept `pretrained_voice`, reject authorization-required profiles, support live and buffered modes, preserve native-first identity checks |
-| LV-046 | Planned | P0 | MS-2 | Integrate a Beatrice 2 technical Gateway profile and route contract | LV-050; existing M3 evidence, technical/nonselectable, one GPU lease |
-| LV-047 | Planned | P0 | MS-2 | Integrate X-VC as a technical live Gateway profile | LV-050; a failed route blocks MS-2 unless the user explicitly changes the four-model roster |
-| LV-048 | Planned | P0 | MS-2 | Run EXP-005 actual ChatGPT multi-model Extension MVP over SSH | LV-035, LV-051, LV-054; attempt all four, at least two live audible, force native fallback |
-| LV-049 | Ready | P0 | MS-2 | Freeze and execute the minimal SSH-loopback MVP preflight | Remote/client loopback, pinned host key, forwarding-only account/permitopen, token, Origin, ticket, max_sessions=1 |
-| LV-050 | Planned | P0 | MS-2 | Generalize shared Gateway worker dispatch, profile validation, and technical pack/evidence binding | LV-044 contract first; model-specific adapters then write only disjoint bridge/profile modules |
-| LV-051 | Planned | P0 | MS-2 | Freeze the exact four-model deployment roster after route outcomes | LV-044 through LV-047, LV-050, LV-053; no unavailable entry at close |
-| LV-053 | Planned | P0 | MS-2 | Add bounded End-triggered OpenVoice buffered preview invocable from the Extension | LV-044/LV-050; same native fallback, no streaming or latency claim |
-| LV-054 | Planned | P0 | MS-2 | Implement and review the EXP-005 metadata runner, schema, and frozen prompt/sample plan | LV-044; clean commit/roster identity and per-model attempt/output/fallback fields |
+| LV-044 | Done | P0 | MS-2 | Define the versioned safe model-roster schema and authenticated API contract | Exact-four schema/API, pack identity binding, package resources, and Sol review green |
+| LV-045 | Done | P0 | MS-2 | Show all model states in the Extension and permit technical-only invocation | Four-model chooser, live/buffered modes, native-first operation, race regressions, and 148 Extension tests green |
+| LV-046 | Done | P0 | MS-2 | Integrate a Beatrice 2 technical Gateway profile and route contract | Exact technical profile completed a clean-commit 28-frame Gateway route; no quality claim |
+| LV-047 | Done | P0 | MS-2 | Integrate X-VC as a technical live Gateway profile | Exact technical profile completed a clean-commit 28-frame Gateway route; quality-failed status remains visible |
+| LV-048 | Ready | P0 | MS-2 | Run EXP-005 actual ChatGPT multi-model Extension MVP over SSH | Sole MS-2 serial gate: operator client, audible authenticated tab, four attempts, two live audible results, and forced native fallback |
+| LV-049 | Review | P0 | MS-2 | Freeze and execute the minimal SSH-loopback MVP preflight | Script, 47 deterministic checks, and Sol review are green; execute it against the operator's actual client/server pair in LV-048 |
+| LV-050 | Done | P0 | MS-2 | Generalize shared Gateway worker dispatch, profile validation, and technical pack/evidence binding | Static exact-pack registrations, capacity invariants, injection negatives, and Sol review green |
+| LV-051 | Done | P0 | MS-2 | Freeze the exact four-model deployment roster after route outcomes | Generated registry is byte-stable and exposes three live trials plus one buffered preview with exact identities |
+| LV-053 | Done | P0 | MS-2 | Add bounded End-triggered OpenVoice buffered preview invocable from the Extension | Actual 25-frame Gateway route emitted no output before End and passed cancel/stale/cleanup; no streaming claim |
+| LV-054 | Done | P0 | MS-2 | Implement and review the EXP-005 metadata runner, schema, and frozen prompt/sample plan | Runtime receipt, separate manual judgments, fifth failure probe, persistence, strict identity checks, and Sol review green |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| None | - | - | Dispatch LV-044, LV-049, and parallel MS-3 fixture preparation |
+| None | - | - | LV-048 is Ready and begins when the operator supplies the external Chrome/SSH session |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.
@@ -86,29 +86,26 @@ zones. Completed writers are removed from this table immediately.
 
 ## Current coordinated batch
 
-MS-1 is closed. MS-2 now builds the fastest hands-on MVP: an actual ChatGPT voice
-tab captured by the Extension, routed over SSH, and heard through multiple real
-technical models. Quality selection has moved to MS-3 and cannot delay the first
-audible trial.
+MS-1 is closed. MS-2 implementation and server-side execution are complete: the
+exact four-model registry, Extension chooser, receipt producer, SSH preflight,
+and static adapter dispatch passed the full repository checks and independent
+review. On clean commit `365e2a4`, RVC, Beatrice 2, and X-VC each completed a
+28-frame live technical Gateway route; OpenVoice completed a 25-frame bounded
+preview with no output before End. All four passed cancellation, stale-output,
+and cleanup checks. These are execution results, not quality selections.
 
-LV-044, LV-049, and LV-032 are the dependency-correct Ready roots. LV-044 freezes
-the safe roster/API contract before LV-050, the Extension UI, and EXP-005 runner
-start. LV-050 then removes the shared RVC-only Gateway dispatch bottleneck before
-Beatrice, X-VC, and OpenVoice work branches into disjoint model modules. LV-049 prepares
-the SSH route independently. After the model leaves pass, LV-051 freezes all
-four deployment entries and LV-048 joins the registry, UI, runner, SSH preflight,
-Chrome profile, and single GPU lease. LV-032 prepares MS-3 evidence in parallel
-but is not on the MS-2 close path.
+LV-048 is now the only MS-2 Ready item and the only serial close gate. It must run
+on the operator's actual client because this workspace has neither their
+authenticated audible ChatGPT tab nor their SSH client identity. LV-032 may
+prepare MS-3 evidence in parallel but cannot delay this hands-on trial.
 
 ## MS-2 dispatch plan
 
 | Ready item | Intended ownership zone | Stop condition |
 |---|---|---|
-| LV-044 | parent-owned roster schema/API and consumer fixtures | Contract exposes safe states for all four models without changing `/v1/models` v1 semantics |
-| LV-049 | SSH client/server preflight docs and metadata-only operator fixture | Exact isolated-config preflight is ready for the later Chrome/GPU join |
+| LV-048 | operator client plus parent-owned evidence join | Actual audible ChatGPT tab, exact SSH preflight, four attempts, two live audible changes, OpenVoice preview, and forced native fallback are recorded |
 | LV-032 | authorized fixture metadata zone | MS-3 manifest frozen; never blocks MS-2 |
 
-After LV-044 closes, dispatch LV-045, LV-050, and LV-054. After LV-050 closes,
-dispatch LV-046, LV-047, and LV-053 in parallel. Their writers must own separate
-Extension, model bridge/profile, and experiment-runner zones; the parent alone
-integrates the shared registry.
+Do not reopen completed model or shared-contract work for quality tuning during
+LV-048. Record poor audio or an honest model failure in EXP-005 and defer model
+selection and comparison to MS-3.
