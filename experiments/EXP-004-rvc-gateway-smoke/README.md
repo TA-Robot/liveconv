@@ -38,8 +38,8 @@ This cold-start allowance does not change the required 20 ms input pacing.
 The deterministic fake requires no RVC artifact, Gateway process, GPU, or
 ignored environment. It proves catalog/session identity handling, authenticated
 HTTP plus exact-Origin attach wiring, the paced 25-frame batch plus three-frame
-tail, output integrity rejection, stale-output gating, and close/delete/404
-teardown.
+tail, output integrity rejection, stale-output gating, and acknowledged close
+followed by already-absent DELETE/GET 404 teardown.
 
 ```bash
 ROOT=experiments/EXP-004-rvc-gateway-smoke

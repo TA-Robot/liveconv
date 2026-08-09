@@ -72,8 +72,8 @@ async def _run_at_gateway(
             await route.close()
             route = None
             delete_status = await api.delete_session(session_id)
-            if delete_status != 204:
-                raise RuntimeError("Gateway session deletion did not return 204")
+            if delete_status != 404:
+                raise RuntimeError("closed Gateway session was not already absent")
             after_delete_status = await api.get_session(session_id)
             if after_delete_status != 404:
                 raise RuntimeError("Gateway session was visible after deletion")
@@ -82,7 +82,7 @@ async def _run_at_gateway(
                 passed=True,
                 evidence={
                     "session_close_acknowledged": True,
-                    "delete_http_status": delete_status,
+                    "delete_after_close_http_status": delete_status,
                     "get_after_delete_http_status": after_delete_status,
                     "session_invalidated": True,
                 },

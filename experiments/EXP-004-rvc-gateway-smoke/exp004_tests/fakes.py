@@ -53,10 +53,12 @@ class FakeHttp:
         *,
         extra_catalog_profile: bool = False,
         session_protocol_version: int = 1,
+        delete_status_code: int = 404,
     ) -> None:
         self.identity = identity
         self.extra_catalog_profile = extra_catalog_profile
         self.session_protocol_version = session_protocol_version
+        self.delete_status_code = delete_status_code
         self.requests: list[Request] = []
         self.deleted = False
         self.closed = False
@@ -114,7 +116,7 @@ class FakeHttp:
             )
         if method == "DELETE" and path == f"/v1/sessions/{SESSION_ID}":
             self.deleted = True
-            return HttpResult(204, None)
+            return HttpResult(self.delete_status_code, None)
         if method == "GET" and path == f"/v1/sessions/{SESSION_ID}":
             return HttpResult(404 if self.deleted else 200, None)
         raise AssertionError(f"unexpected HTTP request: {method} {path}")

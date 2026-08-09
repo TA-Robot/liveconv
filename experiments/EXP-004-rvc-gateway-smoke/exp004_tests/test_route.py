@@ -135,7 +135,7 @@ async def test_one_profile_rvc_route_batch_tail_cancel_and_teardown(
     }
     assert results["session_close_delete_404"]["evidence"] == {
         "session_close_acknowledged": True,
-        "delete_http_status": 204,
+        "delete_after_close_http_status": 404,
         "get_after_delete_http_status": 404,
         "session_invalidated": True,
     }
@@ -143,6 +143,28 @@ async def test_one_profile_rvc_route_batch_tail_cancel_and_teardown(
         (ROOT / "src/liveconv_exp004_rvc_gateway_smoke/trace.schema.json").read_text()
     )
     Draft202012Validator(schema).validate(document)
+
+
+@pytest.mark.asyncio
+async def test_session_close_rejects_a_second_successful_delete(
+    tmp_path: Path,
+) -> None:
+    config = configuration(tmp_path)
+    identity = fake_identity(config)
+    trace = await run_smoke(
+        config,
+        http=FakeHttp(identity, delete_status_code=204),
+        websockets=FakeConnector(FakeWebSocket(identity)),
+        pacer=VirtualPacer(),
+    )
+
+    document = trace.document()
+    assert document["technical_outcome"] == "failed"
+    assert any(
+        result["case_id"] == "harness_failure"
+        and result["evidence"]["failure_type"] == "RuntimeError"
+        for result in document["results"]
+    )
 
 
 @pytest.mark.asyncio
