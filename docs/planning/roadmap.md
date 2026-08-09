@@ -2,6 +2,10 @@
 
 Status: Active
 
+Current milestone: **MS-2**. MS-1 closed on 2026-08-09 with a clean-commit
+technical RVC Gateway route, green integrated checks, and an independent Sol
+audit. This is an executability checkpoint, not a voice-quality approval.
+
 This roadmap targets one person's usable voice-conversion system, not a public
 service. The final MS-6 system uses one trusted Chrome client, one managed remote
 GPU host, and an SSH local forward to a loopback-only Gateway. Manual maintenance
@@ -79,6 +83,11 @@ Explicitly not required for MS-6:
    port leases.
 
 ## MS-1: Executable multi-model lab
+
+Status: **Closed 2026-08-09.** The retained RVC profile passed EXP-004 through
+the disposable Gateway at commit `868ae46215335f7d9e900894f2c8158ed603eb3f`.
+The experiment decision remains `inconclusive`, and all candidates remain
+labelled according to their actual technical and quality evidence.
 
 Outcome: prove what actually runs on this host and establish one real routed VC
 path without making a quality or production claim.

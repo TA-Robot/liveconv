@@ -32,7 +32,7 @@
       "id": "EXP-004",
       "slug": "rvc-gateway-smoke",
       "title": "RVC disposable Gateway technical smoke",
-      "status": "approved",
+      "status": "decided",
       "phase": 1,
       "path": "experiments/EXP-004-rvc-gateway-smoke/experiment.json",
       "owner": "primary-integrator"

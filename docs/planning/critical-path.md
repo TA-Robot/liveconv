@@ -2,6 +2,9 @@
 
 Status: Active
 
+Current milestone: **MS-2**. MS-1 closed on 2026-08-09; its technical pass did
+not select a model or approve voice quality.
+
 The user-delivery path is:
 
 ```text
@@ -83,12 +86,12 @@ LV-007 plus LV-019/LV-020/LV-022/LV-027/LV-031, `R0/R1` are LV-023/LV-038,
 `E0` is LV-026, `D0` is the current-client documentation portion of LV-021, and `Q0` is
 LV-036/LV-037.
 
-## Current MS-1 frontier
+## MS-1 close record and MS-2 handoff
 
 | Lane | Current checkpoint | Next gate | Disposition if it fails |
 |---|---|---|---|
 | Foundation | False-promotion, cross-render replay, schema, STT, and authorization repairs Sol-green | F0 closed | Reopen only for a new current-scope High |
-| RVC v2 | Content-addressed M3/M4 technical worker, network denial, and profile load green; content CER fails | R1 | Keep technical/nonselectable; run one exact route, then compare in MS-2 |
+| RVC v2 | Content-addressed M3/M4 worker and clean-commit EXP-004 route green; content CER fails | R1 closed | Keep technical/nonselectable and compare on intelligible authorized fixtures in MS-2 |
 | Beatrice 2 | Real isolated worker and full installed/runtime identity independently reviewed | M3 closed | Keep technical/nonselectable; product gates remain blocked |
 | X-VC | Real transform and failed-quality evidence exist; full installed-runtime M3 identity remains incomplete | M2 technical failure; revisit only if shortlisted in MS-2 | Preserve failed/nonselectable result; do not block RVC route |
 | OpenVoice V2 | Real Japanese whole-file transform and offline runtime identity are green; no Supervisor evidence | M2 offline comparator; revisit M3 only if shortlisted in MS-2 | Retain offline/nonselectable; never put on streaming route v1 |
@@ -96,18 +99,16 @@ LV-036/LV-037.
 | Packaging | Nine workspace wheels/sdists, anchored resources, and isolated imports green | P0 closed | Reopen only for a reproducibility blocker |
 | External pool | Concurrent runner and exact symlink repair re-reviewed | not an MS-1 product gate | Fall back to built-in agents or direct tmux immediately |
 
-The immediate serial work is:
+MS-1 is closed: F0, C0, P0, R0, R1, E0, D0, and Q0 are green. The result-bearing
+tree passed `make check` with nine package builds, Python 575 passed/7 opt-in
+skipped, and Extension 109/109. The final integrated Sol audit found no
+current-scope High/Medium.
 
-1. close F0 and current adapter reviews;
-2. rebuild and validate the isolated RVC technical registry against the current
-   worker wheel, runtime, network isolation, artifacts, pack, and evidence
-   digests;
-3. run a disposable loopback Gateway with technical profiles enabled and
-   `max_sessions=1` through one paced 28-frame generation, private 25-frame
-   Supervisor backpressure, partial-batch drain, cancel, fallback/teardown, and
-   readiness checks;
-4. record the SSH server/profile setup without publishing artifacts or secrets;
-5. run the integrated gate and close or schedule review findings.
+The current Ready frontier is LV-032. Freeze the authorized intelligible
+Japanese decision fixtures first. Then run LV-030 speaker calibration and the
+candidate render/evidence lanes in parallel, join them at LV-034, and make the
+LV-039 model decision plus LV-017 architecture ADR. RF-007/RF-008 govern the
+quality evidence; RF-019/RF-020 are activated only for a shortlisted candidate.
 
 Public Caddy DNS/ACME, full blinded experiments, TTS, all-model Gateway switching,
 and an audible external Chrome tab are not in this MS-1 serial list.

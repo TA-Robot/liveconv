@@ -2,11 +2,11 @@
   "schema_version": 1,
   "id": "EXP-004",
   "title": "Retained RVC disposable Gateway technical smoke",
-  "status": "approved",
+  "status": "decided",
   "phase": 1,
   "owner": "primary-integrator",
   "created_at": "2026-08-09T00:00:00Z",
-  "updated_at": "2026-08-09T00:00:00Z",
+  "updated_at": "2026-08-09T12:54:00Z",
   "question": "Can the current retained one-profile RVC technical profile complete the frozen Gateway v1 lifecycle on a disposable loopback Gateway without accepting malformed or stale PCM?",
   "hypothesis": "The exact retained RVC technical profile, identified by its profile, configuration, and pipeline hashes, can authenticate and attach through the Gateway, transform one synthetic 28-frame generation at 20 ms pacing (a 25-frame RVC batch plus a three-frame tail before end) into finite normalized changed PCM with preserved frame identity, reject generation-2 stale output after cancel, and close its disposable session cleanly.",
   "links": [
@@ -100,6 +100,35 @@
     "retention": "Delete optional local trace output after review or within 14 days. The runner does not persist PCM.",
     "authorization": "Only project-authored synthetic non-speech PCM is sent by this experiment. The separately authorized retained RVC target and runtime remain outside Git and are never named in the trace."
   },
-  "result": null,
-  "decision": null
+  "result": {
+    "analyzed_at": "2026-08-09T12:54:00Z",
+    "sample_count": 1,
+    "metrics": {
+      "technical_outcome": "passed",
+      "validated_generation_1_frames": 28,
+      "advertised_ingress_credit_frames": 50,
+      "client_credit_high_water_frames": 28,
+      "accepted_stale_generation_frames": 0,
+      "delete_after_session_close_http_status": 404,
+      "get_after_session_close_http_status": 404
+    },
+    "exclusions": [
+      "No voice-quality, speaker-change, Japanese-content, latency, authorization, licensing, security, deployment, or production-readiness conclusion was evaluated.",
+      "The synthetic non-speech fixture is not suitable for model selection."
+    ],
+    "failures": [],
+    "artifact_locator": "sha256:6a61040a34c03a72fcfe2a7d9a5892947416042685e3b0a0d82e4061d8d14294",
+    "summary": "At clean commit 868ae46215335f7d9e900894f2c8158ed603eb3f, the exact retained RVC technical profile completed the disposable loopback Gateway lifecycle: 28 changed finite frames drained in order, cancellation admitted no stale output, and session invalidation completed without an orphan.",
+    "uncertainty": "One technical synthetic run proves route executability only; quality and repeated-run reliability remain unassessed."
+  },
+  "decision": {
+    "decided_at": "2026-08-09T12:54:00Z",
+    "outcome": "inconclusive",
+    "rationale": "The route met every frozen EXP-004 technical condition, but the experiment deliberately has no model-quality or personal-use selection power.",
+    "followups": [
+      "Keep the retained RVC profile technical and nonselectable.",
+      "Use authorized intelligible Japanese fixtures to compare at least two candidates in MS-2.",
+      "Address immediate post-cancel full-credit reuse under the MS-3 stability gate if RVC is selected."
+    ]
+  }
 }
