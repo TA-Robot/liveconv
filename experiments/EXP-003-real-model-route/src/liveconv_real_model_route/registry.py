@@ -39,7 +39,9 @@ _PROFILE_FIELDS = {
     "license_record",
     "timeouts",
     "runtime",
+    "promotion",
 }
+_PROFILE_REQUIRED_FIELDS = _PROFILE_FIELDS - {"promotion"}
 _RUNTIME_REQUIRED_FIELDS = {
     "adapter",
     "configuration",
@@ -48,6 +50,15 @@ _RUNTIME_REQUIRED_FIELDS = {
 }
 _RUNTIME_FIELDS = _RUNTIME_REQUIRED_FIELDS | {"worker_module"}
 _WORKER_MODULE = re.compile(r"^workers\.adapters\.[a-z0-9_]+(?:\.[a-z0-9_]+)*$")
+_SHA256 = re.compile(r"^sha256:[0-9a-f]{64}$")
+_PACK_ID = re.compile(r"^[a-z0-9][a-z0-9-]{1,63}$")
+_PROMOTION_FIELDS = {
+    "status",
+    "pack_id",
+    "pack_sha256",
+    "evidence_sha256",
+    "endpoint_sha256",
+}
 
 
 def _reject_constant(value: str) -> None:
@@ -131,7 +142,9 @@ class RegistryProfile:
 
     @classmethod
     def parse(cls, value: object) -> RegistryProfile:
-        if not isinstance(value, dict) or set(value) != _PROFILE_FIELDS:
+        if not isinstance(value, dict) or not (
+            _PROFILE_REQUIRED_FIELDS <= set(value) <= _PROFILE_FIELDS
+        ):
             raise ConfigurationError("registry profile fields do not match schema v1")
         profile_id = _require_text(value["profile_id"], "profile_id")
         if _PROFILE_ID.fullmatch(profile_id) is None:
@@ -169,6 +182,21 @@ class RegistryProfile:
         _require_int(timeouts["first_output_ms"], "first_output_ms", minimum=1)
         _require_int(timeouts["stall_ms"], "stall_ms", minimum=1)
         _require_int(runtime["max_vram_mb"], "max_vram_mb")
+        promotion = value.get("promotion")
+        if promotion is not None:
+            if not isinstance(promotion, dict) or set(promotion) != _PROMOTION_FIELDS:
+                raise ConfigurationError(f"{profile_id}: promotion shape is invalid")
+            if promotion["status"] not in {"technical_validation", "approved"}:
+                raise ConfigurationError(f"{profile_id}: promotion status is invalid")
+            pack_id = promotion["pack_id"]
+            if not isinstance(pack_id, str) or _PACK_ID.fullmatch(pack_id) is None:
+                raise ConfigurationError(f"{profile_id}: promotion pack ID is invalid")
+            for field in ("pack_sha256", "evidence_sha256", "endpoint_sha256"):
+                digest = promotion[field]
+                if not isinstance(digest, str) or _SHA256.fullmatch(digest) is None:
+                    raise ConfigurationError(
+                        f"{profile_id}: promotion {field} is invalid"
+                    )
         profile_for_hash = json.loads(json.dumps(value, allow_nan=False))
         profile_for_hash["runtime"].pop("worker_endpoint")
         if profile_for_hash["runtime"].get("worker_module") is None:

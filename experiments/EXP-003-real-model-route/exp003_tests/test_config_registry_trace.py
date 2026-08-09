@@ -186,6 +186,44 @@ def test_registry_worker_module_matches_service_profile_hash(
     assert experiment_profile.configuration_hash == service_profile.configuration_hash
 
 
+def test_registry_promotion_matches_service_profile_hash(tmp_path: Path) -> None:
+    document = json.loads(REGISTRY_PATH.read_text())
+    profile = document["profiles"][0]
+    profile["promotion"] = {
+        "status": "technical_validation",
+        "pack_id": "example-pack",
+        "pack_sha256": f"sha256:{'1' * 64}",
+        "evidence_sha256": f"sha256:{'2' * 64}",
+        "endpoint_sha256": f"sha256:{'3' * 64}",
+    }
+    path = tmp_path / "registry.json"
+    path.write_text(json.dumps(document))
+
+    experiment_profile = ProfileRegistry.load(path).require_route_profiles(
+        ("vc.fake.alpha.v1",), voice_id_present=False
+    )[0]
+    service_profile = ModelProfile.model_validate(profile)
+
+    assert experiment_profile.profile_hash == service_profile.profile_hash
+    assert experiment_profile.configuration_hash == service_profile.configuration_hash
+
+
+def test_registry_rejects_invalid_promotion_digest(tmp_path: Path) -> None:
+    document = json.loads(REGISTRY_PATH.read_text())
+    document["profiles"][0]["promotion"] = {
+        "status": "technical_validation",
+        "pack_id": "example-pack",
+        "pack_sha256": "sha256:not-a-digest",
+        "evidence_sha256": f"sha256:{'2' * 64}",
+        "endpoint_sha256": f"sha256:{'3' * 64}",
+    }
+    path = tmp_path / "registry.json"
+    path.write_text(json.dumps(document))
+
+    with pytest.raises(ConfigurationError, match="promotion pack_sha256 is invalid"):
+        ProfileRegistry.load(path)
+
+
 @pytest.mark.parametrize("worker_module", (pytest.param(None), pytest.param("absent")))
 def test_registry_legacy_worker_module_forms_match_service_profile_hash(
     tmp_path: Path, worker_module: str | None
