@@ -19,42 +19,93 @@ const selectProfileButton = document.querySelector(
 );
 const profileOptions = document.querySelector("#profile-options");
 const profileIdentity = document.querySelector('[data-role="profile-identity"]');
+const modelRoster = document.querySelector('[data-role="model-roster"]');
 const gatewayInput = configurationForm.elements.namedItem("gatewayUrl");
 const profileInput = configurationForm.elements.namedItem("profileId");
 const tokenInput = configurationForm.elements.namedItem("token");
 
 let currentState = null;
 let statusSynchronized = false;
-let profiles = [];
+let models = [];
 let stopPending = false;
 
-function renderProfiles(nextProfiles) {
-  if (Array.isArray(nextProfiles)) {
-    profiles = nextProfiles;
+function humanize(value) {
+  return String(value).replaceAll("_", " ").replaceAll("-", " ");
+}
+
+function modelDetail(model) {
+  const availability =
+    model.executionState === "unavailable"
+      ? `Unavailable: ${humanize(model.reasonCode)}`
+      : model.executionState === "buffered-preview"
+        ? "Buffered preview"
+        : "Live trial";
+  const voice =
+    model.voiceRequirement === "pretrained_voice"
+      ? "Pretrained voice"
+      : model.voiceRequirement === "authorized_target_required"
+        ? "Authorized target required"
+        : "No target voice";
+  return `${availability} · ${humanize(model.decisionState)} · ${voice}`;
+}
+
+function renderModels(nextModels) {
+  if (Array.isArray(nextModels)) {
+    models = nextModels;
   }
   profileOptions.replaceChildren(
-    ...profiles
-      .filter((profile) => profile.compatible)
-      .map((profile) => {
+    ...models.map((model) => {
         const option = document.createElement("option");
-        option.value = profile.profileId;
-        option.label = `${profile.kind} · ${profile.implementationRevision}`;
+        option.value = model.profileId;
+        option.label = `${model.displayName} · ${modelDetail(model)}`;
+        option.disabled = model.selectable !== true;
         return option;
       }),
   );
-  const selected = profiles.find(
-    (profile) => profile.profileId === profileInput.value.trim(),
+  modelRoster?.replaceChildren(
+    ...models.map((model) => {
+      const row = document.createElement("div");
+      row.className = "model-row";
+      const name = document.createElement("strong");
+      name.textContent = model.displayName;
+      const detail = document.createElement("span");
+      detail.textContent = modelDetail(model);
+      row.replaceChildren(name, detail);
+      return row;
+    }),
+  );
+  const selected = models.find(
+    (model) => model.profileId === profileInput.value.trim(),
   );
   profileIdentity.textContent = selected
-    ? `${selected.kind} · ${selected.implementationRevision} · ${selected.profileHash.slice(0, 15)}…`
-    : profiles.length > 0
-      ? "Choose a compatible catalog profile."
-      : "Load the Gateway catalog to verify a profile.";
+    ? `${selected.displayName} · ${modelDetail(selected)}`
+    : models.length > 0
+      ? "Choose a prepared model."
+      : "Load the Gateway roster to verify a profile.";
+  endButton.textContent =
+    selected?.invocationMode === "buffered_end" ? "End & preview" : "End";
+  endButton.setAttribute?.(
+    "aria-label",
+    selected?.invocationMode === "buffered_end"
+      ? "End generation and invoke buffered preview"
+      : "End generation",
+  );
+  return selected;
 }
 
 function render(state, error) {
-  const view = derivePopupView(state, { error, statusSynchronized });
   currentState = state ?? null;
+  if (state?.configuration?.configured) {
+    gatewayInput.value = state.configuration.gatewayUrl;
+    profileInput.value = state.configuration.profileId;
+  }
+  const selected = renderModels();
+  const view = derivePopupView(state, {
+    error,
+    statusSynchronized,
+    selectedModelSelectable:
+      models.length === 0 || selected?.selectable === true,
+  });
   status.textContent = view.status;
   startButton.disabled = view.startDisabled;
   stopButton.disabled = view.stopDisabled || stopPending;
@@ -68,11 +119,6 @@ function render(state, error) {
   cancelButton.disabled = view.cancelDisabled;
   nextButton.disabled = view.nextDisabled;
 
-  if (state?.configuration?.configured) {
-    gatewayInput.value = state.configuration.gatewayUrl;
-    profileInput.value = state.configuration.profileId;
-  }
-  renderProfiles();
 }
 
 async function send(type, fields = {}) {
@@ -90,7 +136,7 @@ async function send(type, fields = {}) {
       stopPending = false;
     }
   }
-  renderProfiles(response?.profiles);
+  renderModels(response?.models);
   render(response?.state, response?.ok ? undefined : response?.error);
   return response;
 }
@@ -149,7 +195,7 @@ selectProfileButton.addEventListener("click", () => {
   );
 });
 
-profileInput.addEventListener("input", () => renderProfiles());
+profileInput.addEventListener("input", () => renderModels());
 
 stopButton.addEventListener("click", () => {
   void send("session.stop").catch((error) => {

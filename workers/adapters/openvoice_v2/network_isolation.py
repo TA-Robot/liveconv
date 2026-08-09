@@ -9,6 +9,7 @@ _PR_SET_NO_NEW_PRIVS = 38
 _SCMP_ACT_ALLOW = 0x7FFF0000
 _SCMP_ACT_ERRNO = 0x00050000
 _SCMP_CMP_NE = 1
+_installed = False
 
 
 class _ScmpArgCompare(ctypes.Structure):
@@ -27,6 +28,10 @@ def deny_non_unix_sockets() -> None:
     irreversible, permits local AF_UNIX IPC, and fails closed if libseccomp or
     the kernel cannot install the rule.
     """
+
+    global _installed  # noqa: PLW0603
+    if _installed:
+        return
 
     libc = ctypes.CDLL(None, use_errno=True)
     libc.prctl.argtypes = (
@@ -87,3 +92,11 @@ def deny_non_unix_sockets() -> None:
             raise OSError(-result, "could not load seccomp socket filter")
     finally:
         seccomp.seccomp_release(context)
+    _installed = True
+
+
+def require_non_unix_socket_denial() -> None:
+    """Refuse upstream model import unless OS network isolation is active."""
+
+    if not _installed:
+        raise RuntimeError("OpenVoice OS network isolation is not active")

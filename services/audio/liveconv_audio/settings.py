@@ -16,6 +16,10 @@ def _default_profile_path() -> Path:
     return Path(str(files("liveconv_audio").joinpath("default-model-profiles.json")))
 
 
+def _default_roster_path() -> Path:
+    return Path(str(files("liveconv_audio").joinpath("default-model-roster.json")))
+
+
 def _positive_number(name: str, default: str, *, integer: bool = False) -> float | int:
     raw = os.environ.get(name, default)
     try:
@@ -39,6 +43,7 @@ class Settings:
     api_token: str
     allowed_origins: frozenset[str]
     profile_config: Path
+    roster_config: Path | None = None
     ticket_ttl_seconds: float = 30.0
     attach_timeout_seconds: float = 5.0
     ingress_budget_ms: int = 500
@@ -63,6 +68,9 @@ class Settings:
             allowed_origins=origins,
             profile_config=Path(
                 os.environ.get("LIVECONV_PROFILE_CONFIG", _default_profile_path())
+            ).resolve(),
+            roster_config=Path(
+                os.environ.get("LIVECONV_ROSTER_CONFIG", _default_roster_path())
             ).resolve(),
             ticket_ttl_seconds=float(
                 _positive_number("LIVECONV_TICKET_TTL_SECONDS", "30")

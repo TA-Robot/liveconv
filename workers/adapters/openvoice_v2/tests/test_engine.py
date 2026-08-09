@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import importlib.util
 import os
 import shutil
@@ -13,6 +14,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import workers.adapters.openvoice_v2.engine as engine_module
 from workers.adapters.openvoice_v2.engine import (
     RUNTIME_LOCK_PATH,
     DistributionAttestation,
@@ -174,6 +176,86 @@ def test_engine_resets_rng_for_reproducible_conversion(tmp_path: Path) -> None:
     assert numpy.array_equal(first, second)
 
 
+def _write_minimal_openvoice_api(package_root: Path, marker: str) -> None:
+    package_root.mkdir(parents=True)
+    (package_root / "__init__.py").write_text("", encoding="ascii")
+    (package_root / "api.py").write_text(
+        "\n".join(
+            (
+                "from types import SimpleNamespace",
+                f"MARKER = {marker!r}",
+                "class OpenVoiceBaseClass:",
+                "    def __init__(self, _config_path, *, device):",
+                "        self.hps = SimpleNamespace(",
+                "            _version_='v2',",
+                "            data=SimpleNamespace(sampling_rate=16000),",
+                "        )",
+                "class ToneColorConverter(OpenVoiceBaseClass):",
+                "    def load_ckpt(self, _checkpoint_path):",
+                "        return None",
+                "",
+            )
+        ),
+        encoding="ascii",
+    )
+
+
+def test_load_openvoice_imports_the_pinned_nested_package(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    value = configuration(tmp_path)
+    repository_root = value.source_root / "openvoice"
+    expected_api_path = repository_root / "openvoice" / "api.py"
+    _write_minimal_openvoice_api(repository_root / "openvoice", "pinned")
+    _write_minimal_openvoice_api(tmp_path / "external" / "openvoice", "external")
+
+    monkeypatch.setattr(engine_module, "require_non_unix_socket_denial", lambda: None)
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.syspath_prepend(str(tmp_path / "external"))
+    monkeypatch.delitem(sys.modules, "openvoice", raising=False)
+    monkeypatch.delitem(sys.modules, "openvoice.api", raising=False)
+
+    api, _model = engine_module._load_openvoice(value)
+
+    assert api.MARKER == "pinned"
+    assert Path(api.__file__).resolve() == expected_api_path.resolve()
+
+
+def test_load_openvoice_rejects_cached_api_drift(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    value = configuration(tmp_path)
+    repository_root = value.source_root / "openvoice"
+    _write_minimal_openvoice_api(repository_root / "openvoice", "pinned")
+    external_root = tmp_path / "external"
+    _write_minimal_openvoice_api(external_root / "openvoice", "external")
+
+    monkeypatch.setattr(engine_module, "require_non_unix_socket_denial", lambda: None)
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.syspath_prepend(str(external_root))
+    monkeypatch.delitem(sys.modules, "openvoice", raising=False)
+    monkeypatch.delitem(sys.modules, "openvoice.api", raising=False)
+    assert importlib.import_module("openvoice.api").MARKER == "external"
+
+    with pytest.raises(RuntimeError, match="OpenVoice API import drift"):
+        engine_module._load_openvoice(value)
+
+
+def test_load_openvoice_rejects_repository_path_escape(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    value = configuration(tmp_path)
+    repository_link = value.source_root / "openvoice"
+    shutil.rmtree(repository_link)
+    external_repository = tmp_path / "external-repository"
+    _write_minimal_openvoice_api(external_repository / "openvoice", "external")
+    repository_link.symlink_to(external_repository, target_is_directory=True)
+
+    monkeypatch.setattr(engine_module, "require_non_unix_socket_denial", lambda: None)
+    with pytest.raises(ValueError, match="repository path escapes"):
+        engine_module._load_openvoice(value)
+
+
 def _worker_wheel() -> Path:
     configured = os.environ.get("LIVECONV_OPENVOICE_V2_WORKER_WHEEL_PATH")
     if configured:
@@ -331,27 +413,20 @@ if not all(importlib.util.find_spec(name) for name in _RUNTIME_DEPENDENCIES):
         test_function.__test__ = False
 
     def test_engine_suite_executes_in_dedicated_runtime() -> None:
-        repository_root = Path(__file__).resolve().parents[4]
-        default_python = repository_root / "artifacts/openvoice-v2/runtime/bin/python"
-        runtime_python = Path(
-            os.environ.get(
-                "LIVECONV_OPENVOICE_V2_TEST_PYTHON",
-                str(default_python),
-            )
-        ).absolute()
-        if not runtime_python.is_file():
-            pytest.skip("create the digest-locked OpenVoice test runtime")
-        wheel = next(
-            (repository_root / "artifacts/openvoice-v2/wheels").glob(
-                "liveconv_worker_runtime-*.whl"
-            ),
-            None,
-        )
-        if wheel is None:
-            pytest.skip("build the liveconv worker wheel")
+        if os.environ.get("LIVECONV_OPENVOICE_V2_DEDICATED_TEST_CHILD") == "1":
+            pytest.skip("running inside the explicit dedicated-runtime child")
+        configured_python = os.environ.get("LIVECONV_OPENVOICE_V2_TEST_PYTHON")
+        configured_wheel = os.environ.get("LIVECONV_OPENVOICE_V2_WORKER_WHEEL_PATH")
+        if not configured_python or not configured_wheel:
+            pytest.skip("set explicit digest-locked runtime and wheel paths")
+        runtime_python = Path(configured_python).absolute()
+        wheel = Path(configured_wheel).absolute()
+        assert runtime_python.is_file()
+        assert wheel.is_file()
         environment = dict(os.environ)
         environment.pop("PYTHONPATH", None)
         environment["LIVECONV_OPENVOICE_V2_WORKER_WHEEL_PATH"] = str(wheel)
+        environment["LIVECONV_OPENVOICE_V2_DEDICATED_TEST_CHILD"] = "1"
         with tempfile.TemporaryDirectory(
             prefix="liveconv-openvoice-tests-", dir="/tmp"
         ) as directory:

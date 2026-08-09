@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import subprocess
@@ -13,8 +14,12 @@ _LIVE_MODELS = frozenset(_MODEL_ORDER[:3])
 _OPENVOICE_MODE = "buffered_preview_after_end"
 _SHA256 = re.compile(r"^sha256:[0-9a-f]{64}$")
 _COMMIT = re.compile(r"^[0-9a-f]{40}$")
+_UUID = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+)
 _PROFILE_ID = re.compile(
-    r"^vc\.(?:rvc-v2|beatrice-2|x-vc|openvoice-v2)\.[a-z0-9][a-z0-9.-]{0,63}\.v1$"
+    r"^vc\.(?:rvc-v2|rvc|beatrice-2|beatrice|x-vc|x-vc|openvoice-v2)"
+    r"\.[a-z0-9][a-z0-9.-]{0,63}\.v1$"
 )
 _FORBIDDEN_KEY = re.compile(
     r"(^|_)(audio|artifact|bearer|credential|directory|endpoint|file|host|"
@@ -36,7 +41,6 @@ class RosterEntry:
     route_mode: str
     profile_hash: str
     configuration_hash: str
-    pipeline_hash: str
 
     def document(self) -> dict[str, str]:
         return {
@@ -46,7 +50,6 @@ class RosterEntry:
             "route_mode": self.route_mode,
             "profile_hash": self.profile_hash,
             "configuration_hash": self.configuration_hash,
-            "pipeline_hash": self.pipeline_hash,
         }
 
 
@@ -86,17 +89,27 @@ class PromptPlan:
 
 @dataclass(frozen=True, slots=True)
 class AttemptObservation:
-    """One manual or deterministic metadata-only model invocation outcome."""
+    """A deterministic contract-test outcome; it is never runtime evidence."""
 
-    audible_changed_output: bool
+    finite_output_observed: bool
+    changed_output_observed: bool
+    stale_output_accepted: bool = False
+    exclusive_playout_observed: bool = True
     end_triggered: bool = False
-    note: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
-class ForcedFailureObservation:
-    native_fallback_observed: bool
-    native_remote_overlap_observed: bool = False
+class RuntimeReceipt:
+    """Validated facts emitted by Extension and Gateway instrumentation."""
+
+    document: dict[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class ManualAudibleJudgments:
+    """Validated operator listening judgments, bound to a runtime receipt."""
+
+    document: dict[str, object]
 
 
 class ModelRoute(Protocol):
@@ -105,7 +118,7 @@ class ModelRoute(Protocol):
 
 @dataclass(slots=True)
 class FakeRoute:
-    """Deterministic route double; it carries outcomes but never media."""
+    """Deterministic route double for the roster contract, never an MS-2 run."""
 
     observations: Mapping[str, AttemptObservation]
     invoked_model_ids: list[str] = field(default_factory=list)
@@ -126,8 +139,9 @@ class ExperimentRun:
     prompt_plan: PromptPlan
     git_commit: str
     persisted_evidence_verified: bool = False
-    _attempts: dict[str, dict[str, object]] = field(default_factory=dict)
-    _forced_failure: dict[str, object] | None = None
+    _contract_attempts: dict[str, AttemptObservation] = field(default_factory=dict)
+    _runtime_receipt: RuntimeReceipt | None = None
+    _manual_audible_judgments: ManualAudibleJudgments | None = None
 
     def __post_init__(self) -> None:
         if _COMMIT.fullmatch(self.git_commit) is None:
@@ -139,115 +153,97 @@ class ExperimentRun:
         ):
             raise EvidenceValidationError("prompt plan does not bind the frozen roster")
 
-    def record_manual_attempt(
-        self, model_id: str, observation: AttemptObservation
-    ) -> None:
-        self._record_attempt(
-            model_id, observation, observation_source="manual_operator"
-        )
-
     def record_route_attempt(
         self, model_id: str, observation: AttemptObservation
     ) -> None:
-        self._record_attempt(
-            model_id, observation, observation_source="deterministic_fake"
-        )
+        """Record fake-route behavior for a contract test only."""
 
-    def _record_attempt(
-        self,
-        model_id: str,
-        observation: AttemptObservation,
-        *,
-        observation_source: str,
-    ) -> None:
         entry = self.roster.entry(model_id)
-        if model_id in self._attempts:
+        if model_id in self._contract_attempts:
             raise EvidenceValidationError(f"duplicate model attempt: {model_id}")
-        if observation.note is not None:
-            raise EvidenceValidationError("free-form evidence is forbidden")
         if entry.route_mode == _OPENVOICE_MODE and not observation.end_triggered:
             raise EvidenceValidationError(
-                "OpenVoice preview must be explicitly End-triggered"
+                "OpenVoice contract test must be explicitly End-triggered"
             )
         if entry.route_mode == "live" and observation.end_triggered:
             raise EvidenceValidationError(
-                "live route evidence cannot be represented as buffered"
+                "live contract test cannot be represented as buffered"
             )
-        self._attempts[model_id] = {
-            "model_id": model_id,
-            "route_mode": entry.route_mode,
-            "attempted": True,
-            "observation_source": observation_source,
-            "audible_changed_output": observation.audible_changed_output,
-            "end_triggered": observation.end_triggered,
-        }
+        self._contract_attempts[model_id] = observation
 
-    def record_forced_failure(self, observation: ForcedFailureObservation) -> None:
-        if observation.native_remote_overlap_observed:
+    def attach_runtime_evidence(
+        self,
+        receipt: RuntimeReceipt,
+        manual_audible_judgments: ManualAudibleJudgments,
+    ) -> None:
+        if self._contract_attempts:
             raise EvidenceValidationError(
-                "forced fallback evidence cannot accept native and transformed overlap"
+                "contract-test attempts cannot be mixed with runtime evidence"
             )
-        self._forced_failure = {
-            "remote_failure_forced": True,
-            "native_fallback_observed": observation.native_fallback_observed,
-            "native_remote_overlap_observed": False,
-        }
+        if (
+            self._runtime_receipt is not None
+            or self._manual_audible_judgments is not None
+        ):
+            raise EvidenceValidationError("runtime evidence is already attached")
+        self._runtime_receipt = receipt
+        self._manual_audible_judgments = manual_audible_judgments
 
     def finish(self) -> dict[str, object]:
-        if set(self._attempts) != set(_MODEL_ORDER):
+        if self._runtime_receipt is None:
+            return self._contract_test_document()
+        if self._manual_audible_judgments is None:
             raise EvidenceValidationError(
-                "all four roster entries must be invoked and attempted"
+                "runtime receipt requires manual audible judgments"
             )
-        if self._forced_failure is None:
-            raise EvidenceValidationError("one forced remote failure is required")
-        attempts = [self._attempts[model_id] for model_id in _MODEL_ORDER]
-        live_audible_profiles = sum(
-            attempt["audible_changed_output"]
-            for attempt in attempts
-            if attempt["model_id"] in _LIVE_MODELS
+        return _runtime_report_document(
+            roster=self.roster,
+            prompt_plan=self.prompt_plan,
+            git_commit=self.git_commit,
+            worktree_clean=self.persisted_evidence_verified,
+            receipt=self._runtime_receipt,
+            manual_audible_judgments=self._manual_audible_judgments,
         )
-        openvoice_attempt = attempts[-1]
-        fallback_observed = self._forced_failure["native_fallback_observed"] is True
-        openvoice_preview_completed = (
-            openvoice_attempt["end_triggered"] is True
-            and openvoice_attempt["audible_changed_output"] is True
-        )
-        technical_passed = (
-            live_audible_profiles >= 2
-            and openvoice_preview_completed
-            and fallback_observed
-        )
-        return {
-            "schema_version": 1,
-            "experiment_id": "EXP-005",
-            "evidence_scope": "technical_extension_multimodel_mvp",
-            "decision_status": "inconclusive",
-            "technical_outcome": "passed" if technical_passed else "failed",
-            "commit": self.git_commit,
-            "worktree_clean": self.persisted_evidence_verified,
-            "roster": self.roster.document(),
-            "prompt_plan": self.prompt_plan.document(),
-            "attempts": attempts,
-            "metrics": {
-                "prepared_models_attempted": len(attempts),
-                "live_profiles_with_audible_changed_output": live_audible_profiles,
-                "openvoice_buffered_preview_completed": openvoice_preview_completed,
-                "accepted_stale_frames": 0,
-                "forced_failure_native_fallback": fallback_observed,
+
+    def _contract_test_document(self) -> dict[str, object]:
+        if set(self._contract_attempts) != set(_MODEL_ORDER):
+            raise EvidenceValidationError(
+                "all four roster entries must be exercised by a contract test"
+            )
+        attempts = [
+            _contract_attempt_document(
+                self.roster.entry(model_id), self._contract_attempts[model_id]
+            )
+            for model_id in _MODEL_ORDER
+        ]
+        return _report_document(
+            roster=self.roster,
+            prompt_plan=self.prompt_plan,
+            git_commit=self.git_commit,
+            worktree_clean=self.persisted_evidence_verified,
+            evidence_kind="contract_test",
+            technical_outcome="inconclusive",
+            attempts=attempts,
+            runtime_receipt=None,
+            manual_audible_judgments=None,
+            metrics={
+                "prepared_models_attempted": 4,
+                "live_profiles_with_finite_changed_output": sum(
+                    item["finite_output_observed"] is True
+                    and item["changed_output_observed"] is True
+                    for item in attempts
+                    if item["model_id"] in _LIVE_MODELS
+                ),
+                "live_profiles_with_audible_changed_output": 0,
+                "openvoice_buffered_preview_completed": False,
+                "accepted_stale_frames": sum(
+                    item["stale_output_accepted"] is True for item in attempts
+                ),
+                "exclusive_playout_for_all_attempts": all(
+                    item["exclusive_playout_observed"] is True for item in attempts
+                ),
+                "forced_failure_native_fallback": False,
             },
-            "forced_failure": self._forced_failure,
-            "claims": {
-                "voice_conversion_established": False,
-                "speaker_change_established": False,
-                "japanese_quality_established": False,
-                "content_preservation_established": False,
-                "latency_target_established": False,
-                "authorization_established": False,
-                "license_established": False,
-                "security_established": False,
-                "production_readiness_established": False,
-            },
-        }
+        )
 
     def to_json(self) -> str:
         return (
@@ -273,25 +269,22 @@ class ExperimentRun:
 
 
 def run_fake_route(run: ExperimentRun, route: ModelRoute) -> None:
-    """Exercise the complete frozen roster against a deterministic metadata fake."""
+    """Exercise the roster against a fake that can yield only a contract test."""
 
     for entry in run.roster.entries:
         run.record_route_attempt(entry.model_id, route.attempt(entry))
 
 
 def load_roster(source: Path) -> Roster:
-    try:
-        raw = json.loads(source.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
-        raise EvidenceValidationError(f"cannot load roster: {source.name}") from error
-    if not isinstance(raw, dict):
-        raise EvidenceValidationError("roster must be an object")
+    raw = _load_json_object(source, "roster")
     _reject_forbidden_keys(raw)
     if set(raw) != {"schema_version", "roster_revision", "entries"}:
         raise EvidenceValidationError("roster has unsupported metadata fields")
     if raw["schema_version"] != 1:
         raise EvidenceValidationError("roster schema_version must be 1")
     revision = _require_sha256(raw["roster_revision"], "roster_revision")
+    if revision != content_digest(_without(raw, "roster_revision")):
+        raise EvidenceValidationError("roster_revision does not digest roster content")
     entries_value = raw["entries"]
     if not isinstance(entries_value, list) or len(entries_value) != len(_MODEL_ORDER):
         raise EvidenceValidationError("roster requires exactly four prepared entries")
@@ -311,14 +304,7 @@ def load_roster(source: Path) -> Roster:
 
 
 def load_prompt_plan(source: Path) -> PromptPlan:
-    try:
-        raw = json.loads(source.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
-        raise EvidenceValidationError(
-            f"cannot load prompt plan: {source.name}"
-        ) from error
-    if not isinstance(raw, dict):
-        raise EvidenceValidationError("prompt plan must be an object")
+    raw = _load_json_object(source, "prompt plan")
     _reject_forbidden_keys(raw)
     expected = {
         "schema_version",
@@ -330,6 +316,10 @@ def load_prompt_plan(source: Path) -> PromptPlan:
     if set(raw) != expected or raw["schema_version"] != 1:
         raise EvidenceValidationError("prompt plan has unsupported metadata fields")
     revision = _require_sha256(raw["plan_revision"], "plan_revision")
+    if revision != content_digest(_without(raw, "plan_revision")):
+        raise EvidenceValidationError(
+            "plan_revision does not digest prompt-plan content"
+        )
     if raw["sample_count_per_model"] != 1:
         raise EvidenceValidationError(
             "prompt plan requires exactly one sample per model"
@@ -348,6 +338,354 @@ def load_prompt_plan(source: Path) -> PromptPlan:
     )
 
 
+def load_runtime_receipt(
+    source: Path, *, roster: Roster, prompt_plan: PromptPlan
+) -> RuntimeReceipt:
+    """Load a producer-emitted receipt, never an operator-authored substitute."""
+
+    raw = _load_json_object(source, "runtime receipt")
+    _reject_forbidden_keys(raw)
+    expected = {
+        "schema_version",
+        "source",
+        "receipt_id",
+        "roster_revision",
+        "plan_revision",
+        "chatgpt_tab",
+        "ssh_loopback",
+        "gateway_authentication",
+        "attempts",
+        "forced_failure_event",
+        "native_fallback_event",
+    }
+    if set(raw) != expected or raw["schema_version"] != 1:
+        raise EvidenceValidationError("runtime receipt has unsupported metadata fields")
+    if raw["source"] != "extension_gateway_runtime":
+        raise EvidenceValidationError(
+            "runtime receipt source must be extension_gateway_runtime"
+        )
+    receipt_id = _require_uuid(raw["receipt_id"], "receipt_id")
+    if raw["roster_revision"] != roster.roster_revision:
+        raise EvidenceValidationError("runtime receipt roster revision does not match")
+    if raw["plan_revision"] != prompt_plan.plan_revision:
+        raise EvidenceValidationError("runtime receipt plan revision does not match")
+    _require_true_facts(
+        raw["chatgpt_tab"],
+        "ChatGPT tab observation",
+        {
+            "chatgpt_com_audible_tab_observed",
+            "capture_started_after_user_gesture",
+        },
+    )
+    _require_true_facts(
+        raw["ssh_loopback"],
+        "SSH-loopback",
+        {
+            "configured_local_forward_reached_gateway",
+            "client_loopback_only",
+            "remote_gateway_loopback_only",
+            "pinned_server_identity_configured",
+        },
+    )
+    gateway = raw["gateway_authentication"]
+    if not isinstance(gateway, dict) or set(gateway) != {
+        "gateway_session_authenticated",
+        "single_use_session_grant_authenticated",
+        "exact_extension_origin_verified",
+        "max_sessions",
+    }:
+        raise EvidenceValidationError("Gateway authentication facts are invalid")
+    if (
+        gateway["gateway_session_authenticated"] is not True
+        or gateway["single_use_session_grant_authenticated"] is not True
+        or gateway["exact_extension_origin_verified"] is not True
+        or gateway["max_sessions"] != 1
+    ):
+        raise EvidenceValidationError("Gateway authentication facts are incomplete")
+
+    attempts_value = raw["attempts"]
+    if not isinstance(attempts_value, list) or len(attempts_value) != len(_MODEL_ORDER):
+        raise EvidenceValidationError("runtime receipt requires exactly four attempts")
+    attempts = [
+        _load_runtime_attempt(value, index=index, roster_entry=roster.entries[index])
+        for index, value in enumerate(attempts_value)
+    ]
+    pipeline_ids = [item["pipeline_id"] for item in attempts]
+    if len(set(pipeline_ids)) != len(pipeline_ids):
+        raise EvidenceValidationError(
+            "runtime attempt pipeline IDs must be dynamic and unique"
+        )
+    generation_ids = [item["generation_id"] for item in attempts]
+    if generation_ids != sorted(generation_ids) or len(set(generation_ids)) != len(
+        generation_ids
+    ):
+        raise EvidenceValidationError(
+            "runtime attempt generation IDs must be strictly increasing"
+        )
+    forced_failure = _load_forced_failure_event(raw["forced_failure_event"], attempts)
+    native_fallback = _load_native_fallback_event(
+        raw["native_fallback_event"], forced_failure
+    )
+    return RuntimeReceipt(
+        document={
+            "schema_version": 1,
+            "source": "extension_gateway_runtime",
+            "receipt_id": receipt_id,
+            "roster_revision": roster.roster_revision,
+            "plan_revision": prompt_plan.plan_revision,
+            "chatgpt_tab": raw["chatgpt_tab"],
+            "ssh_loopback": raw["ssh_loopback"],
+            "gateway_authentication": gateway,
+            "attempts": attempts,
+            "forced_failure_event": forced_failure,
+            "native_fallback_event": native_fallback,
+        }
+    )
+
+
+def load_manual_audible_judgments(
+    source: Path, *, receipt: RuntimeReceipt
+) -> ManualAudibleJudgments:
+    """Load listening judgments only after the runtime receipt has been verified."""
+
+    raw = _load_json_object(source, "manual audible judgments")
+    _reject_forbidden_keys(raw)
+    expected = {
+        "schema_version",
+        "source",
+        "receipt_id",
+        "chatgpt_account_authenticated_asserted",
+        "ssh_tunnel_established_asserted",
+        "ssh_pinned_server_identity_verified_asserted",
+        "judgments",
+    }
+    missing = expected.difference(raw)
+    if missing:
+        missing_fields = ", ".join(sorted(missing))
+        raise EvidenceValidationError(
+            f"manual judgments are missing required assertions: {missing_fields}"
+        )
+    if set(raw) != expected or raw["schema_version"] != 1:
+        raise EvidenceValidationError(
+            "manual audible judgments have unsupported metadata fields"
+        )
+    if raw["source"] != "manual_operator":
+        raise EvidenceValidationError("manual judgments source must be manual_operator")
+    if raw["receipt_id"] != receipt.document["receipt_id"]:
+        raise EvidenceValidationError(
+            "manual judgments do not bind the runtime receipt"
+        )
+    for field_name in (
+        "chatgpt_account_authenticated_asserted",
+        "ssh_tunnel_established_asserted",
+        "ssh_pinned_server_identity_verified_asserted",
+    ):
+        if raw[field_name] is not True:
+            raise EvidenceValidationError(
+                f"manual judgment {field_name} must be explicitly asserted"
+            )
+    values = raw["judgments"]
+    receipt_attempts = _require_list(receipt.document["attempts"], "receipt attempts")
+    if not isinstance(values, list) or len(values) != len(receipt_attempts):
+        raise EvidenceValidationError("manual judgments require exactly four attempts")
+    judgments: list[dict[str, object]] = []
+    for index, (value, attempt) in enumerate(
+        zip(values, receipt_attempts, strict=True)
+    ):
+        if not isinstance(value, dict) or set(value) != {
+            "model_id",
+            "pipeline_id",
+            "generation_id",
+            "audible_changed_output",
+        }:
+            raise EvidenceValidationError(f"manual judgment {index} is invalid")
+        if (
+            value["model_id"] != attempt["model_id"]
+            or value["pipeline_id"] != attempt["pipeline_id"]
+            or value["generation_id"] != attempt["generation_id"]
+            or not isinstance(value["audible_changed_output"], bool)
+        ):
+            raise EvidenceValidationError(
+                f"manual judgment {index} does not bind its runtime attempt"
+            )
+        judgments.append(dict(value))
+    return ManualAudibleJudgments(
+        document={
+            "schema_version": 1,
+            "source": "manual_operator",
+            "receipt_id": receipt.document["receipt_id"],
+            "chatgpt_account_authenticated_asserted": True,
+            "ssh_tunnel_established_asserted": True,
+            "ssh_pinned_server_identity_verified_asserted": True,
+            "judgments": judgments,
+        }
+    )
+
+
+def _runtime_report_document(
+    *,
+    roster: Roster,
+    prompt_plan: PromptPlan,
+    git_commit: str,
+    worktree_clean: bool,
+    receipt: RuntimeReceipt,
+    manual_audible_judgments: ManualAudibleJudgments,
+) -> dict[str, object]:
+    receipt_document = receipt.document
+    attempts = _require_list(receipt_document["attempts"], "receipt attempts")
+    judgments = _require_list(
+        manual_audible_judgments.document["judgments"], "manual judgments"
+    )
+    judgment_by_model = {value["model_id"]: value for value in judgments}
+
+    valid_changed_attempts = [
+        value
+        for value in attempts
+        if value["finite_output_observed"] is True
+        and value["changed_output_observed"] is True
+        and value["stale_output_accepted"] is False
+        and value["exclusive_playout_observed"] is True
+    ]
+    live_machine_changed = sum(
+        value["model_id"] in _LIVE_MODELS for value in valid_changed_attempts
+    )
+    live_audible_changed = sum(
+        value["model_id"] in _LIVE_MODELS
+        and judgment_by_model[value["model_id"]]["audible_changed_output"] is True
+        for value in valid_changed_attempts
+    )
+    openvoice = attempts[-1]
+    openvoice_preview_completed = (
+        openvoice in valid_changed_attempts
+        and openvoice["end_triggered"] is True
+        and judgment_by_model["openvoice-v2"]["audible_changed_output"] is True
+    )
+    accepted_stale_frames = sum(
+        value["stale_output_accepted"] is True for value in attempts
+    )
+    exclusive_playout = all(
+        value["exclusive_playout_observed"] is True for value in attempts
+    )
+    failure_event = _object(receipt_document["forced_failure_event"], "failure event")
+    fallback_event = _object(
+        receipt_document["native_fallback_event"], "fallback event"
+    )
+    fallback_observed = (
+        failure_event["failure_injected"] is True
+        and failure_event["fallback_required_observed"] is True
+        and fallback_event["native_route_active"] is True
+        and fallback_event["remote_route_active"] is False
+    )
+    operator_access_assertions = all(
+        manual_audible_judgments.document.get(field_name) is True
+        for field_name in (
+            "chatgpt_account_authenticated_asserted",
+            "ssh_tunnel_established_asserted",
+            "ssh_pinned_server_identity_verified_asserted",
+        )
+    )
+    technical_passed = (
+        live_machine_changed >= 2
+        and live_audible_changed >= 2
+        and openvoice_preview_completed
+        and accepted_stale_frames == 0
+        and exclusive_playout
+        and fallback_observed
+        and operator_access_assertions
+    )
+    report_attempts = [
+        {
+            **attempt,
+            "audible_changed_output": judgment_by_model[attempt["model_id"]][
+                "audible_changed_output"
+            ],
+        }
+        for attempt in attempts
+    ]
+    return _report_document(
+        roster=roster,
+        prompt_plan=prompt_plan,
+        git_commit=git_commit,
+        worktree_clean=worktree_clean,
+        evidence_kind="runtime_receipt",
+        technical_outcome="passed" if technical_passed else "failed",
+        attempts=report_attempts,
+        runtime_receipt=receipt_document,
+        manual_audible_judgments=manual_audible_judgments.document,
+        metrics={
+            "prepared_models_attempted": 4,
+            "live_profiles_with_finite_changed_output": live_machine_changed,
+            "live_profiles_with_audible_changed_output": live_audible_changed,
+            "openvoice_buffered_preview_completed": openvoice_preview_completed,
+            "accepted_stale_frames": accepted_stale_frames,
+            "exclusive_playout_for_all_attempts": exclusive_playout,
+            "forced_failure_native_fallback": fallback_observed,
+        },
+    )
+
+
+def _report_document(
+    *,
+    roster: Roster,
+    prompt_plan: PromptPlan,
+    git_commit: str,
+    worktree_clean: bool,
+    evidence_kind: str,
+    technical_outcome: str,
+    attempts: list[dict[str, object]],
+    runtime_receipt: dict[str, object] | None,
+    manual_audible_judgments: dict[str, object] | None,
+    metrics: dict[str, object],
+) -> dict[str, object]:
+    return {
+        "schema_version": 2,
+        "experiment_id": "EXP-005",
+        "evidence_scope": "technical_extension_multimodel_mvp",
+        "evidence_kind": evidence_kind,
+        "decision_status": "inconclusive",
+        "technical_outcome": technical_outcome,
+        "commit": git_commit,
+        "worktree_clean": worktree_clean,
+        "roster": roster.document(),
+        "prompt_plan": prompt_plan.document(),
+        "attempts": attempts,
+        "runtime_receipt": runtime_receipt,
+        "manual_audible_judgments": manual_audible_judgments,
+        "metrics": metrics,
+        "claims": {
+            "voice_conversion_established": False,
+            "speaker_change_established": False,
+            "japanese_quality_established": False,
+            "content_preservation_established": False,
+            "latency_target_established": False,
+            "authorization_established": False,
+            "license_established": False,
+            "security_established": False,
+            "production_readiness_established": False,
+        },
+    }
+
+
+def _contract_attempt_document(
+    entry: RosterEntry, observation: AttemptObservation
+) -> dict[str, object]:
+    return {
+        "model_id": entry.model_id,
+        "profile_id": entry.profile_id,
+        "profile_hash": entry.profile_hash,
+        "configuration_hash": entry.configuration_hash,
+        "route_mode": entry.route_mode,
+        "pipeline_id": None,
+        "generation_id": None,
+        "finite_output_observed": observation.finite_output_observed,
+        "changed_output_observed": observation.changed_output_observed,
+        "stale_output_accepted": observation.stale_output_accepted,
+        "exclusive_playout_observed": observation.exclusive_playout_observed,
+        "end_triggered": observation.end_triggered,
+        "audible_changed_output": None,
+    }
+
+
 def _validate_prompt_sequence(sequence: list[object]) -> tuple[str, ...]:
     expected_steps = (
         ("native-baseline", "native", "start_end"),
@@ -355,7 +693,7 @@ def _validate_prompt_sequence(sequence: list[object]) -> tuple[str, ...]:
         ("beatrice-2-trial", "beatrice-2", "start_end_next"),
         ("x-vc-trial", "x-vc", "start_end_next"),
         ("openvoice-v2-preview", "openvoice-v2", "start_end"),
-        ("forced-native-fallback", "native", "interrupt"),
+        ("forced-native-fallback", "openvoice-v2", "next_inject_failure"),
     )
     model_ids: list[str] = []
     for index, (value, expected_step) in enumerate(
@@ -383,7 +721,7 @@ def _validate_prompt_sequence(sequence: list[object]) -> tuple[str, ...]:
             or value.get("model_id") != route_or_model
         ):
             raise EvidenceValidationError("prompt plan model step is invalid")
-        else:
+        elif index < len(_MODEL_ORDER) + 1:
             model_ids.append(route_or_model)
     return tuple(model_ids)
 
@@ -399,7 +737,6 @@ def _load_entry(value: object, index: int) -> RosterEntry:
         "route_mode",
         "profile_hash",
         "configuration_hash",
-        "pipeline_hash",
     }
     if set(value) != expected:
         raise EvidenceValidationError(f"roster entry {index} has unsupported metadata")
@@ -424,8 +761,166 @@ def _load_entry(value: object, index: int) -> RosterEntry:
         configuration_hash=_require_sha256(
             value["configuration_hash"], "configuration_hash"
         ),
-        pipeline_hash=_require_sha256(value["pipeline_hash"], "pipeline_hash"),
     )
+
+
+def _load_runtime_attempt(
+    value: object, *, index: int, roster_entry: RosterEntry
+) -> dict[str, object]:
+    if not isinstance(value, dict):
+        raise EvidenceValidationError(f"runtime attempt {index} must be an object")
+    _reject_forbidden_keys(value)
+    expected = {
+        "model_id",
+        "profile_id",
+        "profile_hash",
+        "configuration_hash",
+        "route_mode",
+        "pipeline_id",
+        "generation_id",
+        "finite_output_observed",
+        "changed_output_observed",
+        "stale_output_accepted",
+        "exclusive_playout_observed",
+        "end_triggered",
+    }
+    if set(value) != expected:
+        raise EvidenceValidationError(
+            f"runtime attempt {index} has unsupported metadata"
+        )
+    for field_name, expected_value in (
+        ("model_id", roster_entry.model_id),
+        ("profile_id", roster_entry.profile_id),
+        ("profile_hash", roster_entry.profile_hash),
+        ("configuration_hash", roster_entry.configuration_hash),
+        ("route_mode", roster_entry.route_mode),
+    ):
+        if value[field_name] != expected_value:
+            raise EvidenceValidationError(
+                f"runtime attempt {index} {field_name} does not bind the roster"
+            )
+    pipeline_id = _require_uuid(value["pipeline_id"], "pipeline_id")
+    generation_id = _require_generation_id(value["generation_id"])
+    for field_name in (
+        "finite_output_observed",
+        "changed_output_observed",
+        "stale_output_accepted",
+        "exclusive_playout_observed",
+        "end_triggered",
+    ):
+        if not isinstance(value[field_name], bool):
+            raise EvidenceValidationError(
+                f"runtime attempt {index} {field_name} must be boolean"
+            )
+    if roster_entry.route_mode == _OPENVOICE_MODE:
+        if value["end_triggered"] is not True:
+            raise EvidenceValidationError(
+                "OpenVoice runtime attempt must be End-triggered"
+            )
+    elif value["end_triggered"] is not False:
+        raise EvidenceValidationError("live runtime attempt cannot be End-triggered")
+    return {
+        "model_id": roster_entry.model_id,
+        "profile_id": roster_entry.profile_id,
+        "profile_hash": roster_entry.profile_hash,
+        "configuration_hash": roster_entry.configuration_hash,
+        "route_mode": roster_entry.route_mode,
+        "pipeline_id": pipeline_id,
+        "generation_id": generation_id,
+        "finite_output_observed": value["finite_output_observed"],
+        "changed_output_observed": value["changed_output_observed"],
+        "stale_output_accepted": value["stale_output_accepted"],
+        "exclusive_playout_observed": value["exclusive_playout_observed"],
+        "end_triggered": value["end_triggered"],
+    }
+
+
+def _load_forced_failure_event(
+    value: object, attempts: list[dict[str, object]]
+) -> dict[str, object]:
+    if not isinstance(value, dict) or set(value) != {
+        "event_type",
+        "model_id",
+        "profile_id",
+        "profile_hash",
+        "configuration_hash",
+        "pipeline_id",
+        "generation_id",
+        "failure_injected",
+        "fallback_required_observed",
+    }:
+        raise EvidenceValidationError("forced failure event is invalid")
+    if value["event_type"] != "fallback.required":
+        raise EvidenceValidationError("forced failure event must be fallback.required")
+    if (
+        value["failure_injected"] is not True
+        or value["fallback_required_observed"] is not True
+    ):
+        raise EvidenceValidationError("forced failure facts are incomplete")
+    openvoice_attempt = attempts[-1]
+    for key in (
+        "model_id",
+        "profile_id",
+        "profile_hash",
+        "configuration_hash",
+        "pipeline_id",
+    ):
+        if value[key] != openvoice_attempt[key]:
+            raise EvidenceValidationError(
+                "forced failure event does not bind the OpenVoice profile context"
+            )
+    generation_id = _require_generation_id(value["generation_id"])
+    if generation_id <= max(attempt["generation_id"] for attempt in attempts):
+        raise EvidenceValidationError(
+            "forced failure probe must use a post-attempt generation"
+        )
+    return {**value, "generation_id": generation_id}
+
+
+def _load_native_fallback_event(
+    value: object, forced_failure: dict[str, object]
+) -> dict[str, object]:
+    if not isinstance(value, dict) or set(value) != {
+        "event_type",
+        "model_id",
+        "profile_id",
+        "profile_hash",
+        "configuration_hash",
+        "pipeline_id",
+        "generation_id",
+        "native_route_active",
+        "remote_route_active",
+    }:
+        raise EvidenceValidationError("native fallback event is invalid")
+    if value["event_type"] != "extension.native_fallback_activated":
+        raise EvidenceValidationError("native fallback event type is invalid")
+    for key in (
+        "model_id",
+        "profile_id",
+        "profile_hash",
+        "configuration_hash",
+        "pipeline_id",
+        "generation_id",
+    ):
+        if value[key] != forced_failure[key]:
+            raise EvidenceValidationError(
+                "native fallback event does not bind the forced failure"
+            )
+    if (
+        value["native_route_active"] is not True
+        or value["remote_route_active"] is not False
+    ):
+        raise EvidenceValidationError(
+            "native fallback did not restore exclusive native"
+        )
+    return dict(value)
+
+
+def _require_true_facts(value: object, label: str, expected: set[str]) -> None:
+    if not isinstance(value, dict) or set(value) != expected:
+        raise EvidenceValidationError(f"{label} facts are invalid")
+    if any(value[field] is not True for field in expected):
+        raise EvidenceValidationError(f"{label} facts are incomplete")
 
 
 def _require_sha256(value: object, field_name: str) -> str:
@@ -434,6 +929,66 @@ def _require_sha256(value: object, field_name: str) -> str:
             f"{field_name} must be a lowercase sha256 identity"
         )
     return value
+
+
+def _require_uuid(value: object, field_name: str) -> str:
+    if not isinstance(value, str) or _UUID.fullmatch(value) is None:
+        raise EvidenceValidationError(f"{field_name} must be a canonical UUID")
+    return value
+
+
+def _require_generation_id(value: object) -> int:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or not 0 < value <= 2**32 - 1
+    ):
+        raise EvidenceValidationError("generation_id must be a protocol-v1 unsigned ID")
+    return value
+
+
+def _load_json_object(source: Path, label: str) -> dict[str, object]:
+    try:
+        raw = json.loads(source.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise EvidenceValidationError(f"cannot load {label}: {source.name}") from error
+    if not isinstance(raw, dict):
+        raise EvidenceValidationError(f"{label} must be an object")
+    return raw
+
+
+def _object(value: object, label: str) -> dict[str, object]:
+    if not isinstance(value, dict):
+        raise EvidenceValidationError(f"{label} must be an object")
+    return value
+
+
+def _require_list(value: object, label: str) -> list[dict[str, object]]:
+    if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
+        raise EvidenceValidationError(f"{label} must be a list of objects")
+    return value
+
+
+def _without(value: Mapping[str, object], field_name: str) -> dict[str, object]:
+    return {key: nested for key, nested in value.items() if key != field_name}
+
+
+def content_digest(value: Mapping[str, object]) -> str:
+    """Return the documented canonical SHA-256 for a frozen safe JSON object."""
+
+    try:
+        encoded = json.dumps(
+            value,
+            ensure_ascii=True,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+    except (TypeError, ValueError) as error:
+        raise EvidenceValidationError(
+            "revision input cannot be canonically encoded"
+        ) from error
+    return f"sha256:{hashlib.sha256(encoded).hexdigest()}"
 
 
 def _reject_forbidden_keys(value: object) -> None:

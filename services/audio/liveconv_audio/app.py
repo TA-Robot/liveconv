@@ -4,6 +4,8 @@ import asyncio
 import contextlib
 import secrets
 import time
+from importlib.resources import files
+from pathlib import Path
 from typing import Annotated, Literal
 from uuid import uuid4
 
@@ -53,7 +55,13 @@ from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from ._adapter_registry import (
+    DeliveryMode,
+    buffered_input_capacity_frames,
+    delivery_mode_for_profile,
+)
 from .profiles import ModelProfile, ProfileRegistry
+from .roster import ModelRoster
 from .sessions import CachedResponse, Session, SessionCapacityError, SessionStore
 from .settings import Settings
 from .worker_bridge import (
@@ -254,6 +262,8 @@ class Connection:
         self.pending_ingress_frames = 0
         self.generation_input_frames = 0
         self.generation_output_frames = 0
+        self.generation_delivery_mode: DeliveryMode | None = None
+        self.generation_ingress_limit_frames = session.max_ingress_frames
         self.output_available = asyncio.Event()
         self.output_drained = asyncio.Event()
         self.output_drained.set()
@@ -437,6 +447,7 @@ class Connection:
             self.session.active_profile_id = None
             self.session.draining_generation_id = None
             self.session.last_source_monotonic_ns = None
+            self.generation_delivery_mode = None
 
     async def enqueue_frame(self, data: bytes) -> None:
         active_before_validation = self.session.order.active_generation_id
@@ -492,7 +503,7 @@ class Connection:
             return
 
         try:
-            if self.pending_ingress_frames >= self.session.max_ingress_frames:
+            if self.pending_ingress_frames >= self.generation_ingress_limit_frames:
                 raise asyncio.QueueFull
             self.ingress.put_nowait(frame)
             self.pending_ingress_frames += 1
@@ -720,11 +731,22 @@ class Connection:
                 raise
             self.generation_input_frames = 0
             self.generation_output_frames = 0
+            self.generation_delivery_mode = delivery_mode_for_profile(profile)
+            self.generation_ingress_limit_frames = self.session.max_ingress_frames
+            if self.generation_delivery_mode == "end_buffered":
+                self.generation_ingress_limit_frames = min(
+                    self.session.max_ingress_frames,
+                    buffered_input_capacity_frames(
+                        profile,
+                        self.session.ingress_budget_ms,
+                    ),
+                )
             self.output_available.clear()
             self.output_drained.set()
-            self.output_task = asyncio.create_task(
-                self.output_worker(message.generation_id)
-            )
+            if self.generation_delivery_mode == "live_frame_echo":
+                self.output_task = asyncio.create_task(
+                    self.output_worker(message.generation_id)
+                )
             return GenerationReadyEvent(
                 protocol_version=1,
                 session_id=self.session.session_id,
@@ -915,6 +937,12 @@ class Connection:
                 self.pending_end = None
             return
 
+        if (
+            self.generation_delivery_mode == "end_buffered"
+            and self.generation_input_frames > 0
+        ):
+            self.output_task = asyncio.create_task(self.output_worker(generation_id))
+
         try:
             await asyncio.wait_for(
                 self.output_drained.wait(),
@@ -953,6 +981,8 @@ class Connection:
         self.session.active_profile_id = None
         self.session.draining_generation_id = None
         self.session.last_source_monotonic_ns = None
+        self.generation_delivery_mode = None
+        self.generation_ingress_limit_frames = self.session.max_ingress_frames
         event = GenerationCompletedEvent(
             protocol_version=1,
             session_id=self.session.session_id,
@@ -1064,6 +1094,12 @@ class Gateway:
             settings.profile_config,
             allow_technical_profiles=settings.allow_technical_profiles,
         )
+        roster_path = settings.roster_config
+        if roster_path is None:
+            roster_path = Path(
+                str(files("liveconv_audio").joinpath("default-model-roster.json"))
+            )
+        self.roster = ModelRoster.load(roster_path)
         self.store = SessionStore(
             ticket_ttl_seconds=settings.ticket_ttl_seconds,
             ingress_budget_ms=settings.ingress_budget_ms,
@@ -1318,9 +1354,29 @@ def create_app(
             )
         return {"status": "ready"}
 
+    @app.get("/v1/runtime-boundary", dependencies=[Depends(require_bearer)])
+    async def runtime_boundary() -> dict[str, object]:
+        """Expose non-secret personal-route limits for the MS-2 receipt."""
+
+        transport_scope = (
+            "loopback"
+            if gateway.settings.bind_host in {"127.0.0.1", "::1", "localhost"}
+            else "network"
+        )
+        return {
+            "protocol_version": 1,
+            "transport_scope": transport_scope,
+            "max_sessions": gateway.settings.max_sessions,
+            "ticket_one_use": True,
+        }
+
     @app.get("/v1/models", dependencies=[Depends(require_bearer)])
     async def models() -> dict[str, object]:
         return {"protocol_version": 1, "profiles": gateway.registry.public_profiles()}
+
+    @app.get("/v1/model-roster", dependencies=[Depends(require_bearer)])
+    async def model_roster() -> dict[str, object]:
+        return gateway.roster.public_document(gateway.registry)
 
     @app.post("/v1/sessions", status_code=status.HTTP_201_CREATED)
     async def create_session(
@@ -1350,16 +1406,23 @@ def create_app(
                 str(voice_error),
             )
         try:
+            requested_ingress_budget_ms = max(
+                gateway.settings.ingress_budget_ms,
+                profile.minimum_context_ms * 2,
+            )
+            max_ingress_frames = None
+            if delivery_mode_for_profile(profile) == "end_buffered":
+                max_ingress_frames = buffered_input_capacity_frames(
+                    profile, requested_ingress_budget_ms
+                )
             session, ticket = gateway.store.create(
                 profile.profile_id,
                 profile.profile_hash,
                 profile.configuration_hash,
                 request.voice_id,
                 request.input.frame_ms,
-                max(
-                    gateway.settings.ingress_budget_ms,
-                    profile.minimum_context_ms * 2,
-                ),
+                requested_ingress_budget_ms,
+                max_ingress_frames=max_ingress_frames,
             )
         except SessionCapacityError as exc:
             raise HTTPException(

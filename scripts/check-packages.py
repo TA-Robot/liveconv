@@ -133,11 +133,14 @@ PACKAGE_SPECS = (
         required_wheel_members=(
             "liveconv_audio/__init__.py",
             "liveconv_audio/default-model-profiles.json",
+            "liveconv_audio/default-model-roster.json",
         ),
         required_sdist_members=_source_members(
-            "liveconv_audio", "liveconv_audio/default-model-profiles.json"
+            "liveconv_audio",
+            "liveconv_audio/default-model-profiles.json",
+            "liveconv_audio/default-model-roster.json",
         ),
-        smoke_resources=("default-model-profiles.json",),
+        smoke_resources=("default-model-profiles.json", "default-model-roster.json"),
     ),
     PackageSpec(
         distribution="liveconv-worker-runtime",
@@ -226,6 +229,23 @@ PACKAGE_SPECS = (
             "experiment.json",
         ),
         smoke_resources=("trace.schema.json",),
+    ),
+    PackageSpec(
+        distribution="liveconv-exp005-extension-multimodel-mvp",
+        project_dir=Path("experiments/EXP-005-extension-multimodel-mvp"),
+        import_name="liveconv_exp005_extension_multimodel_mvp",
+        required_wheel_members=(
+            "liveconv_exp005_extension_multimodel_mvp/__init__.py",
+            "liveconv_exp005_extension_multimodel_mvp/report.schema.json",
+        ),
+        required_sdist_members=_source_members(
+            "src/liveconv_exp005_extension_multimodel_mvp",
+            "src/liveconv_exp005_extension_multimodel_mvp/report.schema.json",
+            "experiment.json",
+            "fixtures/four-model-roster.json",
+            "fixtures/operator-plan.json",
+        ),
+        smoke_resources=("report.schema.json",),
     ),
 )
 

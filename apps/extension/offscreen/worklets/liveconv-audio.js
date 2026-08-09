@@ -6,6 +6,7 @@ import {
 const FRAME_SAMPLES = 960;
 const DEFAULT_MAXIMUM_CAPTURE_CREDITS = 4;
 const MAXIMUM_NEGOTIATED_CAPTURE_CREDITS = 500;
+const MAXIMUM_NEGOTIATED_CAPTURE_FRAMES = 500;
 const NATIVE_DELAY_SAMPLES = 9_600;
 const NATIVE_RING_SAMPLES = 16_384;
 
@@ -16,6 +17,8 @@ class LiveconvCaptureProcessor extends AudioWorkletProcessor {
     this.generationId = null;
     this.credits = 0;
     this.maximumCredits = DEFAULT_MAXIMUM_CAPTURE_CREDITS;
+    this.maximumFrames = null;
+    this.emittedFrames = 0;
     this.overflowed = false;
     this.port.onmessage = ({ data }) => {
       if (data?.type === "capture.begin") {
@@ -27,6 +30,13 @@ class LiveconvCaptureProcessor extends AudioWorkletProcessor {
           data.maximumCredits <= MAXIMUM_NEGOTIATED_CAPTURE_CREDITS
             ? data.maximumCredits
             : DEFAULT_MAXIMUM_CAPTURE_CREDITS;
+        this.maximumFrames =
+          Number.isSafeInteger(data.maximumFrames) &&
+          data.maximumFrames > 0 &&
+          data.maximumFrames <= MAXIMUM_NEGOTIATED_CAPTURE_FRAMES
+            ? data.maximumFrames
+            : null;
+        this.emittedFrames = 0;
         this.overflowed = false;
         this.assembler.reset();
       } else if (
@@ -69,6 +79,7 @@ class LiveconvCaptureProcessor extends AudioWorkletProcessor {
         break;
       }
       this.credits -= 1;
+      this.emittedFrames += 1;
       this.port.postMessage(
         {
           type: "capture.frame",
@@ -78,6 +89,20 @@ class LiveconvCaptureProcessor extends AudioWorkletProcessor {
         },
         [frame.samples.buffer],
       );
+      if (
+        this.maximumFrames !== null &&
+        this.emittedFrames >= this.maximumFrames
+      ) {
+        this.port.postMessage({
+          type: "capture.complete",
+          generationId: this.generationId,
+          capturedFrames: this.emittedFrames,
+        });
+        this.generationId = null;
+        this.credits = 0;
+        this.assembler.reset();
+        break;
+      }
     }
     return true;
   }
@@ -95,6 +120,7 @@ class LiveconvPlayoutProcessor extends AudioWorkletProcessor {
     this.drained = false;
     this.remoteRequested = false;
     this.readySent = false;
+    this.lastReportedSourceFrame = null;
     this.nativeRing = new Float32Array(NATIVE_RING_SAMPLES);
     this.remoteScratch = new Float32Array(128);
     this.port.onmessage = ({ data }) => {
@@ -104,6 +130,7 @@ class LiveconvPlayoutProcessor extends AudioWorkletProcessor {
         this.drained = false;
         this.remoteRequested = false;
         this.readySent = false;
+        this.lastReportedSourceFrame = null;
         return;
       }
       if (data?.type === "playout.cancel") {
@@ -223,6 +250,17 @@ class LiveconvPlayoutProcessor extends AudioWorkletProcessor {
     );
     if (outputSourceFrame < 0) {
       return true;
+    }
+    if (
+      this.lastReportedSourceFrame === null ||
+      outputSourceFrame - this.lastReportedSourceFrame >= FRAME_SAMPLES
+    ) {
+      this.lastReportedSourceFrame = outputSourceFrame;
+      this.port.postMessage({
+        type: "playout.playhead",
+        generationId: this.buffer.generationId,
+        sourceFrame: outputSourceFrame,
+      });
     }
     const previousDepth = this.buffer.snapshot().depth;
     const ready = this.ending

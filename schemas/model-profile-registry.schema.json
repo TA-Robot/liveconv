@@ -121,6 +121,10 @@
           "required": ["adapter", "configuration", "worker_endpoint", "max_vram_mb"],
           "properties": {
             "adapter": { "enum": ["passthrough", "gain", "worker"] },
+            "worker_module": {
+              "type": ["string", "null"],
+              "pattern": "^workers\\.adapters\\.[a-z0-9_]+(?:\\.[a-z0-9_]+)*$"
+            },
             "configuration": {
               "type": "object",
               "propertyNames": {

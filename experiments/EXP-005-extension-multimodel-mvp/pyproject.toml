@@ -25,7 +25,7 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-liveconv_exp005_extension_multimodel_mvp = ["report.schema.json"]
+liveconv_exp005_extension_multimodel_mvp = ["*.schema.json"]
 
 [tool.pytest.ini_options]
 addopts = "-ra"

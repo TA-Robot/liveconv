@@ -2,9 +2,11 @@ import {
   normalizeGatewayUrl,
   websocketUrl,
 } from "./gateway-url.js";
+import { createExp005RuntimeReceiptRecorder } from "./exp005-runtime-receipt.js";
 
 const CONFIGURATION_KEY = "liveconv.session-configuration.v1";
 const ACTIVE_SESSION_KEY = "liveconv.active-session.v1";
+const EXP005_RECEIPT_STATE_KEY = "liveconv.exp005-receipt-state.v1";
 const OFFSCREEN_PATH = "offscreen/offscreen.html";
 const PROFILE_ID = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/;
 const UUID =
@@ -12,6 +14,38 @@ const UUID =
 const HASH = /^sha256:[0-9a-f]{64}$/;
 const MAXIMUM_CATALOG_PROFILES = 128;
 const MAXIMUM_INGRESS_FRAMES = 500;
+const MAXIMUM_ROSTER_MODELS = 4;
+const ROSTER_ID = /^[a-z0-9][a-z0-9.-]{1,63}$/;
+const MODEL_ID = /^[a-z0-9][a-z0-9-]{1,63}$/;
+const REASON_CODE = /^[a-z0-9][a-z0-9_]{0,127}$/;
+const MS2_MODEL_IDS = new Set([
+  "rvc-v2",
+  "beatrice-2",
+  "x-vc",
+  "openvoice-v2",
+]);
+const MS2_MODEL_SEMANTICS = Object.freeze({
+  "rvc-v2": Object.freeze({
+    profileId: "vc.rvc.synthetic-ja.v1",
+    invocationMode: "live",
+    voiceRequirement: "pretrained_voice",
+  }),
+  "beatrice-2": Object.freeze({
+    profileId: "vc.beatrice.synthetic-ja.v1",
+    invocationMode: "live",
+    voiceRequirement: "pretrained_voice",
+  }),
+  "x-vc": Object.freeze({
+    profileId: "vc.x-vc.synthetic-ja.v1",
+    invocationMode: "live",
+    voiceRequirement: "pretrained_voice",
+  }),
+  "openvoice-v2": Object.freeze({
+    profileId: "vc.openvoice-v2.synthetic-ja.v1",
+    invocationMode: "buffered_end",
+    voiceRequirement: "pretrained_voice",
+  }),
+});
 const PROFILE_KINDS = new Set([
   "deterministic_test",
   "voice_conversion",
@@ -122,6 +156,10 @@ function requireCatalogProfile(value, index) {
   const profile = {
     profileId,
     kind: value.kind,
+    promotion:
+      value.kind === "voice_conversion"
+        ? requireCatalogPromotion(value.promotion, profileId)
+        : null,
     readiness: value.readiness,
     implementationRevision: requireString(
       value.implementation_revision,
@@ -153,12 +191,51 @@ function requireCatalogProfile(value, index) {
     ),
   };
   profile.compatible =
-    profile.streaming &&
     profile.frameMs === 20 &&
     profile.inputSampleRates.includes(48_000) &&
-    profile.outputSampleRates.includes(48_000) &&
-    profile.voiceRequirement === "none";
+    profile.outputSampleRates.includes(48_000);
   return Object.freeze(profile);
+}
+
+function requireCatalogPromotion(value, profileId) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`gateway returned invalid promotion for ${profileId}`);
+  }
+  requireExactFields(
+    value,
+    [
+      "status",
+      "pack_id",
+      "pack_sha256",
+      "evidence_sha256",
+      "endpoint_sha256",
+    ],
+    `promotion for ${profileId}`,
+  );
+  if (!["technical_validation", "approved"].includes(value.status)) {
+    throw new Error(`gateway returned invalid promotion status for ${profileId}`);
+  }
+  return Object.freeze({
+    status: value.status,
+    packId: requireString(value.pack_id, `promotion.pack_id for ${profileId}`, {
+      pattern: MODEL_ID,
+      maximumLength: 64,
+    }),
+    packHash: requireString(value.pack_sha256, `promotion.pack_sha256 for ${profileId}`, {
+      pattern: HASH,
+      maximumLength: 71,
+    }),
+    evidenceHash: requireString(
+      value.evidence_sha256,
+      `promotion.evidence_sha256 for ${profileId}`,
+      { pattern: HASH, maximumLength: 71 },
+    ),
+    endpointHash: requireString(
+      value.endpoint_sha256,
+      `promotion.endpoint_sha256 for ${profileId}`,
+      { pattern: HASH, maximumLength: 71 },
+    ),
+  });
 }
 
 function requireCatalogResponse(value) {
@@ -178,6 +255,225 @@ function requireCatalogResponse(value) {
     throw new Error("gateway returned duplicate profile IDs");
   }
   return Object.freeze(profiles);
+}
+
+function requireExactFields(value, fields, owner) {
+  const actual = Object.keys(value);
+  if (
+    actual.length !== fields.length ||
+    actual.some((field) => !fields.includes(field))
+  ) {
+    throw new Error(`gateway returned unexpected fields in ${owner}`);
+  }
+}
+
+function requireNullableReasonCode(value, modelId) {
+  if (value === null) {
+    return null;
+  }
+  return requireString(value, `reason_code for ${modelId}`, {
+    pattern: REASON_CODE,
+    maximumLength: 128,
+  });
+}
+
+function requireRosterModel(value, index) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`gateway returned an invalid roster model at index ${index}`);
+  }
+  requireExactFields(
+    value,
+    [
+      "model_id",
+      "display_name",
+      "profile_id",
+      "invocation_mode",
+      "execution_state",
+      "decision_state",
+      "voice_requirement",
+      "reason_code",
+      "profile",
+    ],
+    `roster model ${index}`,
+  );
+  const modelId = requireString(value.model_id, "model_id", {
+    pattern: MODEL_ID,
+    maximumLength: 64,
+  });
+  const profileId = requireString(value.profile_id, "profile_id", {
+    pattern: PROFILE_ID,
+    maximumLength: 128,
+  });
+  if (!["live", "buffered_end"].includes(value.invocation_mode)) {
+    throw new Error(`gateway returned an invalid invocation mode for ${modelId}`);
+  }
+  if (
+    !["live-trial", "buffered-preview", "unavailable"].includes(
+      value.execution_state,
+    )
+  ) {
+    throw new Error(`gateway returned an invalid execution state for ${modelId}`);
+  }
+  if (
+    !["technical-only", "quality-failed", "unassessed", "selected"].includes(
+      value.decision_state,
+    )
+  ) {
+    throw new Error(`gateway returned an invalid decision state for ${modelId}`);
+  }
+  if (
+    !["none", "authorized_target_required", "pretrained_voice"].includes(
+      value.voice_requirement,
+    )
+  ) {
+    throw new Error(`gateway returned an invalid voice requirement for ${modelId}`);
+  }
+  const reasonCode = requireNullableReasonCode(value.reason_code, modelId);
+  const enabled = value.execution_state !== "unavailable";
+  if (
+    (value.invocation_mode === "live" &&
+      value.execution_state === "buffered-preview") ||
+    (value.invocation_mode === "buffered_end" &&
+      value.execution_state === "live-trial")
+  ) {
+    throw new Error(`gateway returned inconsistent execution mode for ${modelId}`);
+  }
+  if (
+    (enabled && (reasonCode !== null || value.profile === null)) ||
+    (!enabled && (reasonCode === null || value.profile !== null))
+  ) {
+    throw new Error(`gateway returned inconsistent availability for ${modelId}`);
+  }
+  const profile = enabled ? requireCatalogProfile(value.profile, index) : null;
+  if (profile !== null && profile.profileId !== profileId) {
+    throw new Error(`gateway roster profile_id does not match profile for ${modelId}`);
+  }
+  return Object.freeze({
+    modelId,
+    displayName: requireString(value.display_name, "display_name", {
+      maximumLength: 80,
+    }),
+    profileId,
+    invocationMode: value.invocation_mode,
+    executionState: value.execution_state,
+    decisionState: value.decision_state,
+    voiceRequirement: value.voice_requirement,
+    reasonCode,
+    profile,
+  });
+}
+
+function requireFixedMs2ModelSemantics(model) {
+  const expected = MS2_MODEL_SEMANTICS[model.modelId];
+  if (
+    !expected ||
+    model.profileId !== expected.profileId ||
+    model.invocationMode !== expected.invocationMode ||
+    model.voiceRequirement !== expected.voiceRequirement
+  ) {
+    throw new Error(
+      `gateway roster violates fixed MS-2 semantics for ${model.modelId}`,
+    );
+  }
+}
+
+function requireModelRosterResponse(value) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("gateway returned an invalid model roster");
+  }
+  requireExactFields(
+    value,
+    ["schema_version", "roster_id", "roster_hash", "models"],
+    "model roster",
+  );
+  if (
+    value.schema_version !== 1 ||
+    !Array.isArray(value.models) ||
+    value.models.length !== MAXIMUM_ROSTER_MODELS
+  ) {
+    throw new Error("gateway returned an invalid model roster");
+  }
+  const models = value.models.map(requireRosterModel);
+  const modelIds = new Set(models.map((model) => model.modelId));
+  if (
+    modelIds.size !== MAXIMUM_ROSTER_MODELS ||
+    modelIds.size !== MS2_MODEL_IDS.size ||
+    [...MS2_MODEL_IDS].some((modelId) => !modelIds.has(modelId))
+  ) {
+    throw new Error("gateway roster must include each prepared MS-2 model once");
+  }
+  if (new Set(models.map((model) => model.profileId)).size !== models.length) {
+    throw new Error("gateway roster returned duplicate profile IDs");
+  }
+  for (const model of models) {
+    requireFixedMs2ModelSemantics(model);
+  }
+  return Object.freeze({
+    schemaVersion: value.schema_version,
+    rosterId: requireString(value.roster_id, "roster_id", {
+      pattern: ROSTER_ID,
+      maximumLength: 64,
+    }),
+    rosterHash: requireString(value.roster_hash, "roster_hash", {
+      pattern: HASH,
+      maximumLength: 71,
+    }),
+    models,
+  });
+}
+
+function bindRosterToCatalog(roster, catalog) {
+  const catalogByProfileId = new Map(
+    catalog.map((profile) => [profile.profileId, profile]),
+  );
+  return Object.freeze(
+    roster.models.map((model) => {
+      if (model.executionState === "unavailable") {
+        return Object.freeze({ ...model, selectable: false });
+      }
+      const catalogProfile = catalogByProfileId.get(model.profileId);
+      if (!catalogProfile) {
+        throw new Error(
+          `enabled roster profile ${model.profileId} is absent from /v1/models`,
+        );
+      }
+      if (
+        catalogProfile.kind !== "voice_conversion" ||
+        catalogProfile.promotion?.packId !== model.modelId
+      ) {
+        throw new Error(
+          `enabled roster profile ${model.profileId} is not promoted for ${model.modelId}`,
+        );
+      }
+      if (
+        model.voiceRequirement !== catalogProfile.voiceRequirement ||
+        catalogProfile.streaming !== (model.invocationMode === "live")
+      ) {
+        throw new Error(
+          `enabled roster invocation or voice requirement does not match /v1/models for ${model.modelId}`,
+        );
+      }
+      if (
+        model.profile.profileHash !== catalogProfile.profileHash ||
+        model.profile.configurationHash !== catalogProfile.configurationHash ||
+        model.profile.voiceRequirement !== catalogProfile.voiceRequirement ||
+        model.profile.streaming !== catalogProfile.streaming ||
+        model.profile.profileId !== catalogProfile.profileId
+      ) {
+        throw new Error(
+          `enabled roster profile identity does not match /v1/models for ${model.modelId}`,
+        );
+      }
+      if (!catalogProfile.compatible) {
+        throw new Error(`roster profile ${model.profileId} is not compatible with audio route v1`);
+      }
+      return Object.freeze({
+        ...model,
+        profile: catalogProfile,
+        selectable: model.voiceRequirement !== "authorized_target_required",
+      });
+    }),
+  );
 }
 
 function expectedProfileIdentity(profile, pipelineId) {
@@ -239,6 +535,32 @@ function requireSessionResponse(value, expectedProfile) {
   return value;
 }
 
+function requireRuntimeBoundaryResponse(value) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("gateway returned an invalid runtime boundary response");
+  }
+  requireExactFields(
+    value,
+    ["protocol_version", "transport_scope", "max_sessions", "ticket_one_use"],
+    "runtime boundary",
+  );
+  if (
+    value.protocol_version !== 1 ||
+    !["loopback", "network"].includes(value.transport_scope) ||
+    !Number.isSafeInteger(value.max_sessions) ||
+    value.max_sessions < 1 ||
+    value.ticket_one_use !== true
+  ) {
+    throw new Error("gateway returned an invalid runtime boundary response");
+  }
+  return Object.freeze({
+    protocolVersion: value.protocol_version,
+    transportScope: value.transport_scope,
+    maxSessions: value.max_sessions,
+    ticketOneUse: value.ticket_one_use,
+  });
+}
+
 function authorizedHeaders(token) {
   return Object.freeze({
     "content-type": "application/json",
@@ -261,6 +583,8 @@ async function jsonResponse(response, operation) {
 export function createBrowserRuntime(options = {}) {
   const chromeApi = options.chromeApi;
   const fetchFn = options.fetchFn ?? globalThis.fetch;
+  const receiptRecorder =
+    options.receiptRecorder ?? createExp005RuntimeReceiptRecorder();
   requireMethod(chromeApi?.runtime, "chrome.runtime", "getURL");
   requireMethod(chromeApi?.runtime, "chrome.runtime", "getContexts");
   requireMethod(chromeApi?.runtime, "chrome.runtime", "sendMessage");
@@ -273,6 +597,31 @@ export function createBrowserRuntime(options = {}) {
   requireMethod(chromeApi?.storage?.session, "chrome.storage.session", "remove");
   if (typeof fetchFn !== "function") {
     throw new TypeError("fetchFn must be a function");
+  }
+  for (const method of [
+    "active",
+    "authorizeFailureInjection",
+    "begin",
+    "checkpoint",
+    "clear",
+    "exportReceipt",
+    "invalidate",
+    "observeCaptureStarted",
+    "observeForcedFallback",
+    "observeGatewayAttached",
+    "observeGatewayBoundary",
+    "observeGatewaySession",
+    "observeGenerationTerminal",
+    "observeNativeFallback",
+    "observeOutput",
+    "observeRemotePlayout",
+    "observeStaleOutputAccepted",
+    "restore",
+    "startAttempt",
+  ]) {
+    if (typeof receiptRecorder?.[method] !== "function") {
+      throw new TypeError(`receiptRecorder.${method} must be a function`);
+    }
   }
   const requestTimeoutMilliseconds = options.requestTimeoutMilliseconds ?? 5_000;
   if (
@@ -307,7 +656,320 @@ export function createBrowserRuntime(options = {}) {
   let currentSession = null;
   let sessionMetadataEpoch = 0;
   let catalogProfiles = [];
+  let rosterModels = [];
+  let profileSelectionEpoch = 0;
+  let activeProfileSelection = null;
+  let generationControlEpoch = 0;
+  const activeGenerationControls = new Set();
+  let receiptStateKnown = false;
+  let receiptRestoreError = null;
+  let receiptPersistenceEpoch = 0;
+  let receiptPersistence = Promise.resolve();
   const requestControllers = new Set();
+
+  async function ensureReceiptState() {
+    if (receiptStateKnown) {
+      return;
+    }
+    const readEpoch = receiptPersistenceEpoch;
+    const stored = await chromeApi.storage.session.get(EXP005_RECEIPT_STATE_KEY);
+    if (receiptStateKnown || readEpoch !== receiptPersistenceEpoch) {
+      return;
+    }
+    const value = stored?.[EXP005_RECEIPT_STATE_KEY];
+    if (value !== undefined) {
+      try {
+        receiptRecorder.restore(value);
+      } catch {
+        receiptRestoreError = "persisted EXP-005 receipt state is corrupt";
+      }
+    }
+    receiptStateKnown = true;
+  }
+
+  function queueReceiptPersistence(value, { remove = false } = {}) {
+    const epoch = receiptPersistenceEpoch + 1;
+    receiptPersistenceEpoch = epoch;
+    const operation = receiptPersistence.then(async () => {
+      if (epoch !== receiptPersistenceEpoch) {
+        return;
+      }
+      if (remove) {
+        await chromeApi.storage.session.remove(EXP005_RECEIPT_STATE_KEY);
+      } else {
+        await chromeApi.storage.session.set({
+          [EXP005_RECEIPT_STATE_KEY]: value,
+        });
+      }
+    });
+    receiptPersistence = operation.catch(() => {});
+    return operation;
+  }
+
+  function persistReceiptState() {
+    return queueReceiptPersistence(receiptRecorder.checkpoint());
+  }
+
+  async function receiptTransition(method, value) {
+    await ensureReceiptState();
+    if (receiptRestoreError !== null) {
+      throw new Error(receiptRestoreError);
+    }
+    const result = receiptRecorder[method](value);
+    await persistReceiptState();
+    return result;
+  }
+
+  function receiptIsActive() {
+    return receiptRestoreError === null && receiptRecorder.active();
+  }
+
+  function generationControlIdentity() {
+    if (
+      !sessionMetadataKnown ||
+      currentSession === null ||
+      typeof currentSession.sessionId !== "string" ||
+      typeof capturedOffscreenEpoch !== "string" ||
+      generationId === null ||
+      !Number.isInteger(capturedTabId)
+    ) {
+      return null;
+    }
+    return Object.freeze({
+      sessionId: currentSession.sessionId,
+      pipelineEpoch: capturedOffscreenEpoch,
+      generationId,
+      capturedTabId,
+    });
+  }
+
+  function nextGenerationControlIdentity() {
+    if (
+      !sessionMetadataKnown ||
+      currentSession === null ||
+      typeof currentSession.sessionId !== "string" ||
+      typeof capturedOffscreenEpoch !== "string" ||
+      generationId !== null ||
+      !Number.isInteger(capturedTabId)
+    ) {
+      return null;
+    }
+    return Object.freeze({
+      sessionId: currentSession.sessionId,
+      pipelineEpoch: capturedOffscreenEpoch,
+      generationId: currentSession.generationId,
+      capturedTabId,
+      profileId: currentSession.profileId,
+      modelId: currentSession.modelId,
+      invocationMode: currentSession.invocationMode,
+    });
+  }
+
+  function beginGenerationControl() {
+    const control = {
+      epoch: generationControlEpoch,
+      canceled: false,
+      identity: generationControlIdentity(),
+    };
+    activeGenerationControls.add(control);
+    return control;
+  }
+
+  function beginNextGenerationControl() {
+    const control = {
+      epoch: generationControlEpoch,
+      canceled: false,
+      identity: nextGenerationControlIdentity(),
+    };
+    activeGenerationControls.add(control);
+    return control;
+  }
+
+  function invalidateGenerationControls() {
+    generationControlEpoch += 1;
+    for (const control of activeGenerationControls) {
+      control.canceled = true;
+    }
+  }
+
+  function generationControlIsActive(control) {
+    return (
+      activeGenerationControls.has(control) &&
+      !control.canceled &&
+      control.epoch === generationControlEpoch
+    );
+  }
+
+  function canceledGenerationControl() {
+    const error = new Error("generation control was canceled by Stop");
+    error.name = "AbortError";
+    return error;
+  }
+
+  function requireActiveGenerationControl(control) {
+    if (!generationControlIsActive(control)) {
+      throw canceledGenerationControl();
+    }
+  }
+
+  function bindGenerationControl(control) {
+    requireActiveGenerationControl(control);
+    const identity = generationControlIdentity();
+    if (identity === null) {
+      if (
+        sessionMetadataKnown &&
+        typeof currentSession?.sessionId === "string"
+      ) {
+        throw new Error("captured tab session binding is unavailable");
+      }
+      throw new Error("remote session identity is unavailable");
+    }
+    if (control.identity === null) {
+      control.identity = identity;
+    }
+    return control.identity;
+  }
+
+  function requireCurrentGenerationControl(
+    control,
+    { terminalGenerationId } = {},
+  ) {
+    requireActiveGenerationControl(control);
+    const identity = control.identity;
+    const currentGenerationMatches =
+      generationId === identity.generationId ||
+      (terminalGenerationId !== undefined &&
+        generationId === terminalGenerationId);
+    if (
+      capture !== "running" ||
+      currentSession?.sessionId !== identity.sessionId ||
+      currentSession?.generationId !== identity.generationId ||
+      capturedOffscreenEpoch !== identity.pipelineEpoch ||
+      capturedTabId !== identity.capturedTabId ||
+      !currentGenerationMatches
+    ) {
+      throw canceledGenerationControl();
+    }
+  }
+
+  function bindNextGenerationControl(control) {
+    requireActiveGenerationControl(control);
+    const identity = nextGenerationControlIdentity();
+    if (identity === null) {
+      throw new Error("next generation session identity is unavailable");
+    }
+    if (control.identity === null) {
+      control.identity = identity;
+    }
+    return control.identity;
+  }
+
+  function requireCurrentNextGenerationIdentity(control) {
+    requireActiveGenerationControl(control);
+    const identity = control.identity;
+    if (
+      capture !== "running" ||
+      currentSession?.sessionId !== identity.sessionId ||
+      currentSession?.generationId !== identity.generationId ||
+      currentSession?.profileId !== identity.profileId ||
+      currentSession?.modelId !== identity.modelId ||
+      currentSession?.invocationMode !== identity.invocationMode ||
+      capturedOffscreenEpoch !== identity.pipelineEpoch ||
+      capturedTabId !== identity.capturedTabId ||
+      activeProfileSelection !== null
+    ) {
+      throw canceledGenerationControl();
+    }
+  }
+
+  function requireCurrentNextGenerationControl(
+    control,
+    { nextGenerationId = null } = {},
+  ) {
+    requireCurrentNextGenerationIdentity(control);
+    const atReadyBoundary = remote === "ready" && generationId === null;
+    const loadingNext = remote === "loading" && generationId === null;
+    const runningNext =
+      (remote === "pending" || remote === "ready") &&
+      generationId === nextGenerationId;
+    if (
+      nextGenerationId === null
+        ? !atReadyBoundary
+        : !(atReadyBoundary || loadingNext || runningNext)
+    ) {
+      throw canceledGenerationControl();
+    }
+  }
+
+  function requireNextGenerationResponse(state, nextGenerationId) {
+    if (
+      state?.capture !== "running" ||
+      state.route !== "native" ||
+      state.remote !== "pending" ||
+      state.generationId !== nextGenerationId
+    ) {
+      throw new Error("Offscreen returned an invalid next generation identity");
+    }
+  }
+
+  function finishGenerationControl(control) {
+    activeGenerationControls.delete(control);
+  }
+
+  function beginProfileSelection() {
+    if (activeProfileSelection !== null) {
+      throw new Error("profile selection is still in progress");
+    }
+    if (activeGenerationControls.size > 0) {
+      throw new Error("generation control is still in progress");
+    }
+    let resolveCleanup;
+    const cleanup = new Promise((resolve) => {
+      resolveCleanup = resolve;
+    });
+    const selection = {
+      epoch: profileSelectionEpoch + 1,
+      canceled: false,
+      resolveCleanup,
+    };
+    profileSelectionEpoch = selection.epoch;
+    activeProfileSelection = selection;
+    const precedingCleanup = cleanupBarrier;
+    cleanupBarrier = Promise.allSettled([precedingCleanup, cleanup]).then(
+      () => undefined,
+    );
+    return selection;
+  }
+
+  function invalidateProfileSelection() {
+    profileSelectionEpoch += 1;
+    if (activeProfileSelection !== null) {
+      activeProfileSelection.canceled = true;
+    }
+  }
+
+  function profileSelectionIsCurrent(selection) {
+    return (
+      activeProfileSelection === selection &&
+      !selection.canceled &&
+      selection.epoch === profileSelectionEpoch
+    );
+  }
+
+  function requireCurrentProfileSelection(selection) {
+    if (!profileSelectionIsCurrent(selection)) {
+      const error = new Error("profile selection was canceled by Stop");
+      error.name = "AbortError";
+      throw error;
+    }
+  }
+
+  function finishProfileSelection(selection) {
+    if (activeProfileSelection === selection) {
+      activeProfileSelection = null;
+    }
+    selection.resolveCleanup();
+  }
 
   function createStartController() {
     const canceledMarker = Object.freeze({});
@@ -384,16 +1046,21 @@ export function createBrowserRuntime(options = {}) {
     }
   }
 
-  async function activeTabId(startController = null) {
+  async function activeTab(startController = null) {
     const operation = chromeApi.tabs.query({ active: true, currentWindow: true });
     const tabs = startController
       ? await waitForStart(startController, operation)
       : await operation;
-    const tabId = tabs?.[0]?.id;
+    const tab = tabs?.[0];
+    const tabId = tab?.id;
     if (!Number.isInteger(tabId) || tabId < 0) {
       throw new Error("the active tab is unavailable");
     }
-    return tabId;
+    return Object.freeze({ id: tabId, url: tab.url, audible: tab.audible });
+  }
+
+  async function activeTabId(startController = null) {
+    return (await activeTab(startController)).id;
   }
 
   async function storedConfiguration(startController = null) {
@@ -436,11 +1103,16 @@ export function createBrowserRuntime(options = {}) {
     return operation;
   }
 
-  function setActiveSession(session) {
+  function commitActiveSession(session) {
     currentSession = session ? Object.freeze({ ...session }) : null;
     sessionMetadataKnown = true;
     sessionMetadataEpoch += 1;
-    return persistSessionMetadata(currentSession, sessionMetadataEpoch);
+    return currentSession;
+  }
+
+  function setActiveSession(session) {
+    const committedSession = commitActiveSession(session);
+    return persistSessionMetadata(committedSession, sessionMetadataEpoch);
   }
 
   function clearActiveSession() {
@@ -618,17 +1290,84 @@ export function createBrowserRuntime(options = {}) {
     return catalogProfiles;
   }
 
-  function selectedCatalogProfile(profileId) {
-    const profile = catalogProfiles.find(
+  async function fetchModelRoster(configuration, startController = null) {
+    const operation = fetchWithDeadline(
+      `${configuration.gatewayUrl}/v1/model-roster`,
+      {
+        method: "GET",
+        cache: "no-store",
+        credentials: "omit",
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+        headers: authorizedHeaders(configuration.token),
+      },
+      "model roster",
+    );
+    const response = startController
+      ? await waitForStart(startController, operation)
+      : await operation;
+    const document = startController
+      ? await waitForStart(
+          startController,
+          jsonResponse(response, "model roster"),
+        )
+      : await jsonResponse(response, "model roster");
+    return requireModelRosterResponse(document);
+  }
+
+  async function fetchModelInventory(configuration, startController = null) {
+    const catalog = await fetchModelCatalog(configuration, startController);
+    const roster = await fetchModelRoster(configuration, startController);
+    rosterModels = [...bindRosterToCatalog(roster, catalog)];
+    return Object.freeze({ catalog, models: rosterModels, roster });
+  }
+
+  async function fetchRuntimeBoundary(configuration, startController = null) {
+    const operation = fetchWithDeadline(
+      `${configuration.gatewayUrl}/v1/runtime-boundary`,
+      {
+        method: "GET",
+        cache: "no-store",
+        credentials: "omit",
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+        headers: authorizedHeaders(configuration.token),
+      },
+      "runtime boundary",
+    );
+    const response = startController
+      ? await waitForStart(startController, operation)
+      : await operation;
+    const document = startController
+      ? await waitForStart(
+          startController,
+          jsonResponse(response, "runtime boundary"),
+        )
+      : await jsonResponse(response, "runtime boundary");
+    return requireRuntimeBoundaryResponse(document);
+  }
+
+  function selectedRosterModel(profileId) {
+    const model = rosterModels.find(
       (candidate) => candidate.profileId === profileId,
     );
-    if (!profile) {
-      throw new Error(`profile ${profileId} is not in the current Gateway catalog`);
+    if (!model) {
+      throw new Error(`profile ${profileId} is not in the current Gateway roster`);
     }
-    if (!profile.compatible) {
+    if (model.executionState === "unavailable") {
+      throw new Error(
+        `model ${model.displayName} is unavailable: ${model.reasonCode}`,
+      );
+    }
+    if (model.voiceRequirement === "authorized_target_required") {
+      throw new Error(
+        `model ${model.displayName} requires an authorized target voice`,
+      );
+    }
+    if (!model.selectable || !model.profile?.compatible) {
       throw new Error(`profile ${profileId} is not compatible with audio route v1`);
     }
-    return profile;
+    return model;
   }
 
   async function listModels(configurationValue = null) {
@@ -638,7 +1377,7 @@ export function createBrowserRuntime(options = {}) {
     if (!configuration) {
       throw new Error("configure Gateway credentials before loading profiles");
     }
-    return fetchModelCatalog(configuration);
+    return fetchModelInventory(configuration);
   }
 
   async function createGatewaySession(
@@ -790,12 +1529,13 @@ export function createBrowserRuntime(options = {}) {
 
   async function configure(value) {
     const configuration = normalizeConfiguration(value);
+    await waitForCleanupBarrier();
     await synchronize();
     if (capture !== "stopped") {
       throw new Error("configuration can change only while capture is stopped");
     }
-    if (catalogProfiles.length > 0) {
-      selectedCatalogProfile(configuration.profileId);
+    if (rosterModels.length > 0) {
+      selectedRosterModel(configuration.profileId);
     }
     await chromeApi.storage.session.set({ [CONFIGURATION_KEY]: configuration });
     lastError = null;
@@ -805,12 +1545,23 @@ export function createBrowserRuntime(options = {}) {
     return snapshot({ knownConfiguration: configuration });
   }
 
-  async function performStart(startController) {
+  async function performStart(startController, { userGesture }) {
     capture = "starting";
     lastError = null;
     try {
+      await ensureReceiptState();
+      if (receiptRestoreError !== null) {
+        throw new Error(receiptRestoreError);
+      }
       await ensureOffscreenDocument(startController);
-      const tabId = await activeTabId(startController);
+      if (receiptIsActive()) {
+        await sendOffscreen(
+          { type: "offscreen.receipt.configure", enabled: true },
+          startController,
+        );
+      }
+      const tab = await activeTab(startController);
+      const tabId = tab.id;
       const streamId = await waitForStart(
         startController,
         chromeApi.tabCapture.getMediaStreamId({ targetTabId: tabId }),
@@ -833,6 +1584,13 @@ export function createBrowserRuntime(options = {}) {
       capturedOffscreenEpoch = nativeState.offscreenEpoch;
       capture = "running";
       route = "native";
+      if (receiptIsActive()) {
+        await receiptTransition("observeCaptureStarted", {
+          tabUrl: tab.url,
+          tabAudible: tab.audible,
+          userGesture,
+        });
+      }
 
       const configuration = await storedConfiguration(startController);
       if (!configuration) {
@@ -843,13 +1601,34 @@ export function createBrowserRuntime(options = {}) {
       remote = "connecting";
       let gatewaySession = null;
       try {
-        await fetchModelCatalog(configuration, startController);
-        const profile = selectedCatalogProfile(configuration.profileId);
+        await fetchModelInventory(configuration, startController);
+        if (receiptIsActive()) {
+          const boundary = await fetchRuntimeBoundary(configuration, startController);
+          await receiptTransition("observeGatewayBoundary", {
+            protocol_version: boundary.protocolVersion,
+            transport_scope: boundary.transportScope,
+            max_sessions: boundary.maxSessions,
+            ticket_one_use: boundary.ticketOneUse,
+          });
+        }
+        const model = selectedRosterModel(configuration.profileId);
+        const profile = model.profile;
         gatewaySession = await createGatewaySession(
           configuration,
           profile,
           startController,
         );
+        if (receiptIsActive()) {
+          await receiptTransition("observeGatewaySession", {
+            gatewayUrl: configuration.gatewayUrl,
+            sessionId: gatewaySession.session_id,
+            ticket: gatewaySession.ticket,
+            pipelineId: gatewaySession.pipeline_id,
+            profileId: gatewaySession.profile_id,
+            profileHash: gatewaySession.profile_hash,
+            configurationHash: gatewaySession.configuration_hash,
+          });
+        }
         const previous = await activeSession(startController);
         const nextGenerationId = Math.max(previous?.generationId ?? 0, 0) + 1;
         const session = {
@@ -857,6 +1636,8 @@ export function createBrowserRuntime(options = {}) {
           sessionId: gatewaySession.session_id,
           generationId: nextGenerationId,
           profileId: profile.profileId,
+          modelId: model.modelId,
+          invocationMode: model.invocationMode,
           capturedTabId: tabId,
           offscreenEpoch: capturedOffscreenEpoch,
         };
@@ -884,6 +1665,7 @@ export function createBrowserRuntime(options = {}) {
               ingressBudgetMs: gatewaySession.limits.ingress_budget_ms,
               maxIngressFrames: gatewaySession.limits.max_ingress_frames,
             },
+            invocationMode: model.invocationMode,
           },
           startController,
         );
@@ -959,7 +1741,7 @@ export function createBrowserRuntime(options = {}) {
         if (capture === "running") {
           return;
         }
-        await performStart(startController);
+        await performStart(startController, { userGesture });
       } catch (error) {
         if (startController.canceled) {
           return;
@@ -1043,6 +1825,8 @@ export function createBrowserRuntime(options = {}) {
   function stop() {
     requestedCapture = "stopped";
     activeStartController?.cancel();
+    invalidateProfileSelection();
+    invalidateGenerationControls();
     if (stopOperation) {
       return stopOperation;
     }
@@ -1057,93 +1841,503 @@ export function createBrowserRuntime(options = {}) {
   }
 
   async function generationCommand(type) {
-    await synchronize();
-    if (capture !== "running" || generationId === null) {
-      throw new Error("no remote generation is active");
+    const control = beginGenerationControl();
+    try {
+      await synchronize();
+      requireActiveGenerationControl(control);
+      if (capture !== "running" || generationId === null) {
+        throw new Error("no remote generation is active");
+      }
+      const identity = bindGenerationControl(control);
+      requireCurrentGenerationControl(control);
+      const selectedTabId = await activeTabId();
+      requireCurrentGenerationControl(control);
+      if (selectedTabId !== identity.capturedTabId) {
+        throw new Error("generation commands must originate from the captured tab");
+      }
+      const state = await sendOffscreen({
+        type,
+        generationId: identity.generationId,
+      });
+      requireCurrentGenerationControl(control, {
+        terminalGenerationId: state.generationId ?? null,
+      });
+      route = state.route;
+      remote = state.remote;
+      generationId = state.generationId ?? null;
+      return state;
+    } finally {
+      finishGenerationControl(control);
     }
-    if ((await activeTabId()) !== capturedTabId) {
-      throw new Error("generation commands must originate from the captured tab");
+  }
+
+  async function injectExp005Failure() {
+    await ensureReceiptState();
+    if (receiptRestoreError !== null || !receiptIsActive()) {
+      throw new Error(receiptRestoreError ?? "EXP-005 trial has not begun");
     }
-    const currentGenerationId = generationId;
-    const state = await sendOffscreen({ type, generationId: currentGenerationId });
-    route = state.route;
-    remote = state.remote;
-    generationId = state.generationId ?? null;
-    return state;
+    const control = beginGenerationControl();
+    try {
+      await synchronize();
+      requireActiveGenerationControl(control);
+      if (capture !== "running" || generationId === null) {
+        throw new Error("no remote generation is active");
+      }
+      const identity = bindGenerationControl(control);
+      requireCurrentGenerationControl(control);
+      const selectedTabId = await activeTabId();
+      requireCurrentGenerationControl(control);
+      if (selectedTabId !== identity.capturedTabId) {
+        throw new Error("failure injection must originate from the captured tab");
+      }
+      if (!receiptRecorder.authorizeFailureInjection({
+        generationId: identity.generationId,
+      })) {
+        throw new Error("EXP-005 failure probe is not ready for explicit injection");
+      }
+      const state = await sendOffscreen({
+        type: "offscreen.exp005.inject-failure",
+        generationId: identity.generationId,
+      });
+      requireCurrentGenerationControl(control, {
+        terminalGenerationId: state.generationId ?? null,
+      });
+      route = state.route;
+      remote = state.remote;
+      generationId = state.generationId ?? null;
+      return state;
+    } finally {
+      finishGenerationControl(control);
+    }
   }
 
   async function startNextGeneration() {
-    await synchronize();
-    if (
-      capture !== "running" ||
-      remote === "disconnected" ||
-      remote === "disabled" ||
-      remote === "degraded"
-    ) {
-      throw new Error("remote transport is not available");
+    if (activeProfileSelection !== null) {
+      throw new Error("profile selection is still in progress");
     }
-    if ((await activeTabId()) !== capturedTabId) {
-      throw new Error("generation commands must originate from the captured tab");
+    const control = beginNextGenerationControl();
+    try {
+      await synchronize();
+      requireActiveGenerationControl(control);
+      if (
+        capture !== "running" ||
+        remote !== "ready" ||
+        generationId !== null
+      ) {
+        throw new Error(
+          "remote transport is not available; remote is not ready for the next generation",
+        );
+      }
+      const identity = bindNextGenerationControl(control);
+      requireCurrentNextGenerationControl(control);
+      if ((await activeTabId()) !== identity.capturedTabId) {
+        throw new Error("generation commands must originate from the captured tab");
+      }
+      requireCurrentNextGenerationControl(control);
+      const session = await activeSession();
+      requireCurrentNextGenerationControl(control);
+      const configuration = await storedConfiguration();
+      requireCurrentNextGenerationControl(control);
+      if (
+        !configuration ||
+        session.gatewayUrl !== configuration.gatewayUrl ||
+        session.profileId !== configuration.profileId
+      ) {
+        throw new Error("remote session metadata does not match the selected configuration");
+      }
+      if (rosterModels.length === 0) {
+        await fetchModelInventory(configuration);
+        requireCurrentNextGenerationControl(control);
+      }
+      const model = selectedRosterModel(configuration.profileId);
+      if (
+        session.modelId !== model.modelId ||
+        session.invocationMode !== model.invocationMode ||
+        identity.profileId !== model.profileId ||
+        identity.modelId !== model.modelId ||
+        identity.invocationMode !== model.invocationMode
+      ) {
+        throw new Error("remote session metadata does not match the selected model");
+      }
+      const nextGenerationId = identity.generationId + 1;
+      const nextSession = Object.freeze({
+        ...session,
+        generationId: nextGenerationId,
+      });
+
+      const compensateStartedGeneration = async () => {
+        try {
+          requireCurrentNextGenerationIdentity(control);
+        } catch {
+          await reconcileSessionMetadata();
+          return;
+        }
+        let canceledState;
+        try {
+          canceledState = await sendOffscreen({
+            type: "offscreen.generation.cancel",
+            generationId: nextGenerationId,
+          });
+        } catch {
+          try {
+            requireCurrentNextGenerationIdentity(control);
+          } catch {
+            await reconcileSessionMetadata();
+            return;
+          }
+          try {
+            await stop();
+          } catch {
+            // Stop remains authoritative even when remote cleanup reports failure.
+          }
+          return;
+        }
+        try {
+          requireCurrentNextGenerationIdentity(control);
+        } catch {
+          await reconcileSessionMetadata();
+          return;
+        }
+        if (
+          canceledState?.capture !== "running" ||
+          canceledState.route !== "native" ||
+          canceledState.remote !== "ready" ||
+          canceledState.generationId !== null
+        ) {
+          try {
+            await stop();
+          } catch {
+            // An invalid compensation response cannot leave remote playout trusted.
+          }
+          return;
+        }
+        route = canceledState.route;
+        remote = canceledState.remote;
+        generationId = null;
+        await reconcileSessionMetadata();
+      };
+
+      let startDispatched = false;
+      let state;
+      try {
+        startDispatched = true;
+        state = await sendOffscreen({
+          type: "offscreen.generation.start",
+          generationId: nextGenerationId,
+          invocationMode: identity.invocationMode,
+        });
+        requireCurrentNextGenerationControl(control, { nextGenerationId });
+        requireNextGenerationResponse(state, nextGenerationId);
+        await chromeApi.storage.session.set({
+          [ACTIVE_SESSION_KEY]: nextSession,
+        });
+        requireCurrentNextGenerationControl(control, { nextGenerationId });
+      } catch (error) {
+        if (startDispatched) {
+          await compensateStartedGeneration();
+        }
+        throw error;
+      }
+      commitActiveSession(nextSession);
+      if (
+        generationId === null &&
+        (remote === "ready" || remote === "loading")
+      ) {
+        route = state.route;
+        remote = state.remote;
+        generationId = state.generationId;
+      }
+      return state;
+    } finally {
+      finishGenerationControl(control);
     }
-    if (generationId !== null) {
-      throw new Error("a remote generation is already active");
-    }
-    const session = await activeSession();
-    if (!session) {
-      throw new Error("remote session metadata is unavailable");
-    }
-    const nextGenerationId = session.generationId + 1;
-    await setActiveSession({ ...session, generationId: nextGenerationId });
-    const state = await sendOffscreen({
-      type: "offscreen.generation.start",
-      generationId: nextGenerationId,
-    });
-    remote = state.remote;
-    generationId = state.generationId ?? null;
-    return state;
   }
 
   async function selectProfile(profileId) {
     if (typeof profileId !== "string" || !PROFILE_ID.test(profileId)) {
       throw new TypeError("profileId has an invalid format");
     }
-    await synchronize();
-    if (
-      capture !== "running" ||
-      remote !== "ready" ||
-      generationId !== null
-    ) {
-      throw new Error("profile selection is allowed only at a ready generation boundary");
+    const selection = beginProfileSelection();
+    let configuration = null;
+    let previousSession = null;
+    let storageMutationStarted = false;
+    let cancellationCompensated = false;
+
+    const compensateCanceledSelection = async () => {
+      if (cancellationCompensated || !storageMutationStarted) {
+        return;
+      }
+      cancellationCompensated = true;
+      const failures = [];
+      try {
+        await chromeApi.storage.session.set({
+          [CONFIGURATION_KEY]: configuration,
+        });
+      } catch (error) {
+        failures.push(error);
+      }
+      if (sessionMetadataKnown) {
+        const metadataEpoch = sessionMetadataEpoch;
+        try {
+          await persistSessionMetadata(currentSession, metadataEpoch);
+        } catch (error) {
+          failures.push(error);
+        }
+      }
+      if (failures.length > 0) {
+        throw new Error(
+          `canceled profile selection cleanup failed: ${failures
+            .map(errorMessage)
+            .join("; ")}`,
+        );
+      }
+    };
+
+    const throwIfCanceled = async () => {
+      if (profileSelectionIsCurrent(selection)) {
+        return;
+      }
+      await compensateCanceledSelection();
+      requireCurrentProfileSelection(selection);
+    };
+
+    try {
+      await synchronize();
+      requireCurrentProfileSelection(selection);
+      if (
+        capture !== "running" ||
+        remote !== "ready" ||
+        generationId !== null
+      ) {
+        throw new Error(
+          "profile selection is allowed only at a ready generation boundary",
+        );
+      }
+      const selectedTabId = await activeTabId();
+      requireCurrentProfileSelection(selection);
+      if (selectedTabId !== capturedTabId) {
+        throw new Error("profile selection must originate from the captured tab");
+      }
+      configuration = await storedConfiguration();
+      requireCurrentProfileSelection(selection);
+      if (!configuration) {
+        throw new Error("session configuration is unavailable");
+      }
+      if (rosterModels.length === 0) {
+        await fetchModelInventory(configuration);
+        requireCurrentProfileSelection(selection);
+      }
+      const previousModel = selectedRosterModel(configuration.profileId);
+      previousSession = await activeSession();
+      requireCurrentProfileSelection(selection);
+      if (
+        !previousSession ||
+        previousSession.gatewayUrl !== configuration.gatewayUrl ||
+        previousSession.profileId !== previousModel.profileId ||
+        previousSession.modelId !== previousModel.modelId ||
+        previousSession.invocationMode !== previousModel.invocationMode
+      ) {
+        throw new Error("remote session metadata does not match the active model");
+      }
+      const model = selectedRosterModel(profileId);
+      const profile = model.profile;
+      const nextConfiguration = Object.freeze({
+        ...configuration,
+        profileId: profile.profileId,
+      });
+      const nextSession = Object.freeze({
+        ...previousSession,
+        profileId: profile.profileId,
+        modelId: model.modelId,
+        invocationMode: model.invocationMode,
+      });
+
+      remote = "selecting";
+      let selectedState;
+      try {
+        selectedState = await sendOffscreen({
+          type: "offscreen.model.select",
+          expectedProfile: expectedProfileIdentity(profile),
+          invocationMode: model.invocationMode,
+        });
+        await throwIfCanceled();
+        if (
+          selectedState.capture !== "running" ||
+          selectedState.remote !== "ready" ||
+          selectedState.generationId !== null
+        ) {
+          throw new Error("Offscreen did not confirm a ready profile selection");
+        }
+        storageMutationStarted = true;
+        await chromeApi.storage.session.set({
+          [CONFIGURATION_KEY]: nextConfiguration,
+          [ACTIVE_SESSION_KEY]: nextSession,
+        });
+        await throwIfCanceled();
+      } catch (error) {
+        if (!profileSelectionIsCurrent(selection)) {
+          await compensateCanceledSelection();
+          requireCurrentProfileSelection(selection);
+        }
+        const rollbackFailures = [];
+        try {
+          const rollbackState = await sendOffscreen({
+            type: "offscreen.model.select",
+            expectedProfile: expectedProfileIdentity(previousModel.profile),
+            invocationMode: previousModel.invocationMode,
+          });
+          await throwIfCanceled();
+          if (
+            rollbackState.capture !== "running" ||
+            rollbackState.remote !== "ready" ||
+            rollbackState.generationId !== null
+          ) {
+            throw new Error("Offscreen did not confirm rollback to the active profile");
+          }
+          capture = rollbackState.capture;
+          route = rollbackState.route;
+          remote = rollbackState.remote;
+          generationId = null;
+        } catch (rollbackError) {
+          rollbackFailures.push(rollbackError);
+        }
+        try {
+          await chromeApi.storage.session.set({
+            [CONFIGURATION_KEY]: configuration,
+            [ACTIVE_SESSION_KEY]: previousSession,
+          });
+          await throwIfCanceled();
+        } catch (rollbackError) {
+          if (!profileSelectionIsCurrent(selection)) {
+            await compensateCanceledSelection();
+            requireCurrentProfileSelection(selection);
+          }
+          rollbackFailures.push(rollbackError);
+        }
+        if (rollbackFailures.length > 0) {
+          try {
+            await stop();
+          } catch (stopError) {
+            rollbackFailures.push(stopError);
+          }
+          throw new Error(
+            `profile selection failed and rollback was incomplete: ${rollbackFailures
+              .map(errorMessage)
+              .join("; ")}`,
+          );
+        }
+        throw error;
+      }
+
+      requireCurrentProfileSelection(selection);
+      capture = selectedState.capture;
+      route = selectedState.route;
+      remote = selectedState.remote;
+      generationId = null;
+      commitActiveSession(nextSession);
+      lastError = null;
+      return Object.freeze({
+        state: selectedState,
+        configuration: nextConfiguration,
+      });
+    } finally {
+      finishProfileSelection(selection);
     }
-    if ((await activeTabId()) !== capturedTabId) {
-      throw new Error("profile selection must originate from the captured tab");
+  }
+
+  async function observeReceiptRuntimeEvent(value) {
+    await ensureReceiptState();
+    if (!receiptIsActive() || value === null || typeof value !== "object") {
+      return;
     }
-    const configuration = await storedConfiguration();
-    if (!configuration) {
-      throw new Error("session configuration is unavailable");
+    try {
+      const extensionUrl = chromeApi.runtime.getURL("");
+      const extensionOrigin = extensionUrl.match(
+        /^(chrome-extension:\/\/[a-p]{32})(?:\/|$)/,
+      )?.[1];
+      switch (value.type) {
+        case "gateway.attached":
+          await receiptTransition("observeGatewayAttached", {
+            sessionId: value.sessionId,
+            pipelineId: value.pipelineId,
+            profileId: value.profileId,
+            profileHash: value.profileHash,
+            configurationHash: value.configurationHash,
+            extensionOrigin,
+          });
+          break;
+        case "generation.ready":
+          await receiptTransition("startAttempt", {
+            generationId: value.generationId,
+            pipelineId: value.pipelineId,
+            profileId: value.profileId,
+            profileHash: value.profileHash,
+            configurationHash: value.configurationHash,
+          });
+          break;
+        case "generation.output":
+          await receiptTransition("observeOutput", {
+            generationId: value.generationId,
+            pipelineId: value.pipelineId,
+            finite: value.finite,
+            changed: value.changed,
+          });
+          break;
+        case "remote.playout":
+          await receiptTransition("observeRemotePlayout", {
+            generationId: value.generationId,
+            pipelineId: value.pipelineId,
+            nativeAudible: value.nativeAudible,
+            remoteAudible: value.remoteAudible,
+          });
+          break;
+        case "generation.terminal":
+          await receiptTransition("observeGenerationTerminal", {
+            generationId: value.generationId,
+            pipelineId: value.pipelineId,
+            endTriggered: value.endTriggered,
+          });
+          break;
+        case "generation.stale-output":
+          await receiptTransition("observeStaleOutputAccepted", {
+            generationId: value.generationId,
+            pipelineId: value.pipelineId,
+            accepted: value.accepted,
+          });
+          break;
+        case "fallback.required":
+          await receiptTransition("observeForcedFallback", {
+            generationId: value.generationId,
+            pipelineId: value.pipelineId,
+            injected: value.injected,
+          });
+          break;
+        case "native.fallback":
+          await receiptTransition("observeNativeFallback", {
+            generationId: value.generationId,
+            pipelineId: value.pipelineId,
+            nativeAudible: value.nativeAudible,
+            remoteAudible: value.remoteAudible,
+          });
+          break;
+        default:
+          await receiptTransition(
+            "invalidate",
+            "offscreen emitted an unsupported EXP-005 receipt event",
+          );
+      }
+    } catch {
+      if (receiptIsActive()) {
+        try {
+          await receiptTransition(
+            "invalidate",
+            "offscreen receipt event could not be validated",
+          );
+        } catch {
+          // A corrupt or unpersistable receipt remains fail-closed.
+        }
+      }
     }
-    if (catalogProfiles.length === 0) {
-      await fetchModelCatalog(configuration);
-    }
-    const profile = selectedCatalogProfile(profileId);
-    const state = await sendOffscreen({
-      type: "offscreen.model.select",
-      expectedProfile: expectedProfileIdentity(profile),
-    });
-    remote = state.remote;
-    const nextConfiguration = Object.freeze({
-      ...configuration,
-      profileId: profile.profileId,
-    });
-    await chromeApi.storage.session.set({
-      [CONFIGURATION_KEY]: nextConfiguration,
-    });
-    const session = await activeSession();
-    if (session) {
-      await setActiveSession({ ...session, profileId: profile.profileId });
-    }
-    lastError = null;
-    return state;
   }
 
   async function handleMessage(message, sender) {
@@ -1165,6 +2359,7 @@ export function createBrowserRuntime(options = {}) {
     }
     if (message?.target === "background" && message.type === "offscreen.event") {
       const event = message.event ?? {};
+      await observeReceiptRuntimeEvent(event.receipt);
       if (event.route === "native" || event.route === "remote") {
         route = event.route;
       }
@@ -1186,17 +2381,72 @@ export function createBrowserRuntime(options = {}) {
     }
 
     try {
+      if (message?.type === "exp005.trial.begin") {
+        await ensureReceiptState();
+        if (receiptRestoreError !== null) {
+          throw new Error(`${receiptRestoreError}; clear it before beginning a new trial`);
+        }
+        await synchronize();
+        if (capture !== "stopped") {
+          throw new Error("EXP-005 trial must begin before capture starts");
+        }
+        const receipt = receiptRecorder.begin(message.trial);
+        receiptStateKnown = true;
+        await persistReceiptState();
+        if (await hasOffscreenDocument()) {
+          await sendOffscreen({ type: "offscreen.receipt.configure", enabled: true });
+        }
+        return {
+          ok: true,
+          receipt,
+          state: await snapshot(),
+        };
+      }
+      if (message?.type === "exp005.trial.export") {
+        await ensureReceiptState();
+        if (receiptRestoreError !== null) {
+          throw new Error(receiptRestoreError);
+        }
+        const receipt = receiptRecorder.exportReceipt();
+        if (await hasOffscreenDocument()) {
+          await sendOffscreen({ type: "offscreen.receipt.configure", enabled: false });
+        }
+        return { ok: true, receipt };
+      }
+      if (message?.type === "exp005.trial.clear") {
+        await ensureReceiptState();
+        if (await hasOffscreenDocument()) {
+          await sendOffscreen({ type: "offscreen.receipt.configure", enabled: false });
+        }
+        if (receiptRecorder.active()) {
+          receiptRecorder.clear();
+        }
+        receiptRestoreError = null;
+        receiptStateKnown = true;
+        await queueReceiptPersistence(null, { remove: true });
+        return { ok: true, state: await snapshot() };
+      }
+      if (message?.type === "exp005.trial.inject-failure") {
+        await injectExp005Failure();
+        return { ok: true, state: await snapshot() };
+      }
       if (message?.type === "session.status") {
         return { ok: true, state: await snapshot({ synchronizeState: true }) };
       }
       if (message?.type === "models.list") {
-        const profiles = await listModels(message.configuration ?? null);
-        return { ok: true, state: await snapshot(), profiles };
+        const inventory = await listModels(message.configuration ?? null);
+        return {
+          ok: true,
+          state: await snapshot(),
+          models: inventory.models,
+          profiles: inventory.catalog,
+        };
       }
       if (message?.type === "session.configure") {
         return {
           ok: true,
           state: await configure(message.configuration),
+          models: rosterModels,
           profiles: catalogProfiles,
         };
       }
@@ -1221,17 +2471,21 @@ export function createBrowserRuntime(options = {}) {
         return { ok: true, state: await snapshot() };
       }
       if (message?.type === "model.select") {
-        await selectProfile(message.profileId);
+        const selection = await selectProfile(message.profileId);
         return {
           ok: true,
-          state: await snapshot(),
+          state: await snapshot({ knownConfiguration: selection.configuration }),
+          models: rosterModels,
           profiles: catalogProfiles,
         };
       }
       return null;
     } catch (error) {
-      lastError = errorMessage(error);
-      return { ok: false, state: await snapshot(), error: lastError };
+      const message = errorMessage(error);
+      if (error?.name !== "AbortError") {
+        lastError = message;
+      }
+      return { ok: false, state: await snapshot(), error: message };
     }
   }
 
@@ -1272,4 +2526,5 @@ export function installBrowserMessageListener(runtime, chromeApi) {
 export const sessionStorageKeys = Object.freeze({
   activeSession: ACTIVE_SESSION_KEY,
   configuration: CONFIGURATION_KEY,
+  exp005ReceiptState: EXP005_RECEIPT_STATE_KEY,
 });

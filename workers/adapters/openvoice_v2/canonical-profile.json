@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "material_id": "openvoice-v2-buffered-preview-v1",
+  "profile_id": "vc.openvoice-v2.technical.v1",
+  "pack": {
+    "pack_id": "openvoice-v2",
+    "status": "research",
+    "ready_for_runtime": false,
+    "promotion_status": "technical_validation",
+    "promotion_evidence_sha256": "sha256:bff2066e3ef311dc123f1b8d85d5f98a14610a71cc6f4ecf71d34670fc85e057"
+  },
+  "delivery": {
+    "mode": "end_buffered",
+    "streaming": false,
+    "frame_ms": 20,
+    "minimum_input_frames": 3,
+    "maximum_input_frames": 25,
+    "minimum_context_ms": 60,
+    "maximum_context_ms": 500,
+    "cancellation": "cooperative"
+  },
+  "trusted_worker": {
+    "entrypoint_module": "workers.adapters.openvoice_v2",
+    "entrypoint_args": ["-I", "-m", "workers.adapters.openvoice_v2"],
+    "network_isolation": "linux_seccomp_non_unix_socket_denial",
+    "network_isolation_required_before_model_import": true,
+    "implementation_revision": "openvoice-v2-offline-adapter-v4",
+    "current_source_implementation_sha256": "f4391211dd981906d25a556a6c32c75efc46e0383138d8abedfae82a5cacb862",
+    "current_source_runtime_rebuild_required": false,
+    "retained_implementation_sha256": "f4391211dd981906d25a556a6c32c75efc46e0383138d8abedfae82a5cacb862",
+    "implementation_manifest_algorithm": "sha256_length_prefixed_sorted_relative_paths_and_bytes",
+    "implementation_manifest_files": [
+      "workers/adapters/openvoice_v2/__init__.py",
+      "workers/adapters/openvoice_v2/__main__.py",
+      "workers/adapters/openvoice_v2/engine.py",
+      "workers/adapters/openvoice_v2/network_isolation.py",
+      "workers/adapters/openvoice_v2/worker.py",
+      "workers/runtime/codec.py"
+    ],
+    "historical_stale_identity": {
+      "source_tree_sha256": "d75090a60578d5d368284f292c8116611998e3ed23861a12a6eabcf8d26791a6",
+      "classification": "stale_historical_identity",
+      "continuity_claimed": false
+    },
+    "superseded_runtime_identity": {
+      "implementation_sha256": "7bd3535423a4668ad33f7dc73e69311e8953ff20fb1559a7a733c2b7bed163a8",
+      "worker_wheel_sha256": "ad7da4dd939f8dd5259d04e363b37e37f09d6b0624d6c4b54e23f594e81dd31d",
+      "evidence_sha256": "sha256:e963e968059e4ba596d8b87f5ce5a5698e778aeaf9b61d7ef7abdc54b9216434",
+      "classification": "superseded_after_source_formatting",
+      "continuity_claimed": false
+    }
+  },
+  "configuration_hash": "sha256:cb28dfe641651e20b073f568c8eaf76d68caa4fbc8582c3ccee9406232be9170",
+  "retained_repaired_worker": {
+    "provenance_evidence_sha256": "sha256:bff2066e3ef311dc123f1b8d85d5f98a14610a71cc6f4ecf71d34670fc85e057",
+    "implementation_revision": "openvoice-v2-offline-adapter-v4+sha256:f4391211dd981906d25a556a6c32c75efc46e0383138d8abedfae82a5cacb862",
+    "configuration_hash": "sha256:cb28dfe641651e20b073f568c8eaf76d68caa4fbc8582c3ccee9406232be9170",
+    "weight_revision": "sha256:29e76b818c6677c3c79666b83a2e9d05799258d51e05edc2337a8940a0dc9e69",
+    "real_worker_smoke": {
+      "status": "technical_smoke_pass",
+      "worker_supervisor_smoke_count": 1,
+      "frames_per_generation": 25,
+      "frame_duration_ms": 20,
+      "output_ordered": true,
+      "output_finite": true,
+      "output_changed": true,
+      "output_before_end": false,
+      "cancel_inflight_generation": true,
+      "stale_output_after_cancel": false,
+      "worker_close_exit_code": 0,
+      "quality_assessment": "not_assessed",
+      "latency_assessment": "not_assessed",
+      "live_streaming_assessment": "not_assessed",
+      "raw_audio_retained": false
+    }
+  },
+  "revisions": {
+    "source_revision": "74a1d147b17a8c3092dd5430504bd83ef6c7eb23",
+    "implementation_revision": "openvoice-v2-offline-adapter-v4",
+    "weight_revision": "sha256:29e76b818c6677c3c79666b83a2e9d05799258d51e05edc2337a8940a0dc9e69"
+  },
+  "canonical_engine_configuration": {
+    "checkpoint_sha256": "9652c27e92b6b2a91632590ac9962ef7ae2b712e5c5b7f4c34ec55ee2b37ab9e",
+    "config_sha256": "9dfff60350b8c63f2c664efd92a61b2516efb22671466960f0e5dfebd881fa47",
+    "device": "cuda:0",
+    "distribution_manifest_sha256": "989e69c0bb2f06fd3d81de068c1be6509c93f876c23197c1b8bf462a087e574d",
+    "implementation_sha256": "f4391211dd981906d25a556a6c32c75efc46e0383138d8abedfae82a5cacb862",
+    "installed_record_sha256": "5420073f64e18818702d470b1b1a4be4685c342bcfec0fe1ade8aecf3f093127",
+    "pyvenv_sha256": "4fdb5d77a543f844b05c25637fa11d8c94ac824d04be9cf4db27b25cc635e0b6",
+    "runtime_lock_sha256": "3df9be85423bd8d3d8bf7406020baf90684ef0601e89dbb467166edbc67c5de1",
+    "seed": 123,
+    "source_tree_sha256": "9b362e858a720107fcfcac6abfc47e12edd568beefd9de45a8b5dd70b9e0ad46",
+    "target_reference_sha256": "a92aaa78a600be0afa2425e55a8adb57dc0630789ce9a50284bf467345631ff7",
+    "tau": 0.3,
+    "wheel_record_sha256": "0d0402b1c45db08bb010ed3bbabd798fe8c6c4805b06672e582341a01c33d232",
+    "worker_wheel_sha256": "7c8ebdbc0ec925d151c975223a5d22440e6c8ed357f3976ba211283f1e928ed6"
+  },
+  "private_environment": {
+    "required_names": [
+      "LIVECONV_OPENVOICE_V2_SOURCE_ROOT",
+      "LIVECONV_OPENVOICE_V2_SOURCE_TREE_SHA256",
+      "LIVECONV_OPENVOICE_V2_CONFIG_PATH",
+      "LIVECONV_OPENVOICE_V2_CONFIG_SHA256",
+      "LIVECONV_OPENVOICE_V2_CHECKPOINT_PATH",
+      "LIVECONV_OPENVOICE_V2_CHECKPOINT_SHA256",
+      "LIVECONV_OPENVOICE_V2_TARGET_REFERENCE_PATH",
+      "LIVECONV_OPENVOICE_V2_TARGET_REFERENCE_SHA256",
+      "LIVECONV_OPENVOICE_V2_RUNTIME_PREFIX",
+      "LIVECONV_OPENVOICE_V2_PYVENV_SHA256",
+      "LIVECONV_OPENVOICE_V2_WORKER_WHEEL_PATH",
+      "LIVECONV_OPENVOICE_V2_WORKER_WHEEL_SHA256",
+      "LIVECONV_OPENVOICE_V2_WHEEL_RECORD_SHA256",
+      "LIVECONV_OPENVOICE_V2_INSTALLED_RECORD_SHA256",
+      "LIVECONV_OPENVOICE_V2_DISTRIBUTION_MANIFEST_SHA256",
+      "LIVECONV_OPENVOICE_V2_IMPLEMENTATION_SHA256",
+      "LIVECONV_OPENVOICE_V2_RUNTIME_LOCK_SHA256"
+    ],
+    "optional_names": [
+      "LIVECONV_OPENVOICE_V2_DEVICE",
+      "LIVECONV_OPENVOICE_V2_TAU",
+      "LIVECONV_OPENVOICE_V2_SEED"
+    ]
+  },
+  "registration_limits": {
+    "technical_opt_in_required": true,
+    "native_fallback_required": true,
+    "non_live_only": true,
+    "no_latency_claim": true,
+    "no_runtime_approval": true
+  }
+}

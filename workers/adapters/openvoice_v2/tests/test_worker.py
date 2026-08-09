@@ -202,6 +202,7 @@ def test_workspace_worker_subprocess_keeps_fd1_protocol_only(
 import os
 import sys
 import threading
+from types import SimpleNamespace
 
 sys.path.insert(0, {str(repository_root)!r})
 
@@ -235,6 +236,9 @@ class FakeEngine:
 
 worker_module.OpenVoiceV2Engine.from_environment = classmethod(
     lambda _cls: FakeEngine()
+)
+worker_module.EngineConfiguration.from_environment = classmethod(
+    lambda _cls: SimpleNamespace(configuration_hash=FakeEngine.configuration_hash)
 )
 raise SystemExit(worker_module.run())
 """
@@ -270,6 +274,10 @@ from types import ModuleType, SimpleNamespace
 
 from workers.adapters.openvoice_v2 import engine as engine_module
 from workers.adapters.openvoice_v2 import worker as worker_module
+from workers.adapters.openvoice_v2.network_isolation import deny_non_unix_sockets
+
+
+deny_non_unix_sockets()
 
 
 observed = set()
@@ -324,6 +332,11 @@ class Converter(Base):
 
 api.OpenVoiceBaseClass = Base
 api.ToneColorConverter = Converter
+source_root = Path.cwd() / "source"
+api_path = source_root / "openvoice" / "openvoice" / "api.py"
+api_path.parent.mkdir(parents=True)
+api_path.write_text("", encoding="ascii")
+api.__file__ = str(api_path)
 
 
 def noisy_import(name, package=None):
@@ -351,7 +364,7 @@ def factory():
         distribution_version="0.1.0",
     )
     configuration = engine_module.EngineConfiguration(
-        source_root=Path("/tmp"),
+        source_root=source_root,
         source_tree_sha256="7" * 64,
         config_path=Path("/tmp/config.json"),
         config_sha256="8" * 64,
@@ -377,6 +390,9 @@ def factory():
 
 
 worker_module.OpenVoiceV2Engine.from_environment = classmethod(lambda _cls: factory())
+worker_module.EngineConfiguration.from_environment = classmethod(
+    lambda _cls: SimpleNamespace(configuration_hash="sha256:" + "b" * 64)
+)
 raise SystemExit(worker_module.run())
 """
     _assert_worker_subprocess_keeps_stdout_protocol_only(
@@ -423,6 +439,43 @@ def test_offline_worker_emits_ordered_transformed_frames() -> None:
     assert [message["sequence"] for message in messages[2:5]] == [0, 1, 2]
     raw = base64.b64decode(messages[2]["pcm_f32le_base64"])
     assert struct.unpack("<2f", raw[:8]) == (-0.25, 0.5)
+
+
+def test_lazy_initialization_failure_is_a_sanitized_hello_response() -> None:
+    output = FakeBuffer()
+
+    def fail_initialization() -> FakeEngine:
+        raise AssertionError("/private/checkpoint.pth is unavailable")
+
+    worker = OfflineWorker(
+        None,
+        output,
+        configuration_hash=FakeEngine.configuration_hash,
+        engine_factory=fail_initialization,
+    )
+    keep_running = worker.handle(
+        request(
+            "worker.hello",
+            1,
+            profile_id="openvoice-v2.offline",
+            pipeline_id="fixture",
+            configuration_hash=FakeEngine.configuration_hash,
+        )
+    )
+
+    assert keep_running is False
+    messages = [decode_message(line) for line in output.lines]
+    assert messages == [
+        {
+            "type": "worker.error",
+            "worker_protocol_version": WORKER_PROTOCOL_VERSION,
+            "rpc_id": 1,
+            "code": "MODEL_UNAVAILABLE",
+            "message": "OpenVoice initialization failed: assertion",
+            "recoverable": False,
+        }
+    ]
+    assert "private" not in messages[0]["message"]
 
 
 def test_cancel_acknowledgement_is_an_atomic_output_barrier(monkeypatch) -> None:

@@ -43,7 +43,7 @@ class FakeElement {
   }
 }
 
-function popupHarness({ initialState, pendingType }) {
+function popupHarness({ initialState, models = [], pendingType }) {
   const requests = [];
   const pending = deferred();
   const gatewayInput = new FakeElement({ value: "http://127.0.0.1:8765" });
@@ -62,6 +62,7 @@ function popupHarness({ initialState, pendingType }) {
       '[data-action="select-profile"]',
       "#profile-options",
       '[data-role="profile-identity"]',
+      '[data-role="model-roster"]',
     ].map((selector) => [selector, new FakeElement()]),
   );
   const form = new FakeElement();
@@ -87,6 +88,9 @@ function popupHarness({ initialState, pendingType }) {
         requests.push(message);
         if (message.type === "session.status") {
           return Promise.resolve({ ok: true, state: initialState });
+        }
+        if (message.type === "models.list") {
+          return Promise.resolve({ ok: true, state: initialState, models });
         }
         if (message.type === pendingType) {
           return pending.promise;
@@ -184,4 +188,79 @@ test("popup DOM keeps Stop reachable while End is unresolved", async (t) => {
   stop.click();
   assert.equal(stop.disabled, true, "only the pending Stop operation disables Stop");
   assert(harness.requests.some((message) => message.type === "session.stop"));
+});
+
+test("popup renders every roster model with its honest state and buffered End label", async (t) => {
+  const models = [
+    {
+      modelId: "rvc-v2",
+      displayName: "RVC v2",
+      profileId: "vc.rvc.synthetic-ja.v1",
+      invocationMode: "live",
+      executionState: "live-trial",
+      decisionState: "technical-only",
+      voiceRequirement: "pretrained_voice",
+      reasonCode: null,
+      selectable: true,
+    },
+    {
+      modelId: "beatrice-2",
+      displayName: "Beatrice 2",
+      profileId: "vc.beatrice.synthetic-ja.v1",
+      invocationMode: "live",
+      executionState: "unavailable",
+      decisionState: "quality-failed",
+      voiceRequirement: "pretrained_voice",
+      reasonCode: "profile_unavailable",
+      selectable: false,
+    },
+    {
+      modelId: "x-vc",
+      displayName: "X-VC",
+      profileId: "vc.x-vc.synthetic-ja.v1",
+      invocationMode: "live",
+      executionState: "live-trial",
+      decisionState: "unassessed",
+      voiceRequirement: "authorized_target_required",
+      reasonCode: null,
+      selectable: false,
+    },
+    {
+      modelId: "openvoice-v2",
+      displayName: "OpenVoice V2",
+      profileId: "vc.openvoice-v2.synthetic-ja.v1",
+      invocationMode: "buffered_end",
+      executionState: "buffered-preview",
+      decisionState: "unassessed",
+      voiceRequirement: "pretrained_voice",
+      reasonCode: null,
+      selectable: true,
+    },
+  ];
+  const harness = popupHarness({
+    initialState: {
+      ...stoppedState,
+      configuration: {
+        configured: true,
+        gatewayUrl: "https://audio.example.test",
+        profileId: "vc.openvoice-v2.synthetic-ja.v1",
+      },
+    },
+    models,
+  });
+  await loadPopup(t, harness, "all-roster-models");
+
+  const rows = harness.elements.get('[data-role="model-roster"]').children;
+  assert.equal(rows.length, 4);
+  assert.equal(rows[0].children[0].textContent, "RVC v2");
+  assert.match(rows[1].children[1].textContent, /unavailable: profile unavailable/i);
+  assert.match(rows[2].children[1].textContent, /authorized target required/i);
+  const options = harness.elements.get("#profile-options").children;
+  assert.equal(options.length, 4);
+  assert.equal(options[1].disabled, true);
+  assert.equal(options[2].disabled, true);
+  assert.equal(
+    harness.elements.get('[data-action="end"]').textContent,
+    "End & preview",
+  );
 });

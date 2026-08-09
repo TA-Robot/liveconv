@@ -75,24 +75,33 @@ class ModelPackManifestTests(unittest.TestCase):
                     self.assertIsNone(artifact["provenance_url"])
 
     def test_promotion_evidence_matches_the_current_review_state(self) -> None:
+        expected = {
+            "rvc-v2": (
+                "sha256:48aeffc090c1255f2d06194164e0ef730493606a1e0"
+                "edae1a1c7b707548465e6"
+            ),
+            "x-vc": (
+                "sha256:fa100d0c03041f37ce489b618b54260c722f4cc42610"
+                "38329263cf73338aaea0"
+            ),
+            "beatrice-2": (
+                "sha256:ac798f45a0d833ff37d9b3022c2a3ebe1adea370db90"
+                "811c008097f58ef46b5c"
+            ),
+            "openvoice-v2": (
+                "sha256:bff2066e3ef311dc123f1b8d85d5f98a14610a71cc6f"
+                "4ecf71d34670fc85e057"
+            ),
+        }
         for manifest in self.manifests:
             with self.subTest(pack_id=manifest["pack_id"]):
-                if manifest["pack_id"] == "rvc-v2":
-                    self.assertEqual(
-                        manifest["promotion_evidence"],
-                        {
-                            "status": "technical_validation",
-                            "evidence_sha256": (
-                                "sha256:48aeffc090c1255f2d06194164e0ef730493606a1e0"
-                                "edae1a1c7b707548465e6"
-                            ),
-                        },
-                    )
-                else:
-                    self.assertEqual(
-                        manifest["promotion_evidence"],
-                        {"status": "unavailable", "evidence_sha256": None},
-                    )
+                self.assertEqual(
+                    manifest["promotion_evidence"],
+                    {
+                        "status": "technical_validation",
+                        "evidence_sha256": expected[manifest["pack_id"]],
+                    },
+                )
 
     def test_runtime_ready_pack_requires_every_promotion_gate(self) -> None:
         manifest = deepcopy(self.manifests[0])
@@ -103,6 +112,7 @@ class ModelPackManifestTests(unittest.TestCase):
     def test_technical_or_approved_evidence_requires_a_digest(self) -> None:
         manifest = deepcopy(self.manifests[0])
         manifest["promotion_evidence"]["status"] = "technical_validation"
+        manifest["promotion_evidence"]["evidence_sha256"] = None
         with self.assertRaises(ValidationError):
             self.validator.validate(manifest)
 

@@ -6,6 +6,7 @@ import os
 import struct
 import sys
 import threading
+from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Protocol
@@ -16,7 +17,7 @@ from workers.runtime.codec import (
     encode_message,
 )
 
-from .engine import OpenVoiceV2Engine
+from .engine import EngineConfiguration, OpenVoiceV2Engine
 
 IMPLEMENTATION_REVISION = "openvoice-v2-offline-adapter-v4"
 CAPACITY_FRAMES = 25
@@ -88,9 +89,21 @@ class Generation:
 
 class OfflineWorker:
     def __init__(
-        self, engine: OpenVoiceV2Engine, protocol_output: BinaryOutput
+        self,
+        engine: OpenVoiceV2Engine | None,
+        protocol_output: BinaryOutput,
+        *,
+        configuration_hash: str | None = None,
+        engine_factory: Callable[[], OpenVoiceV2Engine] | None = None,
     ) -> None:
+        if engine is None and (configuration_hash is None or engine_factory is None):
+            raise ValueError("lazy worker initialization requires a factory and hash")
         self.engine = engine
+        self._configuration_hash = (
+            engine.configuration_hash if engine is not None else configuration_hash
+        )
+        assert self._configuration_hash is not None
+        self._engine_factory = engine_factory
         self._protocol_output = protocol_output
         self.active: Generation | None = None
         self._last_generation_id: int | None = None
@@ -148,7 +161,7 @@ class OfflineWorker:
                     recoverable=False,
                 )
                 return True
-            if message["configuration_hash"] != self.engine.configuration_hash:
+            if message["configuration_hash"] != self._configuration_hash:
                 self.error(
                     message,
                     "MODEL_UNAVAILABLE",
@@ -158,7 +171,33 @@ class OfflineWorker:
                 self._closed = True
                 self._executor.shutdown(wait=False, cancel_futures=True)
                 return False
+            if self.engine is None:
+                assert self._engine_factory is not None
+                try:
+                    self.engine = self._engine_factory()
+                except Exception as error:
+                    self.error(
+                        message,
+                        "MODEL_UNAVAILABLE",
+                        "OpenVoice initialization failed: "
+                        f"{_initialization_failure_category(error)}",
+                        recoverable=False,
+                    )
+                    self._closed = True
+                    self._executor.shutdown(wait=False, cancel_futures=True)
+                    return False
+                if self.engine.configuration_hash != self._configuration_hash:
+                    self.error(
+                        message,
+                        "MODEL_UNAVAILABLE",
+                        "OpenVoice configuration identity mismatch",
+                        recoverable=False,
+                    )
+                    self._closed = True
+                    self._executor.shutdown(wait=False, cancel_futures=True)
+                    return False
             self._hello_received = True
+            assert self.engine is not None
             self.emit(
                 self.control(
                     "worker.ready",
@@ -303,6 +342,7 @@ class OfflineWorker:
 
     def _convert(self, generation: Generation, end_message: dict[str, object]) -> None:
         try:
+            assert self.engine is not None
             first = generation.frames[0]
             raw = b"".join(
                 base64.b64decode(str(frame["pcm_f32le_base64"]), validate=True)
@@ -380,10 +420,15 @@ def run() -> int:
     protocol_output = isolate_protocol_stdout()
     try:
         try:
-            engine = OpenVoiceV2Engine.from_environment()
+            configuration = EngineConfiguration.from_environment()
         except Exception:
             return 2
-        worker = OfflineWorker(engine, protocol_output)
+        worker = OfflineWorker(
+            None,
+            protocol_output,
+            configuration_hash=configuration.configuration_hash,
+            engine_factory=OpenVoiceV2Engine.from_environment,
+        )
         for line in sys.stdin.buffer:
             try:
                 message = decode_message(line)
@@ -394,6 +439,18 @@ def run() -> int:
         return 0
     finally:
         protocol_output.close()
+
+
+def _initialization_failure_category(error: Exception) -> str:
+    if isinstance(error, AssertionError):
+        return "assertion"
+    if isinstance(error, (ImportError, ModuleNotFoundError)):
+        return "import"
+    if isinstance(error, OSError):
+        return "os"
+    if isinstance(error, (RuntimeError, ValueError)):
+        return "runtime"
+    return "unexpected"
 
 
 def main() -> int:

@@ -5,8 +5,8 @@
   "status": "research",
   "ready_for_runtime": false,
   "promotion_evidence": {
-    "status": "unavailable",
-    "evidence_sha256": null
+    "status": "technical_validation",
+    "evidence_sha256": "sha256:fa100d0c03041f37ce489b618b54260c722f4cc4261038329263cf73338aaea0"
   },
   "role": "streaming_candidate",
   "implementation_priority": 2,
@@ -17,7 +17,7 @@
   ],
   "japanese_evidence": {
     "level": "none_official",
-    "summary": "Official training and evaluation cover English and Chinese; cross-lingual results do not establish Japanese preservation or quality.",
+    "summary": "Official training and evaluation cover English and Chinese; the retained Japanese quality result fails and cross-lingual results do not establish Japanese preservation or quality.",
     "evidence_urls": [
       "https://github.com/Jerrister/X-VC",
       "https://arxiv.org/abs/2604.12456"
@@ -210,5 +210,5 @@
       "evidence_url": null
     }
   },
-  "decision_notes": "Treat X-VC as a quality candidate only after the Japanese offline gate; do not infer Japanese support from English and Chinese results."
+  "decision_notes": "The retained worker-supervisor smoke is technical validation only. X-VC remains research-only, nonselectable, and quality-failed until the Japanese offline gate passes; do not infer Japanese support from English and Chinese results."
 }

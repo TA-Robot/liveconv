@@ -104,7 +104,7 @@ function createHarness(createOffscreenRuntime) {
   };
 }
 
-async function startConnected(harness) {
+async function startConnected(harness, invocationMode = "live") {
   const sender = {
     id: "extension-id",
     url: "chrome-extension://extension-id/src/background.js",
@@ -137,12 +137,25 @@ async function startConnected(harness) {
         pipelineId: "22222222-2222-4222-8222-222222222222",
       },
       expectedLimits: { ingressBudgetMs: 1_000, maxIngressFrames: 50 },
+      invocationMode,
     },
     sender,
     "extension-id",
   );
   assert.equal(response.ok, true);
   return sender;
+}
+
+async function configureReceipt(harness, enabled) {
+  const response = await harness.runtime.handleMessage(
+    { target: "offscreen", type: "offscreen.receipt.configure", enabled },
+    {
+      id: "extension-id",
+      url: "chrome-extension://extension-id/src/background.js",
+    },
+    "extension-id",
+  );
+  assert.equal(response.ok, true);
 }
 
 test("Offscreen status binds a UUID epoch to only the current capture graph", async () => {
@@ -262,6 +275,276 @@ test("Offscreen owns tab media, remote transport, and timestamped uplink without
   assert.equal(harness.calls.at(-1).frame.sourceFrame, 100);
 });
 
+test("offscreen emits bounded EXP-005 facts only after real protocol responses and local PCM comparison", async () => {
+  const { createOffscreenRuntime } = await import(moduleUrl);
+  const harness = createHarness(createOffscreenRuntime);
+  const identity = {
+    profile_id: "vc.synthetic.v1",
+    profile_hash:
+      "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    configuration_hash:
+      "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    pipeline_id: "22222222-2222-4222-8222-222222222222",
+  };
+  harness.client.connect = async (options) => {
+    harness.calls.push({ name: "client.connect", options });
+    return {
+      session_id: options.sessionId,
+      ...identity,
+    };
+  };
+  harness.client.startGeneration = async (generationId) => {
+    harness.calls.push({ name: "client.startGeneration", generationId });
+    return { generation_id: generationId, ...identity };
+  };
+  await configureReceipt(harness, true);
+  const sender = await startConnected(harness);
+  const input = new Float32Array(960);
+  assert.equal(harness.graphCallbacks.onCaptureFrame({
+    generationId: 7,
+    sourceFrame: 100,
+    samples: input,
+  }), true);
+  harness.remoteCallbacks.onOutputFrame({
+    header: {
+      generation_id: 7,
+      sequence: 0,
+      source_monotonic_ns: 5_000_000_000n,
+    },
+    samples: new Float32Array(960).fill(0.25),
+  });
+  harness.graphCallbacks.onRemoteReady({ generationId: 7 });
+  await harness.runtime.handleMessage(
+    { target: "offscreen", type: "offscreen.generation.end", generationId: 7 },
+    sender,
+    "extension-id",
+  );
+
+  const receipts = harness.notifications
+    .map((message) => message.event.receipt)
+    .filter(Boolean);
+  assert.deepEqual(receipts.map((event) => event.type), [
+    "gateway.attached",
+    "generation.ready",
+    "remote.playout",
+    "generation.output",
+    "generation.stale-output",
+    "generation.terminal",
+  ]);
+  assert.deepEqual(receipts[3], {
+    type: "generation.output",
+    generationId: 7,
+    pipelineId: identity.pipeline_id,
+    finite: true,
+    changed: true,
+  });
+  assert.deepEqual(receipts[2], {
+    type: "remote.playout",
+    generationId: 7,
+    pipelineId: identity.pipeline_id,
+    nativeAudible: false,
+    remoteAudible: true,
+  });
+  assert.equal(receipts[4].accepted, false);
+  assert.equal(receipts[5].endTriggered, false);
+  assert.equal(/samples|pcm|ticket/i.test(JSON.stringify(receipts)), false);
+});
+
+test("receipt comparison precedes AudioGraph transfer of remote PCM", async () => {
+  const { createOffscreenRuntime } = await import(moduleUrl);
+  const harness = createHarness(createOffscreenRuntime);
+  const identity = {
+    profile_id: "vc.synthetic.v1",
+    profile_hash:
+      "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    configuration_hash:
+      "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    pipeline_id: "22222222-2222-4222-8222-222222222222",
+  };
+  harness.client.connect = async () => identity;
+  harness.client.startGeneration = async (generationId) => ({
+    generation_id: generationId,
+    ...identity,
+  });
+  harness.graph.enqueueRemoteFrame = (frame) => {
+    harness.calls.push({ name: "graph.enqueueRemoteFrame.transfer" });
+    structuredClone(frame.samples, { transfer: [frame.samples.buffer] });
+    assert.equal(frame.samples.byteLength, 0);
+    return true;
+  };
+  await configureReceipt(harness, true);
+  const sender = await startConnected(harness);
+  assert.equal(harness.graphCallbacks.onCaptureFrame({
+    generationId: 7,
+    sourceFrame: 100,
+    samples: new Float32Array(960),
+  }), true);
+  const output = {
+    header: {
+      generation_id: 7,
+      sequence: 0,
+      source_monotonic_ns: 5_000_000_000n,
+    },
+    samples: new Float32Array(960).fill(0.25),
+  };
+  harness.remoteCallbacks.onOutputFrame(output);
+  assert.equal(output.samples.byteLength, 0);
+  await harness.runtime.handleMessage(
+    { target: "offscreen", type: "offscreen.generation.end", generationId: 7 },
+    sender,
+    "extension-id",
+  );
+
+  const receipt = harness.notifications
+    .map((message) => message.event.receipt)
+    .find((event) => event?.type === "generation.output");
+  assert.deepEqual(receipt, {
+    type: "generation.output",
+    generationId: 7,
+    pipelineId: identity.pipeline_id,
+    finite: true,
+    changed: true,
+  });
+});
+
+test("inactive high-rate output emits no receipt and active output stays O(1)", async () => {
+  const { createOffscreenRuntime } = await import(moduleUrl);
+  const harness = createHarness(createOffscreenRuntime);
+  const identity = {
+    profile_id: "vc.synthetic.v1",
+    profile_hash:
+      "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    configuration_hash:
+      "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    pipeline_id: "22222222-2222-4222-8222-222222222222",
+  };
+  harness.client.connect = async () => identity;
+  harness.client.startGeneration = async (generationId) => ({
+    generation_id: generationId,
+    ...identity,
+  });
+  const sender = await startConnected(harness);
+  const sendFrames = () => {
+    for (let index = 0; index < 100; index += 1) {
+      const sourceFrame = 100 + index * 960;
+      harness.graphCallbacks.onCaptureFrame({
+        generationId: 7,
+        sourceFrame,
+        samples: new Float32Array(960),
+      });
+      harness.remoteCallbacks.onOutputFrame({
+        header: {
+          generation_id: 7,
+          sequence: index,
+          source_monotonic_ns: 5_000_000_000n + BigInt(index * 20_000_000),
+        },
+        samples: new Float32Array(960).fill(0.25),
+      });
+    }
+  };
+  sendFrames();
+  assert.equal(
+    harness.notifications.some((message) => message.event.receipt),
+    false,
+  );
+  await harness.runtime.handleMessage(
+    { target: "offscreen", type: "offscreen.generation.cancel", generationId: 7 },
+    sender,
+    "extension-id",
+  );
+
+  await configureReceipt(harness, true);
+  await harness.runtime.handleMessage(
+    { target: "offscreen", type: "offscreen.generation.start", generationId: 8 },
+    sender,
+    "extension-id",
+  );
+  for (let index = 0; index < 100; index += 1) {
+    const sourceFrame = 100 + index * 960;
+    harness.graphCallbacks.onCaptureFrame({
+      generationId: 8,
+      sourceFrame,
+      samples: new Float32Array(960),
+    });
+    harness.remoteCallbacks.onOutputFrame({
+      header: {
+        generation_id: 8,
+        sequence: index,
+        source_monotonic_ns: 5_000_000_000n + BigInt(index * 20_000_000),
+      },
+      samples: new Float32Array(960).fill(0.5),
+    });
+  }
+  await harness.runtime.handleMessage(
+    { target: "offscreen", type: "offscreen.generation.end", generationId: 8 },
+    sender,
+    "extension-id",
+  );
+  const generationEightReceipts = harness.notifications
+    .map((message) => message.event.receipt)
+    .filter((event) => event?.generationId === 8);
+  assert.equal(
+    generationEightReceipts.filter((event) => event.type === "generation.output").length,
+    1,
+  );
+  assert(generationEightReceipts.length <= 4);
+});
+
+test("explicit EXP-005 injection is native-first and cannot be forged by Gateway fallback", async () => {
+  const { createOffscreenRuntime } = await import(moduleUrl);
+  const harness = createHarness(createOffscreenRuntime);
+  const identity = {
+    profile_id: "vc.openvoice-v2.synthetic-ja.v1",
+    profile_hash:
+      "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    configuration_hash:
+      "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    pipeline_id: "22222222-2222-4222-8222-222222222222",
+  };
+  harness.client.connect = async () => identity;
+  harness.client.startGeneration = async (generationId) => ({
+    generation_id: generationId,
+    ...identity,
+  });
+  await configureReceipt(harness, true);
+  const sender = await startConnected(harness, "buffered_end");
+  const response = await harness.runtime.handleMessage(
+    {
+      target: "offscreen",
+      type: "offscreen.exp005.inject-failure",
+      generationId: 7,
+    },
+    sender,
+    "extension-id",
+  );
+  assert.equal(response.ok, true);
+  const cancelIndex = harness.calls.findIndex(
+    (call) => call.name === "graph.cancelGeneration" && call.generationId === 7,
+  );
+  const fallbackReceiptIndex = harness.calls.findIndex(
+    (call) => call.name === "runtime.sendMessage" &&
+      call.message.event.receipt?.type === "fallback.required",
+  );
+  assert(cancelIndex >= 0 && cancelIndex < fallbackReceiptIndex);
+  const receipts = harness.notifications
+    .map((message) => message.event.receipt)
+    .filter((event) => ["fallback.required", "native.fallback"].includes(event?.type));
+  assert.equal(receipts[0].injected, true);
+  assert.equal(receipts[0].profileId, identity.profile_id);
+  assert.equal(receipts[1].configurationHash, identity.configuration_hash);
+
+  const naturalHarness = createHarness(createOffscreenRuntime);
+  naturalHarness.client.connect = harness.client.connect;
+  naturalHarness.client.startGeneration = harness.client.startGeneration;
+  await configureReceipt(naturalHarness, true);
+  await startConnected(naturalHarness, "buffered_end");
+  await naturalHarness.remoteCallbacks.onFallback({ type: "fallback.required" });
+  const natural = naturalHarness.notifications
+    .map((message) => message.event.receipt)
+    .find((event) => event?.type === "fallback.required");
+  assert.equal(natural.injected, false);
+});
+
 test("remote playout becomes exclusive only after the graph reports its jitter target ready", async () => {
   const { createOffscreenRuntime } = await import(moduleUrl);
   const harness = createHarness(createOffscreenRuntime);
@@ -282,6 +565,95 @@ test("remote playout becomes exclusive only after the graph reports its jitter t
     remote: "ready",
     generationId: 7,
   });
+});
+
+test("buffered preview captures at most 25 frames and cannot enqueue or select remote before End", async () => {
+  const { createOffscreenRuntime } = await import(moduleUrl);
+  const harness = createHarness(createOffscreenRuntime);
+  const sender = await startConnected(harness, "buffered_end");
+  const begin = harness.calls.find((call) => call.name === "graph.beginGeneration");
+  assert.deepEqual(begin.options, {
+    captureCreditFrames: 25,
+    maximumCaptureFrames: 25,
+  });
+  assert.equal(
+    harness.calls.some((call) => call.name === "client.endGeneration"),
+    false,
+  );
+
+  const output = {
+    header: {
+      generation_id: 7,
+      sequence: 0,
+      source_monotonic_ns: 5_000_000_000n,
+    },
+    samples: new Float32Array(960),
+  };
+  harness.remoteCallbacks.onOutputFrame(output);
+  harness.graphCallbacks.onRemoteReady({ generationId: 7 });
+  assert.equal(
+    harness.calls.some((call) => call.name === "graph.enqueueRemoteFrame"),
+    false,
+    "a buffered profile must discard early remote output",
+  );
+  assert.equal(harness.runtime.snapshot().route, "native");
+  assert.equal(harness.runtime.snapshot().remote, "pending");
+
+  assert.equal(
+    harness.graphCallbacks.onCaptureFrame({
+      generationId: 7,
+      sourceFrame: 100,
+      samples: new Float32Array(960),
+    }),
+    true,
+  );
+  const endGate = createDeferred();
+  const drainGate = createDeferred();
+  harness.setDrainGate(drainGate);
+  harness.client.endGeneration = (generationId) => {
+    harness.calls.push({ name: "client.endGeneration.blocked", generationId });
+    return endGate.promise;
+  };
+
+  const ending = harness.runtime.handleMessage(
+    {
+      target: "offscreen",
+      type: "offscreen.generation.end",
+      generationId: 7,
+    },
+    sender,
+    "extension-id",
+  );
+  await flushMicrotasks();
+
+  harness.remoteCallbacks.onOutputFrame(output);
+  harness.graphCallbacks.onRemoteReady({ generationId: 7 });
+  assert.equal(
+    harness.calls.filter((call) => call.name === "graph.enqueueRemoteFrame").length,
+    1,
+  );
+  assert.equal(harness.runtime.snapshot().route, "remote");
+  assert.equal(
+    harness.runtime.snapshot().remote,
+    "draining",
+    "after-End playout remains accepted throughout the local drain",
+  );
+
+  endGate.resolve();
+  await flushMicrotasks();
+  const graphEnd = harness.calls.findIndex(
+    (call) => call.name === "graph.endGeneration",
+  );
+  const remoteEnd = harness.calls.findIndex(
+    (call) => call.name === "client.endGeneration.blocked",
+  );
+  const localDrain = harness.calls.findIndex(
+    (call) => call.name === "graph.drainGeneration",
+  );
+  assert(graphEnd >= 0 && graphEnd < remoteEnd && remoteEnd < localDrain);
+  drainGate.resolve();
+  const response = await ending;
+  assert.equal(response.ok, true);
 });
 
 test("fallback and explicit cancellation invalidate local playout before waiting for a server acknowledgement", async () => {
@@ -320,6 +692,50 @@ test("fallback and explicit cancellation invalidate local playout before waiting
   const response = await operation;
   assert.equal(response.ok, true);
   assert.equal(response.state.remote, "ready");
+});
+
+test("canceled or stale output cannot reclaim native playout", async () => {
+  const { createOffscreenRuntime } = await import(moduleUrl);
+  const harness = createHarness(createOffscreenRuntime);
+  const sender = await startConnected(harness);
+  const canceled = await harness.runtime.handleMessage(
+    {
+      target: "offscreen",
+      type: "offscreen.generation.cancel",
+      generationId: 7,
+    },
+    sender,
+    "extension-id",
+  );
+  assert.equal(canceled.ok, true);
+  const enqueueCount = harness.calls.filter(
+    (call) => call.name === "graph.enqueueRemoteFrame",
+  ).length;
+  const cancelCount = harness.calls.filter(
+    (call) => call.name === "graph.cancelGeneration",
+  ).length;
+  harness.remoteCallbacks.onOutputFrame({
+    header: {
+      generation_id: 7,
+      sequence: 0,
+      source_monotonic_ns: 5_000_000_000n,
+    },
+    samples: new Float32Array(960),
+  });
+  assert.equal(
+    harness.calls.filter((call) => call.name === "graph.enqueueRemoteFrame").length,
+    enqueueCount,
+  );
+  assert.equal(
+    harness.calls.filter((call) => call.name === "graph.cancelGeneration").length,
+    cancelCount,
+  );
+  assert.deepEqual(harness.runtime.snapshot(), {
+    capture: "running",
+    route: "native",
+    remote: "ready",
+    generationId: null,
+  });
 });
 
 test("Offscreen applies a catalog-bound profile selection only after cancellation", async () => {
@@ -414,6 +830,105 @@ test("normal generation end waits for local Worklet playout drain before clearin
   assert(
     harness.calls.findIndex((call) => call.name === "graph.drainGeneration") <
       harness.calls.findIndex((call) => call.name === "graph.completeGeneration"),
+  );
+});
+
+test("a queued capture frame after End cannot cancel normal playout drain", async () => {
+  const { createOffscreenRuntime } = await import(moduleUrl);
+  const harness = createHarness(createOffscreenRuntime);
+  const sender = await startConnected(harness);
+  const initialFrame = {
+    generationId: 7,
+    sourceFrame: 100,
+    samples: new Float32Array(960),
+  };
+  assert.equal(harness.graphCallbacks.onCaptureFrame(initialFrame), true);
+
+  const endGate = createDeferred();
+  const drainGate = createDeferred();
+  harness.setDrainGate(drainGate);
+  let clientDraining = false;
+  harness.client.endGeneration = (generationId) => {
+    harness.calls.push({ name: "client.endGeneration.blocked", generationId });
+    clientDraining = true;
+    return endGate.promise;
+  };
+  harness.client.sendFrame = (frame) => {
+    harness.calls.push({ name: "client.sendFrame", frame });
+    return !clientDraining;
+  };
+
+  const ending = harness.runtime.handleMessage(
+    {
+      target: "offscreen",
+      type: "offscreen.generation.end",
+      generationId: 7,
+    },
+    sender,
+    "extension-id",
+  );
+  await flushMicrotasks();
+
+  const sentBeforeLateFrame = harness.calls.filter(
+    (call) => call.name === "client.sendFrame",
+  ).length;
+  assert.equal(
+    harness.graphCallbacks.onCaptureFrame({
+      ...initialFrame,
+      sourceFrame: 1_060,
+    }),
+    false,
+  );
+  assert.equal(
+    harness.calls.filter((call) => call.name === "client.sendFrame").length,
+    sentBeforeLateFrame,
+  );
+  assert.equal(
+    harness.calls.some((call) => call.name === "graph.cancelGeneration"),
+    false,
+  );
+  assert.equal(
+    harness.calls.some((call) => call.name === "client.cancelGeneration"),
+    false,
+  );
+  assert.equal(
+    harness.calls.some((call) => call.name === "graph.fallback"),
+    false,
+  );
+
+  harness.remoteCallbacks.onOutputFrame({
+    header: {
+      generation_id: 7,
+      sequence: 0,
+      source_monotonic_ns: 5_000_000_000n,
+    },
+    samples: new Float32Array(960),
+  });
+  assert.equal(harness.calls.at(-1).name, "graph.enqueueRemoteFrame");
+
+  endGate.resolve();
+  await flushMicrotasks();
+  assert.equal(
+    harness.calls.some((call) => call.name === "graph.drainGeneration"),
+    true,
+  );
+  assert.equal(
+    harness.calls.some((call) => call.name === "graph.completeGeneration"),
+    false,
+  );
+
+  drainGate.resolve();
+  const response = await ending;
+  assert.equal(response.ok, true);
+  assert.deepEqual(response.state, {
+    capture: "running",
+    route: "native",
+    remote: "ready",
+    generationId: null,
+  });
+  assert.equal(
+    harness.calls.some((call) => call.name === "graph.completeGeneration"),
+    true,
   );
 });
 

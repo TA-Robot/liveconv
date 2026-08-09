@@ -3,41 +3,128 @@
   "title": "EXP-005 metadata-only Extension multi-model MVP report",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "experiment_id", "evidence_scope", "decision_status", "technical_outcome", "commit", "worktree_clean", "roster", "prompt_plan", "attempts", "metrics", "forced_failure", "claims"],
+  "required": ["schema_version", "experiment_id", "evidence_scope", "evidence_kind", "decision_status", "technical_outcome", "commit", "worktree_clean", "roster", "prompt_plan", "attempts", "runtime_receipt", "manual_audible_judgments", "metrics", "claims"],
   "properties": {
-    "schema_version": {"const": 1},
+    "schema_version": {"const": 2},
     "experiment_id": {"const": "EXP-005"},
     "evidence_scope": {"const": "technical_extension_multimodel_mvp"},
+    "evidence_kind": {"enum": ["contract_test", "runtime_receipt"]},
     "decision_status": {"const": "inconclusive"},
-    "technical_outcome": {"enum": ["passed", "failed"]},
+    "technical_outcome": {"enum": ["passed", "failed", "inconclusive"]},
     "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
     "worktree_clean": {"type": "boolean"},
+    "roster": {"$ref": "#/$defs/roster"},
+    "prompt_plan": {"$ref": "#/$defs/promptPlan"},
+    "attempts": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "runtime_receipt": {
+      "anyOf": [{"$ref": "#/$defs/runtimeReceipt"}, {"type": "null"}]
+    },
+    "manual_audible_judgments": {
+      "anyOf": [{"$ref": "#/$defs/manualAudibleJudgments"}, {"type": "null"}]
+    },
+    "metrics": {"$ref": "#/$defs/metrics"},
+    "claims": {"$ref": "#/$defs/claims"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"evidence_kind": {"const": "contract_test"}}},
+      "then": {
+        "properties": {
+          "technical_outcome": {"const": "inconclusive"},
+          "runtime_receipt": {"type": "null"},
+          "manual_audible_judgments": {"type": "null"},
+          "attempts": {"$ref": "#/$defs/contractAttempts"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"evidence_kind": {"const": "runtime_receipt"}}},
+      "then": {
+        "properties": {
+          "technical_outcome": {"enum": ["passed", "failed"]},
+          "runtime_receipt": {"$ref": "#/$defs/runtimeReceipt"},
+          "manual_audible_judgments": {"$ref": "#/$defs/manualAudibleJudgments"},
+          "attempts": {"$ref": "#/$defs/runtimeReportAttempts"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "evidence_kind": {"const": "runtime_receipt"},
+          "technical_outcome": {"const": "passed"}
+        },
+        "required": ["evidence_kind", "technical_outcome"]
+      },
+      "then": {
+        "properties": {
+          "worktree_clean": {"const": true},
+          "metrics": {
+            "properties": {
+              "live_profiles_with_finite_changed_output": {"minimum": 2},
+              "live_profiles_with_audible_changed_output": {"minimum": 2},
+              "openvoice_buffered_preview_completed": {"const": true},
+              "accepted_stale_frames": {"const": 0},
+              "exclusive_playout_for_all_attempts": {"const": true},
+              "forced_failure_native_fallback": {"const": true}
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "identity": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "uuid": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "generationId": {"type": "integer", "minimum": 1, "maximum": 4294967295},
     "roster": {
       "type": "object",
       "additionalProperties": false,
       "required": ["roster_revision", "entries"],
       "properties": {
-        "roster_revision": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
-        "entries": {
-          "type": "array",
-          "minItems": 4,
-          "maxItems": 4,
-          "prefixItems": [
-            {"$ref": "#/$defs/rvcEntry"},
-            {"$ref": "#/$defs/beatriceEntry"},
-            {"$ref": "#/$defs/xvcEntry"},
-            {"$ref": "#/$defs/openvoiceEntry"}
-          ],
-          "items": false
-        }
+        "roster_revision": {"$ref": "#/$defs/identity"},
+        "entries": {"$ref": "#/$defs/rosterEntries"}
       }
     },
-    "prompt_plan": {
+    "rosterEntries": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        {"$ref": "#/$defs/rvcEntry"},
+        {"$ref": "#/$defs/beatriceEntry"},
+        {"$ref": "#/$defs/xvcEntry"},
+        {"$ref": "#/$defs/openvoiceEntry"}
+      ],
+      "items": false
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_id", "profile_id", "execution_state", "route_mode", "profile_hash", "configuration_hash"],
+      "properties": {
+        "model_id": {"type": "string"},
+        "profile_id": {"type": "string", "pattern": "^vc\\.(rvc-v2|rvc|beatrice-2|beatrice|x-vc|openvoice-v2)\\.[a-z0-9][a-z0-9.-]{0,63}\\.v1$"},
+        "execution_state": {"const": "prepared"},
+        "route_mode": {"enum": ["live", "buffered_preview_after_end"]},
+        "profile_hash": {"$ref": "#/$defs/identity"},
+        "configuration_hash": {"$ref": "#/$defs/identity"}
+      }
+    },
+    "rvcEntry": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"model_id": {"const": "rvc-v2"}, "route_mode": {"const": "live"}}}]},
+    "beatriceEntry": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"model_id": {"const": "beatrice-2"}, "route_mode": {"const": "live"}}}]},
+    "xvcEntry": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"model_id": {"const": "x-vc"}, "route_mode": {"const": "live"}}}]},
+    "openvoiceEntry": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"model_id": {"const": "openvoice-v2"}, "route_mode": {"const": "buffered_preview_after_end"}}}]},
+    "promptPlan": {
       "type": "object",
       "additionalProperties": false,
       "required": ["plan_revision", "sample_count_per_model", "automatic_turn_detection", "model_ids"],
       "properties": {
-        "plan_revision": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "plan_revision": {"$ref": "#/$defs/identity"},
         "sample_count_per_model": {"const": 1},
         "automatic_turn_detection": {"const": false},
         "model_ids": {
@@ -52,98 +139,232 @@
         }
       }
     },
-    "attempts": {
+    "attemptBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_id", "profile_id", "profile_hash", "configuration_hash", "route_mode", "pipeline_id", "generation_id", "finite_output_observed", "changed_output_observed", "stale_output_accepted", "exclusive_playout_observed", "end_triggered", "audible_changed_output"],
+      "properties": {
+        "model_id": {"type": "string"},
+        "profile_id": {"type": "string"},
+        "profile_hash": {"$ref": "#/$defs/identity"},
+        "configuration_hash": {"$ref": "#/$defs/identity"},
+        "route_mode": {"enum": ["live", "buffered_preview_after_end"]},
+        "pipeline_id": {"anyOf": [{"$ref": "#/$defs/uuid"}, {"type": "null"}]},
+        "generation_id": {"anyOf": [{"$ref": "#/$defs/generationId"}, {"type": "null"}]},
+        "finite_output_observed": {"type": "boolean"},
+        "changed_output_observed": {"type": "boolean"},
+        "stale_output_accepted": {"type": "boolean"},
+        "exclusive_playout_observed": {"type": "boolean"},
+        "end_triggered": {"type": "boolean"},
+        "audible_changed_output": {"anyOf": [{"type": "boolean"}, {"type": "null"}]}
+      }
+    },
+    "rvcAttempt": {"allOf": [{"$ref": "#/$defs/attemptBase"}, {"properties": {"model_id": {"const": "rvc-v2"}, "route_mode": {"const": "live"}, "end_triggered": {"const": false}}}]},
+    "beatriceAttempt": {"allOf": [{"$ref": "#/$defs/attemptBase"}, {"properties": {"model_id": {"const": "beatrice-2"}, "route_mode": {"const": "live"}, "end_triggered": {"const": false}}}]},
+    "xvcAttempt": {"allOf": [{"$ref": "#/$defs/attemptBase"}, {"properties": {"model_id": {"const": "x-vc"}, "route_mode": {"const": "live"}, "end_triggered": {"const": false}}}]},
+    "openvoiceAttempt": {"allOf": [{"$ref": "#/$defs/attemptBase"}, {"properties": {"model_id": {"const": "openvoice-v2"}, "route_mode": {"const": "buffered_preview_after_end"}, "end_triggered": {"const": true}}}]},
+    "runtimeReportAttempts": {
       "type": "array",
       "minItems": 4,
       "maxItems": 4,
       "prefixItems": [
-        {"$ref": "#/$defs/rvcAttempt"},
-        {"$ref": "#/$defs/beatriceAttempt"},
-        {"$ref": "#/$defs/xvcAttempt"},
-        {"$ref": "#/$defs/openvoiceAttempt"}
+        {"$ref": "#/$defs/runtimeRvcAttempt"},
+        {"$ref": "#/$defs/runtimeBeatriceAttempt"},
+        {"$ref": "#/$defs/runtimeXvcAttempt"},
+        {"$ref": "#/$defs/runtimeOpenvoiceAttempt"}
       ],
       "items": false
     },
-    "metrics": {
+    "runtimeRvcAttempt": {"allOf": [{"$ref": "#/$defs/rvcAttempt"}, {"properties": {"pipeline_id": {"$ref": "#/$defs/uuid"}, "generation_id": {"$ref": "#/$defs/generationId"}, "audible_changed_output": {"type": "boolean"}}}]},
+    "runtimeBeatriceAttempt": {"allOf": [{"$ref": "#/$defs/beatriceAttempt"}, {"properties": {"pipeline_id": {"$ref": "#/$defs/uuid"}, "generation_id": {"$ref": "#/$defs/generationId"}, "audible_changed_output": {"type": "boolean"}}}]},
+    "runtimeXvcAttempt": {"allOf": [{"$ref": "#/$defs/xvcAttempt"}, {"properties": {"pipeline_id": {"$ref": "#/$defs/uuid"}, "generation_id": {"$ref": "#/$defs/generationId"}, "audible_changed_output": {"type": "boolean"}}}]},
+    "runtimeOpenvoiceAttempt": {"allOf": [{"$ref": "#/$defs/openvoiceAttempt"}, {"properties": {"pipeline_id": {"$ref": "#/$defs/uuid"}, "generation_id": {"$ref": "#/$defs/generationId"}, "audible_changed_output": {"type": "boolean"}}}]},
+    "contractAttempts": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        {"$ref": "#/$defs/contractRvcAttempt"},
+        {"$ref": "#/$defs/contractBeatriceAttempt"},
+        {"$ref": "#/$defs/contractXvcAttempt"},
+        {"$ref": "#/$defs/contractOpenvoiceAttempt"}
+      ],
+      "items": false
+    },
+    "contractRvcAttempt": {"allOf": [{"$ref": "#/$defs/rvcAttempt"}, {"properties": {"pipeline_id": {"type": "null"}, "generation_id": {"type": "null"}, "audible_changed_output": {"type": "null"}}}]},
+    "contractBeatriceAttempt": {"allOf": [{"$ref": "#/$defs/beatriceAttempt"}, {"properties": {"pipeline_id": {"type": "null"}, "generation_id": {"type": "null"}, "audible_changed_output": {"type": "null"}}}]},
+    "contractXvcAttempt": {"allOf": [{"$ref": "#/$defs/xvcAttempt"}, {"properties": {"pipeline_id": {"type": "null"}, "generation_id": {"type": "null"}, "audible_changed_output": {"type": "null"}}}]},
+    "contractOpenvoiceAttempt": {"allOf": [{"$ref": "#/$defs/openvoiceAttempt"}, {"properties": {"pipeline_id": {"type": "null"}, "generation_id": {"type": "null"}, "audible_changed_output": {"type": "null"}}}]},
+    "runtimeReceipt": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["prepared_models_attempted", "live_profiles_with_audible_changed_output", "openvoice_buffered_preview_completed", "accepted_stale_frames", "forced_failure_native_fallback"],
+      "required": ["schema_version", "source", "receipt_id", "roster_revision", "plan_revision", "chatgpt_tab", "ssh_loopback", "gateway_authentication", "attempts", "forced_failure_event", "native_fallback_event"],
       "properties": {
-        "prepared_models_attempted": {"const": 4},
-        "live_profiles_with_audible_changed_output": {"type": "integer", "minimum": 0, "maximum": 3},
-        "openvoice_buffered_preview_completed": {"type": "boolean"},
-        "accepted_stale_frames": {"const": 0},
-        "forced_failure_native_fallback": {"type": "boolean"}
+        "schema_version": {"const": 1},
+        "source": {"const": "extension_gateway_runtime"},
+        "receipt_id": {"$ref": "#/$defs/uuid"},
+        "roster_revision": {"$ref": "#/$defs/identity"},
+        "plan_revision": {"$ref": "#/$defs/identity"},
+        "chatgpt_tab": {"$ref": "#/$defs/chatgptTab"},
+        "ssh_loopback": {"$ref": "#/$defs/sshLoopback"},
+        "gateway_authentication": {"$ref": "#/$defs/gatewayAuthentication"},
+        "attempts": {"$ref": "#/$defs/receiptAttempts"},
+        "forced_failure_event": {"$ref": "#/$defs/forcedFailureEvent"},
+        "native_fallback_event": {"$ref": "#/$defs/nativeFallbackEvent"}
       }
     },
-    "forced_failure": {
+    "chatgptTab": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["remote_failure_forced", "native_fallback_observed", "native_remote_overlap_observed"],
+      "required": ["chatgpt_com_audible_tab_observed", "capture_started_after_user_gesture"],
       "properties": {
-        "remote_failure_forced": {"const": true},
-        "native_fallback_observed": {"type": "boolean"},
-        "native_remote_overlap_observed": {"const": false}
+        "chatgpt_com_audible_tab_observed": {"const": true},
+        "capture_started_after_user_gesture": {"const": true}
       }
     },
-    "claims": {"$ref": "#/$defs/claims"}
-  },
-  "allOf": [
-    {
-      "if": {"properties": {"technical_outcome": {"const": "passed"}}},
-      "then": {
-        "properties": {
-          "metrics": {
-            "properties": {
-              "live_profiles_with_audible_changed_output": {"minimum": 2},
-              "openvoice_buffered_preview_completed": {"const": true},
-              "forced_failure_native_fallback": {"const": true}
-            }
-          },
-          "forced_failure": {
-            "properties": {"native_fallback_observed": {"const": true}}
-          }
-        }
-      }
-    }
-  ],
-  "$defs": {
-    "identity": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
-    "entry": {
+    "sshLoopback": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["model_id", "profile_id", "execution_state", "route_mode", "profile_hash", "configuration_hash", "pipeline_hash"],
+      "required": ["configured_local_forward_reached_gateway", "client_loopback_only", "remote_gateway_loopback_only", "pinned_server_identity_configured"],
+      "properties": {
+        "configured_local_forward_reached_gateway": {"const": true},
+        "client_loopback_only": {"const": true},
+        "remote_gateway_loopback_only": {"const": true},
+        "pinned_server_identity_configured": {"const": true}
+      }
+    },
+    "gatewayAuthentication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gateway_session_authenticated", "single_use_session_grant_authenticated", "exact_extension_origin_verified", "max_sessions"],
+      "properties": {
+        "gateway_session_authenticated": {"const": true},
+        "single_use_session_grant_authenticated": {"const": true},
+        "exact_extension_origin_verified": {"const": true},
+        "max_sessions": {"const": 1}
+      }
+    },
+    "receiptAttempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_id", "profile_id", "profile_hash", "configuration_hash", "route_mode", "pipeline_id", "generation_id", "finite_output_observed", "changed_output_observed", "stale_output_accepted", "exclusive_playout_observed", "end_triggered"],
       "properties": {
         "model_id": {"type": "string"},
-        "profile_id": {"type": "string", "pattern": "^vc\\.(rvc-v2|beatrice-2|x-vc|openvoice-v2)\\.[a-z0-9][a-z0-9.-]{0,63}\\.v1$"},
-        "execution_state": {"const": "prepared"},
-        "route_mode": {"enum": ["live", "buffered_preview_after_end"]},
+        "profile_id": {"type": "string"},
         "profile_hash": {"$ref": "#/$defs/identity"},
         "configuration_hash": {"$ref": "#/$defs/identity"},
-        "pipeline_hash": {"$ref": "#/$defs/identity"}
-      }
-    },
-    "rvcEntry": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"model_id": {"const": "rvc-v2"}, "route_mode": {"const": "live"}}}]},
-    "beatriceEntry": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"model_id": {"const": "beatrice-2"}, "route_mode": {"const": "live"}}}]},
-    "xvcEntry": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"model_id": {"const": "x-vc"}, "route_mode": {"const": "live"}}}]},
-    "openvoiceEntry": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"model_id": {"const": "openvoice-v2"}, "route_mode": {"const": "buffered_preview_after_end"}}}]},
-    "attempt": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["model_id", "route_mode", "attempted", "observation_source", "audible_changed_output", "end_triggered"],
-      "properties": {
-        "model_id": {"type": "string"},
         "route_mode": {"enum": ["live", "buffered_preview_after_end"]},
-        "attempted": {"const": true},
-        "observation_source": {"enum": ["manual_operator", "deterministic_fake"]},
-        "audible_changed_output": {"type": "boolean"},
+        "pipeline_id": {"$ref": "#/$defs/uuid"},
+        "generation_id": {"$ref": "#/$defs/generationId"},
+        "finite_output_observed": {"type": "boolean"},
+        "changed_output_observed": {"type": "boolean"},
+        "stale_output_accepted": {"type": "boolean"},
+        "exclusive_playout_observed": {"type": "boolean"},
         "end_triggered": {"type": "boolean"}
       }
     },
-    "rvcAttempt": {"allOf": [{"$ref": "#/$defs/attempt"}, {"properties": {"model_id": {"const": "rvc-v2"}, "route_mode": {"const": "live"}, "end_triggered": {"const": false}}}]},
-    "beatriceAttempt": {"allOf": [{"$ref": "#/$defs/attempt"}, {"properties": {"model_id": {"const": "beatrice-2"}, "route_mode": {"const": "live"}, "end_triggered": {"const": false}}}]},
-    "xvcAttempt": {"allOf": [{"$ref": "#/$defs/attempt"}, {"properties": {"model_id": {"const": "x-vc"}, "route_mode": {"const": "live"}, "end_triggered": {"const": false}}}]},
-    "openvoiceAttempt": {"allOf": [{"$ref": "#/$defs/attempt"}, {"properties": {"model_id": {"const": "openvoice-v2"}, "route_mode": {"const": "buffered_preview_after_end"}, "end_triggered": {"const": true}}}]},
+    "receiptRvcAttempt": {"allOf": [{"$ref": "#/$defs/receiptAttempt"}, {"properties": {"model_id": {"const": "rvc-v2"}, "route_mode": {"const": "live"}, "end_triggered": {"const": false}}}]},
+    "receiptBeatriceAttempt": {"allOf": [{"$ref": "#/$defs/receiptAttempt"}, {"properties": {"model_id": {"const": "beatrice-2"}, "route_mode": {"const": "live"}, "end_triggered": {"const": false}}}]},
+    "receiptXvcAttempt": {"allOf": [{"$ref": "#/$defs/receiptAttempt"}, {"properties": {"model_id": {"const": "x-vc"}, "route_mode": {"const": "live"}, "end_triggered": {"const": false}}}]},
+    "receiptOpenvoiceAttempt": {"allOf": [{"$ref": "#/$defs/receiptAttempt"}, {"properties": {"model_id": {"const": "openvoice-v2"}, "route_mode": {"const": "buffered_preview_after_end"}, "end_triggered": {"const": true}}}]},
+    "receiptAttempts": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        {"$ref": "#/$defs/receiptRvcAttempt"},
+        {"$ref": "#/$defs/receiptBeatriceAttempt"},
+        {"$ref": "#/$defs/receiptXvcAttempt"},
+        {"$ref": "#/$defs/receiptOpenvoiceAttempt"}
+      ],
+      "items": false
+    },
+    "forcedFailureEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_type", "model_id", "profile_id", "profile_hash", "configuration_hash", "pipeline_id", "generation_id", "failure_injected", "fallback_required_observed"],
+      "properties": {
+        "event_type": {"const": "fallback.required"},
+        "model_id": {"const": "openvoice-v2"},
+        "profile_id": {"type": "string"},
+        "profile_hash": {"$ref": "#/$defs/identity"},
+        "configuration_hash": {"$ref": "#/$defs/identity"},
+        "pipeline_id": {"$ref": "#/$defs/uuid"},
+        "generation_id": {"$ref": "#/$defs/generationId"},
+        "failure_injected": {"const": true},
+        "fallback_required_observed": {"const": true}
+      }
+    },
+    "nativeFallbackEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_type", "model_id", "profile_id", "profile_hash", "configuration_hash", "pipeline_id", "generation_id", "native_route_active", "remote_route_active"],
+      "properties": {
+        "event_type": {"const": "extension.native_fallback_activated"},
+        "model_id": {"const": "openvoice-v2"},
+        "profile_id": {"type": "string"},
+        "profile_hash": {"$ref": "#/$defs/identity"},
+        "configuration_hash": {"$ref": "#/$defs/identity"},
+        "pipeline_id": {"$ref": "#/$defs/uuid"},
+        "generation_id": {"$ref": "#/$defs/generationId"},
+        "native_route_active": {"const": true},
+        "remote_route_active": {"const": false}
+      }
+    },
+    "manualAudibleJudgments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "source", "receipt_id", "chatgpt_account_authenticated_asserted", "ssh_tunnel_established_asserted", "ssh_pinned_server_identity_verified_asserted", "judgments"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "source": {"const": "manual_operator"},
+        "receipt_id": {"$ref": "#/$defs/uuid"},
+        "chatgpt_account_authenticated_asserted": {"const": true},
+        "ssh_tunnel_established_asserted": {"const": true},
+        "ssh_pinned_server_identity_verified_asserted": {"const": true},
+        "judgments": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "prefixItems": [
+            {"$ref": "#/$defs/rvcJudgment"},
+            {"$ref": "#/$defs/beatriceJudgment"},
+            {"$ref": "#/$defs/xvcJudgment"},
+            {"$ref": "#/$defs/openvoiceJudgment"}
+          ],
+          "items": false
+        }
+      }
+    },
+    "judgment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_id", "pipeline_id", "generation_id", "audible_changed_output"],
+      "properties": {
+        "model_id": {"type": "string"},
+        "pipeline_id": {"$ref": "#/$defs/uuid"},
+        "generation_id": {"$ref": "#/$defs/generationId"},
+        "audible_changed_output": {"type": "boolean"}
+      }
+    },
+    "rvcJudgment": {"allOf": [{"$ref": "#/$defs/judgment"}, {"properties": {"model_id": {"const": "rvc-v2"}}}]},
+    "beatriceJudgment": {"allOf": [{"$ref": "#/$defs/judgment"}, {"properties": {"model_id": {"const": "beatrice-2"}}}]},
+    "xvcJudgment": {"allOf": [{"$ref": "#/$defs/judgment"}, {"properties": {"model_id": {"const": "x-vc"}}}]},
+    "openvoiceJudgment": {"allOf": [{"$ref": "#/$defs/judgment"}, {"properties": {"model_id": {"const": "openvoice-v2"}}}]},
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prepared_models_attempted", "live_profiles_with_finite_changed_output", "live_profiles_with_audible_changed_output", "openvoice_buffered_preview_completed", "accepted_stale_frames", "exclusive_playout_for_all_attempts", "forced_failure_native_fallback"],
+      "properties": {
+        "prepared_models_attempted": {"const": 4},
+        "live_profiles_with_finite_changed_output": {"type": "integer", "minimum": 0, "maximum": 3},
+        "live_profiles_with_audible_changed_output": {"type": "integer", "minimum": 0, "maximum": 3},
+        "openvoice_buffered_preview_completed": {"type": "boolean"},
+        "accepted_stale_frames": {"type": "integer", "minimum": 0, "maximum": 4},
+        "exclusive_playout_for_all_attempts": {"type": "boolean"},
+        "forced_failure_native_fallback": {"type": "boolean"}
+      }
+    },
     "claims": {
       "type": "object",
       "additionalProperties": false,

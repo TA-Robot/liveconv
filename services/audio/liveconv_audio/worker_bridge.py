@@ -3,12 +3,9 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import math
-import os
-import sys
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
-from pathlib import Path
 
 from liveconv_protocol import (
     ErrorCode,
@@ -18,9 +15,10 @@ from liveconv_protocol import (
     ProtocolValidationError,
 )
 
-from workers.runtime import ArtifactSpec, AudioFrame, WorkerProfile, WorkerSupervisor
+from workers.runtime import AudioFrame, WorkerSupervisor
 from workers.runtime.errors import WorkerRuntimeError
 
+from ._adapter_registry import _rvc_environment, worker_profile_for  # noqa: F401
 from .profiles import ModelProfile
 
 WorkerSupervisorFactory = Callable[
@@ -34,254 +32,7 @@ def builtin_supervisor_factory(
     pipeline_id: str,
     queue_budget_ms: int,
 ) -> WorkerSupervisor:
-    adapter = profile.runtime.adapter
-    if adapter == "worker":
-        return _external_supervisor(profile, pipeline_id, queue_budget_ms)
-    if adapter not in {"passthrough", "gain"}:
-        raise ValueError(f"{profile.profile_id}: no builtin worker is available")
-
-    # The public ingress budget can hold a longer burst, but every worker keeps
-    # the private protocol's 500 ms cap.
-    bounded_queue_ms = max(
-        profile.frame_ms,
-        min(500, (queue_budget_ms // profile.frame_ms) * profile.frame_ms),
-    )
-    worker_entrypoint = Path(__file__).with_name("builtin_worker.py")
-    command = [
-        sys.executable,
-        str(worker_entrypoint),
-        "--mode",
-        adapter,
-        "--implementation-revision",
-        profile.implementation_revision,
-        "--capacity-frames",
-        str(bounded_queue_ms // profile.frame_ms),
-    ]
-    if profile.weight_revision is not None:
-        command.extend(("--weight-revision", profile.weight_revision))
-    if adapter == "gain":
-        command.extend(("--gain", str(profile.runtime.configuration["gain"])))
-
-    cancel_timeout_ms = max(
-        50,
-        min(profile.timeouts.first_output_ms, profile.timeouts.stall_ms),
-    )
-    close_grace_ms = max(50, min(250, profile.timeouts.stall_ms))
-    worker_profile = WorkerProfile(
-        profile_id=profile.profile_id,
-        pipeline_id=pipeline_id,
-        configuration_hash=profile.configuration_hash,
-        command=tuple(command),
-        cwd=Path(__file__).resolve().parent,
-        environment={},
-        implementation_revision=profile.implementation_revision,
-        weight_revision=profile.weight_revision,
-        frame_ms=profile.frame_ms,
-        queue_budget_ms=bounded_queue_ms,
-        startup_timeout_ms=max(1_000, profile.timeouts.first_output_ms),
-        first_output_timeout_ms=profile.timeouts.first_output_ms,
-        stall_timeout_ms=profile.timeouts.stall_ms,
-        cancel_timeout_ms=cancel_timeout_ms,
-        close_grace_ms=close_grace_ms,
-        terminate_grace_ms=100,
-        restart_limit=0,
-        restart_window_ms=60_000,
-    )
-    return WorkerSupervisor(worker_profile)
-
-
-def _external_supervisor(
-    profile: ModelProfile,
-    pipeline_id: str,
-    queue_budget_ms: int,
-) -> WorkerSupervisor:
-    endpoint_value = profile.runtime.worker_endpoint
-    if endpoint_value is None:
-        raise ValueError(f"{profile.profile_id}: worker endpoint is missing")
-    endpoint = Path(endpoint_value)
-    if not endpoint.is_absolute() or not endpoint.is_file():
-        raise ValueError(f"{profile.profile_id}: worker endpoint is unavailable")
-    if not os.access(endpoint, os.X_OK):
-        raise ValueError(f"{profile.profile_id}: worker endpoint is not executable")
-    configuration = profile.runtime.configuration
-    module = configuration["worker_module"]
-    settings = configuration["settings"]
-    if not isinstance(module, str) or not isinstance(settings, dict):
-        raise ValueError(f"{profile.profile_id}: worker configuration is invalid")
-
-    if module == "workers.adapters.rvc_v2.worker":
-        environment, artifacts = _rvc_environment(profile, configuration)
-    else:
-        raise ValueError(f"{profile.profile_id}: worker module is not integrated")
-
-    del queue_budget_ms
-    bounded_queue_ms = int(settings["queue_capacity_frames"]) * profile.frame_ms
-    return WorkerSupervisor(
-        WorkerProfile(
-            profile_id=profile.profile_id,
-            pipeline_id=pipeline_id,
-            configuration_hash=profile.configuration_hash,
-            command=(str(endpoint), "-m", module),
-            cwd=Path("/"),
-            environment=environment,
-            implementation_revision=profile.implementation_revision,
-            weight_revision=profile.weight_revision,
-            frame_ms=profile.frame_ms,
-            queue_budget_ms=bounded_queue_ms,
-            # First launch may populate deterministic compiler caches for the
-            # pinned model runtime; keep it bounded but distinct from audio SLA.
-            startup_timeout_ms=max(180_000, profile.timeouts.first_output_ms),
-            first_output_timeout_ms=profile.timeouts.first_output_ms,
-            stall_timeout_ms=profile.timeouts.stall_ms,
-            cancel_timeout_ms=max(
-                100,
-                min(profile.timeouts.first_output_ms, profile.timeouts.stall_ms),
-            ),
-            close_grace_ms=250,
-            terminate_grace_ms=250,
-            restart_limit=0,
-            restart_window_ms=60_000,
-            artifacts=artifacts,
-        )
-    )
-
-
-def _required_environment(names: tuple[str, ...]) -> dict[str, str]:
-    environment: dict[str, str] = {}
-    for name in names:
-        value = os.environ.get(name)
-        if not value:
-            raise ValueError(f"required worker environment is missing: {name}")
-        environment[name] = value
-    return environment
-
-
-def _rvc_environment(
-    profile: ModelProfile,
-    configuration: dict[str, object],
-) -> tuple[dict[str, str], tuple[ArtifactSpec, ...]]:
-    artifacts_value = configuration.get("artifacts")
-    settings_value = configuration.get("settings")
-    source_revision = configuration.get("source_revision")
-    adapter_revision = configuration.get("adapter_revision")
-    if (
-        not isinstance(artifacts_value, dict)
-        or not isinstance(settings_value, dict)
-        or not isinstance(source_revision, str)
-        or not isinstance(adapter_revision, str)
-    ):
-        raise ValueError(f"{profile.profile_id}: RVC configuration is invalid")
-    artifacts_config = artifacts_value
-    settings = settings_value
-    required_settings = {
-        "speaker_id",
-        "pitch_shift",
-        "f0_method",
-        "index_rate",
-        "rms_mix_rate",
-        "sample_rate",
-        "block_ms",
-        "crossfade_ms",
-        "context_ms",
-        "frame_ms",
-        "inference_batch_frames",
-        "queue_capacity_frames",
-        "resident_capacity_frames",
-        "formant_shift",
-        "threshold_dbfs",
-    }
-    if set(settings) != required_settings:
-        raise ValueError(f"{profile.profile_id}: RVC settings are incomplete")
-    environment = _required_environment(
-        (
-            "LIVECONV_RVC_SOURCE_ROOT",
-            "LIVECONV_RVC_SOURCE_REVISION",
-            "LIVECONV_RVC_V2_CHECKPOINT_PATH",
-            "LIVECONV_RVC_V2_CHECKPOINT_SHA256",
-            "LIVECONV_RVC_V2_WORKER_WHEEL_PATH",
-            "LIVECONV_RVC_V2_WORKER_WHEEL_SHA256",
-        )
-    )
-    if environment["LIVECONV_RVC_SOURCE_REVISION"] != source_revision:
-        raise ValueError(f"{profile.profile_id}: RVC source revision does not match")
-    expected_implementation = f"{adapter_revision}+rvc.{source_revision}"
-    if profile.implementation_revision != expected_implementation:
-        raise ValueError(
-            f"{profile.profile_id}: RVC implementation revision does not match"
-        )
-    mapping = {
-        "speaker_id": "LIVECONV_RVC_V2_SPEAKER_ID",
-        "pitch_shift": "LIVECONV_RVC_V2_PITCH_SHIFT",
-        "f0_method": "LIVECONV_RVC_V2_F0_METHOD",
-        "index_rate": "LIVECONV_RVC_V2_INDEX_RATE",
-        "rms_mix_rate": "LIVECONV_RVC_V2_RMS_MIX_RATE",
-        "sample_rate": "LIVECONV_RVC_V2_SAMPLE_RATE",
-        "block_ms": "LIVECONV_RVC_V2_BLOCK_MS",
-        "crossfade_ms": "LIVECONV_RVC_V2_CROSSFADE_MS",
-        "context_ms": "LIVECONV_RVC_V2_CONTEXT_MS",
-    }
-    for key, name in mapping.items():
-        value = settings[key]
-        if isinstance(value, bool) or not isinstance(value, (int, float, str)):
-            raise ValueError(f"{profile.profile_id}: RVC setting {key} is invalid")
-        environment[name] = str(value)
-
-    checkpoint_sha = environment["LIVECONV_RVC_V2_CHECKPOINT_SHA256"].lower()
-    if checkpoint_sha != artifacts_config.get("checkpoint_sha256"):
-        raise ValueError(f"{profile.profile_id}: RVC checkpoint digest does not match")
-    if profile.weight_revision != f"sha256:{checkpoint_sha}":
-        raise ValueError(f"{profile.profile_id}: RVC weight revision does not match")
-    artifacts = [
-        ArtifactSpec(
-            env_var="LIVECONV_RVC_V2_CHECKPOINT_PATH",
-            sha256=checkpoint_sha,
-        ),
-        ArtifactSpec(
-            env_var="LIVECONV_RVC_V2_WORKER_WHEEL_PATH",
-            sha256=environment["LIVECONV_RVC_V2_WORKER_WHEEL_SHA256"].lower(),
-        ),
-    ]
-    if environment[
-        "LIVECONV_RVC_V2_WORKER_WHEEL_SHA256"
-    ].lower() != artifacts_config.get("worker_wheel_sha256"):
-        raise ValueError(
-            f"{profile.profile_id}: RVC worker wheel digest does not match"
-        )
-    index_path = os.environ.get("LIVECONV_RVC_V2_INDEX_PATH")
-    index_sha = os.environ.get("LIVECONV_RVC_V2_INDEX_SHA256")
-    if index_path or index_sha:
-        if not index_path or not index_sha:
-            raise ValueError(f"{profile.profile_id}: RVC index binding is incomplete")
-        environment["LIVECONV_RVC_V2_INDEX_PATH"] = index_path
-        environment["LIVECONV_RVC_V2_INDEX_SHA256"] = index_sha.lower()
-        if index_sha.lower() != artifacts_config.get("index_sha256"):
-            raise ValueError(f"{profile.profile_id}: RVC index digest does not match")
-        artifacts.append(
-            ArtifactSpec(
-                env_var="LIVECONV_RVC_V2_INDEX_PATH",
-                sha256=index_sha.lower(),
-            )
-        )
-    elif float(settings["index_rate"]) != 0 or artifacts_config.get("index_sha256"):
-        raise ValueError(f"{profile.profile_id}: RVC index is required")
-
-    source_root = Path(environment["LIVECONV_RVC_SOURCE_ROOT"])
-    auxiliary = {
-        "hubert_config_sha256": source_root / "assets/hubert_base/config.json",
-        "hubert_preprocessor_sha256": (
-            source_root / "assets/hubert_base/preprocessor_config.json"
-        ),
-        "hubert_weights_sha256": (source_root / "assets/hubert_base/pytorch_model.bin"),
-        "rmvpe_sha256": source_root / "assets/rmvpe/rmvpe.pt",
-    }
-    for index, (key, path) in enumerate(auxiliary.items(), start=1):
-        digest = artifacts_config.get(key)
-        if not isinstance(digest, str):
-            raise ValueError(f"{profile.profile_id}: RVC {key} is invalid")
-        env_var = f"LIVECONV_RVC_VERIFIED_ARTIFACT_{index}"
-        environment[env_var] = str(path)
-        artifacts.append(ArtifactSpec(env_var=env_var, sha256=digest))
-    return environment, tuple(artifacts)
+    return WorkerSupervisor(worker_profile_for(profile, pipeline_id, queue_budget_ms))
 
 
 @dataclass(frozen=True)

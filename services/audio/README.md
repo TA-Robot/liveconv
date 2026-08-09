@@ -1,12 +1,13 @@
 # liveconv audio gateway
 
 This service implements the LV-020 gateway boundary for protocol version 1. It
-loads the curated repository profile registry and exposes only ready
-`passthrough` and `gain` builtin profiles. Each attached session runs conversion
-through an isolated, supervised subprocess; cancellation and shutdown are
-bounded and terminate the worker process group when cooperative cleanup fails.
-TLS termination, GPU models, persistent sessions, and production identity are
-intentionally out of scope.
+loads a curated profile registry and dispatches only statically reviewed builtin
+or model-worker registrations. Each attached session runs conversion through an
+isolated, supervised subprocess; cancellation and shutdown are bounded and
+terminate the worker process group when cooperative cleanup fails. Technical
+GPU profiles require an explicit opt-in and retain their failed, unassessed, or
+nonselectable evidence labels. Persistent sessions and public deployment
+identity are intentionally out of scope for the personal SSH route.
 
 ## Run locally
 
@@ -27,11 +28,25 @@ OpenSSH local forward without changing the bind address. Follow
 [`docs/development/ssh-tunnel-client-setup.md`](../../docs/development/ssh-tunnel-client-setup.md);
 do not publish port 8765 or bind it to `0.0.0.0` for that workflow.
 
+For the MS-2 four-model lab, first build the external technical registry with
+[`scripts/build-ms2-profile-registry.py`](../../scripts/build-ms2-profile-registry.py)
+and provide the private model environment bindings documented by each adapter.
+Set `LIVECONV_PROFILE_CONFIG` to that generated file,
+`LIVECONV_ROSTER_CONFIG` to `config/model-roster.json`,
+`LIVECONV_ALLOW_TECHNICAL_PROFILES=1`, and `LIVECONV_MAX_SESSIONS=1`.
+The opt-in makes technical routes invocable for the personal trial; it does not
+approve their quality, license, security, or release status.
+
 ## HTTP API
 
 - `GET /health/live` is the only unauthenticated endpoint.
 - `GET /health/ready` requires `Authorization: Bearer <token>`.
+- `GET /v1/runtime-boundary` returns the authenticated, non-secret loopback,
+  one-use-ticket, and session-cap facts used by the MS-2 runtime receipt.
 - `GET /v1/models` returns public capability metadata without runtime paths.
+- `GET /v1/model-roster` returns the authenticated MS-2 four-model display
+  roster. It separates execution state from decision evidence, includes only
+  fixed reason codes, and never authorizes a session by itself.
 - `POST /v1/sessions` creates a session and returns one plaintext WSS ticket.
 - `GET /v1/sessions/{session_id}` returns state without ticket material.
 - `DELETE /v1/sessions/{session_id}` invalidates the session.
@@ -56,13 +71,13 @@ idempotent within a session, including state failures. The default hard bounds
 are 64 concurrent sessions, a 30-minute session lifetime, and 1,024 cached
 request IDs per session. Exceeding the request cache closes the session.
 
-Each binary message is one protocol v1 input PCM frame. Accepted frames are
-returned with `kind=OUTPUT`; passthrough preserves payload bytes and gain applies
-the registry's deterministic factor. The gateway never runs conversion in its
-shared thread executor. Gap, malformed active audio, worker timeout/crash, and
-ingress overflow invalidate the transformed generation and emit both `error`
-and `fallback.required`. Stale frames are rejected without damaging a newer
-active generation.
+Each binary message is one protocol v1 input PCM frame. Live workers return
+accepted frames with `kind=OUTPUT`; the bounded OpenVoice sample route withholds
+candidate output until explicit `generation.end`. The gateway never runs model
+conversion in its shared thread executor. Gap, malformed active audio, worker
+timeout/crash, and ingress overflow invalidate the transformed generation and
+emit both `error` and `fallback.required`. Stale frames are rejected without
+damaging a newer active generation.
 
 Application logs must never include bearer tokens, WSS tickets, raw audio,
 payload-derived values, or raw text. This implementation does not log request or

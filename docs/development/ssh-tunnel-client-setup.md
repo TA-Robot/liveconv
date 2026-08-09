@@ -171,6 +171,7 @@ Match User liveconv-tunnel
     PubkeyAuthentication yes
     PasswordAuthentication no
     KbdInteractiveAuthentication no
+    DisableForwarding no
     AllowTcpForwarding local
     AllowStreamLocalForwarding no
     PermitOpen 127.0.0.1:8765
@@ -195,7 +196,7 @@ TCP forwarding. Validate before reloading:
 ```bash
 sudo sshd -t
 sudo sshd -T -C user=liveconv-tunnel,host=SERVER_HOST,addr=CLIENT_IP \
-  | grep -E '^(authenticationmethods|pubkeyauthentication|passwordauthentication|kbdinteractiveauthentication|allowtcpforwarding|allowstreamlocalforwarding|permitopen|permittty|permittunnel|maxsessions|x11forwarding|allowagentforwarding|permituserrc) '
+  | grep -E '^(authenticationmethods|pubkeyauthentication|passwordauthentication|kbdinteractiveauthentication|disableforwarding|allowtcpforwarding|allowstreamlocalforwarding|permitopen|permittty|permittunnel|maxsessions|x11forwarding|allowagentforwarding|permituserrc) '
 ```
 
 The effective output must show public-key authentication, local-only TCP
@@ -298,13 +299,17 @@ Host liveconv-audio
     IdentitiesOnly yes
     UserKnownHostsFile ~/.config/liveconv/ssh/known_hosts
     GlobalKnownHostsFile none
+    KnownHostsCommand none
     StrictHostKeyChecking yes
+    VerifyHostKeyDNS no
+    NoHostAuthenticationForLocalhost no
     UpdateHostKeys no
     BatchMode yes
     ExitOnForwardFailure yes
     ServerAliveInterval 30
     ServerAliveCountMax 3
     ControlMaster no
+    ControlPersist no
     RequestTTY no
     ForwardAgent no
     ForwardX11 no
@@ -331,13 +336,17 @@ Host liveconv-audio
     IdentitiesOnly yes
     UserKnownHostsFile ~/.ssh/liveconv_known_hosts
     GlobalKnownHostsFile none
+    KnownHostsCommand none
     StrictHostKeyChecking yes
+    VerifyHostKeyDNS no
+    NoHostAuthenticationForLocalhost no
     UpdateHostKeys no
     BatchMode yes
     ExitOnForwardFailure yes
     ServerAliveInterval 30
     ServerAliveCountMax 3
     ControlMaster no
+    ControlPersist no
     RequestTTY no
     ForwardAgent no
     ForwardX11 no
@@ -361,15 +370,15 @@ authorizing this server.
 
 ### Install the effective-configuration preflight
 
-Before every foreground or supervised connection, the preflight runs
-`ssh -F ... -G` and fails unless the effective result has the forwarding-only
-user, the dedicated host-pin file, strict checking, `BatchMode`,
-`ExitOnForwardFailure`, and exactly one IPv4-loopback local forward to the
-remote Gateway loopback port. It also rejects dynamic or remote forwards. The
-default forward is reported as
-`localforward [127.0.0.1]:8765 [127.0.0.1]:8765`; no wildcard bind is accepted.
+Before every foreground or supervised connection, use the repository's reviewed
+[`ms2-ssh-preflight.sh`](../../scripts/ms2-ssh-preflight.sh). It validates the
+isolated client configuration together with redacted `sshd` and Gateway policy
+evidence. The exact evidence schemas and collection procedure are in
+[`ms2-ssh-preflight.md`](ms2-ssh-preflight.md).
 
-On Linux, create `~/.config/liveconv/ssh/preflight.sh`:
+On Linux, install a fixed wrapper after creating the two non-secret evidence
+files described there. Replace `LIVE_CONV_CHECKOUT` and `EXTENSION_ID`; do not
+put the bearer token or private-key contents in this wrapper:
 
 ```bash
 tee ~/.config/liveconv/ssh/preflight.sh >/dev/null <<'EOF'
@@ -377,40 +386,15 @@ tee ~/.config/liveconv/ssh/preflight.sh >/dev/null <<'EOF'
 set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-config="$script_dir/config"
-ssh_bin="/usr/bin/ssh"
-fail() { printf 'liveconv SSH preflight: %s\n' "$*" >&2; exit 1; }
-[[ -r "$config" ]] || fail "isolated config is unreadable: $config"
-[[ -x "$ssh_bin" ]] || fail "SSH executable is unavailable: $ssh_bin"
-effective="$("$ssh_bin" -F "$config" -G liveconv-audio)" || fail "cannot read effective config"
-
-one_value() {
-  local name="$1"
-  local -a values=()
-  mapfile -t values < <(awk -v name="$name" '$1 == name { $1 = ""; sub(/^ /, ""); print }' <<<"$effective")
-  [[ ${#values[@]} -eq 1 ]] || fail "expected one $name value, got ${#values[@]}"
-  printf '%s\n' "${values[0]}"
-}
-
-[[ "$(one_value user)" == "liveconv-tunnel" ]] || fail "unexpected SSH user"
-known_hosts_value="$(one_value userknownhostsfile)"
-read -r -a known_hosts_paths <<<"$known_hosts_value"
-[[ ${#known_hosts_paths[@]} -eq 1 ]] || fail "expected exactly one UserKnownHostsFile path"
-expected_known_hosts="$(realpath -e -- "$script_dir/known_hosts")" || fail "dedicated host-pin file is missing"
-effective_known_hosts="$(realpath -e -- "${known_hosts_paths[0]}")" || fail "effective host-pin file is missing"
-[[ "$effective_known_hosts" == "$expected_known_hosts" ]] || fail "unexpected host-pin file"
-[[ "$(one_value globalknownhostsfile)" == "none" ]] || fail "global known-hosts source is enabled"
-case "$(one_value stricthostkeychecking)" in yes|true) ;; *) fail "strict host-key checking is disabled" ;; esac
-[[ "$(one_value batchmode)" == "yes" ]] || fail "BatchMode is disabled"
-[[ "$(one_value exitonforwardfailure)" == "yes" ]] || fail "ExitOnForwardFailure is disabled"
-
-mapfile -t forwards < <(awk '$1 == "localforward" { $1 = ""; sub(/^ /, ""); print }' <<<"$effective")
-[[ ${#forwards[@]} -eq 1 ]] || fail "expected exactly one LocalForward, got ${#forwards[@]}"
-[[ "${forwards[0]}" =~ ^\[127\.0\.0\.1\]:[1-9][0-9]*\ \[127\.0\.0\.1\]:8765$ ]] || fail "LocalForward is not loopback-only"
-if awk '$1 == "dynamicforward" || $1 == "remoteforward" { exit 1 }' <<<"$effective"; then :; else
-  fail "dynamic or remote forwarding is configured"
-fi
-printf '%s\n' 'liveconv SSH preflight passed'
+exec LIVE_CONV_CHECKOUT/scripts/ms2-ssh-preflight.sh \
+  --ssh-bin /usr/bin/ssh \
+  --ssh-config "$script_dir/config" \
+  --host-alias liveconv-audio \
+  --expected-identity-file "$HOME/.ssh/liveconv_client" \
+  --expected-known-hosts "$script_dir/known_hosts" \
+  --expected-extension-origin 'chrome-extension://EXTENSION_ID' \
+  --server-evidence "$script_dir/server-evidence.json" \
+  --gateway-evidence "$script_dir/gateway-evidence.json"
 EOF
 chmod 0700 ~/.config/liveconv/ssh/preflight.sh
 ~/.config/liveconv/ssh/preflight.sh

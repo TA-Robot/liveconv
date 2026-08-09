@@ -50,6 +50,56 @@ start. Automatic
 conversation boundaries require a future supported application or Realtime API
 contract and are not inferred by DOM scraping.
 
+## EXP-005 Receipt
+
+The popup has four collector-only messages, deliberately absent from the normal
+UI: `exp005.trial.begin`, `exp005.trial.inject-failure`,
+`exp005.trial.export`, and `exp005.trial.clear`. They
+are accepted only when sent by the Extension popup itself. The producer compares
+bounded PCM frames in Offscreen memory, then discards them before sending only
+finite/changed facts to the service worker. Tickets, bearer values, media, tab
+details, host names, and paths do not enter the receipt.
+
+Before an actual run, open the unpacked Extension popup on the authenticated
+`https://chatgpt.com` tab and keep it open. Begin the receipt with a frozen
+trial JSON containing only `roster_revision`, `plan_revision`, and
+`roster_entries`, plus the successful LV-049 preflight JSON. The collector uses
+only a local Chrome DevTools endpoint and executes the message in that existing
+popup target:
+
+```bash
+npm run collect:exp005 -- begin \
+  --cdp-url http://127.0.0.1:9337 \
+  --extension-id EXTENSION_ID \
+  --trial /secure/operator/exp005-trial.json \
+  --ssh-preflight /secure/operator/ms2-ssh-preflight-pass.json
+```
+
+Perform the four real trials through the normal popup controls. After the
+OpenVoice attempt is terminal, choose Next once without changing the model,
+then inject the dedicated fifth-generation failure probe:
+
+```bash
+npm run collect:exp005 -- inject-failure \
+  --cdp-url http://127.0.0.1:9337 \
+  --extension-id EXTENSION_ID
+```
+
+The injection command is accepted only for that active post-attempt OpenVoice
+generation. A spontaneous Gateway fallback cannot satisfy the forced-failure
+gate. Export is refused until all terminal runtime evidence is present and
+the destination must be outside this repository:
+
+```bash
+npm run collect:exp005 -- export \
+  --cdp-url http://127.0.0.1:9337 \
+  --extension-id EXTENSION_ID \
+  --output /secure/operator/exp005-runtime-receipt.json
+```
+
+Use `clear` to discard an incomplete receipt. This does not make an incomplete
+or failed run pass; it only removes volatile Extension-side evidence.
+
 ## Checks
 
 ```bash

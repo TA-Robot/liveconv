@@ -40,6 +40,14 @@ _PROFILE_FIELDS = {
     "timeouts",
     "runtime",
 }
+_RUNTIME_REQUIRED_FIELDS = {
+    "adapter",
+    "configuration",
+    "worker_endpoint",
+    "max_vram_mb",
+}
+_RUNTIME_FIELDS = _RUNTIME_REQUIRED_FIELDS | {"worker_module"}
+_WORKER_MODULE = re.compile(r"^workers\.adapters\.[a-z0-9_]+(?:\.[a-z0-9_]+)*$")
 
 
 def _reject_constant(value: str) -> None:
@@ -136,13 +144,16 @@ class RegistryProfile:
         if weight_revision is not None:
             weight_revision = _require_text(weight_revision, "weight_revision")
         runtime = value["runtime"]
-        if not isinstance(runtime, dict) or set(runtime) != {
-            "adapter",
-            "configuration",
-            "worker_endpoint",
-            "max_vram_mb",
-        }:
+        if not isinstance(runtime, dict) or not (
+            _RUNTIME_REQUIRED_FIELDS <= set(runtime) <= _RUNTIME_FIELDS
+        ):
             raise ConfigurationError(f"{profile_id}: runtime shape is invalid")
+        worker_module = runtime.get("worker_module")
+        if worker_module is not None and (
+            not isinstance(worker_module, str)
+            or _WORKER_MODULE.fullmatch(worker_module) is None
+        ):
+            raise ConfigurationError(f"{profile_id}: runtime.worker_module is invalid")
         configuration = runtime["configuration"]
         if not isinstance(configuration, dict):
             raise ConfigurationError(f"{profile_id}: configuration must be an object")
@@ -160,6 +171,8 @@ class RegistryProfile:
         _require_int(runtime["max_vram_mb"], "max_vram_mb")
         profile_for_hash = json.loads(json.dumps(value, allow_nan=False))
         profile_for_hash["runtime"].pop("worker_endpoint")
+        if profile_for_hash["runtime"].get("worker_module") is None:
+            profile_for_hash["runtime"].pop("worker_module", None)
         return cls(
             profile_id=profile_id,
             kind=_require_text(value["kind"], "kind"),

@@ -5,8 +5,8 @@
   "status": "blocked",
   "ready_for_runtime": false,
   "promotion_evidence": {
-    "status": "unavailable",
-    "evidence_sha256": null
+    "status": "technical_validation",
+    "evidence_sha256": "sha256:ac798f45a0d833ff37d9b3022c2a3ebe1adea370db90811c008097f58ef46b5c"
   },
   "role": "streaming_candidate",
   "implementation_priority": 3,

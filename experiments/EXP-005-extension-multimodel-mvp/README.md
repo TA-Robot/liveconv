@@ -1,90 +1,141 @@
 # EXP-005: ChatGPT tab multi-model Extension MVP
 
-Status: draft until the deployment roster, client, prompts, profile identities,
-and execution states are frozen.
+Status: draft. This is the MS-2 hands-on integration gate for one real audible
+`chatgpt.com` tab, the unpacked Extension, the pinned SSH local forward, one
+authenticated Gateway, and the four prepared model routes.
 
-This is the MS-2 hands-on gate. It tests the actual Extension, SSH local forward,
-Gateway, and multiple real workers together before MS-3 selects a model.
+The result remains `inconclusive` for quality, speaker similarity, content,
+latency, authorization, licensing, security, and release readiness. A technical
+pass establishes only that the bounded MVP execution evidence was captured.
 
-The result is technical only. Poor quality is recorded, not hidden, and does not
-invalidate executability. Native/remote overlap, stale output, missing fallback,
-false model availability, sensitive-data retention, a missing attempt for any of
-the four prepared models, or fewer than two audible live profiles invalidate the
-run. OpenVoice must be invocable as a bounded End-triggered preview; a disabled
-label does not satisfy “try every model.”
+## Evidence Boundary
 
-Manual Start, End, Interrupt, Next, and idle-boundary profile selection are the
-supported ChatGPT lifecycle. The experiment does not scrape the DOM or infer
-conversation boundaries.
+EXP-005 separates two evidence products:
 
-Before changing `status` to `approved`:
+- The Extension/Gateway runtime produces the machine receipt. Its source is
+  exactly `extension_gateway_runtime`; it is not authored or completed by the
+  operator.
+- The operator records only four listening judgments in a separate document.
+  Each judgment is bound to the receipt ID, runtime `pipeline_id`, and protocol-v1
+  `generation_id` for its matching attempt.
 
-1. freeze the complete four-model roster and safe execution/decision reason codes;
-2. bind RVC, Beatrice 2, and X-VC live routes plus the OpenVoice buffered preview
-   to exact identities, with no unavailable entry;
-3. freeze the operator prompt sequence and non-sensitive environment fields;
-4. implement the metadata-only runner/report and its schema;
-5. run deterministic Extension, Gateway, switching, fallback, and secret tests;
-6. obtain an independent Sol plan review.
+A boolean-only listening document is not a reproduction and is rejected. A
+deterministic fake may exercise the frozen four-model contract, but its report is
+always `evidence_kind: contract_test` and `technical_outcome: inconclusive`.
+It can never satisfy MS-2.
 
-## Metadata-only runner
+Reports are metadata-only. They reject raw media, credentials, route locations,
+host identifiers, artifact paths, target/reference material, weights, free-form
+notes, and producer error text.
 
-`fixtures/four-model-roster.json` is the frozen safe roster fixture. It has
-exactly four prepared entries in this order: `rvc-v2`, `beatrice-2`, `x-vc`, and
-`openvoice-v2`. Every entry binds a public profile ID plus profile,
-configuration, and pipeline SHA-256 identities. The first three entries are
-live; OpenVoice is only `buffered_preview_after_end`.
+## Frozen Inputs
 
-`fixtures/operator-plan.json` freezes one manual sample per roster model,
-manual lifecycle controls, and the native baseline/fallback steps. It retains no
-prompt text, audio, account details, voice/reference data, credentials, worker
-details, runtime locations, or host identifiers.
+`fixtures/four-model-roster.json` has exactly four prepared deployment entries,
+in this order: `rvc-v2`, `beatrice-2`, `x-vc`, and `openvoice-v2`. Each binds the
+exact deployed `profile_id`, `profile_hash`, and `configuration_hash`. There is
+no `pipeline_hash`: protocol version 1 assigns a new UUID `pipeline_id` at
+runtime for a selected profile/configuration pair.
 
-The runner accepts only boolean operator observations for each invocation and a
-forced-failure fallback check. It writes no media and rejects free-form evidence
-or metadata fields that could contain sensitive route material. A report always
-remains technically scoped and `inconclusive` for quality, speaker, content,
-latency, authorization, licensing, security, and release decisions.
+`fixtures/operator-plan.json` freezes one manual sample per model, manual
+lifecycle controls, a native baseline, and the forced-fallback step. Neither
+fixture retains prompt text, audio, account details, voice/reference data,
+credentials, worker details, runtime locations, or host identifiers.
 
-Run its deterministic fake-route contract checks without Chrome, GPU, workers,
-or model artifacts:
+Each fixture revision is a content digest, not an operator-selected label. It is
+the SHA-256 of UTF-8 JSON formed from the complete object after removing its
+revision field, serialized with `ensure_ascii=true`, sorted keys, and separators
+`,` and `:`. Updating an exact deployment identity therefore requires updating
+the fixture content and recomputing the revision; `load_roster` and
+`load_prompt_plan` reject a mismatch.
 
-```bash
-ROOT=experiments/EXP-005-extension-multimodel-mvp
-uv run --frozen --all-packages pytest -q -c "$ROOT/pyproject.toml" "$ROOT/exp005_tests"
-uv run --frozen --all-packages ruff check "$ROOT"
-uv run --frozen --all-packages ruff format --check "$ROOT"
-```
+## Runtime Receipt Contract
 
-For an actual approved operator run, use a manually completed JSON document with
-only this shape; it is deliberately unable to carry notes or raw technical
-values:
+The receipt is schema version 1 and has no optional fields. It must include:
 
-```json
-{
-  "attempts": {
-    "rvc-v2": {"audible_changed_output": true, "end_triggered": false},
-    "beatrice-2": {"audible_changed_output": true, "end_triggered": false},
-    "x-vc": {"audible_changed_output": false, "end_triggered": false},
-    "openvoice-v2": {"audible_changed_output": true, "end_triggered": true}
-  },
-  "forced_failure": {
-    "native_fallback_observed": true,
-    "native_remote_overlap_observed": false
-  }
-}
-```
+- `source: extension_gateway_runtime`, a canonical UUID `receipt_id`, and the
+  exact frozen roster and operator-plan revisions.
+- `chatgpt_tab` facts that an audible `chatgpt.com` tab was observed and capture
+  began after a user gesture. Account authentication is not a machine claim.
+- `ssh_loopback` facts that the configured local forward reached the Gateway,
+  that client and remote bindings are loopback-only, and that a pinned server
+  identity was configured. These facts do not claim a live SSH handshake or pin
+  verification.
+- `gateway_authentication` facts for the authenticated Gateway session, a
+  single-use session grant, exact Extension Origin verification, and
+  `max_sessions: 1`. These facts never carry the bearer credential or grant.
+- Four ordered runtime attempts. Every attempt repeats the frozen model/profile
+  identity, has a dynamic canonical UUID `pipeline_id`, a strictly increasing
+  unsigned protocol-v1 `generation_id`, its route mode, and boolean facts for
+  finite output, changed output, stale-output acceptance, exclusive playout, and
+  End triggering.
+- A fifth, dedicated forced-failure probe after the four attempts. Its
+  `forced_failure_event` has `event_type: fallback.required`, exact OpenVoice
+  profile/configuration identity, the fourth attempt's `pipeline_id`, and a new
+  `generation_id` strictly greater than every attempt generation. It must carry
+  the machine-only `failure_injected: true` fact; a spontaneous fallback does
+  not satisfy this probe.
+- A matching `native_fallback_event` with
+  `event_type: extension.native_fallback_activated`, that same OpenVoice
+  profile/pipeline/generation identity, native route active, and remote route
+  inactive.
 
-The command verifies that the supplied commit is `HEAD`, the checkout is clean,
-and the report destination is outside the repository before writing. It does not
-start Chrome, SSH, a Gateway, or a model worker.
+`report.schema.json` contains the complete report and receipt contract. The
+required producer facts are deliberately stable, non-sensitive assertions; the
+Extension and Gateway must emit them after real state transitions rather than
+infer them from a hand-completed form.
+
+The separately bound `manual_operator` document must additionally assert all of
+the following as `true`: `chatgpt_account_authenticated_asserted`,
+`ssh_tunnel_established_asserted`, and
+`ssh_pinned_server_identity_verified_asserted`. These are operator assertions,
+not machine-observed transport facts, and they are required for a technical pass.
+
+## Pass Rule
+
+A `runtime_receipt` report can pass only when all of these are true:
+
+1. The required ChatGPT observation, SSH-loopback configuration,
+   Gateway-authentication, four-attempt, and forced-fallback receipt facts
+   validate against the exact frozen inputs. The separately bound operator
+   evidence explicitly asserts account authentication, established SSH tunnel,
+   and pinned server-identity verification.
+2. At least two live attempts have finite, changed, non-stale, exclusively
+   played output, and their separately bound manual judgments say that changed
+   output was audible.
+3. OpenVoice is a finite, changed, non-stale, exclusively played,
+   End-triggered buffered preview with a matching audible judgment. It is never
+   labelled live.
+4. No attempt accepted stale output, all four attempts observed exclusive
+   playout, and the dedicated fifth forced-failure probe restored exclusive
+   native playout.
+5. The report is written from the exact clean checked-out commit to a destination
+   outside the repository.
+
+## Producing A Report
+
+The runtime producer writes the receipt outside Git after the real run. The
+operator then writes a separate manual-judgment document containing the receipt
+ID, the three explicit account/tunnel/pin assertions, and the four `{model_id,
+pipeline_id, generation_id, audible_changed_output}` records. The CLI refuses
+the older boolean-only shape.
 
 ```bash
 ROOT=experiments/EXP-005-extension-multimodel-mvp
 uv run --frozen --all-packages python -m liveconv_exp005_extension_multimodel_mvp \
   --roster "$ROOT/fixtures/four-model-roster.json" \
   --prompt-plan "$ROOT/fixtures/operator-plan.json" \
-  --manual-evidence /approved/operator/exp-005-evidence.json \
+  --runtime-receipt /approved/operator/exp-005-runtime-receipt.json \
+  --manual-audible-judgments /approved/operator/exp-005-audible-judgments.json \
   --git-commit "$(git rev-parse HEAD)" \
   --output /approved/operator/exp-005-report.json
+```
+
+Run the deterministic contract checks without Chrome, SSH, GPU, workers, or
+model artifacts:
+
+```bash
+ROOT=experiments/EXP-005-extension-multimodel-mvp
+uv run --frozen --all-packages pytest -q -c "$ROOT/pyproject.toml" "$ROOT/exp005_tests"
+uv run --frozen --all-packages ruff check "$ROOT"
+uv run --frozen --all-packages ruff format --check "$ROOT"
 ```

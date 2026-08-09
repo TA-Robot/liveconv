@@ -47,7 +47,9 @@ required_files=(
   schemas/experiment-registry.schema.json
   schemas/experiment.schema.json
   schemas/model-profile-registry.schema.json
+  schemas/model-roster.schema.json
   config/model-profiles.json
+  config/model-roster.json
   packages/evaluation/schemas/fixture-manifest.schema.json
   packages/evaluation/fixtures/router-speech-v1.json
   packages/protocol/pyproject.toml
@@ -179,6 +181,14 @@ else
   fi
 
   if python3 scripts/validate-json.py \
+    schemas/model-roster.schema.json \
+    config/model-roster.json; then
+    pass "model roster matches its full JSON Schema"
+  else
+    fail "model roster JSON Schema validation"
+  fi
+
+  if python3 scripts/validate-json.py \
     packages/evaluation/schemas/fixture-manifest.schema.json \
     packages/evaluation/fixtures/router-speech-v1.json; then
     pass "EXP-002 fixture manifest matches its full JSON Schema"
@@ -190,6 +200,12 @@ else
     pass "model profile IDs are unique"
   else
     fail "model profile registry contains duplicate IDs"
+  fi
+
+  if [[ "$(jq -r '[.models[].profile_id] | length == (unique | length)' config/model-roster.json)" == "true" ]]; then
+    pass "model roster profile IDs are unique"
+  else
+    fail "model roster contains duplicate profile IDs"
   fi
 
   experiment_files=()

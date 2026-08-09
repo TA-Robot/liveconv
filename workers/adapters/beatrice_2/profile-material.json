@@ -1,0 +1,111 @@
+{
+  "schema": "liveconv-beatrice-2-profile-material-v1",
+  "model_id": "beatrice-2",
+  "technical_status": "technical_nonselectable",
+  "ready_for_runtime": false,
+  "selectable": false,
+  "promotion_evidence": {
+    "status": "technical_validation",
+    "retained_identity_schema": "liveconv-beatrice-2-validation-identity-v2",
+    "retained_identity_evidence_sha256": "sha256:ac798f45a0d833ff37d9b3022c2a3ebe1adea370db90811c008097f58ef46b5c"
+  },
+  "worker": {
+    "module": "workers.adapters.beatrice_2.worker",
+    "implementation_revision": "f34836de014b86956096878aecb8d3b17feaaa0b",
+    "weight_revision": "sha256:14ecdb01e51cf22b80664973daa3dedeeb0bada48bbf5262e58950c818cdcb1a",
+    "configuration_hash": "sha256:93dd010b64771604ab5750b5a8e00ce0dfe21e38e5ad67c746c166f838ca1fd6",
+    "configuration_payload": {
+      "adapter_revision": "beatrice-2-worker-v3",
+      "batch_ms": 500,
+      "converter_sha256": "14ecdb01e51cf22b80664973daa3dedeeb0bada48bbf5262e58950c818cdcb1a",
+      "device": "cuda",
+      "distribution_manifest_sha256": "d0970328bece0f9f2bdf4b9743de934637e8672fd62b9a06900cf70572375fb0",
+      "executed_project_modules_sha256": "1b5ac83a7b646fc989ebca11e7d1900c43ed921798fc055bd49d472aba8f28c3",
+      "frame_ms": 20,
+      "installed_distribution_inventory_sha256": "03f841b61a980329e14387c1c45973ee5012b1d3480b4769a70c7c088b5ca034",
+      "installed_record_sha256": "af36716c39491bb6d9fa89d648a5cb00a967f42a61ca7be670e0fcf174eb6af3",
+      "minimum_inference_ms": 60,
+      "phone_sha256": "46e2d609825ace2158c83672cfc9cc1dcb3c2b7c8d294ee911fcb6840a592bae",
+      "pitch_sha256": "174e5411009e0e4f6ee8a8c97c4cd2f646791eae1b9aa2b425acb797e0353ef4",
+      "runtime_codec_sha256": "6b6862c1d19959aa4fdb20a72d94cd0746fb710d6d612409fa109e18d79ea783",
+      "runtime_lock_sha256": "30d8099043f8ee8a550376b1b3228c726b76048b6aedefb239b091cad421197a",
+      "sample_rate": 48000,
+      "schema": "liveconv-beatrice-2-worker-configuration-v2",
+      "source_revision": "f34836de014b86956096878aecb8d3b17feaaa0b",
+      "source_sha256": "c191a4fabdb63730b749fc2fbbe27384223fc27862a06a0d9db713bdee688e83",
+      "source_tree_sha256": "e92451a602413e03aefc4135a4d5b288c0a178b1ff7547b2d5943cdd83b150b0",
+      "target_speaker_id": 37,
+      "wheel_record_sha256": "7b67024d180a58b11570d7510deb5f0179f97cb23d3f50d87ab609f095888a9f",
+      "worker_wheel_sha256": "cf9592ee3461ed3601f84472a6219ee3dec017f25d4ed31a55e93d245fd0b7bc"
+    }
+  },
+  "streaming": {
+    "context_mode": "frame_streaming",
+    "gateway_delivery_mode": "live_frame_echo",
+    "input_sample_rate_hz": 48000,
+    "output_sample_rate_hz": 48000,
+    "frame_ms": 20,
+    "batch_ms": 500,
+    "minimum_inference_ms": 60,
+    "capacity_frames": 25,
+    "queue_budget_ms": 500,
+    "pcm_encoding": "pcm_f32le_base64"
+  },
+  "artifact_digests": {
+    "source_module_sha256": "c191a4fabdb63730b749fc2fbbe27384223fc27862a06a0d9db713bdee688e83",
+    "source_tree_sha256": "e92451a602413e03aefc4135a4d5b288c0a178b1ff7547b2d5943cdd83b150b0",
+    "phone_checkpoint_sha256": "46e2d609825ace2158c83672cfc9cc1dcb3c2b7c8d294ee911fcb6840a592bae",
+    "pitch_checkpoint_sha256": "174e5411009e0e4f6ee8a8c97c4cd2f646791eae1b9aa2b425acb797e0353ef4",
+    "converter_checkpoint_sha256": "14ecdb01e51cf22b80664973daa3dedeeb0bada48bbf5262e58950c818cdcb1a",
+    "runtime_lock_sha256": "30d8099043f8ee8a550376b1b3228c726b76048b6aedefb239b091cad421197a",
+    "worker_wheel_sha256": "cf9592ee3461ed3601f84472a6219ee3dec017f25d4ed31a55e93d245fd0b7bc",
+    "worker_wheel_record_sha256": "7b67024d180a58b11570d7510deb5f0179f97cb23d3f50d87ab609f095888a9f",
+    "installed_record_sha256": "af36716c39491bb6d9fa89d648a5cb00a967f42a61ca7be670e0fcf174eb6af3",
+    "distribution_manifest_sha256": "d0970328bece0f9f2bdf4b9743de934637e8672fd62b9a06900cf70572375fb0",
+    "executed_project_modules_sha256": "1b5ac83a7b646fc989ebca11e7d1900c43ed921798fc055bd49d472aba8f28c3",
+    "installed_distribution_inventory_sha256": "03f841b61a980329e14387c1c45973ee5012b1d3480b4769a70c7c088b5ca034",
+    "runtime_codec_sha256": "6b6862c1d19959aa4fdb20a72d94cd0746fb710d6d612409fa109e18d79ea783"
+  },
+  "pre_spawn_artifact_keys": [
+    "source_module",
+    "phone_checkpoint",
+    "pitch_checkpoint",
+    "converter_checkpoint",
+    "worker_wheel"
+  ],
+  "private_environment_name_map": {
+    "source_root": "LIVECONV_BEATRICE_SOURCE_ROOT",
+    "source_revision": "LIVECONV_BEATRICE_SOURCE_REVISION",
+    "source_module": "LIVECONV_BEATRICE_SOURCE_MODULE",
+    "source_sha256": "LIVECONV_BEATRICE_SOURCE_SHA256",
+    "source_tree_sha256": "LIVECONV_BEATRICE_SOURCE_TREE_SHA256",
+    "phone_checkpoint": "LIVECONV_BEATRICE_PHONE_CHECKPOINT",
+    "phone_sha256": "LIVECONV_BEATRICE_PHONE_SHA256",
+    "pitch_checkpoint": "LIVECONV_BEATRICE_PITCH_CHECKPOINT",
+    "pitch_sha256": "LIVECONV_BEATRICE_PITCH_SHA256",
+    "converter_checkpoint": "LIVECONV_BEATRICE_CONVERTER_CHECKPOINT",
+    "converter_sha256": "LIVECONV_BEATRICE_CONVERTER_SHA256",
+    "runtime_lock_sha256": "LIVECONV_BEATRICE_RUNTIME_LOCK_SHA256",
+    "worker_wheel": "LIVECONV_BEATRICE_WORKER_WHEEL",
+    "worker_wheel_sha256": "LIVECONV_BEATRICE_WORKER_WHEEL_SHA256",
+    "target_speaker_id": "LIVECONV_BEATRICE_TARGET_SPEAKER_ID",
+    "sample_rate": "LIVECONV_BEATRICE_SAMPLE_RATE",
+    "batch_ms": "LIVECONV_BEATRICE_BATCH_MS",
+    "device": "LIVECONV_BEATRICE_DEVICE"
+  },
+  "nonselection_constraints": {
+    "pack_status": "blocked",
+    "license_gate_status": "blocked",
+    "blocker_ids": [
+      "beatrice-approval",
+      "beatrice-data",
+      "beatrice-target",
+      "beatrice-quality"
+    ],
+    "license_limitations": [
+      "MIT declarations for code, bundled pretrained weights, and inference runtime do not approve this product route.",
+      "Training-data conditions and intended use remain under review.",
+      "No authorized target model directory, immutable product approval, or Japanese quality result supports selection."
+    ]
+  }
+}

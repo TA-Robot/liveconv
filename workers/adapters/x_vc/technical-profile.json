@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "profile": {
+    "profile_id": "vc.x-vc.synthetic-ja.v1",
+    "kind": "voice_conversion",
+    "readiness": "ready",
+    "adapter_api_version": 1,
+    "implementation_revision": "x-vc-streaming-adapter-v1+sha256:d0737a67a05ca39616b312443b83610e891f79207066e8e5da6ee9ea2b304959",
+    "weight_revision": "sha256:1ba0ca3187d2a6753a1529db18c5490e5cb20c8874dc067b92935ff39cfed687",
+    "streaming": true,
+    "cancellation": "immediate",
+    "input_sample_rates": [48000],
+    "output_sample_rates": [48000],
+    "frame_ms": 20,
+    "minimum_context_ms": 2400,
+    "voice_requirement": "pretrained_voice",
+    "warmup_policy": "eager",
+    "resource_class": "gpu",
+    "max_vram_mb": 24576,
+    "license_record": "X-VC technical validation only; license and Japanese quality gates remain blocked.",
+    "timeouts": {
+      "first_output_ms": 60000,
+      "stall_ms": 60000
+    },
+    "promotion": {
+      "status": "technical_validation",
+      "pack_id": "x-vc",
+      "pack_sha256": "sha256:69e6cc838278fb380ea7df4bd863369c3d2ffd75d71e4db65e8b1582f942fcb0",
+      "evidence_sha256": "sha256:fa100d0c03041f37ce489b618b54260c722f4cc4261038329263cf73338aaea0",
+      "endpoint_sha256": "sha256:1d3cf64f97cadc79fdc6fe2496a21b7b456cb94211978cfef5a65f616af74fd5"
+    },
+    "quality_status": "fail-nonselectable",
+    "selectable_default": false
+  },
+  "runtime": {
+    "worker_module": "workers.adapters.x_vc.worker",
+    "configuration": {
+      "adapter_revision": "x-vc-streaming-adapter-v1",
+      "adapter_source_sha256": "d0737a67a05ca39616b312443b83610e891f79207066e8e5da6ee9ea2b304959",
+      "checkpoint_sha256": "1ba0ca3187d2a6753a1529db18c5490e5cb20c8874dc067b92935ff39cfed687",
+      "config_sha256": "5f9aae0487ffcf1b69f5833317d068bfe62c6de1a12b0921abebe742b39c3be7",
+      "current_ms": 120,
+      "device": "cuda:0",
+      "ema_load": false,
+      "eres_config_sha256": "bbd0c639f5c73325ad9f080d9f8866b613f739546216dc090eabe65ed0bbdd18",
+      "eres_model_sha256": "d8941f5952e31820173c8854562cb6d7897aaa58cd65c18f30d5a2e52d30847d",
+      "future_ms": 100,
+      "glm_config_sha256": "5a5181fcc293ced0a1e7455f6e3503ce4e8be9229922ea34aeb785f62720c0aa",
+      "glm_model_sha256": "2800bd503f52b51e45f0c53cfd5c31dcfe8ef7f13d22b396aa3d53e0280dd1e4",
+      "glm_preprocessor_sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711",
+      "input_sample_rate": 48000,
+      "interpreter_sha256": "1d3cf64f97cadc79fdc6fe2496a21b7b456cb94211978cfef5a65f616af74fd5",
+      "latent_hop_length": 1280,
+      "mask_target_condition": false,
+      "output_resampler_revision": "torchaudio-sinc-hann-overlap-v1",
+      "python_implementation": "CPython",
+      "python_version": "3.12.3",
+      "runtime_lock_sha256": "e5e5ccbb88ad3c49eac8d6ed0cd1f17120cbbbdea9183905be2fc120fbd66f14",
+      "smooth_ms": 20,
+      "source_preprocessing_revision": "xvc-bounded-official-functions-v1",
+      "source_revision": "49df8c591eafc48b096e466d96f9839f9c0dd739",
+      "target_authorization_sha256": "ac61316ef93d6591ef0e02945f1eb6bb6c8ea74b682a40d8269cc9be91e8c2f2",
+      "target_reference_sha256": "a92aaa78a600be0afa2425e55a8adb57dc0630789ce9a50284bf467345631ff7",
+      "window_ms": 2400,
+      "worker_package_version": "0.1.0",
+      "worker_wheel_sha256": "2dba703e830b0db405e0f74ae881fcdb9894ab2f9b4d5224884089fdff373b22"
+    },
+    "artifact_bindings": [
+      {"env_var": "LIVECONV_XVC_CONFIG_PATH", "sha256": "5f9aae0487ffcf1b69f5833317d068bfe62c6de1a12b0921abebe742b39c3be7"},
+      {"env_var": "LIVECONV_XVC_CHECKPOINT_PATH", "sha256": "1ba0ca3187d2a6753a1529db18c5490e5cb20c8874dc067b92935ff39cfed687"},
+      {"env_var": "LIVECONV_XVC_GLM_CONFIG_PATH", "sha256": "5a5181fcc293ced0a1e7455f6e3503ce4e8be9229922ea34aeb785f62720c0aa"},
+      {"env_var": "LIVECONV_XVC_GLM_PREPROCESSOR_PATH", "sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711"},
+      {"env_var": "LIVECONV_XVC_GLM_MODEL_PATH", "sha256": "2800bd503f52b51e45f0c53cfd5c31dcfe8ef7f13d22b396aa3d53e0280dd1e4"},
+      {"env_var": "LIVECONV_XVC_ERES_CONFIG_PATH", "sha256": "bbd0c639f5c73325ad9f080d9f8866b613f739546216dc090eabe65ed0bbdd18"},
+      {"env_var": "LIVECONV_XVC_ERES_MODEL_PATH", "sha256": "d8941f5952e31820173c8854562cb6d7897aaa58cd65c18f30d5a2e52d30847d"},
+      {"env_var": "LIVECONV_XVC_TARGET_REFERENCE_PATH", "sha256": "a92aaa78a600be0afa2425e55a8adb57dc0630789ce9a50284bf467345631ff7"},
+      {"env_var": "LIVECONV_XVC_TARGET_AUTHORIZATION_PATH", "sha256": "ac61316ef93d6591ef0e02945f1eb6bb6c8ea74b682a40d8269cc9be91e8c2f2"},
+      {"env_var": "LIVECONV_XVC_RUNTIME_LOCK_PATH", "sha256": "e5e5ccbb88ad3c49eac8d6ed0cd1f17120cbbbdea9183905be2fc120fbd66f14"},
+      {"env_var": "LIVECONV_XVC_WORKER_WHEEL_PATH", "sha256": "2dba703e830b0db405e0f74ae881fcdb9894ab2f9b4d5224884089fdff373b22"},
+      {"env_var": "LIVECONV_XVC_INTERPRETER_PATH", "sha256": "1d3cf64f97cadc79fdc6fe2496a21b7b456cb94211978cfef5a65f616af74fd5"}
+    ],
+    "private_environment": {
+      "required": [
+        "LIVECONV_XVC_SOURCE_ROOT",
+        "LIVECONV_XVC_SOURCE_REVISION",
+        "LIVECONV_XVC_CONFIG_PATH",
+        "LIVECONV_XVC_CONFIG_SHA256",
+        "LIVECONV_XVC_CHECKPOINT_PATH",
+        "LIVECONV_XVC_CHECKPOINT_SHA256",
+        "LIVECONV_XVC_GLM_ROOT",
+        "LIVECONV_XVC_GLM_CONFIG_SHA256",
+        "LIVECONV_XVC_GLM_PREPROCESSOR_SHA256",
+        "LIVECONV_XVC_GLM_MODEL_SHA256",
+        "LIVECONV_XVC_ERES_ROOT",
+        "LIVECONV_XVC_ERES_CONFIG_SHA256",
+        "LIVECONV_XVC_ERES_MODEL_SHA256",
+        "LIVECONV_XVC_TARGET_REFERENCE_PATH",
+        "LIVECONV_XVC_TARGET_REFERENCE_SHA256",
+        "LIVECONV_XVC_TARGET_AUTHORIZATION_PATH",
+        "LIVECONV_XVC_TARGET_AUTHORIZATION_SHA256",
+        "LIVECONV_XVC_ADAPTER_SOURCE_SHA256",
+        "LIVECONV_XVC_RUNTIME_LOCK_PATH",
+        "LIVECONV_XVC_RUNTIME_LOCK_SHA256",
+        "LIVECONV_XVC_WORKER_WHEEL_PATH",
+        "LIVECONV_XVC_WORKER_WHEEL_SHA256",
+        "LIVECONV_XVC_INTERPRETER_PATH",
+        "LIVECONV_XVC_INTERPRETER_SHA256",
+        "LIVECONV_XVC_PYTHON_IMPLEMENTATION",
+        "LIVECONV_XVC_PYTHON_VERSION",
+        "LIVECONV_XVC_WORKER_PACKAGE_VERSION",
+        "LIVECONV_XVC_DEVICE"
+      ],
+      "derived": [
+        {"env_var": "LIVECONV_XVC_GLM_CONFIG_PATH", "root_env_var": "LIVECONV_XVC_GLM_ROOT", "relative_path": "config.json"},
+        {"env_var": "LIVECONV_XVC_GLM_PREPROCESSOR_PATH", "root_env_var": "LIVECONV_XVC_GLM_ROOT", "relative_path": "preprocessor_config.json"},
+        {"env_var": "LIVECONV_XVC_GLM_MODEL_PATH", "root_env_var": "LIVECONV_XVC_GLM_ROOT", "relative_path": "model.safetensors"},
+        {"env_var": "LIVECONV_XVC_ERES_CONFIG_PATH", "root_env_var": "LIVECONV_XVC_ERES_ROOT", "relative_path": "configuration.json"},
+        {"env_var": "LIVECONV_XVC_ERES_MODEL_PATH", "root_env_var": "LIVECONV_XVC_ERES_ROOT", "relative_path": "pretrained_eres2net.ckpt"}
+      ],
+      "fixed": {
+        "HF_DATASETS_OFFLINE": "1",
+        "HF_HUB_OFFLINE": "1",
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "TRANSFORMERS_OFFLINE": "1"
+      },
+      "inherited": ["PATH"]
+    },
+    "launch": {
+      "interpreter_env_var": "LIVECONV_XVC_INTERPRETER_PATH",
+      "arguments": ["-I", "-B", "-m", "workers.adapters.x_vc.worker"],
+      "cwd": "/tmp",
+      "delivery_mode": "live_frame_echo",
+      "queue_capacity_frames": 25,
+      "queue_budget_ms": 500,
+      "startup_timeout_ms": 300000,
+      "cancel_timeout_ms": 2000,
+      "close_grace_ms": 5000,
+      "terminate_grace_ms": 1000
+    }
+  },
+  "evidence": {
+    "worker_supervisor_smoke": {
+      "schema_version": "liveconv-x-vc-worker-smoke-v2",
+      "sha256": "sha256:fa100d0c03041f37ce489b618b54260c722f4cc4261038329263cf73338aaea0",
+      "status": "technical-smoke-pass",
+      "quality_status": "fail-nonselectable",
+      "configuration_hash": "sha256:a0419cee1204d0a67f6e4a2c51f94da1363da386739d2308461bf43fdf6fe25b"
+    },
+    "synthetic_fixtures": {
+      "manifest_relative_path": "artifacts/shared/synthetic-ja-smoke/synthetic-corpus.manifest.json",
+      "source": {
+        "relative_path": "artifacts/shared/synthetic-ja-smoke/source/LV001-JA-001.wav",
+        "sha256": "a012db445fb073d4ebb58ddf97f0f88524fd9517431d20e570e188c560df5397"
+      },
+      "target": {
+        "relative_path": "artifacts/shared/synthetic-ja-smoke/target/reference.wav",
+        "sha256": "a92aaa78a600be0afa2425e55a8adb57dc0630789ce9a50284bf467345631ff7"
+      }
+    }
+  }
+}

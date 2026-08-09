@@ -25,10 +25,10 @@ test = [
 ]
 
 [tool.setuptools]
-packages = ["liveconv_audio"]
+packages = ["liveconv_audio", "liveconv_audio.model_adapters"]
 
 [tool.setuptools.package-data]
-liveconv_audio = ["default-model-profiles.json"]
+liveconv_audio = ["default-model-profiles.json", "default-model-roster.json"]
 
 [tool.uv.sources]
 liveconv-protocol = { workspace = true }

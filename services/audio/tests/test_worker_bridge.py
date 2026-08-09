@@ -2,9 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
+from liveconv_audio._adapter_registry import (
+    validate_profile_adapter,
+    worker_profile_for,
+)
 from liveconv_audio.profiles import ModelProfile
 from liveconv_audio.worker_bridge import (
     WorkerBridge,
@@ -188,6 +193,84 @@ def test_rvc_environment_rejects_a_gateway_source_identity_mismatch(
     monkeypatch.setenv("LIVECONV_RVC_SOURCE_REVISION", "0" * 40)
     with pytest.raises(ValueError, match="source revision does not match"):
         _rvc_environment(retained_profile(), RETAINED_CONFIGURATION)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        ("worker_module", "workers.adapters.unreviewed.worker", "not approved"),
+        ("unreviewed_configuration", True, "configuration shape is invalid"),
+        ("command", ["/bin/sh", "-c", "id"], "configuration shape is invalid"),
+        ("cwd", "/tmp", "configuration shape is invalid"),
+        ("environment", {"UNREVIEWED": "1"}, "configuration shape is invalid"),
+    ),
+)
+def test_worker_registration_rejects_unreviewed_profile_control(
+    field: str,
+    value: object,
+    message: str,
+) -> None:
+    profile = retained_profile()
+    configuration = deepcopy(RETAINED_CONFIGURATION)
+    configuration[field] = value
+    profile.runtime.configuration = configuration
+
+    with pytest.raises(ValueError, match=message):
+        validate_profile_adapter(profile)
+
+
+def test_rvc_registration_owns_the_trusted_command_cwd_and_environment(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    install_environment(monkeypatch, tmp_path)
+    monkeypatch.setenv("LIVECONV_UNREVIEWED_WORKER_ENVIRONMENT", "ignored")
+
+    profile = retained_profile()
+    worker_profile = worker_profile_for(profile, "pipeline-1", queue_budget_ms=1_000)
+
+    assert worker_profile.command == (
+        sys.executable,
+        "-m",
+        "workers.adapters.rvc_v2.worker",
+    )
+    assert worker_profile.cwd == Path("/tmp")
+    assert worker_profile.input_capacity_frames == 25
+    assert "LIVECONV_UNREVIEWED_WORKER_ENVIRONMENT" not in worker_profile.environment
+    assert set(worker_profile.environment) == {
+        "LIVECONV_RVC_SOURCE_ROOT",
+        "LIVECONV_RVC_SOURCE_REVISION",
+        "LIVECONV_RVC_V2_CHECKPOINT_PATH",
+        "LIVECONV_RVC_V2_CHECKPOINT_SHA256",
+        "LIVECONV_RVC_V2_WORKER_WHEEL_PATH",
+        "LIVECONV_RVC_V2_WORKER_WHEEL_SHA256",
+        "LIVECONV_RVC_V2_INDEX_PATH",
+        "LIVECONV_RVC_V2_INDEX_SHA256",
+        "LIVECONV_RVC_V2_SPEAKER_ID",
+        "LIVECONV_RVC_V2_PITCH_SHIFT",
+        "LIVECONV_RVC_V2_F0_METHOD",
+        "LIVECONV_RVC_V2_INDEX_RATE",
+        "LIVECONV_RVC_V2_RMS_MIX_RATE",
+        "LIVECONV_RVC_V2_SAMPLE_RATE",
+        "LIVECONV_RVC_V2_BLOCK_MS",
+        "LIVECONV_RVC_V2_CROSSFADE_MS",
+        "LIVECONV_RVC_V2_CONTEXT_MS",
+        "LIVECONV_RVC_VERIFIED_ARTIFACT_1",
+        "LIVECONV_RVC_VERIFIED_ARTIFACT_2",
+        "LIVECONV_RVC_VERIFIED_ARTIFACT_3",
+        "LIVECONV_RVC_VERIFIED_ARTIFACT_4",
+    }
+
+
+def test_runtime_worker_module_is_excluded_from_the_configuration_hash() -> None:
+    profile = retained_profile()
+    configuration = deepcopy(RETAINED_CONFIGURATION)
+    configuration.pop("worker_module")
+    profile.runtime.worker_module = "workers.adapters.rvc_v2.worker"
+    profile.runtime.configuration = configuration
+
+    validate_profile_adapter(profile)
+    assert profile.configuration_hash == ModelProfile._canonical_hash(configuration)
 
 
 def bridge_profile() -> ModelProfile:

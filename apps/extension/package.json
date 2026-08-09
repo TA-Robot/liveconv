@@ -7,6 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "collect:exp005": "node scripts/collect-exp005-receipt.mjs",
     "smoke:chrome": "node tests/chrome-load-smoke.mjs",
     "test": "node --test tests/*.test.mjs"
   }

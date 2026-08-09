@@ -7,6 +7,7 @@ members = [
     "liveconv-audio",
     "liveconv-evaluation",
     "liveconv-exp004-rvc-gateway-smoke",
+    "liveconv-exp005-extension-multimodel-mvp",
     "liveconv-protocol",
     "liveconv-real-model-route",
     "liveconv-router-experiment",
@@ -537,6 +538,26 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.25,<2" },
     { name = "ruff", marker = "extra == 'test'", specifier = "==0.16.2" },
     { name = "websockets", specifier = ">=15,<17" },
+]
+provides-extras = ["test"]
+
+[[package]]
+name = "liveconv-exp005-extension-multimodel-mvp"
+version = "0.1.0"
+source = { editable = "experiments/EXP-005-extension-multimodel-mvp" }
+
+[package.optional-dependencies]
+test = [
+    { name = "jsonschema" },
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "jsonschema", marker = "extra == 'test'", specifier = ">=4.23,<5" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8,<9" },
+    { name = "ruff", marker = "extra == 'test'", specifier = "==0.16.2" },
 ]
 provides-extras = ["test"]
 

@@ -38,11 +38,20 @@ never bundled source or persistent sync storage.
 ```text
 GET    /health/live
 GET    /health/ready
+GET    /v1/runtime-boundary
 GET    /v1/models
+GET    /v1/model-roster
 POST   /v1/sessions
 GET    /v1/sessions/{session_id}
 DELETE /v1/sessions/{session_id}
 ```
+
+`GET /v1/runtime-boundary` is an authenticated, non-secret deployment receipt
+surface. It returns `protocol_version`, `transport_scope` (`loopback` or
+`network`), `max_sessions`, and `ticket_one_use`. The MS-2 Extension must observe
+`loopback`, `max_sessions: 1`, and `ticket_one_use: true` from this endpoint; it
+must not infer or hard-code those facts. This endpoint does not alter session or
+WebSocket protocol version 1.
 
 `POST /v1/sessions` accepts:
 
@@ -95,6 +104,20 @@ Real profiles additionally bind a license record, immutable code revision, weigh
 digest, native sample rate, minimum context, warmup policy, resource class, and
 timeouts. Filesystem paths, worker endpoints, credentials, and secret-like runtime
 configuration are neither public fields nor inputs to a public profile hash.
+
+`GET /v1/models` remains the protocol-v1 authority for profiles that can create a
+session. The separately authenticated `GET /v1/model-roster` is display and trial
+metadata only. It returns the fixed MS-2 model IDs, invocation mode, independent
+execution and decision states, a deterministic roster hash, and either a public
+catalog identity or one fixed reason code. The roster cannot authorize a session.
+An enabled entry must bind the exact `profile_hash` and `configuration_hash` in
+the deployment roster and match `/v1/models`; otherwise it is `unavailable` with
+`profile_identity_mismatch`. Runtime paths, artifacts, free-form errors, and
+credentials are forbidden from the roster response.
+The complete version-1 reason-code set is `profile_unavailable`,
+`profile_loading`, `technical_opt_in_required`, `profile_contract_mismatch`, and
+`profile_identity_mismatch`. An enabled entry must also be a voice-conversion
+profile whose reviewed promotion `pack_id` equals the roster `model_id`.
 
 ## WSS attachment
 

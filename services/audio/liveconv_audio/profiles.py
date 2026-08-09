@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 import re
 from importlib.resources import files
 from pathlib import Path
@@ -10,56 +9,13 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr
 
+from ._adapter_registry import validate_profile_adapter
+
 _PRIVATE_CONFIGURATION_KEY = re.compile(
     r"(^|_)(api_?key|credential|directory|dir|endpoint|file|password|path|"
     r"private_?key|secret|socket|token|url)($|_)",
     re.IGNORECASE,
 )
-
-_WORKER_MODULES = {
-    "workers.adapters.rvc_v2.worker",
-}
-
-_RVC_CONFIGURATION_KEYS = {
-    "worker_module",
-    "adapter_revision",
-    "source_revision",
-    "artifacts",
-    "settings",
-}
-
-_RVC_ARTIFACT_KEYS = {
-    "checkpoint_sha256",
-    "index_sha256",
-    "hubert_config_sha256",
-    "hubert_preprocessor_sha256",
-    "hubert_weights_sha256",
-    "rmvpe_sha256",
-    "worker_wheel_sha256",
-    "worker_wheel_record_sha256",
-    "worker_module_sha256",
-    "backend_module_sha256",
-    "network_isolation_module_sha256",
-    "requirements_lock_sha256",
-}
-
-_RVC_SETTING_KEYS = {
-    "speaker_id",
-    "pitch_shift",
-    "f0_method",
-    "index_rate",
-    "rms_mix_rate",
-    "sample_rate",
-    "block_ms",
-    "crossfade_ms",
-    "context_ms",
-    "frame_ms",
-    "inference_batch_frames",
-    "queue_capacity_frames",
-    "resident_capacity_frames",
-    "formant_shift",
-    "threshold_dbfs",
-}
 
 
 class TimeoutSpec(BaseModel):
@@ -74,6 +30,7 @@ class RuntimeSpec(BaseModel):
 
     adapter: Literal["passthrough", "gain", "worker"]
     configuration: dict[str, Any]
+    worker_module: StrictStr | None = None
     worker_endpoint: StrictStr | None
     max_vram_mb: StrictInt = Field(ge=0, le=32_607)
 
@@ -127,72 +84,12 @@ class ModelProfile(BaseModel):
 
     def validate_builtin(self, *, model_pack_directory: Path | None = None) -> None:
         self._reject_private_configuration_keys(self.runtime.configuration)
-        if self.runtime.adapter == "gain":
-            if set(self.runtime.configuration) != {"gain"}:
-                raise ValueError(
-                    f"{self.profile_id}: gain requires only configuration.gain"
-                )
-            gain = self.runtime.configuration["gain"]
-            if isinstance(gain, bool) or not isinstance(gain, (int, float)):
-                raise ValueError(f"{self.profile_id}: gain must be numeric")
-            if not math.isfinite(gain) or not 0 <= gain <= 1:
-                raise ValueError(
-                    f"{self.profile_id}: gain must be finite and between 0 and 1"
-                )
-        elif self.runtime.adapter == "passthrough" and self.runtime.configuration:
-            raise ValueError(
-                f"{self.profile_id}: passthrough configuration must be empty"
-            )
-        elif self.runtime.adapter == "worker":
-            endpoint = self.runtime.worker_endpoint
-            if endpoint is None or not Path(endpoint).is_absolute():
-                raise ValueError(
-                    f"{self.profile_id}: worker_endpoint must be an absolute path"
-                )
-            endpoint_path = Path(endpoint)
-            if not endpoint_path.is_file() or not endpoint_path.stat().st_mode & 0o111:
-                raise ValueError(
-                    f"{self.profile_id}: worker_endpoint must be an executable file"
-                )
-            module = self.runtime.configuration.get("worker_module")
-            if module not in _WORKER_MODULES:
-                raise ValueError(f"{self.profile_id}: worker module is not approved")
-            self._validate_worker_configuration()
+        validate_profile_adapter(self)
+        if self.runtime.adapter == "worker":
             self._validate_promotion(model_pack_directory=model_pack_directory)
         elif self.promotion is not None:
             raise ValueError(
                 f"{self.profile_id}: builtin profiles cannot declare promotion"
-            )
-
-    def _validate_worker_configuration(self) -> None:
-        configuration = self.runtime.configuration
-        if set(configuration) != _RVC_CONFIGURATION_KEYS:
-            raise ValueError(
-                f"{self.profile_id}: worker configuration shape is invalid"
-            )
-        if not isinstance(configuration["adapter_revision"], str) or not isinstance(
-            configuration["source_revision"], str
-        ):
-            raise ValueError(f"{self.profile_id}: worker revisions must be strings")
-        artifacts = configuration["artifacts"]
-        settings = configuration["settings"]
-        if not isinstance(artifacts, dict) or set(artifacts) != _RVC_ARTIFACT_KEYS:
-            raise ValueError(f"{self.profile_id}: RVC artifacts are incomplete")
-        if not isinstance(settings, dict) or set(settings) != _RVC_SETTING_KEYS:
-            raise ValueError(f"{self.profile_id}: RVC settings are incomplete")
-        if settings["frame_ms"] != self.frame_ms:
-            raise ValueError(f"{self.profile_id}: RVC frame duration differs")
-        if settings["inference_batch_frames"] != 25:
-            raise ValueError(
-                f"{self.profile_id}: RVC inference batch must be 25 frames"
-            )
-        if settings["queue_capacity_frames"] != 25:
-            raise ValueError(
-                f"{self.profile_id}: RVC worker queue capacity must be 25 frames"
-            )
-        if settings["resident_capacity_frames"] != 50:
-            raise ValueError(
-                f"{self.profile_id}: RVC resident capacity must be 50 frames"
             )
 
     def _validate_promotion(self, *, model_pack_directory: Path | None) -> None:
@@ -293,6 +190,8 @@ class ModelProfile(BaseModel):
     def profile_hash(self) -> str:
         value = self.model_dump(mode="json")
         value["runtime"].pop("worker_endpoint", None)
+        if value["runtime"].get("worker_module") is None:
+            value["runtime"].pop("worker_module", None)
         if value["promotion"] is None:
             value.pop("promotion")
         return self._canonical_hash(value)
@@ -373,6 +272,9 @@ class ProfileRegistry:
     def get_selectable(self, profile_id: str) -> ModelProfile | None:
         profile = self._profiles.get(profile_id)
         return profile if profile is not None and self._is_selectable(profile) else None
+
+    def get(self, profile_id: str) -> ModelProfile | None:
+        return self._profiles.get(profile_id)
 
     def public_profiles(self) -> list[dict[str, Any]]:
         return [

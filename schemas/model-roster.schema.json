@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TA-Robot/liveconv/schemas/model-roster.schema.json",
+  "title": "liveconv safe model roster",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "roster_id", "models"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "roster_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9.-]{1,63}$"
+    },
+    "models": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/model" },
+      "allOf": [
+        {
+          "contains": {
+            "type": "object",
+            "properties": {
+              "model_id": { "const": "rvc-v2" },
+              "invocation_mode": { "const": "live" }
+            },
+            "required": ["model_id", "invocation_mode"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {
+              "model_id": { "const": "beatrice-2" },
+              "invocation_mode": { "const": "live" }
+            },
+            "required": ["model_id", "invocation_mode"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {
+              "model_id": { "const": "x-vc" },
+              "invocation_mode": { "const": "live" }
+            },
+            "required": ["model_id", "invocation_mode"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {
+              "model_id": { "const": "openvoice-v2" },
+              "invocation_mode": { "const": "buffered_end" }
+            },
+            "required": ["model_id", "invocation_mode"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_id",
+        "display_name",
+        "profile_id",
+        "invocation_mode",
+        "decision_state",
+        "voice_requirement",
+        "expected_profile_hash",
+        "expected_configuration_hash"
+      ],
+      "properties": {
+        "model_id": {
+          "enum": ["rvc-v2", "beatrice-2", "x-vc", "openvoice-v2"]
+        },
+        "display_name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "profile_id": {
+          "type": "string",
+          "pattern": "^(test|vc|tts)\\.[a-z0-9][a-z0-9.-]*\\.v[0-9]+$"
+        },
+        "invocation_mode": { "enum": ["live", "buffered_end"] },
+        "decision_state": {
+          "enum": ["technical-only", "quality-failed", "unassessed", "selected"]
+        },
+        "voice_requirement": {
+          "enum": ["none", "authorized_target_required", "pretrained_voice"]
+        },
+        "expected_profile_hash": {
+          "type": ["string", "null"],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "expected_configuration_hash": {
+          "type": ["string", "null"],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}

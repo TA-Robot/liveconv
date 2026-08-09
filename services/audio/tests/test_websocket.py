@@ -9,6 +9,7 @@ import time
 from dataclasses import replace
 from pathlib import Path
 
+import liveconv_audio.app as app_module
 import pytest
 from fastapi.testclient import TestClient
 from liveconv_audio import create_app
@@ -245,6 +246,60 @@ class DelayedBatch25Supervisor:
             await self._outputs.put(self._inputs.pop(0))
 
 
+class EndBufferedSupervisor:
+    """Publishes outputs early so the gateway must defer reading them until End."""
+
+    input_capacity_frames = 25
+
+    def __init__(self) -> None:
+        self._active_generation_id: int | None = None
+        self._inputs: list[AudioFrame] = []
+        self._outputs: asyncio.Queue[AudioFrame] = asyncio.Queue()
+
+    @property
+    def queued_input_frames(self) -> int:
+        return len(self._inputs)
+
+    @property
+    def queued_output_frames(self) -> int:
+        return self._outputs.qsize()
+
+    async def start(self) -> None:
+        return None
+
+    async def start_generation(self, generation_id: int) -> None:
+        self._active_generation_id = generation_id
+        self._inputs.clear()
+        self._outputs = asyncio.Queue()
+
+    async def push_audio(self, frame: AudioFrame) -> None:
+        if frame.generation_id != self._active_generation_id:
+            raise RuntimeError("inactive generation")
+        if len(self._inputs) >= self.input_capacity_frames:
+            raise RuntimeError("private worker queue overflow")
+        self._inputs.append(frame)
+        await self._outputs.put(frame)
+
+    async def next_output(self) -> AudioFrame:
+        return await self._outputs.get()
+
+    async def end_generation(self, generation_id: int) -> None:
+        if generation_id != self._active_generation_id:
+            raise RuntimeError("inactive generation")
+        self._active_generation_id = None
+
+    async def cancel_generation(self, generation_id: int) -> None:
+        if generation_id == self._active_generation_id:
+            self._active_generation_id = None
+        self._inputs.clear()
+        self._outputs = asyncio.Queue()
+
+    async def close(self) -> None:
+        self._active_generation_id = None
+        self._inputs.clear()
+        self._outputs = asyncio.Queue()
+
+
 def install_delayed_batch_worker(client: TestClient) -> list[DelayedBatch25Supervisor]:
     supervisors: list[DelayedBatch25Supervisor] = []
 
@@ -255,6 +310,26 @@ def install_delayed_batch_worker(client: TestClient) -> list[DelayedBatch25Super
 
     client.app.state.gateway.worker_supervisor_factory = create
     return supervisors
+
+
+def install_end_buffered_worker(client: TestClient) -> list[EndBufferedSupervisor]:
+    supervisors: list[EndBufferedSupervisor] = []
+
+    def create(*_args: object) -> EndBufferedSupervisor:
+        supervisor = EndBufferedSupervisor()
+        supervisors.append(supervisor)
+        return supervisor
+
+    client.app.state.gateway.worker_supervisor_factory = create
+    return supervisors
+
+
+def enable_buffered_passthrough(client: TestClient) -> None:
+    profile = client.app.state.gateway.registry.get_selectable("test.passthrough.v1")
+    assert profile is not None
+    profile.streaming = False
+    profile.timeouts.first_output_ms = 2_000
+    profile.timeouts.stall_ms = 2_000
 
 
 def wait_for_worker_queue(
@@ -557,6 +632,178 @@ def test_generation_end_flushes_a_partial_worker_batch_before_completion(
 
         outputs = [PcmFrame.decode(websocket.receive_bytes()) for _ in range(4)]
         assert [frame.header.sequence for frame in outputs] == [0, 1, 2, 3]
+        assert websocket.receive_json()["type"] == "generation.completed"
+    finally:
+        close_websocket(websocket)
+
+
+def test_end_buffered_profile_defers_output_until_end_and_preserves_order(
+    client: TestClient,
+    create_session,
+) -> None:
+    supervisors = install_end_buffered_worker(client)
+    enable_buffered_passthrough(client)
+    created = create_session()
+    assert created["limits"] == {"ingress_budget_ms": 500, "max_ingress_frames": 25}
+    websocket, _ = connect_and_attach(client, created)
+    connection = client.app.state.gateway.connections[created["session_id"]]
+    try:
+        websocket.send_json(
+            control("generation.start", created, "start-buffered", generation_id=30)
+        )
+        assert websocket.receive_json()["type"] == "generation.ready"
+        for sequence in range(3):
+            websocket.send_bytes(input_frame(30, sequence, 0.1 * sequence).encode())
+
+        supervisor = wait_for_worker_queue(supervisors, minimum=3)
+        assert client.portal is not None
+        assert client.portal.call(lambda: connection.output_task) is None
+        assert client.portal.call(lambda: connection.generation_output_frames) == 0
+        assert supervisor.queued_output_frames == 3
+
+        websocket.send_json(
+            control("generation.end", created, "end-buffered", generation_id=30)
+        )
+        outputs = [PcmFrame.decode(websocket.receive_bytes()) for _ in range(3)]
+        assert [frame.header.sequence for frame in outputs] == [0, 1, 2]
+        assert websocket.receive_json()["type"] == "generation.completed"
+    finally:
+        close_websocket(websocket)
+
+
+def test_end_buffered_frame_26_requires_fallback_without_output(
+    client: TestClient,
+    create_session,
+) -> None:
+    supervisors = install_end_buffered_worker(client)
+    enable_buffered_passthrough(client)
+    created = create_session()
+    websocket, _ = connect_and_attach(client, created)
+    connection = client.app.state.gateway.connections[created["session_id"]]
+    try:
+        websocket.send_json(
+            control("generation.start", created, "start-frame-cap", generation_id=31)
+        )
+        assert websocket.receive_json()["type"] == "generation.ready"
+        for sequence in range(25):
+            websocket.send_bytes(input_frame(31, sequence).encode())
+        wait_for_worker_queue(supervisors, minimum=25)
+
+        websocket.send_bytes(input_frame(31, 25).encode())
+        error = websocket.receive_json()
+        assert error["code"] == "QUEUE_OVERFLOW"
+        assert error["generation_id"] == 31
+        fallback = websocket.receive_json()
+        assert fallback["type"] == "fallback.required"
+        assert fallback["generation_id"] == 31
+        assert client.portal is not None
+        assert client.portal.call(lambda: connection.output_task) is None
+        assert client.portal.call(lambda: connection.generation_output_frames) == 0
+    finally:
+        close_websocket(websocket)
+
+
+def test_model_select_recomputes_the_buffered_generation_input_cap(
+    client: TestClient,
+    create_session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    supervisors = install_end_buffered_worker(client)
+    profile = client.app.state.gateway.registry.get_selectable("test.gain.v1")
+    assert profile is not None
+    profile.streaming = False
+    profile.timeouts.first_output_ms = 2_000
+    profile.timeouts.stall_ms = 2_000
+    original_capacity = app_module.buffered_input_capacity_frames
+
+    def capacity(selected, queue_budget_ms: int) -> int:
+        if selected.profile_id == "test.gain.v1":
+            return 2
+        return original_capacity(selected, queue_budget_ms)
+
+    monkeypatch.setattr(app_module, "buffered_input_capacity_frames", capacity)
+    created = create_session()
+    assert created["limits"]["max_ingress_frames"] > 2
+    websocket, _ = connect_and_attach(client, created)
+    try:
+        websocket.send_json(
+            control(
+                "model.select",
+                created,
+                "select-buffered-small",
+                profile_id="test.gain.v1",
+            )
+        )
+        assert websocket.receive_json()["type"] == "model.selected"
+        websocket.send_json(
+            control(
+                "generation.start",
+                created,
+                "start-buffered-small",
+                generation_id=34,
+            )
+        )
+        assert websocket.receive_json()["type"] == "generation.ready"
+        websocket.send_bytes(input_frame(34, 0).encode())
+        websocket.send_bytes(input_frame(34, 1).encode())
+        wait_for_worker_queue(supervisors, minimum=2)
+        websocket.send_bytes(input_frame(34, 2).encode())
+        error = websocket.receive_json()
+        fallback = websocket.receive_json()
+        assert error["code"] == "QUEUE_OVERFLOW"
+        assert fallback["type"] == "fallback.required"
+    finally:
+        close_websocket(websocket)
+
+
+def test_end_buffered_cancel_discards_output_before_next_generation(
+    client: TestClient,
+    create_session,
+) -> None:
+    supervisors = install_end_buffered_worker(client)
+    enable_buffered_passthrough(client)
+    created = create_session()
+    websocket, _ = connect_and_attach(client, created)
+    try:
+        websocket.send_json(
+            control(
+                "generation.start",
+                created,
+                "start-buffered-cancel",
+                generation_id=32,
+            )
+        )
+        assert websocket.receive_json()["type"] == "generation.ready"
+        for sequence in range(3):
+            websocket.send_bytes(input_frame(32, sequence).encode())
+        first = wait_for_worker_queue(supervisors, minimum=3)
+        assert first.queued_output_frames == 3
+
+        websocket.send_json(
+            control("generation.cancel", created, "cancel-buffered", generation_id=32)
+        )
+        assert websocket.receive_json()["type"] == "generation.canceled"
+        assert first.queued_output_frames == 0
+
+        websocket.send_json(
+            control(
+                "generation.start",
+                created,
+                "start-buffered-reuse",
+                generation_id=33,
+            )
+        )
+        assert websocket.receive_json()["type"] == "generation.ready"
+        for sequence in range(2):
+            websocket.send_bytes(input_frame(33, sequence).encode())
+        second = wait_for_worker_queue(supervisors, minimum=2)
+        websocket.send_json(
+            control("generation.end", created, "end-buffered-reuse", generation_id=33)
+        )
+        outputs = [PcmFrame.decode(websocket.receive_bytes()) for _ in range(2)]
+        assert second is first
+        assert {frame.header.generation_id for frame in outputs} == {33}
+        assert [frame.header.sequence for frame in outputs] == [0, 1]
         assert websocket.receive_json()["type"] == "generation.completed"
     finally:
         close_websocket(websocket)

@@ -59,11 +59,11 @@
     "runtime": "Chrome 116+ unpacked Extension, pinned OpenSSH local forward, loopback Gateway, and exact roster-bound worker runtimes.",
     "hardware": "Record a non-sensitive client/server/GPU class summary in the metadata-only result; never record host paths or identifiers.",
     "model_revisions": {
-      "roster": "Freeze profile, configuration, pipeline, worker, artifact, and execution-state identities before approval."
+      "roster": "Freeze exact deployment profile IDs plus profile and configuration hashes before approval. Runtime pipeline UUIDs are created by protocol version 1 and are recorded only in the machine receipt."
     }
   },
   "procedure": {
-    "summary": "Validate the roster and deterministic routes, start the remote-loopback Gateway with one session, open the pinned SSH local forward, load the Extension on a normal audible ChatGPT voice tab, and confirm native audio first. Invoke RVC, Beatrice 2, and X-VC sequentially with explicit End or Interrupt, idle-boundary selection, and Next; record whether finite changed PCM becomes exclusively audible. Invoke OpenVoice as a bounded buffered preview whose output starts only after explicit End and is never labelled live. Force one remote failure and verify immediate native fallback, then stop and confirm cleanup.",
+    "summary": "Validate the frozen roster and deterministic contracts, start the remote-loopback Gateway with one session, open the pinned SSH local forward, load the Extension on an audible ChatGPT voice tab, and confirm native audio first. The Extension/Gateway instrumentation writes a metadata-only runtime receipt for observed tab audio, configured loopback route, Gateway authentication, identity, output, stale, exclusivity, and fallback facts; it does not claim account authentication, an SSH handshake, or pin verification. A separately bound operator document explicitly asserts those three facts and records audible judgments. Invoke RVC, Beatrice 2, X-VC, and the End-triggered OpenVoice preview sequentially. After those four attempts, use the popup-only explicit failure-injection control to start a fifth OpenVoice generation on the same pipeline; record fallback.required plus native fallback activation for that dedicated probe, then stop and confirm cleanup.",
     "warmup": "Allow one documented cold start per real profile while native remains audible; warmup is not latency evidence.",
     "sample_count": null,
     "commands": [
@@ -73,6 +73,8 @@
     ],
     "invalidation_conditions": [
       "The Chrome run does not capture a normal audible chatgpt.com voice tab after an explicit user gesture.",
+      "The required machine-generated extension_gateway_runtime receipt is missing, has the wrong frozen revisions or deployment identities, omits a required fact/event, or is replaced by a boolean-only operator document.",
+      "The separately bound operator document does not explicitly assert authenticated ChatGPT account, established SSH tunnel, and verified pinned server identity.",
       "RVC, Beatrice 2, X-VC, or OpenVoice V2 is not invocable and attempted from the Extension.",
       "Fewer than two distinct live model profiles produce audible finite changed output through the Extension.",
       "OpenVoice is represented as live/streaming or its preview is not bounded and End-triggered.",
@@ -115,7 +117,7 @@
       "primary": true
     }
   ],
-  "decision_rule": "The experiment remains inconclusive for quality. A technical MVP pass requires a frozen four-model roster with no unavailable entry, an actual ChatGPT voice tab through the pinned SSH-loopback route, RVC, Beatrice 2, X-VC, and OpenVoice each invoked and attempted from the Extension, at least two distinct live profiles with audible finite changed output, an explicitly bounded End-triggered non-live OpenVoice preview, exclusive native-or-remote playout, zero accepted stale frames, and successful native fallback under one forced remote failure.",
+  "decision_rule": "The experiment remains inconclusive for quality. A technical MVP pass requires an extension_gateway_runtime machine receipt bound to the frozen four-model roster and operator-plan content digests, observed audible ChatGPT tab and configured SSH-loopback route plus authenticated one-session Gateway facts, and separately bound manual_operator assertions for authenticated ChatGPT account, established SSH tunnel, and verified pinned server identity. It additionally requires RVC, Beatrice 2, X-VC, and OpenVoice runtime attempts with exact deployment identities and dynamic protocol-v1 pipeline and generation IDs, at least two distinct live profiles with finite changed output and separately bound audible judgments, an explicitly bounded End-triggered non-live OpenVoice preview, exclusive native-or-remote playout with zero accepted stale output, and one dedicated fifth OpenVoice failure probe on the preview pipeline with a new later generation ID, machine-only explicit injection fact, and linked fallback.required plus native fallback activation. A deterministic fake, spontaneous fallback, or boolean-only listening form cannot pass.",
   "artifact_policy": {
     "raw_location": "Captured and transformed audio stays in process memory and is not retained. Optional metadata-only traces use an operator-selected location outside Git.",
     "git_contents": "Plan, safe roster schema/reason codes, runner source, tests, aggregate metadata, and no audio, credentials, voices, weights, runtime paths, or machine identifiers.",

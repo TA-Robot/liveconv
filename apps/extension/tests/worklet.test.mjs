@@ -162,6 +162,54 @@ test("registered AudioWorklets forward capture, downmix stereo native playout, a
       reasonCode: "QUEUE_OVERFLOW",
     });
 
+    const boundedPreviewCapture = new CaptureProcessor();
+    boundedPreviewCapture.port.receive({
+      type: "capture.begin",
+      generationId: 9,
+      maximumCredits: 25,
+      maximumFrames: 25,
+    });
+    boundedPreviewCapture.port.receive({
+      type: "capture.credit",
+      generationId: 9,
+      frames: 25,
+    });
+    for (let block = 0; block < 25 * 8; block += 1) {
+      globalThis.currentFrame = 10_000 + block * 128;
+      boundedPreviewCapture.process(
+        [[new Float32Array(128).fill(0.25)]],
+        [[new Float32Array(128)]],
+      );
+    }
+    const previewFrames = boundedPreviewCapture.port.sent.filter(
+      (entry) => entry.message.type === "capture.frame",
+    );
+    assert.equal(previewFrames.length, 25);
+    assert.deepEqual(boundedPreviewCapture.port.sent.at(-1).message, {
+      type: "capture.complete",
+      generationId: 9,
+      capturedFrames: 25,
+    });
+    for (let block = 0; block < 16; block += 1) {
+      globalThis.currentFrame = 50_000 + block * 128;
+      boundedPreviewCapture.process(
+        [[new Float32Array(128).fill(0.25)]],
+        [[new Float32Array(128)]],
+      );
+    }
+    assert.equal(
+      boundedPreviewCapture.port.sent.filter(
+        (entry) => entry.message.type === "capture.frame",
+      ).length,
+      25,
+    );
+    assert.equal(
+      boundedPreviewCapture.port.sent.some(
+        (entry) => entry.message.type === "capture.fallback",
+      ),
+      false,
+    );
+
     const stereoPlayout = new PlayoutProcessor();
     for (let quantum = 0; quantum < 75; quantum += 1) {
       globalThis.currentFrame = quantum * 128;

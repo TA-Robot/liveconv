@@ -137,7 +137,7 @@ Deliver:
   `buffered-preview`, or `unavailable`) and decision state (`technical-only`, `quality-failed`,
   `unassessed`, or later `selected`);
 - a remote-loopback technical Gateway registry for RVC, Beatrice 2, and X-VC,
-  plus a bounded manual-generation buffered preview for whole-utterance
+  plus a bounded 60-500 ms manual-generation buffered sample preview for
   OpenVoice V2, all invocable from the Extension;
 - an Extension chooser that shows all roster entries, disables unavailable or
   unauthorized entries with a safe reason during development, switches a live

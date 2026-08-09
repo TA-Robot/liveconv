@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
+from liveconv_audio.profiles import ModelProfile
 
 import liveconv_real_model_route.config as config_module
 from liveconv_real_model_route.config import RunConfiguration
@@ -155,6 +156,81 @@ def test_registry_rejects_private_runtime_configuration_key(tmp_path: Path) -> N
     path = tmp_path / "registry.json"
     path.write_text(json.dumps(document))
     with pytest.raises(ConfigurationError, match="private configuration key"):
+        ProfileRegistry.load(path)
+
+
+@pytest.mark.parametrize(
+    "worker_module",
+    (
+        "workers.adapters.beatrice_2.worker",
+        "workers.adapters.x_vc.worker",
+        "workers.adapters.openvoice_v2",
+    ),
+)
+def test_registry_worker_module_matches_service_profile_hash(
+    tmp_path: Path, worker_module: str
+) -> None:
+    document = json.loads(REGISTRY_PATH.read_text())
+    runtime = document["profiles"][0]["runtime"]
+    runtime["worker_module"] = worker_module
+    runtime["configuration"].pop("worker_module")
+    path = tmp_path / "registry.json"
+    path.write_text(json.dumps(document))
+
+    experiment_profile = ProfileRegistry.load(path).require_route_profiles(
+        ("vc.fake.alpha.v1",), voice_id_present=False
+    )[0]
+    service_profile = ModelProfile.model_validate(document["profiles"][0])
+
+    assert experiment_profile.profile_hash == service_profile.profile_hash
+    assert experiment_profile.configuration_hash == service_profile.configuration_hash
+
+
+@pytest.mark.parametrize("worker_module", (pytest.param(None), pytest.param("absent")))
+def test_registry_legacy_worker_module_forms_match_service_profile_hash(
+    tmp_path: Path, worker_module: str | None
+) -> None:
+    document = json.loads(REGISTRY_PATH.read_text())
+    runtime = document["profiles"][0]["runtime"]
+    if worker_module == "absent":
+        runtime.pop("worker_module", None)
+    else:
+        runtime["worker_module"] = worker_module
+    path = tmp_path / "registry.json"
+    path.write_text(json.dumps(document))
+
+    experiment_profile = ProfileRegistry.load(path).require_route_profiles(
+        ("vc.fake.alpha.v1",), voice_id_present=False
+    )[0]
+    service_profile = ModelProfile.model_validate(document["profiles"][0])
+
+    assert experiment_profile.profile_hash == service_profile.profile_hash
+    assert experiment_profile.configuration_hash == service_profile.configuration_hash
+
+
+@pytest.mark.parametrize(
+    "worker_module",
+    ("", 1, "/private/worker", "workers.adapters.x-vc.worker"),
+)
+def test_registry_rejects_invalid_runtime_worker_module(
+    tmp_path: Path, worker_module: object
+) -> None:
+    document = json.loads(REGISTRY_PATH.read_text())
+    document["profiles"][0]["runtime"]["worker_module"] = worker_module
+    path = tmp_path / "registry.json"
+    path.write_text(json.dumps(document))
+
+    with pytest.raises(ConfigurationError, match="runtime.worker_module is invalid"):
+        ProfileRegistry.load(path)
+
+
+def test_registry_rejects_extra_runtime_worker_module_fields(tmp_path: Path) -> None:
+    document = json.loads(REGISTRY_PATH.read_text())
+    document["profiles"][0]["runtime"]["unreviewed_module"] = "unexpected"
+    path = tmp_path / "registry.json"
+    path.write_text(json.dumps(document))
+
+    with pytest.raises(ConfigurationError, match="runtime shape is invalid"):
         ProfileRegistry.load(path)
 
 

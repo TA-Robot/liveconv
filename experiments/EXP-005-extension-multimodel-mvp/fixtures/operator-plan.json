@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "plan_revision": "sha256:11d8f3e46602bd6c6585c21f8e803cf793a4d69a5f8ba2312b5aa75287c8fb48",
+  "plan_revision": "sha256:73fb5ae3cd5023f10e3200b18a80fe878bf9ff406d08f5f94ad472a56be8f852",
   "sample_count_per_model": 1,
   "automatic_turn_detection": false,
   "prompt_sequence": [
@@ -9,6 +9,6 @@
     {"step_id": "beatrice-2-trial", "model_id": "beatrice-2", "generation_control": "start_end_next"},
     {"step_id": "x-vc-trial", "model_id": "x-vc", "generation_control": "start_end_next"},
     {"step_id": "openvoice-v2-preview", "model_id": "openvoice-v2", "generation_control": "start_end"},
-    {"step_id": "forced-native-fallback", "route": "native", "generation_control": "interrupt"}
+    {"step_id": "forced-native-fallback", "model_id": "openvoice-v2", "generation_control": "next_inject_failure"}
   ]
 }

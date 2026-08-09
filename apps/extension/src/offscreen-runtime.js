@@ -1,7 +1,11 @@
 const UINT32_MAX = 0xffff_ffff;
 const SAMPLE_RATE = 48_000;
+const BUFFERED_PREVIEW_CAPTURE_FRAMES = 25;
+const MAXIMUM_RECEIPT_INPUT_REFERENCES = 500;
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const HASH = /^sha256:[0-9a-f]{64}$/;
+const EXP005_INJECTION_MARKER = Symbol("EXP-005 explicit failure injection");
 
 function requireFunction(value, name) {
   if (typeof value !== "function") {
@@ -13,6 +17,13 @@ function requireFunction(value, name) {
 function requireGenerationId(value) {
   if (!Number.isInteger(value) || value < 0 || value > UINT32_MAX) {
     throw new TypeError("generationId must be a uint32");
+  }
+  return value;
+}
+
+function requireInvocationMode(value) {
+  if (value !== "live" && value !== "buffered_end") {
+    throw new TypeError("invocationMode must be live or buffered_end");
   }
   return value;
 }
@@ -75,10 +86,19 @@ export function createOffscreenRuntime(options = {}) {
   let stopping = false;
   let handlingFallback = false;
   let generationEpoch = 0;
+  let captureAcceptance = null;
   let graphEpoch = 0;
   let connectionEpoch = 0;
   let captureCreditFrames = 4;
+  let invocationMode = null;
+  let bufferedPreviewRelease = null;
   let offscreenEpoch = null;
+  let profileIdentity = null;
+  let receiptEnabled = false;
+  let receiptOutputSummary = null;
+  let receiptRemotePlayoutEmitted = false;
+  let receiptNotificationChain = Promise.resolve();
+  const receiptInputFrames = new Map();
 
   function snapshot() {
     return Object.freeze({ capture, route, remote, generationId });
@@ -93,16 +113,192 @@ export function createOffscreenRuntime(options = {}) {
   }
 
   function notify(event) {
-    Promise.resolve(
+    return Promise.resolve(
       sendMessage({ target: "background", type: "offscreen.event", event }),
     ).catch(() => {});
   }
 
+  function receiptIdentity(event) {
+    if (
+      event === null ||
+      typeof event !== "object" ||
+      typeof event.profile_id !== "string" ||
+      !HASH.test(event.profile_hash) ||
+      !HASH.test(event.configuration_hash) ||
+      typeof event.pipeline_id !== "string" ||
+      !UUID.test(event.pipeline_id)
+    ) {
+      return null;
+    }
+    return Object.freeze({
+      profileId: event.profile_id,
+      profileHash: event.profile_hash,
+      configurationHash: event.configuration_hash,
+      pipelineId: event.pipeline_id,
+    });
+  }
+
+  function receiptEvent(type, value = {}) {
+    if (!receiptEnabled) {
+      return Promise.resolve();
+    }
+    const operation = receiptNotificationChain.then(() =>
+      notify({ receipt: { type, ...value } }),
+    );
+    receiptNotificationChain = operation.catch(() => {});
+    return operation;
+  }
+
+  async function configureReceipt(enabled) {
+    if (enabled !== true && enabled !== false) {
+      throw new TypeError("receipt enabled state must be a boolean");
+    }
+    receiptEnabled = enabled;
+    if (!enabled) {
+      await receiptNotificationChain;
+      clearReceiptInputFrames();
+      receiptOutputSummary = null;
+      receiptRemotePlayoutEmitted = false;
+    }
+    return snapshot();
+  }
+
+  function receiptNoStaleOutput(currentGenerationId, currentIdentity) {
+    if (currentGenerationId !== null && currentIdentity !== null) {
+      return receiptEvent("generation.stale-output", {
+        generationId: currentGenerationId,
+        pipelineId: currentIdentity.pipelineId,
+        accepted: false,
+      });
+    }
+    return Promise.resolve();
+  }
+
+  function clearReceiptInputFrames() {
+    receiptInputFrames.clear();
+  }
+
+  function recordReceiptInput(timestamp, samples) {
+    if (!receiptEnabled || !(samples instanceof Float32Array)) {
+      return;
+    }
+    receiptInputFrames.set(timestamp.toString(), samples.slice());
+    while (receiptInputFrames.size > MAXIMUM_RECEIPT_INPUT_REFERENCES) {
+      receiptInputFrames.delete(receiptInputFrames.keys().next().value);
+    }
+  }
+
+  function receiptOutputObservation(timestamp, samples) {
+    if (!(samples instanceof Float32Array)) {
+      return Object.freeze({ finite: false, changed: false });
+    }
+    const input = receiptInputFrames.get(BigInt(timestamp).toString());
+    let finite = true;
+    const comparable = input instanceof Float32Array && input.length === samples.length;
+    let changed = false;
+    for (let index = 0; index < samples.length; index += 1) {
+      const sample = samples[index];
+      if (!Number.isFinite(sample)) {
+        finite = false;
+      }
+      if (comparable && sample !== input[index]) {
+        changed = true;
+      }
+    }
+    return Object.freeze({ finite, changed });
+  }
+
+  function summarizeReceiptOutput(observation, currentGenerationId, identity) {
+    if (!receiptEnabled || identity === null || observation === null) {
+      return;
+    }
+    if (
+      receiptOutputSummary === null ||
+      receiptOutputSummary.generationId !== currentGenerationId ||
+      receiptOutputSummary.pipelineId !== identity.pipelineId
+    ) {
+      receiptOutputSummary = {
+        generationId: currentGenerationId,
+        pipelineId: identity.pipelineId,
+        finite: true,
+        changed: false,
+      };
+    }
+    receiptOutputSummary.finite &&= observation.finite;
+    receiptOutputSummary.changed ||= observation.changed;
+  }
+
+  function flushReceiptOutputSummary(currentGenerationId, identity) {
+    if (
+      receiptOutputSummary?.generationId === currentGenerationId &&
+      receiptOutputSummary.pipelineId === identity?.pipelineId
+    ) {
+      const operation = receiptEvent("generation.output", receiptOutputSummary);
+      receiptOutputSummary = null;
+      return operation;
+    }
+    return Promise.resolve();
+  }
+
   function clearGeneration() {
+    captureAcceptance = null;
+    bufferedPreviewRelease = null;
     generationId = null;
     sequence = 0;
     sourceFrameBase = null;
     timestampBase = 0n;
+    clearReceiptInputFrames();
+    receiptOutputSummary = null;
+    receiptRemotePlayoutEmitted = false;
+  }
+
+  function openCaptureAcceptance(nextId) {
+    captureAcceptance = Object.freeze({
+      generationId: nextId,
+      generationEpoch,
+    });
+  }
+
+  function closeCaptureAcceptance(currentId, currentEpoch) {
+    if (
+      captureAcceptance?.generationId === currentId &&
+      captureAcceptance.generationEpoch === currentEpoch
+    ) {
+      captureAcceptance = null;
+    }
+  }
+
+  function releaseBufferedPreview(currentId, currentEpoch) {
+    if (invocationMode !== "buffered_end") {
+      return;
+    }
+    bufferedPreviewRelease = Object.freeze({
+      generationId: currentId,
+      generationEpoch: currentEpoch,
+    });
+  }
+
+  function mayDeliverRemotePlayout(currentId) {
+    return (
+      invocationMode !== "buffered_end" ||
+      (bufferedPreviewRelease?.generationId === currentId &&
+        bufferedPreviewRelease.generationEpoch === generationEpoch)
+    );
+  }
+
+  function generationCaptureOptions() {
+    if (invocationMode === "buffered_end") {
+      return Object.freeze({
+        captureCreditFrames: Math.min(
+          captureCreditFrames,
+          BUFFERED_PREVIEW_CAPTURE_FRAMES,
+        ),
+        maximumCaptureFrames: BUFFERED_PREVIEW_CAPTURE_FRAMES,
+      });
+    }
+    return Object.freeze({
+      captureCreditFrames,
+    });
   }
 
   function sourceTimestamp(sourceFrame) {
@@ -166,13 +362,15 @@ export function createOffscreenRuntime(options = {}) {
     return Promise.race([operation, timeout]).finally(() => clearTimer(timer));
   }
 
-  function performFallback(event = {}) {
+  function performFallback(event = {}, injectionMarker = null) {
     if (handlingFallback || stopping) {
       return;
     }
     handlingFallback = true;
+    const receiptOperations = [];
     try {
       const currentGenerationId = generationId;
+      const currentIdentity = profileIdentity;
       if (currentGenerationId !== null) {
         graph?.cancelGeneration(
           currentGenerationId,
@@ -184,6 +382,33 @@ export function createOffscreenRuntime(options = {}) {
       }
       route = "native";
       remote = "degraded";
+      if (
+        event.type === "fallback.required" &&
+        currentGenerationId !== null &&
+        currentIdentity !== null
+      ) {
+        receiptOperations.push(
+          flushReceiptOutputSummary(currentGenerationId, currentIdentity),
+          receiptNoStaleOutput(currentGenerationId, currentIdentity),
+          receiptEvent("fallback.required", {
+          generationId: currentGenerationId,
+          pipelineId: currentIdentity.pipelineId,
+          profileId: currentIdentity.profileId,
+          profileHash: currentIdentity.profileHash,
+          configurationHash: currentIdentity.configurationHash,
+          injected: injectionMarker === EXP005_INJECTION_MARKER,
+          }),
+          receiptEvent("native.fallback", {
+          generationId: currentGenerationId,
+          pipelineId: currentIdentity.pipelineId,
+          profileId: currentIdentity.profileId,
+          profileHash: currentIdentity.profileHash,
+          configurationHash: currentIdentity.configurationHash,
+          nativeAudible: true,
+          remoteAudible: false,
+          }),
+        );
+      }
       clearGeneration();
       notify({
         route,
@@ -194,6 +419,27 @@ export function createOffscreenRuntime(options = {}) {
     } finally {
       handlingFallback = false;
     }
+    return Promise.allSettled(receiptOperations);
+  }
+
+  async function injectExp005Failure(injectingId) {
+    requireGenerationId(injectingId);
+    if (
+      injectingId !== generationId ||
+      profileIdentity === null ||
+      invocationMode !== "buffered_end"
+    ) {
+      throw new Error("EXP-005 failure injection requires the active buffered generation");
+    }
+    await performFallback(
+      {
+        type: "fallback.required",
+        reasonCode: "EXP005_INJECTED_FAILURE",
+        message: "EXP-005 explicit failure injection",
+      },
+      EXP005_INJECTION_MARKER,
+    );
+    return snapshot();
   }
 
   function retireClosedTransport({
@@ -254,7 +500,12 @@ export function createOffscreenRuntime(options = {}) {
   }
 
   function onCaptureFrame(frame) {
-    if (frame.generationId !== generationId || generationId === null) {
+    if (
+      generationId === null ||
+      frame.generationId !== generationId ||
+      captureAcceptance?.generationId !== generationId ||
+      captureAcceptance.generationEpoch !== generationEpoch
+    ) {
       return false;
     }
     if (sequence > UINT32_MAX) {
@@ -263,6 +514,7 @@ export function createOffscreenRuntime(options = {}) {
     }
     let sent = false;
     try {
+      const timestamp = sourceTimestamp(frame.sourceFrame);
       sent = client?.sendFrame({
         header: {
           kind: 1,
@@ -272,10 +524,13 @@ export function createOffscreenRuntime(options = {}) {
           sample_rate: SAMPLE_RATE,
           channels: 1,
           samples_per_channel: 960,
-          source_monotonic_ns: sourceTimestamp(frame.sourceFrame),
+          source_monotonic_ns: timestamp,
         },
         samples: frame.samples,
       });
+      if (sent) {
+        recordReceiptInput(timestamp, frame.samples);
+      }
     } catch (error) {
       performFallback({ reasonCode: "UNSUPPORTED_AUDIO", message: errorMessage(error) });
       return false;
@@ -291,6 +546,13 @@ export function createOffscreenRuntime(options = {}) {
   }
 
   function onOutputFrame(frame) {
+    if (
+      generationId === null ||
+      frame?.header?.generation_id !== generationId ||
+      !mayDeliverRemotePlayout(generationId)
+    ) {
+      return;
+    }
     let alignedFrame;
     try {
       alignedFrame = {
@@ -304,8 +566,27 @@ export function createOffscreenRuntime(options = {}) {
       });
       return;
     }
-    if (!graph?.enqueueRemoteFrame(alignedFrame) && generationId !== null) {
+    if (invocationMode === "buffered_end") {
+      alignedFrame = graph?.rebasePreviewFrame?.(alignedFrame) ?? alignedFrame;
+    }
+    const outputObservation =
+      receiptEnabled && profileIdentity !== null
+        ? receiptOutputObservation(
+            frame.header.source_monotonic_ns,
+            alignedFrame.samples,
+          )
+        : null;
+    const enqueued = graph?.enqueueRemoteFrame(alignedFrame);
+    if (!enqueued && generationId !== null) {
       performFallback({ reasonCode: "STALE_GENERATION" });
+      return;
+    }
+    if (enqueued && profileIdentity !== null) {
+      summarizeReceiptOutput(
+        outputObservation,
+        generationId,
+        profileIdentity,
+      );
     }
   }
 
@@ -322,15 +603,33 @@ export function createOffscreenRuntime(options = {}) {
       },
       onFallback(event) {
         if (isCurrent()) {
-          performFallback(event);
+          return performFallback(event);
         }
+        return undefined;
       },
       onRemoteReady(event) {
-        if (!isCurrent() || event.generationId !== generationId) {
+        if (
+          !isCurrent() ||
+          event.generationId !== generationId ||
+          !mayDeliverRemotePlayout(generationId)
+        ) {
           return;
         }
         route = "remote";
         remote = remote === "draining" ? "draining" : "ready";
+        if (
+          profileIdentity !== null &&
+          generationId !== null &&
+          !receiptRemotePlayoutEmitted
+        ) {
+          receiptRemotePlayoutEmitted = true;
+          receiptEvent("remote.playout", {
+            generationId,
+            pipelineId: profileIdentity.pipelineId,
+            nativeAudible: false,
+            remoteAudible: true,
+          });
+        }
         notify({ route, remote, generationId });
       },
       onSourceEnded() {
@@ -367,6 +666,7 @@ export function createOffscreenRuntime(options = {}) {
     graphEpoch = candidateEpoch;
     capture = "starting";
     remote = "disconnected";
+    profileIdentity = null;
     const candidate = createGraph(candidateEpoch);
     graph = candidate;
     try {
@@ -396,8 +696,10 @@ export function createOffscreenRuntime(options = {}) {
     generationId: nextId,
     expectedProfile,
     expectedLimits,
+    invocationMode: nextInvocationMode = "live",
   } = {}) {
     requireGenerationId(nextId);
+    requireInvocationMode(nextInvocationMode);
     if (capture !== "running" || !graph) {
       throw new Error("native audio graph must be running before remote connect");
     }
@@ -414,11 +716,13 @@ export function createOffscreenRuntime(options = {}) {
       client === candidateClient &&
       graph === candidateGraph;
     remote = "connecting";
+    invocationMode = nextInvocationMode;
     candidateClient = remoteClientFactory({
       onFallback(event) {
         if (isCurrent()) {
-          performFallback(event);
+          return performFallback(event);
         }
+        return undefined;
       },
       onTransportClosed(event) {
         if (isCurrent()) {
@@ -439,7 +743,7 @@ export function createOffscreenRuntime(options = {}) {
     });
     client = candidateClient;
     try {
-      await candidateClient.connect({
+      const attached = await candidateClient.connect({
         url,
         sessionId,
         ticket,
@@ -450,20 +754,42 @@ export function createOffscreenRuntime(options = {}) {
         closeClient(candidateClient);
         return snapshot();
       }
+      profileIdentity = receiptIdentity(attached);
+      if (profileIdentity !== null) {
+        await receiptEvent("gateway.attached", {
+          sessionId,
+          pipelineId: profileIdentity.pipelineId,
+          profileId: profileIdentity.profileId,
+          profileHash: profileIdentity.profileHash,
+          configurationHash: profileIdentity.configurationHash,
+        });
+      }
       captureCreditFrames = expectedLimits?.maxIngressFrames ?? 4;
       remote = "loading";
       notify({ capture, route, remote, generationId: null });
-      await candidateClient.startGeneration(nextId);
+      const generationReady = await candidateClient.startGeneration(nextId);
       if (!isCurrent()) {
         closeClient(candidateClient);
         return snapshot();
       }
       generationEpoch += 1;
       generationId = nextId;
+      const readyIdentity = receiptIdentity(generationReady);
+      if (readyIdentity !== null) {
+        profileIdentity = readyIdentity;
+        await receiptEvent("generation.ready", {
+          generationId: nextId,
+          pipelineId: readyIdentity.pipelineId,
+          profileId: readyIdentity.profileId,
+          profileHash: readyIdentity.profileHash,
+          configurationHash: readyIdentity.configurationHash,
+        });
+      }
+      openCaptureAcceptance(nextId);
       sequence = 0;
       sourceFrameBase = null;
       timestampBase = 0n;
-      candidateGraph.beginGeneration(nextId, { captureCreditFrames });
+      candidateGraph.beginGeneration(nextId, generationCaptureOptions());
       remote = "pending";
       route = "native";
       return snapshot();
@@ -485,8 +811,9 @@ export function createOffscreenRuntime(options = {}) {
     }
   }
 
-  async function startGeneration(nextId) {
+  async function startGeneration(nextId, nextInvocationMode = invocationMode) {
     requireGenerationId(nextId);
+    requireInvocationMode(nextInvocationMode);
     if (!client || remote === "disconnected" || remote === "degraded") {
       throw new Error("remote client is not ready");
     }
@@ -495,19 +822,32 @@ export function createOffscreenRuntime(options = {}) {
     }
     remote = "loading";
     notify({ capture, route, remote, generationId: null });
-    await client.startGeneration(nextId);
+    const generationReady = await client.startGeneration(nextId);
+    invocationMode = nextInvocationMode;
     generationEpoch += 1;
     generationId = nextId;
+    const readyIdentity = receiptIdentity(generationReady);
+    if (readyIdentity !== null) {
+      profileIdentity = readyIdentity;
+      await receiptEvent("generation.ready", {
+        generationId: nextId,
+        pipelineId: readyIdentity.pipelineId,
+        profileId: readyIdentity.profileId,
+        profileHash: readyIdentity.profileHash,
+        configurationHash: readyIdentity.configurationHash,
+      });
+    }
+    openCaptureAcceptance(nextId);
     sequence = 0;
     sourceFrameBase = null;
     timestampBase = 0n;
-    graph.beginGeneration(nextId, { captureCreditFrames });
+    graph.beginGeneration(nextId, generationCaptureOptions());
     route = "native";
     remote = "pending";
     return snapshot();
   }
 
-  async function selectProfile(expectedProfile) {
+  async function selectProfile(expectedProfile, nextInvocationMode = "live") {
     if (!client || remote !== "ready" || generationId !== null) {
       throw new Error("profile selection requires an idle ready remote session");
     }
@@ -518,10 +858,19 @@ export function createOffscreenRuntime(options = {}) {
     ) {
       throw new TypeError("expectedProfile must identify a catalog profile");
     }
+    requireInvocationMode(nextInvocationMode);
     remote = "selecting";
     notify({ capture, route, remote, generationId: null });
     try {
-      await client.selectProfile(expectedProfile.profileId, expectedProfile);
+      const selected = await client.selectProfile(
+        expectedProfile.profileId,
+        expectedProfile,
+      );
+      const selectedIdentity = receiptIdentity(selected);
+      if (selectedIdentity !== null) {
+        profileIdentity = selectedIdentity;
+      }
+      invocationMode = nextInvocationMode;
       remote = "ready";
       notify({ capture, route, remote, generationId: null });
       return snapshot();
@@ -544,8 +893,11 @@ export function createOffscreenRuntime(options = {}) {
     if (endingId !== generationId) {
       throw new Error("generation is not active");
     }
-    graph.endGeneration(endingId);
+    const endingIdentity = profileIdentity;
     const endingEpoch = generationEpoch;
+    closeCaptureAcceptance(endingId, endingEpoch);
+    releaseBufferedPreview(endingId, endingEpoch);
+    graph.endGeneration(endingId);
     remote = "draining";
     try {
       await client.endGeneration(endingId);
@@ -607,6 +959,15 @@ export function createOffscreenRuntime(options = {}) {
     }
     route = "native";
     remote = "ready";
+    if (endingIdentity !== null) {
+      await flushReceiptOutputSummary(endingId, endingIdentity);
+      await receiptNoStaleOutput(endingId, endingIdentity);
+      await receiptEvent("generation.terminal", {
+        generationId: endingId,
+        pipelineId: endingIdentity.pipelineId,
+        endTriggered: invocationMode === "buffered_end",
+      });
+    }
     clearGeneration();
     notify({ route, remote, generationId: null });
     return snapshot();
@@ -617,6 +978,7 @@ export function createOffscreenRuntime(options = {}) {
     if (cancelingId !== generationId) {
       throw new Error("generation is not active");
     }
+    const cancelingIdentity = profileIdentity;
     generationEpoch += 1;
     handlingFallback = true;
     try {
@@ -640,6 +1002,15 @@ export function createOffscreenRuntime(options = {}) {
         error: errorMessage(error),
       });
       throw error;
+    }
+    if (cancelingIdentity !== null) {
+      await flushReceiptOutputSummary(cancelingId, cancelingIdentity);
+      await receiptNoStaleOutput(cancelingId, cancelingIdentity);
+      await receiptEvent("generation.terminal", {
+        generationId: cancelingId,
+        pipelineId: cancelingIdentity.pipelineId,
+        endTriggered: false,
+      });
     }
     notify({ route, remote, generationId: null });
     return snapshot();
@@ -667,6 +1038,8 @@ export function createOffscreenRuntime(options = {}) {
       route = "native";
       clearGeneration();
       captureCreditFrames = 4;
+      invocationMode = null;
+      profileIdentity = null;
       closeClient(stoppingClient);
       await stoppingGraph?.stop();
       if (graphEpoch === stopEpoch) {
@@ -692,13 +1065,20 @@ export function createOffscreenRuntime(options = {}) {
       } else if (message.type === "offscreen.remote.connect") {
         state = await connectRemote(message);
       } else if (message.type === "offscreen.generation.start") {
-        state = await startGeneration(message.generationId);
+        state = await startGeneration(message.generationId, message.invocationMode);
       } else if (message.type === "offscreen.generation.end") {
         state = await endGeneration(message.generationId);
       } else if (message.type === "offscreen.generation.cancel") {
         state = await cancelGeneration(message.generationId);
+      } else if (message.type === "offscreen.exp005.inject-failure") {
+        state = await injectExp005Failure(message.generationId);
+      } else if (message.type === "offscreen.receipt.configure") {
+        state = await configureReceipt(message.enabled);
       } else if (message.type === "offscreen.model.select") {
-        state = await selectProfile(message.expectedProfile);
+        state = await selectProfile(
+          message.expectedProfile,
+          message.invocationMode,
+        );
       } else if (message.type === "offscreen.stop") {
         state = await stop();
       } else {

@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "roster_id": "ms2-prepared-v1",
+  "models": [
+    {
+      "model_id": "rvc-v2",
+      "display_name": "RVC v2",
+      "profile_id": "vc.rvc.synthetic-ja.v1",
+      "invocation_mode": "live",
+      "decision_state": "quality-failed",
+      "voice_requirement": "pretrained_voice",
+      "expected_profile_hash": "sha256:1f6d1160aafe1ccb870462aba76847f641ade99c747a117eaad80e8b77fa971e",
+      "expected_configuration_hash": "sha256:004eeb4db6d2f4a9df05b4c0e4eb05c330afd14ea6922af4ef08cc4459e4dbfb"
+    },
+    {
+      "model_id": "beatrice-2",
+      "display_name": "Beatrice 2",
+      "profile_id": "vc.beatrice.synthetic-ja.v1",
+      "invocation_mode": "live",
+      "decision_state": "technical-only",
+      "voice_requirement": "pretrained_voice",
+      "expected_profile_hash": "sha256:0d60ef370d00e9ff6823221b1d50ec55ce1bda599eb696774e5849c8fae2f224",
+      "expected_configuration_hash": "sha256:93dd010b64771604ab5750b5a8e00ce0dfe21e38e5ad67c746c166f838ca1fd6"
+    },
+    {
+      "model_id": "x-vc",
+      "display_name": "X-VC",
+      "profile_id": "vc.x-vc.synthetic-ja.v1",
+      "invocation_mode": "live",
+      "decision_state": "quality-failed",
+      "voice_requirement": "pretrained_voice",
+      "expected_profile_hash": "sha256:b9a41baf1df082dcf04ab5942f9be1b165695bb00a8bf199af0f777634dffbd5",
+      "expected_configuration_hash": "sha256:a0419cee1204d0a67f6e4a2c51f94da1363da386739d2308461bf43fdf6fe25b"
+    },
+    {
+      "model_id": "openvoice-v2",
+      "display_name": "OpenVoice V2",
+      "profile_id": "vc.openvoice-v2.synthetic-ja.v1",
+      "invocation_mode": "buffered_end",
+      "decision_state": "unassessed",
+      "voice_requirement": "pretrained_voice",
+      "expected_profile_hash": "sha256:cb2cb271631bdaf005332b3846718d120c036ae4d787576f9a9c9f1f874969d5",
+      "expected_configuration_hash": "sha256:cb28dfe641651e20b073f568c8eaf76d68caa4fbc8582c3ccee9406232be9170"
+    }
+  ]
+}

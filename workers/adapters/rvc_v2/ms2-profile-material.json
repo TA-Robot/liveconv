@@ -1,0 +1,109 @@
+{
+    "schema_version": "liveconv-rvc-v2-ms2-profile-material-v1",
+    "profile_id": "vc.rvc.synthetic-ja.v1",
+    "source_status": {
+        "promotion_status": "technical_validation",
+        "selection_status": "technical-validation-only-not-selectable",
+        "selection_reason": "real conversion and worker-v1 operations pass; full-corpus and representative STT preservation fail; the final speaker lane is unassessed pending authorization-contract re-evaluation",
+        "quality_lanes": {
+            "content_preservation": "failed",
+            "speaker_change": "unassessed",
+            "transformation": "unassessed",
+            "audio_integrity": "unassessed"
+        }
+    },
+    "deployment_profile": {
+        "kind": "voice_conversion",
+        "readiness": "ready",
+        "adapter_api_version": 1,
+        "implementation_revision": "liveconv-rvc-v2-worker-v1.4+rvc.81eed5e8f68b6bed1789f682fe78cdd324495afc",
+        "weight_revision": "sha256:46b60b686a9f540aabc3788ac405dbdfb66e370c56751e592b496f8e6967789c",
+        "streaming": true,
+        "cancellation": "cooperative",
+        "input_sample_rates": [48000],
+        "output_sample_rates": [48000],
+        "frame_ms": 20,
+        "minimum_context_ms": 500,
+        "voice_requirement": "pretrained_voice",
+        "warmup_policy": "lazy",
+        "resource_class": "gpu",
+        "license_record": "MIT upstream; project-authored synthetic target; technical validation only",
+        "promotion": {
+            "status": "technical_validation",
+            "pack_id": "rvc-v2",
+            "pack_sha256": "sha256:5c2658c18534b0c674021059c54455ab994cbdf0a68437117272633f700222f2",
+            "evidence_sha256": "sha256:48aeffc090c1255f2d06194164e0ef730493606a1e0edae1a1c7b707548465e6",
+            "endpoint_sha256": "sha256:1d3cf64f97cadc79fdc6fe2496a21b7b456cb94211978cfef5a65f616af74fd5"
+        },
+        "timeouts": {"first_output_ms": 120000, "stall_ms": 15000},
+        "runtime": {"adapter": "worker", "max_vram_mb": 2048}
+    },
+    "canonical_configuration": {
+        "worker_module": "workers.adapters.rvc_v2.worker",
+        "adapter_revision": "liveconv-rvc-v2-worker-v1.4",
+        "source_revision": "81eed5e8f68b6bed1789f682fe78cdd324495afc",
+        "artifacts": {
+            "checkpoint_sha256": "46b60b686a9f540aabc3788ac405dbdfb66e370c56751e592b496f8e6967789c",
+            "index_sha256": "1cec842c048757af4bc6dc7ab7ac9fa8e7ce7226b297c82c6837c8639ee04003",
+            "hubert_config_sha256": "0346950779dfb7f9316fa74ed846e2b8a22a08eedfdc5387b73f327cb1a4a7cf",
+            "hubert_preprocessor_sha256": "7c1976a680fb7acc757cd36fb08eef878fa36c70b4c9d2d595df9c608bbbbf0e",
+            "hubert_weights_sha256": "cc8c20f4b90a520757260197a3ff2505705a7adbd20ad9eeaa4e1a9b38442ef5",
+            "rmvpe_sha256": "6d62215f4306e3ca278246188607209f09af3dc77ed4232efdd069798c4ec193",
+            "worker_wheel_sha256": "9a24b8540ee277042c779dc2038b3df919bcba279eabb7ca423a8ed29c00fbdc",
+            "worker_wheel_record_sha256": "43c50c1e99896542d23f847eaeb6b8cb51f781bc5872bcccdb55310f6166a0b4",
+            "worker_module_sha256": "7aadc81421e0ac94fd3fee5b72d8735b6a5bb43d6f9c400cadf8b7d675442995",
+            "backend_module_sha256": "31c4327cb1b0daf57f6b86df9a919e5c8b43fd06705365deccf7e302a76978dc",
+            "network_isolation_module_sha256": "010bfdb86937068ee0e6786b0ef6961c39934fc7e9bbd6e51fd64380bb7c73eb",
+            "requirements_lock_sha256": "a722f050fd44030ce73e4b5f54e051d94759fe78bcddd98b0a7710280fc68679"
+        },
+        "settings": {
+            "speaker_id": 0,
+            "pitch_shift": 0,
+            "f0_method": "rmvpe",
+            "index_rate": 0.75,
+            "rms_mix_rate": 1.0,
+            "sample_rate": 48000,
+            "block_ms": 500,
+            "crossfade_ms": 50,
+            "context_ms": 2500,
+            "frame_ms": 20,
+            "inference_batch_frames": 25,
+            "queue_capacity_frames": 25,
+            "resident_capacity_frames": 50,
+            "formant_shift": 0.0,
+            "threshold_dbfs": -60.0
+        }
+    },
+    "configuration_hash": "sha256:004eeb4db6d2f4a9df05b4c0e4eb05c330afd14ea6922af4ef08cc4459e4dbfb",
+    "revisions": {
+        "adapter_revision": "liveconv-rvc-v2-worker-v1.4",
+        "source_revision": "81eed5e8f68b6bed1789f682fe78cdd324495afc",
+        "official_models_revision": "e6d0c1a17da07c33557852f9dfa2bd44cc75737d",
+        "worker_package": "liveconv-worker-runtime==0.1.0",
+        "runtime_binding_sha256": "bb47dddb05d0dfa4ae6b4936b3c23ceff3007e1c7055e8c1c8a645ff766f2f72"
+    },
+    "required_private_environment": [
+        "LIVECONV_RVC_SOURCE_ROOT",
+        "LIVECONV_RVC_SOURCE_REVISION",
+        "LIVECONV_RVC_V2_CHECKPOINT_PATH",
+        "LIVECONV_RVC_V2_CHECKPOINT_SHA256",
+        "LIVECONV_RVC_V2_WORKER_WHEEL_PATH",
+        "LIVECONV_RVC_V2_WORKER_WHEEL_SHA256",
+        "LIVECONV_RVC_V2_INDEX_PATH",
+        "LIVECONV_RVC_V2_INDEX_SHA256"
+    ],
+    "trusted_launch": {
+        "command": {
+            "executable_from_profile_field": "runtime.worker_endpoint",
+            "arguments": ["-m", "workers.adapters.rvc_v2.worker"]
+        },
+        "cwd": "/tmp",
+        "pythonpath": "unset"
+    },
+    "delivery_mode": "live_frame_echo",
+    "capacity": {
+        "supervisor_queue_capacity_frames": 25,
+        "inference_batch_frames": 25,
+        "resident_capacity_frames": 50
+    }
+}

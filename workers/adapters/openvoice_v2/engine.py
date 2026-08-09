@@ -21,6 +21,8 @@ from pathlib import Path, PurePosixPath
 from types import ModuleType
 from typing import Protocol
 
+from .network_isolation import require_non_unix_socket_denial
+
 _CUDA_DEVICE = re.compile(r"^cuda:(0|[1-9][0-9]*)$")
 _NORMALIZED_NAME = re.compile(r"[-_.]+")
 _MINIMUM_OUTPUT_RATIO = 0.75
@@ -579,11 +581,38 @@ class EngineConfiguration:
         return f"sha256:{hashlib.sha256(encoded).hexdigest()}"
 
 
+def _pinned_openvoice_import_paths(
+    configuration: EngineConfiguration,
+) -> tuple[Path, Path]:
+    """Return the immutable upstream repository and API module paths."""
+
+    source_root = configuration.source_root.resolve(strict=True)
+    repository_root = (source_root / "openvoice").resolve(strict=True)
+    if repository_root.parent != source_root:
+        raise ValueError("OpenVoice repository path escapes the source root")
+    package_root = (repository_root / "openvoice").resolve(strict=True)
+    if package_root.parent != repository_root or not package_root.is_dir():
+        raise ValueError("OpenVoice source package layout is invalid")
+    api_path = (package_root / "api.py").resolve(strict=True)
+    if api_path.parent != package_root or not api_path.is_file():
+        raise ValueError("OpenVoice API module layout is invalid")
+    return repository_root, api_path
+
+
 def _load_openvoice(configuration: EngineConfiguration) -> tuple[ModuleType, object]:
-    source = str(configuration.source_root)
+    require_non_unix_socket_denial()
+    repository_root, expected_api_path = _pinned_openvoice_import_paths(configuration)
+    source = str(repository_root)
     if source not in sys.path:
         sys.path.insert(0, source)
+    importlib.invalidate_caches()
     api = importlib.import_module("openvoice.api")
+    api_file = getattr(api, "__file__", None)
+    if (
+        not isinstance(api_file, str)
+        or Path(api_file).resolve(strict=True) != expected_api_path
+    ):
+        raise RuntimeError("OpenVoice API import drift")
     converter_class = api.ToneColorConverter
 
     # Upstream commit 74a1d147 forwards enable_watermark to a base constructor

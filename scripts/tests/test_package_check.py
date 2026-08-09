@@ -29,6 +29,7 @@ def test_manifest_covers_every_public_workspace_package() -> None:
         "experiments/EXP-002-remote-router/runner",
         "experiments/EXP-003-real-model-route",
         "experiments/EXP-004-rvc-gateway-smoke",
+        "experiments/EXP-005-extension-multimodel-mvp",
         "packages/evaluation",
         "packages/protocol",
         "packages/speaker",
@@ -36,8 +37,8 @@ def test_manifest_covers_every_public_workspace_package() -> None:
         "services/audio",
         "workers",
     }
-    assert len({spec.distribution for spec in checker.PACKAGE_SPECS}) == 9
-    assert len({spec.import_name for spec in checker.PACKAGE_SPECS}) == 9
+    assert len({spec.distribution for spec in checker.PACKAGE_SPECS}) == 10
+    assert len({spec.import_name for spec in checker.PACKAGE_SPECS}) == 10
 
 
 def test_manifest_requires_runtime_schemas_locks_profiles_and_packs() -> None:
@@ -50,10 +51,12 @@ def test_manifest_requires_runtime_schemas_locks_profiles_and_packs() -> None:
 
     assert {
         "liveconv_audio/default-model-profiles.json",
+        "liveconv_audio/default-model-roster.json",
         "liveconv_evaluation/authorizations/reviewed-targets.json",
         "liveconv_evaluation/schemas/render-report.schema.json",
         "liveconv_real_model_route/trace.schema.json",
         "liveconv_exp004_rvc_gateway_smoke/trace.schema.json",
+        "liveconv_exp005_extension_multimodel_mvp/report.schema.json",
         "liveconv_router_experiment/trace.schema.json",
         "liveconv_speaker/runtime-requirements.txt",
         "liveconv_speaker/authorizations/reviewed-targets.json",

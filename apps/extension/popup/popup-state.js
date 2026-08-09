@@ -1,6 +1,6 @@
 export function derivePopupView(
   state,
-  { error, statusSynchronized = false } = {},
+  { error, statusSynchronized = false, selectedModelSelectable = true } = {},
 ) {
   const capture = state?.capture ?? "stopped";
   const route = state?.route ?? "native";
@@ -35,7 +35,7 @@ export function derivePopupView(
     profileDisabled: capture !== "stopped" && !canSelectProfile,
     tokenDisabled: capture !== "stopped",
     modelsDisabled: capture !== "stopped",
-    selectProfileDisabled: !canSelectProfile,
+    selectProfileDisabled: !canSelectProfile || !selectedModelSelectable,
     endDisabled: !generationActive,
     cancelDisabled: !generationActive,
     nextDisabled:

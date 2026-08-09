@@ -69,6 +69,34 @@ small {
   gap: 8px;
 }
 
+.model-roster {
+  display: grid;
+  gap: 4px;
+}
+
+.model-roster:empty {
+  display: none;
+}
+
+.model-row {
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid ButtonBorder;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.model-row strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.model-row span {
+  color: GrayText;
+  overflow-wrap: anywhere;
+}
+
 .controls {
   display: grid;
   grid-template-columns: 1fr 1fr;

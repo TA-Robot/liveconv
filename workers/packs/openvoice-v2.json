@@ -5,8 +5,8 @@
   "status": "research",
   "ready_for_runtime": false,
   "promotion_evidence": {
-    "status": "unavailable",
-    "evidence_sha256": null
+    "status": "technical_validation",
+    "evidence_sha256": "sha256:bff2066e3ef311dc123f1b8d85d5f98a14610a71cc6f4ecf71d34670fc85e057"
   },
   "role": "offline_control",
   "implementation_priority": 4,

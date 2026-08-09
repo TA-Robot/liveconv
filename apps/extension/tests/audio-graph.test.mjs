@@ -375,6 +375,42 @@ test("generation cancellation restores native synchronously and releases all med
   assert.equal(harness.graph.snapshot().capture, "stopped");
 });
 
+test("delayed buffered preview rebases at the current native playhead before exclusive remote playout", async () => {
+  const { createAudioGraph } = await import(moduleUrl);
+  const harness = createHarness(createAudioGraph);
+  await harness.graph.startNativeLoopback({
+    streamId: "synthetic-stream-id",
+    tabId: 42,
+  });
+  harness.graph.beginGeneration(7, {
+    captureCreditFrames: 25,
+    maximumCaptureFrames: 25,
+  });
+  const playout = harness.node("liveconv-playout");
+  playout.port.receive({
+    type: "playout.playhead",
+    generationId: 7,
+    sourceFrame: 48_000,
+  });
+
+  for (let sequence = 0; sequence < 4; sequence += 1) {
+    const rebased = harness.graph.rebasePreviewFrame({
+      header: { generation_id: 7, sequence },
+      sourceFrame: sequence * 960,
+      samples: new Float32Array(960),
+    });
+    assert.equal(rebased.sourceFrame, 51_840 + sequence * 960);
+    assert.equal(harness.graph.enqueueRemoteFrame(rebased), true);
+  }
+  assert.equal(
+    harness.graph.snapshot().route,
+    "native",
+    "native remains exclusive until the rebased jitter target is ready",
+  );
+  playout.port.receive({ type: "playout.ready", generationId: 7 });
+  assert.equal(harness.graph.snapshot().route, "remote");
+});
+
 test("a legitimate 25-frame burst is staged and paced into the 10-frame Worklet bound", async () => {
   const { createAudioGraph } = await import(moduleUrl);
   const harness = createHarness(createAudioGraph);
