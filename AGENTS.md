@@ -38,8 +38,13 @@ into a product decision. Record decisions explicitly.
 Use project agents from `.codex/agents/`. The default subagent model is
 `gpt-5.6-luna`, chosen for narrow, repeatable, and high-volume work.
 
-- Parallelize read-heavy research, code mapping, test execution, log analysis,
-  and independent reviews.
+- Recompute the Ready frontier in `docs/planning/critical-path.md` after every
+  green checkpoint and delegate all independent bounded nodes that fit the
+  available slots and resource leases.
+- Use Luna for bounded implementation, test authoring, research, fixture work,
+  test execution, and log analysis.
+- Use `qa_reviewer` on `gpt-5.6-sol` for independent correctness, security, and
+  evidence review. Luna output never satisfies the independent-review gate.
 - Give every subagent a bounded question, expected output, and stop condition.
 - Wait for all delegated work that can affect the decision before integrating.
 - Return summaries and evidence to the parent; do not flood the main thread with
@@ -59,7 +64,10 @@ Suggested roles:
 - `experiment_runner`: run one approved experiment and record reproducible data.
 - `extension_worker`: own isolated Chrome Extension implementation tasks.
 - `audio_worker`: own isolated audio service and DSP implementation tasks.
-- `qa_reviewer`: independently review correctness, regressions, and evidence.
+- `test_author`: write deterministic acceptance tests for the next critical-path
+  node without editing production code.
+- `qa_reviewer`: use Sol to independently review correctness, regressions, and
+  evidence after integration.
 - `docs_curator`: update explicitly assigned documentation after decisions.
 
 ### Luna runtime compatibility
@@ -70,6 +78,9 @@ retry a custom agent that pins Luna. Start the parent through
 `scripts/luna-swarm.sh`, then spawn generic children without specifying a model or
 custom agent type. They inherit the Luna parent and can follow role briefs from
 the prompt and this file. See `docs/development/agent-playbook.md`.
+
+Inherited Luna swarms are preparation or implementation tools, not final
+reviewers. Run the Sol reviewer from a separate parent or custom-agent invocation.
 
 Never read the ignored workspace file named `key`. Git authentication uses the
 installed copy selected by repository-local Git configuration; agents have no
@@ -85,6 +96,7 @@ apps/extension/        Chrome MV3 capture, routing, controls, and playout
 services/audio/        Streaming conversion and TTS gateway
 packages/protocol/     Shared event and binary-frame contracts
 packages/evaluation/   Metrics, fixtures, and report generation
+workers/               One isolated runtime per real model profile
 experiments/<ID>/      One experiment's plan, aggregate results, and decision
 ```
 
@@ -123,6 +135,10 @@ protocol changes require consumer tests or fixtures on both sides.
 - Carry monotonic timestamps and `generation_id` through streaming boundaries.
 - Keep model adapters behind a common contract; do not leak model-specific state
   into the Extension protocol.
+- Treat ADR-0002 and `docs/architecture/remote-protocol.md` as the frozen version
+  1 contract. A model worker never edits the gateway or shared protocol.
+- Keep final playout and immediate native fallback in the Extension. The remote
+  gateway returns candidate PCM but never becomes the only audible route.
 - Bound queues and define overflow behavior.
 - Keep default fixtures synthetic or redistributable.
 - Verify current APIs, model behavior, and license terms from primary sources

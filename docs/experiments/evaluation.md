@@ -4,16 +4,21 @@ Status: Draft
 
 ## Evaluation lanes
 
-Evaluate each candidate in four independent lanes.
+Evaluate each candidate in five independent technical evidence lanes.
 
-1. **Japanese correctness:** readings, omissions, substitutions, mora timing,
-   phrase boundaries, and pitch-accent acceptability.
-2. **Audio integrity:** gaps, duplicated regions, clicks, clipping, loudness,
-   bandwidth, and speaker consistency.
-3. **Conversation behavior:** response start, interruption stop, overlap,
-   backchannel timing, and stale-generation playback.
-4. **Operations:** startup, warmup, throughput, failure recovery, privacy, cost,
-   and reproducibility.
+1. **Signal transformation:** sample and spectral difference after nuisance
+   controls, without treating difference alone as successful conversion.
+2. **Japanese content preservation:** readings, omissions, substitutions, mora
+   timing, and exact high-consequence entities.
+3. **Authorized speaker change:** calibrated source/target embedding evidence and
+   blinded speaker judgments when a target voice is part of the hypothesis.
+4. **Audio integrity:** gaps, duplicated regions, clicks, clipping, loudness,
+   bandwidth, silence, and discontinuities.
+5. **Conversation and operations:** response start, interruption stop, stale
+   playback, startup, warmup, failure recovery, privacy, and reproducibility.
+
+Prosody, phrase boundaries, pitch accent, and naturalness remain separate blinded
+human-rating outcomes; STT and embeddings do not certify them.
 
 ## Corpus design
 

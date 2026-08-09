@@ -16,13 +16,42 @@ concurrency:
 jobs:
   control-plane:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
       - name: Install validation dependencies
         run: python3 -m pip install --require-hashes --requirement requirements-dev.txt
 
+      - name: Sync Python workspace
+        run: uv sync --frozen --all-packages --group dev
+
       - name: Validate repository
         run: make check
+
+      - name: Validate remote deployment with Compose and Caddy
+        run: |
+          sudo install -d -o 10001 -g 10001 -m 0750 /tmp/liveconv-artifacts
+          printf '%s\n' '0123456789abcdefghijklmnopqrstuvwxyz-CI' > \
+            /tmp/liveconv-api-token
+          sudo chgrp 10001 /tmp/liveconv-api-token
+          sudo chmod 0440 /tmp/liveconv-api-token
+          cp services/audio/liveconv_audio/default-model-profiles.json \
+            /tmp/liveconv-model-profiles.json
+          sudo chgrp 10001 /tmp/liveconv-model-profiles.json
+          sudo chmod 0440 /tmp/liveconv-model-profiles.json
+          cat >/tmp/liveconv.env <<'EOF'
+          LIVECONV_PUBLIC_HOST=voice.example.test
+          LIVECONV_ACME_EMAIL=ci@example.test
+          LIVECONV_API_TOKEN_FILE=/tmp/liveconv-api-token
+          LIVECONV_MODEL_ARTIFACT_DIR=/tmp/liveconv-artifacts
+          LIVECONV_ALLOWED_ORIGINS=chrome-extension://abcdefghijklmnopabcdefghijklmnop
+          LIVECONV_PROFILE_CONFIG_FILE=/tmp/liveconv-model-profiles.json
+          EOF
+          make remote-check-tools ENV_FILE=/tmp/liveconv.env

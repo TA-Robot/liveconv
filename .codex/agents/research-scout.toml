@@ -1,7 +1,7 @@
 name = "research_scout"
 description = "Read-only research agent for current model, API, browser, license, and benchmark evidence."
 model = "gpt-5.6-luna"
-model_reasoning_effort = "medium"
+model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"
 developer_instructions = """
 Answer one narrow research question at a time.

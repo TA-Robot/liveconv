@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "pack_id": "openvoice-v2",
+  "display_name": "OpenVoice V2",
+  "status": "research",
+  "ready_for_runtime": false,
+  "role": "offline_control",
+  "implementation_priority": 4,
+  "canonical_source_url": "https://github.com/myshell-ai/OpenVoice",
+  "upstream_urls": [
+    "https://huggingface.co/myshell-ai/OpenVoiceV2"
+  ],
+  "japanese_evidence": {
+    "level": "official_support_claim",
+    "summary": "The official V2 README explicitly lists native Japanese support, but it provides no Japanese streaming benchmark or liveconv result.",
+    "evidence_urls": [
+      "https://github.com/myshell-ai/OpenVoice"
+    ],
+    "offline_gate_required": true
+  },
+  "immutability_gate": {
+    "status": "blocked",
+    "source_revision": null,
+    "weight_sha256": null,
+    "approval_record_url": null,
+    "blocking_reasons": [
+      "Select and approve an immutable upstream commit.",
+      "Select an approved V2 checkpoint bundle and record its SHA-256 digest."
+    ]
+  },
+  "license_gate": {
+    "overall_status": "blocked",
+    "code": {
+      "status": "declared",
+      "declared_license": "MIT",
+      "evidence_urls": [
+        "https://github.com/myshell-ai/OpenVoice/blob/main/LICENSE"
+      ],
+      "notes": "The official repository declares OpenVoice V1 and V2 MIT."
+    },
+    "weights": {
+      "status": "declared",
+      "declared_license": "MIT",
+      "evidence_urls": [
+        "https://huggingface.co/myshell-ai/OpenVoiceV2"
+      ],
+      "notes": "The official distribution is presented under MIT; pin and digest the exact bundle before use."
+    },
+    "training_data": {
+      "status": "not_disclosed",
+      "declared_license": null,
+      "evidence_urls": [
+        "https://github.com/myshell-ai/OpenVoice"
+      ],
+      "notes": "The reviewed official materials do not provide a complete training-data inventory or license chain."
+    },
+    "inference_runtime": {
+      "status": "declared",
+      "declared_license": "MIT",
+      "evidence_urls": [
+        "https://github.com/myshell-ai/OpenVoice/blob/main/LICENSE"
+      ],
+      "notes": "Repository inference code is MIT; transitive dependencies still belong in the locked environment review."
+    }
+  },
+  "audio_contract": {
+    "native_sample_rate_hz": null,
+    "gateway_input_sample_rate_hz": 48000,
+    "gateway_output_sample_rate_hz": 48000,
+    "context_mode": "offline",
+    "minimum_context_ms": null,
+    "processing_window_ms": null,
+    "lookahead_ms": null,
+    "notes": "Use the approved checkpoint's actual rate. No official stable streaming contract, latency boundary, or liveconv-compatible chunk contract is recorded."
+  },
+  "target_preparation": {
+    "mode": "target_embedding",
+    "authorization_required": true,
+    "recommended_audio_seconds": null,
+    "procedure": "Validate an authorized reference recording and extract a target speaker embedding once for the frozen offline control run."
+  },
+  "artifact_env": [
+    {
+      "purpose": "Approved OpenVoice V2 checkpoint root",
+      "env_var": "LIVECONV_OPENVOICE_V2_CHECKPOINT_PATH",
+      "required_for": "offline",
+      "sha256": null,
+      "provenance_url": null
+    },
+    {
+      "purpose": "Authorized target reference WAV",
+      "env_var": "LIVECONV_OPENVOICE_V2_TARGET_REFERENCE_PATH",
+      "required_for": "offline",
+      "sha256": null,
+      "provenance_url": null
+    }
+  ],
+  "resource_budget_hypothesis": {
+    "evidence_status": "hypothesis",
+    "cpu": {
+      "support": "unverified",
+      "max_threads": 8,
+      "max_ram_mb": 8192
+    },
+    "gpu": {
+      "requirement": "preferred",
+      "max_vram_mb": 8192
+    },
+    "notes": "Offline-control envelope only. Official sources do not establish a liveconv latency or hardware budget; measure before experiment approval."
+  },
+  "mode_gates": {
+    "offline": {
+      "status": "required",
+      "blocker_ids": ["openvoice-approval", "openvoice-data", "openvoice-reference"],
+      "acceptance_scope": ["Japanese content", "target-speaker change", "offline audio integrity"]
+    },
+    "streaming": {
+      "status": "not_planned",
+      "blocker_ids": ["openvoice-streaming-out-of-scope"],
+      "acceptance_scope": ["separate architecture decision", "separate latency experiment"]
+    }
+  },
+  "blockers": [
+    {
+      "id": "openvoice-approval",
+      "category": "approval",
+      "summary": "Source revision and weight digest are not approved or pinned.",
+      "clear_when": "A reviewed commit, weight SHA-256, and approval record are recorded."
+    },
+    {
+      "id": "openvoice-data",
+      "category": "license",
+      "summary": "A complete training-data license inventory is not disclosed in the reviewed official materials.",
+      "clear_when": "Governance approves the documented uncertainty for the exact intended offline experiment."
+    },
+    {
+      "id": "openvoice-reference",
+      "category": "artifact",
+      "summary": "No authorized target reference or embedding has been selected.",
+      "clear_when": "Reference authorization, provenance, checksum, and retention policy are recorded."
+    },
+    {
+      "id": "openvoice-streaming-out-of-scope",
+      "category": "integration",
+      "summary": "OpenVoice V2 is an offline tone-color control in the current plan, not a streaming adapter.",
+      "clear_when": "A later accepted architecture decision and experiment explicitly add streaming scope."
+    }
+  ],
+  "acceptance_checklist": {
+    "adapter_conformance": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Pass the common offline adapter contract and preserve the offline-control role.",
+      "blocked_by": ["openvoice-approval", "openvoice-reference"],
+      "evidence_url": null
+    },
+    "warmup": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Checkpoint and target embedding warm within the frozen offline timeout.",
+      "blocked_by": ["openvoice-approval", "openvoice-reference"],
+      "evidence_url": null
+    },
+    "cancel": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Cancel terminates an offline job and publishes no partial artifact as successful.",
+      "blocked_by": ["openvoice-approval"],
+      "evidence_url": null
+    },
+    "unload": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Unload releases checkpoints and embeddings; repeated reload remains healthy.",
+      "blocked_by": ["openvoice-approval"],
+      "evidence_url": null
+    },
+    "vram": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Peak and post-unload VRAM remain within the preregistered offline budget.",
+      "blocked_by": ["openvoice-approval"],
+      "evidence_url": null
+    },
+    "stt": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Japanese STT preservation and exact high-consequence entities pass offline.",
+      "blocked_by": ["openvoice-reference"],
+      "evidence_url": null
+    },
+    "speaker": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Authorized-target similarity improves under the calibrated preregistered rule.",
+      "blocked_by": ["openvoice-reference"],
+      "evidence_url": null
+    },
+    "integrity": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Finite samples, clipping, duration, silence, repetition, and discontinuity guardrails pass offline.",
+      "blocked_by": ["openvoice-reference"],
+      "evidence_url": null
+    }
+  },
+  "decision_notes": "Use as an offline Japanese-capable control only; successful offline tone-color conversion would not establish realtime streaming suitability."
+}

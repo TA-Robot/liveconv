@@ -12,6 +12,45 @@ checking their evidence.
 Project configuration lives in `.codex/config.toml`; custom roles live in
 `.codex/agents/`.
 
+## Critical-path pipeline
+
+Use the dependency graph and dispatcher in `docs/planning/critical-path.md`. The
+repository requests up to 12 child threads, excluding the primary, but work is
+spawned from the Ready frontier rather than to fill a fixed team chart.
+
+For different backlog nodes, keep three engineering stages active at once:
+
+1. **Test N+1:** Luna `test_author` prepares deterministic failing acceptance
+   tests and synthetic fixtures for the next accepted interface.
+2. **Implement N:** a Luna worker implements the current Ready node in an
+   exclusive directory or worktree against already accepted tests.
+3. **Review N-1:** Sol `qa_reviewer` at `max` attacks the previous integrated
+   checkpoint for races, security, regressions, privacy, and missing evidence.
+
+The primary recomputes dependencies after every merge. It first assigns nodes on
+the product critical path, then nodes with the greatest downstream fan-out, then
+research or test work that removes a named blocker. It may run up to six disjoint
+writers and three Sol reviewers. If two checkpoints wait for integration, new
+writer slots rotate to review and repair until the merge queue drains.
+
+Keep a slice small enough to review in one pass. It should normally have one
+observable outcome, one ownership zone, focused tests, and no root lockfile or
+backlog edits. The parent owns shared contracts, root tooling, integration, and
+checkpoint commits; it does not co-author leaf implementation while a worker owns
+that directory.
+
+As soon as a slice reaches `Checkpoint`, commit it with its backlog item still in
+`Review` and place it in the merge queue. Do not wait for an entire phase or
+several packages to reach Gate Done. Integrate in dependency order, review the
+integration SHA, and push a green checkpoint after two or three leaves. Run the
+full root suite for every shared-contract change and every SHA used as the base of
+new worktrees; leaf workers run focused checks while they iterate.
+
+A worker stops and returns evidence when its stop condition is met. If it expands
+scope, changes a shared file, or cannot produce a focused failing/passing test, the
+parent interrupts and reissues a smaller brief. Long status narration is not a
+deliverable.
+
 ## Luna execution modes
 
 ### Native custom-agent mode
@@ -19,6 +58,11 @@ Project configuration lives in `.codex/config.toml`; custom roles live in
 Use this when the active Codex client allows `gpt-5.6-luna` as a spawned-agent
 model. Ask for `spec_analyst`, `research_scout`, or another project role directly.
 The agent file pins its model and behavior.
+
+Configuration intent is not execution evidence. Record Luna as the worker model
+only when the active client or invocation metadata confirms it. Some orchestration
+APIs expose only Sol/Terra child overrides even when these project files request
+Luna; those workers are useful fallbacks but must not be described as Luna runs.
 
 ### Inherited Luna swarm mode
 
@@ -31,23 +75,25 @@ make luna PROMPT_FILE=prompts/luna/phase0-kickoff.md
 ```
 
 The launcher starts a read-only parent with `gpt-5.6-luna`. Its generic children
-inherit both Luna and the process sandbox. The batch returns recommendations to
-the invoking primary agent, which performs any approved integration separately.
-This path was verified with a real child turn. Run `make luna-smoke` after a Codex
-upgrade or environment change to retest the capability.
+inherit both Luna and the process sandbox. Use this mode for research, test maps,
+fixture preparation, and implementation briefs. It never supplies the independent
+review required by the Definition of Done. A separate Sol primary or
+`qa_reviewer` performs that review. Run `make luna-smoke` after a Codex upgrade or
+environment change to retest the capability.
 
-The launcher defaults to `read-only`. Do not combine a read-only review swarm and
-repository integration in one invocation. After the primary agent accepts the
-recommendations, use a separate, narrowly scoped writer invocation with
+The launcher defaults to `read-only`. Do not combine a read-only preparation
+swarm and repository integration in one invocation. After the primary agent
+accepts the test or research handoff, use a separate, narrowly scoped writer invocation with
 `LUNA_SANDBOX=workspace-write`, and do not spawn reviewer children from it.
 
 Do not treat the custom-agent retry error as evidence that Luna itself is
 unavailable. Check direct Luna execution and inherited child execution separately.
 
-For a review that must not write, set the parent sandbox explicitly:
+For parallel test preparation that must not write production code, set the parent
+sandbox explicitly:
 
 ```bash
-LUNA_SANDBOX=read-only make luna PROMPT_FILE=prompts/luna/review.md
+LUNA_SANDBOX=read-only make luna PROMPT_FILE=prompts/luna/test-design.md
 ```
 
 Some container hosts block the user namespaces required by Codex read-only and
@@ -127,9 +173,9 @@ Wait for all results. Reconcile claims, then propose one approved experiment.
 ### Feature delivery
 
 ```text
-Have spec_analyst trace acceptance criteria and qa_reviewer identify likely test
-risks in parallel. After both return, assign exactly one owning worker to the
-implementation zone. Run qa_reviewer again on the final diff.
+Have test_author prepare accepted tests for node N+1 while the owning worker
+implements node N and a Sol qa_reviewer reviews integrated node N-1. Recompute the
+Ready frontier after each merge and immediately dispatch newly independent nodes.
 ```
 
 ### Cross-zone integration
@@ -150,20 +196,26 @@ contract tests before end-to-end tests.
 
 ## Model and effort
 
-- Default: Luna at medium effort for scoped research, documentation, experiments,
+- Default: Luna at `xhigh` effort for scoped research, documentation, experiments,
   and implementation.
-- Use Luna at high effort for bounded correctness and race-condition review.
-- Keep ambiguous architecture and cross-system decisions in the primary agent.
+- Use Luna at `max` effort for experiment design, test authoring, audio
+  concurrency implementation, and deterministic failure harnesses.
+- Use Sol at `max` for independent correctness, race, security, privacy, and
+  evidence review. Do not use Luna as the acceptance reviewer for Luna-authored
+  work.
+- Keep critical-path changes, ambiguous architecture, integration, and
+  cross-system decisions in the Sol primary agent.
 - Measure quality and cost before raising effort globally.
 
 ## Review sequence
 
-1. Owning worker runs focused checks.
-2. Parent inspects the diff and integrates contracts.
-3. `qa_reviewer` reviews the final combined behavior read-only.
-4. Owning worker or parent addresses findings.
-5. Parent runs `make check` and any phase-specific end-to-end checks.
-6. `docs_curator` updates approved records only after the decision is clear.
+1. Luna `test_author` lands or hands off accepted tests before implementation.
+2. Owning Luna worker runs focused checks and self-reviews its diff.
+3. Sol parent inspects the diff and integrates contracts.
+4. Sol `qa_reviewer` reviews the integrated behavior read-only.
+5. Owning worker addresses accepted findings; the reviewer does not author fixes.
+6. Parent runs `make check` and any phase-specific end-to-end checks.
+7. `docs_curator` updates approved records only after the decision is clear.
 
 ## Example kickoff prompt
 

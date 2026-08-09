@@ -1,0 +1,51 @@
+[
+  {
+    "type": "session.attach",
+    "protocol_version": 1,
+    "request_id": "01K1V-ATTACH",
+    "session_id": "123e4567-e89b-12d3-a456-426614174000",
+    "ticket": "single-use-test-ticket"
+  },
+  {
+    "type": "model.select",
+    "protocol_version": 1,
+    "request_id": "01K1V-MODEL",
+    "session_id": "123e4567-e89b-12d3-a456-426614174000",
+    "profile_id": "test.gain.v1"
+  },
+  {
+    "type": "generation.start",
+    "protocol_version": 1,
+    "request_id": "01K1V-START",
+    "session_id": "123e4567-e89b-12d3-a456-426614174000",
+    "generation_id": 7
+  },
+  {
+    "type": "generation.end",
+    "protocol_version": 1,
+    "request_id": "01K1V-END",
+    "session_id": "123e4567-e89b-12d3-a456-426614174000",
+    "generation_id": 7
+  },
+  {
+    "type": "generation.cancel",
+    "protocol_version": 1,
+    "request_id": "01K1V-CANCEL",
+    "session_id": "123e4567-e89b-12d3-a456-426614174000",
+    "generation_id": 8
+  },
+  {
+    "type": "ping",
+    "protocol_version": 1,
+    "request_id": "01K1V-PING",
+    "session_id": "123e4567-e89b-12d3-a456-426614174000",
+    "client_monotonic_ns": 1234567890123,
+    "clock_id": "extension-clock-1"
+  },
+  {
+    "type": "session.close",
+    "protocol_version": 1,
+    "request_id": "01K1V-CLOSE",
+    "session_id": "123e4567-e89b-12d3-a456-426614174000"
+  }
+]

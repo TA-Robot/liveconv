@@ -1,0 +1,906 @@
+{
+  "schema_version": 1,
+  "corpus_id": "lv-001-ja-smoke",
+  "version": "1.0.0",
+  "revision": "lv-001-ja-smoke-v1.0.0+sha256.9ec9ee58d6398694",
+  "status": "text-reviewed",
+  "artifact_kind": "text-metadata-only",
+  "classification": "synthetic",
+  "language": "ja-JP",
+  "normalization_revision": "liveconv-jp-nfkc-kana-v1",
+  "category_targets": {
+    "ordinary_conversation": 6,
+    "contact_center_language": 5,
+    "telephone_and_postal_numbers": 5,
+    "addresses": 4,
+    "dates_times_money_and_units": 5,
+    "proper_nouns_and_polyphonic_kanji": 5,
+    "code_switching_and_identifiers": 4,
+    "interruption_scenarios": 4,
+    "noise_and_degraded_transport": 2
+  },
+  "requirements_covered": [
+    "JP-001",
+    "JP-002",
+    "JP-003",
+    "JP-004",
+    "JP-005",
+    "JP-006",
+    "JP-007",
+    "JP-008"
+  ],
+  "license": {
+    "spdx_id": "CC0-1.0",
+    "scope": "corpus text and metadata authored for LV-001",
+    "redistribution": "permitted-without-restriction",
+    "third_party_material": false
+  },
+  "provenance": {
+    "origin": "project-authored",
+    "derivation": "requirements-driven manual composition",
+    "source_documents": [
+      "docs/product/requirements.md#japanese-speech-requirements",
+      "docs/experiments/evaluation.md#corpus-design"
+    ],
+    "contains_customer_data": false,
+    "contains_recorded_voice": false,
+    "reading_review": {
+      "state": "engineering-reviewed",
+      "scope": "display-to-spoken mapping, entity spelling, and category coverage",
+      "native_speaker_validation": "not-performed"
+    }
+  },
+  "audio_assets": {
+    "included": false,
+    "status": "not-generated",
+    "checksum_manifest_status": "not-applicable"
+  },
+  "revision_policy": "Published revisions are immutable; any metadata or utterance change requires a new semantic version, revision identifier, and checksum.",
+  "integrity": {
+    "algorithm": "sha256",
+    "canonicalization": "utf8-json-sort-keys-compact-without-revision-and-integrity-v1",
+    "digest_scope": "complete document excluding revision and integrity",
+    "sha256": "9ec9ee58d6398694cf26928c530252230faab197a5296d3c2fdcf89da66ade6b"
+  },
+  "utterances": [
+    {
+      "id": "LV001-JA-001",
+      "primary_category": "ordinary_conversation",
+      "display_text": "はい、こちらの声は聞こえています。",
+      "expected_spoken_text": "はい、こちらのこえはきこえています。",
+      "canonical_kana": "はいこちらのこえはきこえています",
+      "exact_entities": [],
+      "requirements": ["JP-007"],
+      "tags": ["acknowledgement", "phrase-boundary"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "standard modern Japanese conversational reading"
+      }
+    },
+    {
+      "id": "LV001-JA-002",
+      "primary_category": "ordinary_conversation",
+      "display_text": "すみません、最後の一文をもう一度お願いします。",
+      "expected_spoken_text": "すみません、さいごのいちぶんをもういちどおねがいします。",
+      "canonical_kana": "すみませんさいごのいちぶんをもういちどおねがいします",
+      "exact_entities": [],
+      "requirements": ["JP-007"],
+      "tags": ["repair", "polite-request"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "standard modern Japanese repair request"
+      }
+    },
+    {
+      "id": "LV001-JA-003",
+      "primary_category": "ordinary_conversation",
+      "display_text": "次はどの手順から始めればよいですか。",
+      "expected_spoken_text": "つぎはどのてじゅんからはじめればよいですか。",
+      "canonical_kana": "つぎはどのてじゅんからはじめればよいですか",
+      "exact_entities": [],
+      "requirements": ["JP-007"],
+      "tags": ["question", "procedure"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "standard modern Japanese interrogative reading"
+      }
+    },
+    {
+      "id": "LV001-JA-004",
+      "primary_category": "ordinary_conversation",
+      "display_text": "承知しました。内容を確認して進めます。",
+      "expected_spoken_text": "しょうちしました。ないようをかくにんしてすすめます。",
+      "canonical_kana": "しょうちしましたないようをかくにんしてすすめます",
+      "exact_entities": [],
+      "requirements": ["JP-007"],
+      "tags": ["acknowledgement", "two-phrase"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "standard modern Japanese declarative reading"
+      }
+    },
+    {
+      "id": "LV001-JA-005",
+      "primary_category": "ordinary_conversation",
+      "display_text": "少し考える時間をいただけますか。",
+      "expected_spoken_text": "すこしかんがえるじかんをいただけますか。",
+      "canonical_kana": "すこしかんがえるじかんをいただけますか",
+      "exact_entities": [],
+      "requirements": ["JP-007"],
+      "tags": ["turn-taking", "question"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "standard modern Japanese turn-holding request"
+      }
+    },
+    {
+      "id": "LV001-JA-006",
+      "primary_category": "ordinary_conversation",
+      "display_text": "先ほどの説明ではなく、短い答えをお願いします。",
+      "expected_spoken_text": "さきほどのせつめいではなく、みじかいこたえをおねがいします。",
+      "canonical_kana": "さきほどのせつめいではなくみじかいこたえをおねがいします",
+      "exact_entities": [],
+      "requirements": ["JP-007"],
+      "tags": ["correction", "contrastive-phrase"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "contrastive Japanese phrase boundary retained"
+      }
+    },
+    {
+      "id": "LV001-JA-007",
+      "primary_category": "contact_center_language",
+      "display_text": "本人確認のため、お名前と生年月日を順に伺います。",
+      "expected_spoken_text": "ほんにんかくにんのため、おなまえとせいねんがっぴをじゅんにうかがいます。",
+      "canonical_kana": "ほんにんかくにんのためおなまえとせいねんがっぴをじゅんにうかがいます",
+      "exact_entities": [],
+      "requirements": ["JP-002", "JP-007"],
+      "tags": ["identity-verification", "procedure"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "contact-center verification phrase with date context"
+      }
+    },
+    {
+      "id": "LV001-JA-008",
+      "primary_category": "contact_center_language",
+      "display_text": "ご契約番号 LC-4821 を画面でご確認ください。",
+      "expected_spoken_text": "ごけいやくばんごう、えるしーよんはちにいちを、がめんでごかくにんください。",
+      "canonical_kana": "ごけいやくばんごうえるしーよんはちにいちをがめんでごかくにんください",
+      "exact_entities": [
+        {
+          "surface": "LC-4821",
+          "kind": "identifier",
+          "expected_spoken": "えるしーよんはちにいち",
+          "normalized_spoken": "えるしーよんはちにいち",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-005", "JP-007"],
+      "tags": ["contract-id", "visual-confirmation"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "configured Latin letters and digits are individually voiced"
+      }
+    },
+    {
+      "id": "LV001-JA-009",
+      "primary_category": "contact_center_language",
+      "display_text": "ただいま担当部署へおつなぎしますので、そのままお待ちください。",
+      "expected_spoken_text": "ただいまたんとうぶしょへおつなぎしますので、そのままおまちください。",
+      "canonical_kana": "ただいまたんとうぶしょへおつなぎしますのでそのままおまちください",
+      "exact_entities": [],
+      "requirements": ["JP-007"],
+      "tags": ["call-transfer", "hold-guidance"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "contact-center transfer guidance phrase boundary"
+      }
+    },
+    {
+      "id": "LV001-JA-010",
+      "primary_category": "contact_center_language",
+      "display_text": "返品を受け付けました。集荷日は8月12日です。",
+      "expected_spoken_text": "へんぴんをうけつけました。しゅうかびははちがつじゅうににちです。",
+      "canonical_kana": "へんぴんをうけつけましたしゅうかびははちがつじゅうににちです",
+      "exact_entities": [
+        {
+          "surface": "8月12日",
+          "kind": "date_time",
+          "expected_spoken": "はちがつじゅうににち",
+          "normalized_spoken": "はちがつじゅうににち",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-002", "JP-007"],
+      "tags": ["returns", "collection-date"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "explicit month-day context and standard calendar reading"
+      }
+    },
+    {
+      "id": "LV001-JA-011",
+      "primary_category": "contact_center_language",
+      "display_text": "暗証番号そのものは読み上げず、入力完了だけをお知らせください。",
+      "expected_spoken_text": "あんしょうばんごうそのものはよみあげず、にゅうりょくかんりょうだけをおしらせください。",
+      "canonical_kana": "あんしょうばんごうそのものはよみあげずにゅうりょくかんりょうだけをおしらせください",
+      "exact_entities": [],
+      "requirements": ["JP-005", "JP-007"],
+      "tags": ["credential-safety", "negative-instruction"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "security guidance keeps the negative instruction audible"
+      }
+    },
+    {
+      "id": "LV001-JA-012",
+      "primary_category": "telephone_and_postal_numbers",
+      "display_text": "お電話番号は 090-1234-5678 です。",
+      "expected_spoken_text": "おでんわばんごうは、ぜろきゅうぜろ、いちにさんよん、ごろくななはちです。",
+      "canonical_kana": "おでんわばんごうはぜろきゅうぜろいちにさんよんごろくななはちです",
+      "exact_entities": [
+        {
+          "surface": "090-1234-5678",
+          "kind": "telephone",
+          "expected_spoken": "ぜろきゅうぜろ、いちにさんよん、ごろくななはち",
+          "normalized_spoken": "ぜろきゅうぜろいちにさんよんごろくななはち",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-001", "JP-007"],
+      "tags": ["mobile-number", "grouped-digits"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "digits are voiced individually with mobile-number group pauses"
+      }
+    },
+    {
+      "id": "LV001-JA-013",
+      "primary_category": "telephone_and_postal_numbers",
+      "display_text": "東京の連絡先は 03-6890-2468 です。",
+      "expected_spoken_text": "とうきょうのれんらくさきは、ぜろさん、ろくはちきゅうぜろ、によんろくはちです。",
+      "canonical_kana": "とうきょうのれんらくさきはぜろさんろくはちきゅうぜろによんろくはちです",
+      "exact_entities": [
+        {
+          "surface": "03-6890-2468",
+          "kind": "telephone",
+          "expected_spoken": "ぜろさん、ろくはちきゅうぜろ、によんろくはち",
+          "normalized_spoken": "ぜろさんろくはちきゅうぜろによんろくはち",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-001", "JP-007"],
+      "tags": ["landline-number", "grouped-digits"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "digits are voiced individually with landline group pauses"
+      }
+    },
+    {
+      "id": "LV001-JA-014",
+      "primary_category": "telephone_and_postal_numbers",
+      "display_text": "フリーダイヤルは 0120-88-4103 です。",
+      "expected_spoken_text": "ふりーだいやるは、ぜろいちにぜろ、はちはち、よんいちぜろさんです。",
+      "canonical_kana": "ふりーだいやるはぜろいちにぜろはちはちよんいちぜろさんです",
+      "exact_entities": [
+        {
+          "surface": "0120-88-4103",
+          "kind": "telephone",
+          "expected_spoken": "ぜろいちにぜろ、はちはち、よんいちぜろさん",
+          "normalized_spoken": "ぜろいちにぜろはちはちよんいちぜろさん",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-001", "JP-007"],
+      "tags": ["toll-free-number", "grouped-digits"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "digits are voiced individually with service-number group pauses"
+      }
+    },
+    {
+      "id": "LV001-JA-015",
+      "primary_category": "telephone_and_postal_numbers",
+      "display_text": "音声案内のあと、内線 7315 を入力してください。",
+      "expected_spoken_text": "おんせいあんないのあと、ないせんななさんいちごをにゅうりょくしてください。",
+      "canonical_kana": "おんせいあんないのあとないせんななさんいちごをにゅうりょくしてください",
+      "exact_entities": [
+        {
+          "surface": "7315",
+          "kind": "telephone",
+          "expected_spoken": "ななさんいちご",
+          "normalized_spoken": "ななさんいちご",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-001", "JP-005"],
+      "tags": ["extension-number", "digit-entry"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "extension digits are voiced individually without omission"
+      }
+    },
+    {
+      "id": "LV001-JA-016",
+      "primary_category": "telephone_and_postal_numbers",
+      "display_text": "郵便番号は 〒150-0041 です。",
+      "expected_spoken_text": "ゆうびんばんごうは、いちごぜろ、ぜろぜろよんいちです。",
+      "canonical_kana": "ゆうびんばんごうはいちごぜろぜろぜろよんいちです",
+      "exact_entities": [
+        {
+          "surface": "〒150-0041",
+          "kind": "postal_code",
+          "expected_spoken": "いちごぜろ、ぜろぜろよんいち",
+          "normalized_spoken": "いちごぜろぜろぜろよんいち",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-001", "JP-004"],
+      "tags": ["postal-code", "grouped-digits"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "postal mark is contextual and all seven digits are voiced by group"
+      }
+    },
+    {
+      "id": "LV001-JA-017",
+      "primary_category": "addresses",
+      "display_text": "お届け先は東京都渋谷区神南一丁目12番3号 ライブビルです。",
+      "expected_spoken_text": "おとどけさきは、とうきょうとしぶやくじんなんいっちょうめじゅうにばんさんごう、らいぶびるです。",
+      "canonical_kana": "おとどけさきはとうきょうとしぶやくじんなんいっちょうめじゅうにばんさんごうらいぶびるです",
+      "exact_entities": [
+        {
+          "surface": "東京都渋谷区神南一丁目12番3号 ライブビル",
+          "kind": "address",
+          "expected_spoken": "とうきょうとしぶやくじんなんいっちょうめじゅうにばんさんごう、らいぶびる",
+          "normalized_spoken": "とうきょうとしぶやくじんなんいっちょうめじゅうにばんさんごうらいぶびる",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-004", "JP-006"],
+      "tags": ["tokyo-address", "building-name"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "registered administrative, block, and synthetic building readings"
+      }
+    },
+    {
+      "id": "LV001-JA-018",
+      "primary_category": "addresses",
+      "display_text": "送付先は北海道札幌市北区北七条西二丁目8番地 ノース館です。",
+      "expected_spoken_text": "そうふさきは、ほっかいどうさっぽろしきたくきたななじょうにしにちょうめはちばんち、のーすかんです。",
+      "canonical_kana": "そうふさきはほっかいどうさっぽろしきたくきたななじょうにしにちょうめはちばんちのーすかんです",
+      "exact_entities": [
+        {
+          "surface": "北海道札幌市北区北七条西二丁目8番地 ノース館",
+          "kind": "address",
+          "expected_spoken": "ほっかいどうさっぽろしきたくきたななじょうにしにちょうめはちばんち、のーすかん",
+          "normalized_spoken": "ほっかいどうさっぽろしきたくきたななじょうにしにちょうめはちばんちのーすかん",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-004", "JP-006"],
+      "tags": ["hokkaido-address", "building-name"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "registered administrative, block, and synthetic building readings"
+      }
+    },
+    {
+      "id": "LV001-JA-019",
+      "primary_category": "addresses",
+      "display_text": "訪問先は京都府京都市中京区壬生朱雀町7番地 響館です。",
+      "expected_spoken_text": "ほうもんさきは、きょうとふきょうとしなかぎょうくみぶしゅじゃくちょうななばんち、ひびきかんです。",
+      "canonical_kana": "ほうもんさきはきょうとふきょうとしなかぎょうくみぶしゅじゃくちょうななばんちひびきかんです",
+      "exact_entities": [
+        {
+          "surface": "京都府京都市中京区壬生朱雀町7番地 響館",
+          "kind": "address",
+          "expected_spoken": "きょうとふきょうとしなかぎょうくみぶしゅじゃくちょうななばんち、ひびきかん",
+          "normalized_spoken": "きょうとふきょうとしなかぎょうくみぶしゅじゃくちょうななばんちひびきかん",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-004", "JP-006"],
+      "tags": ["kyoto-address", "polyphonic-building"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "domain-scoped readings cover the district and synthetic building name"
+      }
+    },
+    {
+      "id": "LV001-JA-020",
+      "primary_category": "addresses",
+      "display_text": "配送先は沖縄県那覇市久茂地三丁目21番1号 海風棟です。",
+      "expected_spoken_text": "はいそうさきは、おきなわけんなはしくもじさんちょうめにじゅういちばんいちごう、うみかぜとうです。",
+      "canonical_kana": "はいそうさきはおきなわけんなはしくもじさんちょうめにじゅういちばんいちごううみかぜとうです",
+      "exact_entities": [
+        {
+          "surface": "沖縄県那覇市久茂地三丁目21番1号 海風棟",
+          "kind": "address",
+          "expected_spoken": "おきなわけんなはしくもじさんちょうめにじゅういちばんいちごう、うみかぜとう",
+          "normalized_spoken": "おきなわけんなはしくもじさんちょうめにじゅういちばんいちごううみかぜとう",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-004", "JP-006"],
+      "tags": ["okinawa-address", "polyphonic-building"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "domain-scoped readings cover the locality and synthetic building name"
+      }
+    },
+    {
+      "id": "LV001-JA-021",
+      "primary_category": "dates_times_money_and_units",
+      "display_text": "ご予約は2026年8月9日（日）午前9時05分です。",
+      "expected_spoken_text": "ごよやくは、にせんにじゅうろくねんはちがつここのか、にちようび、ごぜんくじごふんです。",
+      "canonical_kana": "ごよやくはにせんにじゅうろくねんはちがつここのかにちようびごぜんくじごふんです",
+      "exact_entities": [
+        {
+          "surface": "2026年8月9日（日）午前9時05分",
+          "kind": "date_time",
+          "expected_spoken": "にせんにじゅうろくねんはちがつここのか、にちようび、ごぜんくじごふん",
+          "normalized_spoken": "にせんにじゅうろくねんはちがつここのかにちようびごぜんくじごふん",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-002", "JP-007"],
+      "tags": ["gregorian-date", "clock-time"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "calendar, weekday, and clock contexts select explicit readings"
+      }
+    },
+    {
+      "id": "LV001-JA-022",
+      "primary_category": "dates_times_money_and_units",
+      "display_text": "更新日は令和8年11月3日です。",
+      "expected_spoken_text": "こうしんびは、れいわはちねんじゅういちがつみっかです。",
+      "canonical_kana": "こうしんびはれいわはちねんじゅういちがつみっかです",
+      "exact_entities": [
+        {
+          "surface": "令和8年11月3日",
+          "kind": "date_time",
+          "expected_spoken": "れいわはちねんじゅういちがつみっか",
+          "normalized_spoken": "れいわはちねんじゅういちがつみっか",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-002"],
+      "tags": ["japanese-era", "calendar-date"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "era and day-of-month context select deterministic readings"
+      }
+    },
+    {
+      "id": "LV001-JA-023",
+      "primary_category": "dates_times_money_and_units",
+      "display_text": "今回のご請求額は￥12,800です。",
+      "expected_spoken_text": "こんかいのごせいきゅうがくは、いちまんにせんはっぴゃくえんです。",
+      "canonical_kana": "こんかいのごせいきゅうがくはいちまんにせんはっぴゃくえんです",
+      "exact_entities": [
+        {
+          "surface": "￥12,800",
+          "kind": "money",
+          "expected_spoken": "いちまんにせんはっぴゃくえん",
+          "normalized_spoken": "いちまんにせんはっぴゃくえん",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-003"],
+      "tags": ["yen", "grouped-number"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "currency symbol and grouped number expand to an unambiguous yen amount"
+      }
+    },
+    {
+      "id": "LV001-JA-024",
+      "primary_category": "dates_times_money_and_units",
+      "display_text": "荷物の重さは3.5kgです。",
+      "expected_spoken_text": "にもつのおもさは、さんてんごきろぐらむです。",
+      "canonical_kana": "にもつのおもさはさんてんごきろぐらむです",
+      "exact_entities": [
+        {
+          "surface": "3.5kg",
+          "kind": "unit",
+          "expected_spoken": "さんてんごきろぐらむ",
+          "normalized_spoken": "さんてんごきろぐらむ",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-003", "JP-008"],
+      "tags": ["decimal", "mass-unit"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "decimal point and Latin unit expand without changing response language"
+      }
+    },
+    {
+      "id": "LV001-JA-025",
+      "primary_category": "dates_times_money_and_units",
+      "display_text": "使用率は12.5%、残容量は256GBです。",
+      "expected_spoken_text": "しようりつは、じゅうにてんごぱーせんと、ざんようりょうは、にひゃくごじゅうろくぎがばいとです。",
+      "canonical_kana": "しようりつはじゅうにてんごぱーせんとざんようりょうはにひゃくごじゅうろくぎがばいとです",
+      "exact_entities": [
+        {
+          "surface": "12.5%",
+          "kind": "unit",
+          "expected_spoken": "じゅうにてんごぱーせんと",
+          "normalized_spoken": "じゅうにてんごぱーせんと",
+          "high_consequence": true
+        },
+        {
+          "surface": "256GB",
+          "kind": "unit",
+          "expected_spoken": "にひゃくごじゅうろくぎがばいと",
+          "normalized_spoken": "にひゃくごじゅうろくぎがばいと",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-003", "JP-005", "JP-008"],
+      "tags": ["percentage", "storage-unit"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "percentage and storage abbreviations expand independently and completely"
+      }
+    },
+    {
+      "id": "LV001-JA-026",
+      "primary_category": "proper_nouns_and_polyphonic_kanji",
+      "display_text": "担当者の角田が折り返します。",
+      "expected_spoken_text": "たんとうしゃのつのだがおりかえします。",
+      "canonical_kana": "たんとうしゃのつのだがおりかえします",
+      "exact_entities": [
+        {
+          "surface": "角田",
+          "kind": "proper_noun",
+          "expected_spoken": "つのだ",
+          "normalized_spoken": "つのだ",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-006", "JP-007"],
+      "tags": ["person-name", "polyphonic-kanji"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "LV-001 domain dictionary registers 角田 as つのだ"
+      }
+    },
+    {
+      "id": "LV001-JA-027",
+      "primary_category": "proper_nouns_and_polyphonic_kanji",
+      "display_text": "日下から確認結果をご連絡します。",
+      "expected_spoken_text": "くさかからかくにんけっかをごれんらくします。",
+      "canonical_kana": "くさかからかくにんけっかをごれんらくします",
+      "exact_entities": [
+        {
+          "surface": "日下",
+          "kind": "proper_noun",
+          "expected_spoken": "くさか",
+          "normalized_spoken": "くさか",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-006", "JP-007"],
+      "tags": ["person-name", "irregular-reading"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "LV-001 domain dictionary registers 日下 as くさか"
+      }
+    },
+    {
+      "id": "LV001-JA-028",
+      "primary_category": "proper_nouns_and_polyphonic_kanji",
+      "display_text": "受付担当は四月一日です。",
+      "expected_spoken_text": "うけつけたんとうはわたぬきです。",
+      "canonical_kana": "うけつけたんとうはわたぬきです",
+      "exact_entities": [
+        {
+          "surface": "四月一日",
+          "kind": "proper_noun",
+          "expected_spoken": "わたぬき",
+          "normalized_spoken": "わたぬき",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-006", "JP-007"],
+      "tags": ["person-name", "irregular-reading"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "LV-001 domain dictionary registers 四月一日 as わたぬき"
+      }
+    },
+    {
+      "id": "LV001-JA-029",
+      "primary_category": "proper_nouns_and_polyphonic_kanji",
+      "display_text": "東京の日本橋で乗り換えてください。",
+      "expected_spoken_text": "とうきょうのにほんばしでのりかえてください。",
+      "canonical_kana": "とうきょうのにほんばしでのりかえてください",
+      "exact_entities": [
+        {
+          "surface": "日本橋",
+          "kind": "proper_noun",
+          "expected_spoken": "にほんばし",
+          "normalized_spoken": "にほんばし",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-006", "JP-007"],
+      "tags": ["place-name", "contextual-reading"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "Tokyo context selects the registered にほんばし reading"
+      }
+    },
+    {
+      "id": "LV001-JA-030",
+      "primary_category": "proper_nouns_and_polyphonic_kanji",
+      "display_text": "大阪の日本橋駅でお降りください。",
+      "expected_spoken_text": "おおさかのにっぽんばしえきでおおりください。",
+      "canonical_kana": "おおさかのにっぽんばしえきでおおりください",
+      "exact_entities": [
+        {
+          "surface": "日本橋",
+          "kind": "proper_noun",
+          "expected_spoken": "にっぽんばし",
+          "normalized_spoken": "にっぽんばし",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-006", "JP-007"],
+      "tags": ["place-name", "contextual-reading"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "Osaka context selects the registered にっぽんばし reading"
+      }
+    },
+    {
+      "id": "LV001-JA-031",
+      "primary_category": "code_switching_and_identifiers",
+      "display_text": "LiveConv API v2 の接続状態を確認してください。",
+      "expected_spoken_text": "らいぶこんぶ、えーぴーあい、ぶいつーのせつぞくじょうたいをかくにんしてください。",
+      "canonical_kana": "らいぶこんぶえーぴーあいぶいつーのせつぞくじょうたいをかくにんしてください",
+      "exact_entities": [
+        {
+          "surface": "LiveConv API v2",
+          "kind": "identifier",
+          "expected_spoken": "らいぶこんぶ、えーぴーあい、ぶいつー",
+          "normalized_spoken": "らいぶこんぶえーぴーあいぶいつー",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-005", "JP-008"],
+      "tags": ["api-name", "version-id"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "configured product, acronym, and version readings remain in Japanese context"
+      }
+    },
+    {
+      "id": "LV001-JA-032",
+      "primary_category": "code_switching_and_identifiers",
+      "display_text": "GitHub Issue LV-2048 に結果を追記しました。",
+      "expected_spoken_text": "ぎっとはぶ、いしゅー、えるぶいにぜろよんはちに、けっかをついきしました。",
+      "canonical_kana": "ぎっとはぶいしゅーえるぶいにぜろよんはちにけっかをついきしました",
+      "exact_entities": [
+        {
+          "surface": "GitHub Issue LV-2048",
+          "kind": "identifier",
+          "expected_spoken": "ぎっとはぶ、いしゅー、えるぶいにぜろよんはち",
+          "normalized_spoken": "ぎっとはぶいしゅーえるぶいにぜろよんはち",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-005", "JP-008"],
+      "tags": ["issue-id", "latin-digits"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "configured service label and issue identifier are fully voiced"
+      }
+    },
+    {
+      "id": "LV001-JA-033",
+      "primary_category": "code_switching_and_identifiers",
+      "display_text": "連絡先は support@example.jp です。",
+      "expected_spoken_text": "れんらくさきは、さぽーと、あっとまーく、いぐざんぷる、どっと、じぇいぴーです。",
+      "canonical_kana": "れんらくさきはさぽーとあっとまーくいぐざんぷるどっとじぇいぴーです",
+      "exact_entities": [
+        {
+          "surface": "support@example.jp",
+          "kind": "identifier",
+          "expected_spoken": "さぽーと、あっとまーく、いぐざんぷる、どっと、じぇいぴー",
+          "normalized_spoken": "さぽーとあっとまーくいぐざんぷるどっとじぇいぴー",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-005", "JP-008"],
+      "tags": ["email-address", "symbol-spelling"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "local part, at sign, dot, and domain are spoken without omission"
+      }
+    },
+    {
+      "id": "LV001-JA-034",
+      "primary_category": "code_switching_and_identifiers",
+      "display_text": "次の meeting は午後3時からです。",
+      "expected_spoken_text": "つぎのみーてぃんぐは、ごごさんじからです。",
+      "canonical_kana": "つぎのみーてぃんぐはごごさんじからです",
+      "exact_entities": [
+        {
+          "surface": "meeting",
+          "kind": "foreign_term",
+          "expected_spoken": "みーてぃんぐ",
+          "normalized_spoken": "みーてぃんぐ",
+          "high_consequence": false
+        },
+        {
+          "surface": "午後3時",
+          "kind": "date_time",
+          "expected_spoken": "ごごさんじ",
+          "normalized_spoken": "ごごさんじ",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-002", "JP-008"],
+      "tags": ["foreign-term", "language-stability"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "short English insertion uses a registered loanword reading in a Japanese sentence"
+      }
+    },
+    {
+      "id": "LV001-JA-035",
+      "primary_category": "interruption_scenarios",
+      "display_text": "まず、ご契約内容を確認し、その後に変更点をご案内します。",
+      "expected_spoken_text": "まず、ごけいやくないようをかくにんし、そのあとにへんこうてんをごあんないします。",
+      "canonical_kana": "まずごけいやくないようをかくにんしそのあとにへんこうてんをごあんないします",
+      "exact_entities": [],
+      "requirements": ["JP-007"],
+      "tags": ["interruption-beginning", "cancel-generation"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "multi-clause response exposes an early phrase boundary"
+      },
+      "interruption": {
+        "position": "beginning",
+        "after_display_text": "まず、",
+        "after_expected_spoken_text": "まず、",
+        "expected_action": "cancel-and-discard-queued-audio",
+        "generation_scope": "current-generation"
+      }
+    },
+    {
+      "id": "LV001-JA-036",
+      "primary_category": "interruption_scenarios",
+      "display_text": "設定画面を開き、音声タブを選んでから、入力機器を確認してください。",
+      "expected_spoken_text": "せっていがめんをひらき、おんせいたぶをえらんでから、にゅうりょくききをかくにんしてください。",
+      "canonical_kana": "せっていがめんをひらきおんせいたぶをえらんでからにゅうりょくききをかくにんしてください",
+      "exact_entities": [],
+      "requirements": ["JP-007"],
+      "tags": ["interruption-middle", "cancel-generation"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "ordered procedure has a stable middle-clause boundary"
+      },
+      "interruption": {
+        "position": "middle",
+        "after_display_text": "設定画面を開き、音声タブを選んでから、",
+        "after_expected_spoken_text": "せっていがめんをひらき、おんせいたぶをえらんでから、",
+        "expected_action": "cancel-and-discard-queued-audio",
+        "generation_scope": "current-generation"
+      }
+    },
+    {
+      "id": "LV001-JA-037",
+      "primary_category": "interruption_scenarios",
+      "display_text": "原因を切り分けるため、接続を保ったまま、もう一度短く話してください。",
+      "expected_spoken_text": "げんいんをきりわけるため、せつぞくをたもったまま、もういちどみじかくはなしてください。",
+      "canonical_kana": "げんいんをきりわけるためせつぞくをたもったままもういちどみじかくはなしてください",
+      "exact_entities": [],
+      "requirements": ["JP-007"],
+      "tags": ["interruption-middle", "diagnostic-instruction"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "diagnostic instruction has an explicit middle phrase boundary"
+      },
+      "interruption": {
+        "position": "middle",
+        "after_display_text": "原因を切り分けるため、接続を保ったまま、",
+        "after_expected_spoken_text": "げんいんをきりわけるため、せつぞくをたもったまま、",
+        "expected_action": "cancel-and-discard-queued-audio",
+        "generation_scope": "current-generation"
+      }
+    },
+    {
+      "id": "LV001-JA-038",
+      "primary_category": "interruption_scenarios",
+      "display_text": "以上で登録手続きは完了です。ご利用ありがとうございました。",
+      "expected_spoken_text": "いじょうでとうろくてつづきはかんりょうです。ごりようありがとうございました。",
+      "canonical_kana": "いじょうでとうろくてつづきはかんりょうですごりようありがとうございました",
+      "exact_entities": [],
+      "requirements": ["JP-007"],
+      "tags": ["interruption-end", "closing-phrase"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "closing response exposes a terminal interruption anchor"
+      },
+      "interruption": {
+        "position": "end",
+        "after_display_text": "以上で登録手続きは完了です。ご利用ありがとうございました",
+        "after_expected_spoken_text": "いじょうでとうろくてつづきはかんりょうです。ごりようありがとうございました",
+        "expected_action": "cancel-and-discard-queued-audio",
+        "generation_scope": "current-generation"
+      }
+    },
+    {
+      "id": "LV001-JA-039",
+      "primary_category": "noise_and_degraded_transport",
+      "display_text": "回線が細い場合でも、確認コード K9P2 を省略せず読み上げます。",
+      "expected_spoken_text": "かいせんがほそいばあいでも、かくにんこーど、けーきゅうぴーにを、しょうりゃくせずよみあげます。",
+      "canonical_kana": "かいせんがほそいばあいでもかくにんこーどけーきゅうぴーにをしょうりゃくせずよみあげます",
+      "exact_entities": [
+        {
+          "surface": "K9P2",
+          "kind": "identifier",
+          "expected_spoken": "けーきゅうぴーに",
+          "normalized_spoken": "けーきゅうぴーに",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-005", "JP-007", "JP-008"],
+      "tags": ["narrowband", "content-preservation"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "identifier remains complete under a declared future narrowband render condition"
+      },
+      "transport_condition": {
+        "condition_id": "narrowband-pcm-v1",
+        "simulation_revision": "liveconv-degraded-transport-v1",
+        "audio_artifact_state": "absent",
+        "parameters": {
+          "mode": "narrowband_pcm",
+          "sample_rate_hz": 8000,
+          "channels": 1
+        }
+      }
+    },
+    {
+      "id": "LV001-JA-040",
+      "primary_category": "noise_and_degraded_transport",
+      "display_text": "パケットが遅れても、受付番号 R-17 は一度だけ案内します。",
+      "expected_spoken_text": "ぱけっとがおくれても、うけつけばんごう、あーるいちななは、いちどだけあんないします。",
+      "canonical_kana": "ぱけっとがおくれてもうけつけばんごうあーるいちななはいちどだけあんないします",
+      "exact_entities": [
+        {
+          "surface": "R-17",
+          "kind": "identifier",
+          "expected_spoken": "あーるいちなな",
+          "normalized_spoken": "あーるいちなな",
+          "high_consequence": true
+        }
+      ],
+      "requirements": ["JP-005", "JP-007", "JP-008"],
+      "tags": ["packet-jitter", "duplicate-detection"],
+      "pronunciation_review": {
+        "state": "engineering-reviewed",
+        "basis": "identifier remains single and complete under a deterministic future jitter pattern"
+      },
+      "transport_condition": {
+        "condition_id": "packet-jitter-v1",
+        "simulation_revision": "liveconv-degraded-transport-v1",
+        "audio_artifact_state": "absent",
+        "parameters": {
+          "mode": "deterministic_packet_jitter",
+          "packet_duration_ms": 20,
+          "arrival_delay_ms_pattern": [0, 40, 10, 80, 0],
+          "dropped_packet_indices": []
+        }
+      }
+    }
+  ]
+}

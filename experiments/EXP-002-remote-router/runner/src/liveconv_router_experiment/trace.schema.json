@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://liveconv.invalid/schemas/exp-002-router-trace-v1.json",
+  "title": "EXP-002 remote router trace",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "experiment_id",
+    "run_scope",
+    "decision_status",
+    "coverage",
+    "environment",
+    "client_clock_id",
+    "server_clock_ids",
+    "events",
+    "results"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "experiment_id": {"const": "EXP-002"},
+    "run_scope": {"const": "route_smoke_v1"},
+    "decision_status": {"const": "inconclusive"},
+    "coverage": {"$ref": "#/$defs/coverage"},
+    "environment": {"$ref": "#/$defs/environment"},
+    "client_clock_id": {"$ref": "#/$defs/clockId"},
+    "server_clock_ids": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/clockId"},
+      "uniqueItems": true
+    },
+    "events": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/event"}
+    },
+    "results": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/result"}
+    }
+  },
+  "$defs": {
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "full_experiment_eligible",
+        "completed_case_ids",
+        "missing_required_lanes"
+      ],
+      "properties": {
+        "full_experiment_eligible": {"const": false},
+        "completed_case_ids": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true,
+          "maxItems": 8
+        },
+        "missing_required_lanes": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runner_revision",
+        "python_version",
+        "platform_system",
+        "platform_machine",
+        "git_commit",
+        "worktree_clean"
+      ],
+      "properties": {
+        "runner_revision": {"const": "0.1.0"},
+        "python_version": {"type": "string", "minLength": 1},
+        "platform_system": {"type": "string", "minLength": 1},
+        "platform_machine": {"type": "string", "minLength": 1},
+        "git_commit": {
+          "anyOf": [
+            {"pattern": "^[0-9a-f]{40}$"},
+            {"const": "unrecorded"}
+          ]
+        },
+        "worktree_clean": {"type": "boolean"}
+      }
+    },
+    "clockId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+    },
+    "clockReading": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clock_id", "monotonic_ns"],
+      "properties": {
+        "clock_id": {"$ref": "#/$defs/clockId"},
+        "monotonic_ns": {"type": "integer", "minimum": 0}
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "case_id", "direction", "kind", "client_time", "details"],
+      "properties": {
+        "index": {"type": "integer", "minimum": 0},
+        "case_id": {"type": "string", "minLength": 1, "maxLength": 128},
+        "direction": {
+          "enum": ["client_to_server", "server_to_client", "local"]
+        },
+        "kind": {"type": "string", "minLength": 1, "maxLength": 128},
+        "client_time": {"$ref": "#/$defs/clockReading"},
+        "server_time": {"$ref": "#/$defs/clockReading"},
+        "details": {"type": "object"}
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "passed", "evidence"],
+      "properties": {
+        "case_id": {"type": "string", "minLength": 1, "maxLength": 128},
+        "passed": {"type": "boolean"},
+        "evidence": {"type": "object"}
+      }
+    }
+  }
+}

@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "id": "EXP-002",
+  "title": "Remote multi-model router foundation",
+  "status": "draft",
+  "phase": 1,
+  "owner": null,
+  "created_at": "2026-08-09T00:40:34Z",
+  "updated_at": "2026-08-09T00:40:34Z",
+  "question": "Can the remote router preserve PCM and Japanese content, enforce generation-bound profile switching, and recover locally from every injected server failure?",
+  "hypothesis": "Remote passthrough will preserve eligible PCM payloads exactly, deterministic gain will change encoded samples but be rejected as meaningful voice transformation, and all cancellation, sequence, queue, authentication, and worker faults will require fallback without accepting stale output.",
+  "links": [
+    "FR-002",
+    "FR-006",
+    "FR-008",
+    "FR-009",
+    "FR-011",
+    "FR-013",
+    "FR-014",
+    "FR-015",
+    "FR-016",
+    "NFR-003",
+    "NFR-004",
+    "NFR-009",
+    "NFR-011",
+    "NFR-012",
+    "NFR-013",
+    "LV-019",
+    "LV-020",
+    "LV-022",
+    "ADR-0002"
+  ],
+  "control": {
+    "id": "local_loopback",
+    "description": "Local native PCM loopback with the same fixture, frame size, and client playout accounting but no remote hop.",
+    "configuration": {
+      "route": "local",
+      "profile_id": null
+    }
+  },
+  "variants": [
+    {
+      "id": "remote_passthrough",
+      "description": "Authenticated remote version 1 PCM route using the byte-preserving passthrough profile.",
+      "configuration": {
+        "route": "remote",
+        "profile_id": "test.passthrough.v1"
+      }
+    },
+    {
+      "id": "remote_gain",
+      "description": "Authenticated remote version 1 PCM route using deterministic 0.5 gain as a sample-different nuisance control that must not count as voice conversion.",
+      "configuration": {
+        "route": "remote",
+        "profile_id": "test.gain.v1",
+        "gain": 0.5
+      }
+    }
+  ],
+  "fixtures": {
+    "manifest": "packages/evaluation/fixtures/router-speech-v1.json",
+    "version": "router-speech-v1",
+    "classification": "synthetic",
+    "frozen": false
+  },
+  "environment": {
+    "git_commit": "Record the clean approved commit before collection.",
+    "runtime": "Python 3.12 workspace lock; gateway bound through the approved TLS test ingress.",
+    "hardware": "RTX 5090 32 GB server; record driver, CUDA, CPU, client OS, browser, audio device, and network path at collection.",
+    "model_revisions": {
+      "test.passthrough.v1": "builtin-v1",
+      "test.gain.v1": "builtin-v1",
+      "stt": "Freeze provider, model revision, and decoding configuration before approval."
+    }
+  },
+  "procedure": {
+    "summary": "Render the same randomized 40-fixture manifest through local loopback, remote passthrough, and remote gain; collect client/server traces; run deterministic signal, content, integrity, switching, cancellation, and fallback checks; then aggregate paired results.",
+    "warmup": "After each gateway start or profile load, run and exclude 20 complete turns; repeat warmup after any worker restart or profile eviction.",
+    "sample_count": 600,
+    "commands": [
+      "uv sync --all-packages --group dev",
+      "uv run --all-packages pytest",
+      "uv run liveconv-router-experiment --experiment EXP-002"
+    ],
+    "invalidation_conditions": [
+      "The frozen protocol, profile implementation, fixture manifest, STT revision, or metric revision changes after approval.",
+      "Control and variants do not use the same client, network path, frame schedule, or playout accounting.",
+      "A raw or generated audio artifact is missing its checksum, authorization class, access-controlled locator, retention deadline, or deletion owner.",
+      "A server or client monotonic duration is calculated by subtracting timestamps from different clock IDs.",
+      "Fewer than 600 eligible post-warmup completed turns are collected for any routing variant."
+    ]
+  },
+  "metrics": [
+    {
+      "name": "turns_with_integrity_defect",
+      "kind": "reliability",
+      "unit": "rate",
+      "primary": true
+    },
+    {
+      "name": "accepted_stale_frames",
+      "kind": "correctness",
+      "unit": "count",
+      "primary": true
+    },
+    {
+      "name": "remote_added_latency",
+      "kind": "latency",
+      "unit": "milliseconds",
+      "primary": false
+    },
+    {
+      "name": "paired_kana_cer_degradation",
+      "kind": "correctness",
+      "unit": "percentage_points",
+      "primary": true
+    },
+    {
+      "name": "signal_change_classifier_correctness",
+      "kind": "correctness",
+      "unit": "rate",
+      "primary": true
+    },
+    {
+      "name": "fallback_recovery_time",
+      "kind": "latency",
+      "unit": "milliseconds",
+      "primary": false
+    }
+  ],
+  "decision_rule": "Advance the router foundation only if remote passthrough preserves every eligible PCM payload; no stale, duplicate, or wrong-pipeline frame is accepted in the full fault suite; every injected auth, queue, sequence, timeout, and worker failure requests local fallback; the observed integrity-defect turn rate is below 0.5% with its point estimate and 95% interval both reported; paired kana-CER degradation has a bootstrap 95% upper bound no greater than 3 percentage points with 100% exact high-consequence entities; remote latency is reported by one-clock durations without asserting an unregistered threshold; and the evaluator classifies passthrough as identical while gain is sample-different but a nuisance transform, never voice-converted. Any missing lane, cross-clock duration, or insufficient sample count is inconclusive.",
+  "artifact_policy": {
+    "raw_location": "Access-controlled EXP-002 artifact directory outside Git; record a non-sensitive locator at approval.",
+    "git_contents": "Schemas, synthetic generators, fixture metadata/checksums, aggregate metrics, redacted failure taxonomy, and decision only.",
+    "retention": "Delete rendered audio and frame-level traces within 14 days after the experiment decision; aggregate non-sensitive metrics may be retained.",
+    "authorization": "Only synthetic or explicitly redistributable source speech; deterministic profiles require no target voice. No user or private reference audio."
+  },
+  "result": null,
+  "decision": null
+}

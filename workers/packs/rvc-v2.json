@@ -1,0 +1,209 @@
+{
+  "schema_version": 1,
+  "pack_id": "rvc-v2",
+  "display_name": "RVC v2",
+  "status": "planned",
+  "ready_for_runtime": false,
+  "role": "streaming_candidate",
+  "implementation_priority": 1,
+  "canonical_source_url": "https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI",
+  "upstream_urls": [
+    "https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/blob/master/LICENSE"
+  ],
+  "japanese_evidence": {
+    "level": "none_official",
+    "summary": "The official project does not publish a Japanese benchmark or supported-language guarantee; Japanese behavior must be measured on frozen fixtures.",
+    "evidence_urls": [
+      "https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI"
+    ],
+    "offline_gate_required": true
+  },
+  "immutability_gate": {
+    "status": "blocked",
+    "source_revision": null,
+    "weight_sha256": null,
+    "approval_record_url": null,
+    "blocking_reasons": [
+      "Select and approve an immutable upstream commit.",
+      "Create or select an authorized target checkpoint and record its SHA-256 digest."
+    ]
+  },
+  "license_gate": {
+    "overall_status": "blocked",
+    "code": {
+      "status": "declared",
+      "declared_license": "MIT",
+      "evidence_urls": [
+        "https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/blob/master/LICENSE"
+      ],
+      "notes": "Repository code is declared MIT; approval remains scoped to the pinned revision."
+    },
+    "weights": {
+      "status": "review_required",
+      "declared_license": null,
+      "evidence_urls": [
+        "https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI"
+      ],
+      "notes": "No separate blanket license for pretrained dependencies or target checkpoints is recorded."
+    },
+    "training_data": {
+      "status": "review_required",
+      "declared_license": null,
+      "evidence_urls": [
+        "https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI"
+      ],
+      "notes": "Audit base-training data, pitch/content dependencies, and the authorization and permitted use of every target recording."
+    },
+    "inference_runtime": {
+      "status": "review_required",
+      "declared_license": null,
+      "evidence_urls": [
+        "https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI"
+      ],
+      "notes": "Freeze and review ContentVec, RMVPE, FAISS, runtime dependencies, and redistribution boundaries."
+    }
+  },
+  "audio_contract": {
+    "native_sample_rate_hz": null,
+    "gateway_input_sample_rate_hz": 48000,
+    "gateway_output_sample_rate_hz": 48000,
+    "context_mode": "windowed_streaming",
+    "minimum_context_ms": null,
+    "processing_window_ms": null,
+    "lookahead_ms": null,
+    "notes": "Read the native sample rate and context from the approved checkpoint; common v2 checkpoints are often 40 kHz, but that is not a pack-wide guarantee."
+  },
+  "target_preparation": {
+    "mode": "trained_checkpoint_and_index",
+    "authorization_required": true,
+    "recommended_audio_seconds": 600,
+    "procedure": "Train or approve one target-specific checkpoint and retrieval index from low-noise authorized speech, then freeze pitch extraction and preprocessing revisions."
+  },
+  "artifact_env": [
+    {
+      "purpose": "Approved target checkpoint",
+      "env_var": "LIVECONV_RVC_V2_CHECKPOINT_PATH",
+      "required_for": "all_modes",
+      "sha256": null,
+      "provenance_url": null
+    },
+    {
+      "purpose": "Approved retrieval index",
+      "env_var": "LIVECONV_RVC_V2_INDEX_PATH",
+      "required_for": "all_modes",
+      "sha256": null,
+      "provenance_url": null
+    },
+    {
+      "purpose": "Authorized target-training corpus",
+      "env_var": "LIVECONV_RVC_V2_TARGET_CORPUS_PATH",
+      "required_for": "preparation",
+      "sha256": null,
+      "provenance_url": null
+    }
+  ],
+  "resource_budget_hypothesis": {
+    "evidence_status": "hypothesis",
+    "cpu": {
+      "support": "not_recommended",
+      "max_threads": 8,
+      "max_ram_mb": 8192
+    },
+    "gpu": {
+      "requirement": "preferred",
+      "max_vram_mb": 8192
+    },
+    "notes": "Initial worker envelope only. Measure warm and steady-state RAM, VRAM, and latency on the deployment host before freezing EXP-003."
+  },
+  "mode_gates": {
+    "offline": {
+      "status": "required",
+      "blocker_ids": ["rvc-approval", "rvc-license", "rvc-target"],
+      "acceptance_scope": ["Japanese content", "target-speaker change", "audio integrity"]
+    },
+    "streaming": {
+      "status": "planned",
+      "blocker_ids": ["rvc-approval", "rvc-license", "rvc-target"],
+      "acceptance_scope": ["bounded latency", "generation cancellation", "stale-frame rejection"]
+    }
+  },
+  "blockers": [
+    {
+      "id": "rvc-approval",
+      "category": "approval",
+      "summary": "Source revision and weight digest are not approved or pinned.",
+      "clear_when": "A reviewed commit, weight SHA-256, and approval record are recorded."
+    },
+    {
+      "id": "rvc-license",
+      "category": "license",
+      "summary": "Weight, data, and inference dependency rights are not fully cleared.",
+      "clear_when": "The four-part license gate is approved for the intended deployment."
+    },
+    {
+      "id": "rvc-target",
+      "category": "artifact",
+      "summary": "No authorized target checkpoint and retrieval index have been selected.",
+      "clear_when": "Authorized artifacts are produced, provenance-recorded, and digest-verified."
+    }
+  ],
+  "acceptance_checklist": {
+    "adapter_conformance": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Pass the common adapter contract with fixed input, output, error, and generation fixtures.",
+      "blocked_by": ["rvc-approval", "rvc-target"],
+      "evidence_url": null
+    },
+    "warmup": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Warmup reaches readiness within a frozen timeout and does not accept audio before ready.",
+      "blocked_by": ["rvc-approval", "rvc-target"],
+      "evidence_url": null
+    },
+    "cancel": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Cancel stops model work and emits no output accepted for the canceled generation.",
+      "blocked_by": ["rvc-approval", "rvc-target"],
+      "evidence_url": null
+    },
+    "unload": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Unload and repeated reload leave the worker healthy and release model resources.",
+      "blocked_by": ["rvc-approval", "rvc-target"],
+      "evidence_url": null
+    },
+    "vram": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Measured peak and post-unload VRAM remain within the preregistered budget.",
+      "blocked_by": ["rvc-approval", "rvc-target"],
+      "evidence_url": null
+    },
+    "stt": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Japanese STT preservation and exact high-consequence entities pass the frozen rule.",
+      "blocked_by": ["rvc-target"],
+      "evidence_url": null
+    },
+    "speaker": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Authorized-target similarity improves under the calibrated preregistered speaker rule.",
+      "blocked_by": ["rvc-target"],
+      "evidence_url": null
+    },
+    "integrity": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Finite samples, clipping, duration, silence, repetition, and discontinuity guardrails pass.",
+      "blocked_by": ["rvc-target"],
+      "evidence_url": null
+    }
+  },
+  "decision_notes": "Implement first after approval because RVC is the most mature practical realtime baseline in the reviewed candidate set; this priority is not an experiment result."
+}

@@ -1,0 +1,22 @@
+{
+	email {$LIVECONV_ACME_EMAIL}
+	admin off
+}
+
+{$LIVECONV_PUBLIC_HOST} {
+	header {
+		-Server
+		Cache-Control "no-store"
+		Permissions-Policy "camera=(), geolocation=(), microphone=()"
+		Referrer-Policy "no-referrer"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+	}
+
+	reverse_proxy gateway:8765 {
+		flush_interval -1
+		health_uri /health/live
+		health_interval 10s
+		health_timeout 3s
+	}
+}

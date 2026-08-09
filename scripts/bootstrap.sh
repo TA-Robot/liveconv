@@ -9,6 +9,7 @@ if command -v corepack >/dev/null 2>&1; then
 fi
 
 bash scripts/doctor.sh
-bash scripts/check.sh
+uv sync --frozen --all-packages --group dev
+make check
 
 printf '\nliveconv bootstrap complete\n'

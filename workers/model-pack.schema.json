@@ -1,0 +1,455 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TA-Robot/liveconv/workers/model-pack.schema.json",
+  "title": "liveconv research model pack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "pack_id",
+    "display_name",
+    "status",
+    "ready_for_runtime",
+    "role",
+    "implementation_priority",
+    "canonical_source_url",
+    "upstream_urls",
+    "japanese_evidence",
+    "immutability_gate",
+    "license_gate",
+    "audio_contract",
+    "target_preparation",
+    "artifact_env",
+    "resource_budget_hypothesis",
+    "mode_gates",
+    "blockers",
+    "acceptance_checklist",
+    "decision_notes"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "pack_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+    },
+    "display_name": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["research", "blocked", "planned"] },
+    "ready_for_runtime": { "const": false },
+    "role": { "enum": ["streaming_candidate", "offline_control"] },
+    "implementation_priority": { "type": "integer", "minimum": 1 },
+    "canonical_source_url": { "$ref": "#/$defs/https_uri" },
+    "upstream_urls": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/https_uri" }
+    },
+    "japanese_evidence": { "$ref": "#/$defs/japanese_evidence" },
+    "immutability_gate": { "$ref": "#/$defs/immutability_gate" },
+    "license_gate": { "$ref": "#/$defs/license_gate" },
+    "audio_contract": { "$ref": "#/$defs/audio_contract" },
+    "target_preparation": { "$ref": "#/$defs/target_preparation" },
+    "artifact_env": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/artifact_env" }
+    },
+    "resource_budget_hypothesis": { "$ref": "#/$defs/resource_budget" },
+    "mode_gates": { "$ref": "#/$defs/mode_gates" },
+    "blockers": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/blocker" }
+    },
+    "acceptance_checklist": { "$ref": "#/$defs/acceptance_checklist" },
+    "decision_notes": { "type": "string", "minLength": 1 }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "immutability_gate": {
+            "properties": { "status": { "const": "approved" } },
+            "required": ["status"]
+          }
+        },
+        "required": ["immutability_gate"]
+      },
+      "then": {
+        "properties": {
+          "artifact_env": {
+            "items": {
+              "properties": {
+                "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+                "provenance_url": { "$ref": "#/$defs/https_uri" }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$comment": "Approval binds the source, aggregate weight identity, and every declared runtime artifact independently.",
+  "$defs": {
+    "https_uri": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://"
+    },
+    "nullable_nonnegative_integer": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "japanese_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "summary", "evidence_urls", "offline_gate_required"],
+      "properties": {
+        "level": {
+          "enum": [
+            "none_official",
+            "indirect_provenance",
+            "official_support_claim",
+            "published_japanese_benchmark"
+          ]
+        },
+        "summary": { "type": "string", "minLength": 1 },
+        "evidence_urls": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/https_uri" }
+        },
+        "offline_gate_required": { "type": "boolean" }
+      }
+    },
+    "immutability_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "source_revision",
+        "weight_sha256",
+        "approval_record_url",
+        "blocking_reasons"
+      ],
+      "properties": {
+        "status": { "enum": ["blocked", "approved"] },
+        "source_revision": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" }
+          ]
+        },
+        "weight_sha256": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          ]
+        },
+        "approval_record_url": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/https_uri" }]
+        },
+        "blocking_reasons": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "blocked" } } },
+          "then": {
+            "properties": {
+              "source_revision": { "type": "null" },
+              "weight_sha256": { "type": "null" },
+              "approval_record_url": { "type": "null" },
+              "blocking_reasons": { "minItems": 1 }
+            }
+          },
+          "else": {
+            "properties": {
+              "source_revision": {
+                "type": "string",
+                "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+              },
+              "weight_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "approval_record_url": { "$ref": "#/$defs/https_uri" },
+              "blocking_reasons": { "maxItems": 0 }
+            }
+          }
+        }
+      ]
+    },
+    "license_component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "declared_license", "evidence_urls", "notes"],
+      "properties": {
+        "status": {
+          "enum": [
+            "declared",
+            "approved",
+            "review_required",
+            "permission_required",
+            "not_disclosed",
+            "not_applicable"
+          ]
+        },
+        "declared_license": { "type": ["string", "null"] },
+        "evidence_urls": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/https_uri" }
+        },
+        "notes": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "const": "approved" } },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "declared_license": { "type": "string", "minLength": 1 },
+              "evidence_urls": { "minItems": 1 }
+            }
+          }
+        }
+      ]
+    },
+    "license_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overall_status", "code", "weights", "training_data", "inference_runtime"],
+      "properties": {
+        "overall_status": { "enum": ["blocked", "review_required", "approved"] },
+        "code": { "$ref": "#/$defs/license_component" },
+        "weights": { "$ref": "#/$defs/license_component" },
+        "training_data": { "$ref": "#/$defs/license_component" },
+        "inference_runtime": { "$ref": "#/$defs/license_component" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "overall_status": { "const": "approved" } },
+            "required": ["overall_status"]
+          },
+          "then": {
+            "properties": {
+              "code": {
+                "properties": { "status": { "enum": ["approved", "not_applicable"] } }
+              },
+              "weights": {
+                "properties": { "status": { "enum": ["approved", "not_applicable"] } }
+              },
+              "training_data": {
+                "properties": { "status": { "enum": ["approved", "not_applicable"] } }
+              },
+              "inference_runtime": {
+                "properties": { "status": { "enum": ["approved", "not_applicable"] } }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "audio_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "native_sample_rate_hz",
+        "gateway_input_sample_rate_hz",
+        "gateway_output_sample_rate_hz",
+        "context_mode",
+        "minimum_context_ms",
+        "processing_window_ms",
+        "lookahead_ms",
+        "notes"
+      ],
+      "properties": {
+        "native_sample_rate_hz": {
+          "type": ["integer", "null"],
+          "minimum": 8000,
+          "maximum": 192000
+        },
+        "gateway_input_sample_rate_hz": { "const": 48000 },
+        "gateway_output_sample_rate_hz": { "const": 48000 },
+        "context_mode": {
+          "enum": ["frame_streaming", "windowed_streaming", "offline", "unknown"]
+        },
+        "minimum_context_ms": { "$ref": "#/$defs/nullable_nonnegative_integer" },
+        "processing_window_ms": { "$ref": "#/$defs/nullable_nonnegative_integer" },
+        "lookahead_ms": { "$ref": "#/$defs/nullable_nonnegative_integer" },
+        "notes": { "type": "string", "minLength": 1 }
+      }
+    },
+    "target_preparation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "authorization_required", "recommended_audio_seconds", "procedure"],
+      "properties": {
+        "mode": {
+          "enum": [
+            "trained_checkpoint_and_index",
+            "trained_model_directory",
+            "zero_shot_reference",
+            "target_embedding"
+          ]
+        },
+        "authorization_required": { "const": true },
+        "recommended_audio_seconds": { "$ref": "#/$defs/nullable_nonnegative_integer" },
+        "procedure": { "type": "string", "minLength": 1 }
+      }
+    },
+    "artifact_env": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["purpose", "env_var", "required_for", "sha256", "provenance_url"],
+      "properties": {
+        "purpose": { "type": "string", "minLength": 1 },
+        "env_var": { "type": "string", "pattern": "^LIVECONV_[A-Z0-9_]+$" },
+        "required_for": { "enum": ["preparation", "offline", "streaming", "all_modes"] },
+        "sha256": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          ]
+        },
+        "provenance_url": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/https_uri" }]
+        }
+      }
+    },
+    "resource_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_status", "cpu", "gpu", "notes"],
+      "properties": {
+        "evidence_status": { "const": "hypothesis" },
+        "cpu": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["support", "max_threads", "max_ram_mb"],
+          "properties": {
+            "support": { "enum": ["expected", "claimed", "unverified", "not_recommended"] },
+            "max_threads": { "$ref": "#/$defs/nullable_nonnegative_integer" },
+            "max_ram_mb": { "$ref": "#/$defs/nullable_nonnegative_integer" }
+          }
+        },
+        "gpu": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["requirement", "max_vram_mb"],
+          "properties": {
+            "requirement": { "enum": ["required", "preferred", "not_required", "unverified"] },
+            "max_vram_mb": { "$ref": "#/$defs/nullable_nonnegative_integer" }
+          }
+        },
+        "notes": { "type": "string", "minLength": 1 }
+      }
+    },
+    "mode_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "blocker_ids", "acceptance_scope"],
+      "properties": {
+        "status": {
+          "enum": ["required", "planned", "blocked", "passed", "failed", "not_planned"]
+        },
+        "blocker_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }
+        },
+        "acceptance_scope": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "mode_gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["offline", "streaming"],
+      "properties": {
+        "offline": { "$ref": "#/$defs/mode_gate" },
+        "streaming": { "$ref": "#/$defs/mode_gate" }
+      }
+    },
+    "blocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "category", "summary", "clear_when"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "category": {
+          "enum": ["approval", "license", "japanese_evidence", "artifact", "integration"]
+        },
+        "summary": { "type": "string", "minLength": 1 },
+        "clear_when": { "type": "string", "minLength": 1 }
+      }
+    },
+    "acceptance_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "status", "criterion", "blocked_by", "evidence_url"],
+      "properties": {
+        "required": { "const": true },
+        "status": {
+          "enum": ["pending", "blocked", "passed", "failed", "not_applicable"]
+        },
+        "criterion": { "type": "string", "minLength": 1 },
+        "blocked_by": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }
+        },
+        "evidence_url": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/https_uri" }]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "enum": ["passed", "failed"] } },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "evidence_url": { "$ref": "#/$defs/https_uri" }
+            }
+          }
+        }
+      ]
+    },
+    "acceptance_checklist": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter_conformance",
+        "warmup",
+        "cancel",
+        "unload",
+        "vram",
+        "stt",
+        "speaker",
+        "integrity"
+      ],
+      "properties": {
+        "adapter_conformance": { "$ref": "#/$defs/acceptance_item" },
+        "warmup": { "$ref": "#/$defs/acceptance_item" },
+        "cancel": { "$ref": "#/$defs/acceptance_item" },
+        "unload": { "$ref": "#/$defs/acceptance_item" },
+        "vram": { "$ref": "#/$defs/acceptance_item" },
+        "stt": { "$ref": "#/$defs/acceptance_item" },
+        "speaker": { "$ref": "#/$defs/acceptance_item" },
+        "integrity": { "$ref": "#/$defs/acceptance_item" }
+      }
+    }
+  }
+}

@@ -1,0 +1,218 @@
+{
+  "schema_version": 1,
+  "pack_id": "beatrice-2",
+  "display_name": "Beatrice 2",
+  "status": "blocked",
+  "ready_for_runtime": false,
+  "role": "streaming_candidate",
+  "implementation_priority": 3,
+  "canonical_source_url": "https://github.com/prj-beatrice/beatrice-vst",
+  "upstream_urls": [
+    "https://prj-beatrice.com/",
+    "https://huggingface.co/fierce-cats/beatrice-trainer",
+    "https://github.com/aq2r/beatrice-client"
+  ],
+  "japanese_evidence": {
+    "level": "indirect_provenance",
+    "summary": "Official training material uses Japanese ReazonSpeech and published test assets include Japanese Common Voice, but no accepted liveconv Japanese quality result exists.",
+    "evidence_urls": [
+      "https://huggingface.co/fierce-cats/beatrice-trainer",
+      "https://prj-beatrice.com/"
+    ],
+    "offline_gate_required": true
+  },
+  "immutability_gate": {
+    "status": "blocked",
+    "source_revision": null,
+    "weight_sha256": null,
+    "approval_record_url": null,
+    "blocking_reasons": [
+      "Obtain written permission for independent server inference before selecting a runtime revision.",
+      "Select an approved trained model directory and record a deterministic artifact digest."
+    ]
+  },
+  "license_gate": {
+    "overall_status": "blocked",
+    "code": {
+      "status": "declared",
+      "declared_license": "MIT",
+      "evidence_urls": [
+        "https://github.com/prj-beatrice/beatrice-vst/blob/master/LICENSE"
+      ],
+      "notes": "The VST host code is declared MIT; this does not grant rights to the separate inference library."
+    },
+    "weights": {
+      "status": "declared",
+      "declared_license": "MIT",
+      "evidence_urls": [
+        "https://huggingface.co/fierce-cats/beatrice-trainer"
+      ],
+      "notes": "The trainer card declares included pretrained models MIT; target artifacts still require authorization and a digest."
+    },
+    "training_data": {
+      "status": "review_required",
+      "declared_license": null,
+      "evidence_urls": [
+        "https://huggingface.co/fierce-cats/beatrice-trainer"
+      ],
+      "notes": "Review ReazonSpeech conditions, LibriTTS-R, VocalSet, noise sources, and the target corpus separately."
+    },
+    "inference_runtime": {
+      "status": "permission_required",
+      "declared_license": null,
+      "evidence_urls": [
+        "https://github.com/aq2r/beatrice-client#license---beatrice"
+      ],
+      "notes": "Independent server use of beatrice.lib requires written Project Beatrice permission for the intended deployment."
+    }
+  },
+  "audio_contract": {
+    "native_sample_rate_hz": null,
+    "gateway_input_sample_rate_hz": 48000,
+    "gateway_output_sample_rate_hz": 48000,
+    "context_mode": "frame_streaming",
+    "minimum_context_ms": null,
+    "processing_window_ms": null,
+    "lookahead_ms": null,
+    "notes": "The official material demonstrates streaming use but does not provide a stable public server sample-rate or context contract; derive and freeze both after permission."
+  },
+  "target_preparation": {
+    "mode": "trained_model_directory",
+    "authorization_required": true,
+    "recommended_audio_seconds": null,
+    "procedure": "Train or approve one target-specific paraphernalia model directory from authorized speech; the official material does not state a minimum duration."
+  },
+  "artifact_env": [
+    {
+      "purpose": "Approved Beatrice model directory",
+      "env_var": "LIVECONV_BEATRICE2_MODEL_PATH",
+      "required_for": "all_modes",
+      "sha256": null,
+      "provenance_url": null
+    },
+    {
+      "purpose": "Authorized target-training corpus",
+      "env_var": "LIVECONV_BEATRICE2_TARGET_CORPUS_PATH",
+      "required_for": "preparation",
+      "sha256": null,
+      "provenance_url": null
+    },
+    {
+      "purpose": "Approved Beatrice inference runtime",
+      "env_var": "LIVECONV_BEATRICE2_RUNTIME_PATH",
+      "required_for": "all_modes",
+      "sha256": null,
+      "provenance_url": null
+    }
+  ],
+  "resource_budget_hypothesis": {
+    "evidence_status": "hypothesis",
+    "cpu": {
+      "support": "claimed",
+      "max_threads": 2,
+      "max_ram_mb": 4096
+    },
+    "gpu": {
+      "requirement": "not_required",
+      "max_vram_mb": 0
+    },
+    "notes": "Initial CPU-only inference envelope based on upstream claims, not a liveconv measurement; training resource needs are out of this runtime budget."
+  },
+  "mode_gates": {
+    "offline": {
+      "status": "blocked",
+      "blocker_ids": ["beatrice-server-permission", "beatrice-approval", "beatrice-data", "beatrice-target"],
+      "acceptance_scope": ["permission before execution", "Japanese content", "target-speaker change"]
+    },
+    "streaming": {
+      "status": "blocked",
+      "blocker_ids": ["beatrice-server-permission", "beatrice-approval", "beatrice-data", "beatrice-target"],
+      "acceptance_scope": ["permission before integration", "CPU latency", "generation cancellation"]
+    }
+  },
+  "blockers": [
+    {
+      "id": "beatrice-server-permission",
+      "category": "license",
+      "summary": "Independent server inference permission has not been obtained.",
+      "clear_when": "Written Project Beatrice permission explicitly covers the intended server deployment and experiment."
+    },
+    {
+      "id": "beatrice-approval",
+      "category": "approval",
+      "summary": "Source revision and weight digest are not approved or pinned.",
+      "clear_when": "After permission, a reviewed commit, artifact SHA-256, and approval record are recorded."
+    },
+    {
+      "id": "beatrice-data",
+      "category": "license",
+      "summary": "Dependent training-data rights and conditions remain under review.",
+      "clear_when": "The data chain and intended use are approved and recorded."
+    },
+    {
+      "id": "beatrice-target",
+      "category": "artifact",
+      "summary": "No authorized target model directory has been selected.",
+      "clear_when": "Authorized artifacts are produced, provenance-recorded, and digest-verified."
+    }
+  ],
+  "acceptance_checklist": {
+    "adapter_conformance": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Pass the common adapter contract without exposing the proprietary runtime outside the worker.",
+      "blocked_by": ["beatrice-server-permission", "beatrice-approval"],
+      "evidence_url": null
+    },
+    "warmup": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "CPU worker warmup reaches readiness within a frozen timeout.",
+      "blocked_by": ["beatrice-server-permission", "beatrice-target"],
+      "evidence_url": null
+    },
+    "cancel": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Cancel prevents any later output from the canceled generation.",
+      "blocked_by": ["beatrice-server-permission"],
+      "evidence_url": null
+    },
+    "unload": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Unload releases runtime state and repeated reload leaves the worker healthy.",
+      "blocked_by": ["beatrice-server-permission"],
+      "evidence_url": null
+    },
+    "vram": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Confirm zero inference VRAM allocation and record peak and recovered CPU RAM.",
+      "blocked_by": ["beatrice-server-permission"],
+      "evidence_url": null
+    },
+    "stt": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Japanese STT preservation and exact high-consequence entities pass the frozen rule.",
+      "blocked_by": ["beatrice-server-permission", "beatrice-target"],
+      "evidence_url": null
+    },
+    "speaker": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Authorized-target similarity improves under the calibrated preregistered rule.",
+      "blocked_by": ["beatrice-server-permission", "beatrice-target"],
+      "evidence_url": null
+    },
+    "integrity": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Finite samples, clipping, duration, silence, repetition, and discontinuity guardrails pass.",
+      "blocked_by": ["beatrice-server-permission", "beatrice-target"],
+      "evidence_url": null
+    }
+  },
+  "decision_notes": "Potential lightweight Japanese candidate, but server permission is a hard blocker and no integration may begin before it is cleared."
+}

@@ -1,6 +1,6 @@
 # Roadmap and phase gates
 
-Status: Proposed
+Status: Active
 
 Progress is gate-driven. Dates may be added later, but no phase advances because
 time elapsed or a demo looked promising.
@@ -8,6 +8,23 @@ time elapsed or a demo looked promising.
 Every gate uses the frozen experiment decision rule and the measurement
 definitions in `docs/product/requirements.md`. A gate is not satisfied by a demo,
 an average without its distribution, or a result collected before approval.
+
+## Execution overlay
+
+Phase gates constrain evidence claims, but independent engineering work is
+scheduled by `docs/planning/critical-path.md`. After every green checkpoint, the
+primary recalculates the Ready frontier and delegates all independent nodes that
+fit exclusive write scopes and resource leases.
+
+Implementation of the current node, test authoring for the next node, and Sol
+review of the previous integrated node run concurrently. Work may prepare a later
+phase without claiming its result; no parallel schedule can bypass a prerequisite
+gate or external authorization.
+
+Engineering checkpoint (2026-08-09): the deterministic remote-router stack is
+implemented and testable end to end with passthrough and gain profiles. Phase 0
+and Phase 1 remain evidence-open until authorized recordings, full sample counts,
+live TLS, audible continuity, and preregistered measurements are collected.
 
 ## Phase 0: Native baseline
 
@@ -51,6 +68,9 @@ Deliver:
 - sequence, timestamp, and generation tracking
 - bounded jitter buffer and cancellation
 - no double-playback path
+- authenticated remote session gateway and versioned HTTP/WSS PCM contract
+- curated profile registry with passthrough and deterministic DSP profiles
+- generation-bound model selection and worker adapter contract
 
 Gate:
 
@@ -60,15 +80,24 @@ Gate:
   and explicit exclusions reported
 - all injected capture and gateway failures return to audible bypass without an
   unbounded queue or unrecoverable session
+- passthrough preserves PCM payloads across the remote route, deterministic gain
+  is sample-different but rejected as meaningful voice transformation, and both
+  retain valid frame sequence and content fixtures
+- profile switching succeeds only between generations; 100 illegal or stale
+  switching cases produce zero accepted old-pipeline frames
+- TLS/auth/ticket/Origin tests satisfy NFR-011 outside loopback, and injected
+  worker crashes satisfy NFR-012
 
-## Phase 2: First streaming VC
+## Phase 2: Multi-model VC lab
 
 Deliver:
 
-- one adapter selected through current primary-source research
+- at least two isolated real VC profile candidates selected through current
+  primary-source and license research
 - authorized target-voice preparation
-- streaming integration with measured warmup and steady state
-- native versus VC blind evaluation
+- at least one streaming integration with measured warmup and steady state
+- offline frozen-fixture results for every selectable real profile
+- native versus VC and cross-model blind evaluation
 
 Gate:
 
@@ -82,6 +111,11 @@ Gate:
   and satisfy the preregistered decision rule
 - code, weight, and data licenses are recorded, and every voice artifact satisfies
   GOV-001 through GOV-003
+- every real profile independently passes adapter conformance, signal-change,
+  content-preservation, speaker-evidence, and integrity lanes; a missing lane is
+  `inconclusive`, not a pass
+- selecting, warming, evicting, and reselecting each profile leaves the gateway
+  healthy and keeps measured VRAM below its preregistered budget
 
 ## Phase 3: First external TTS
 
@@ -118,7 +152,7 @@ Deliver:
 Gate:
 
 - a product-specific winner passes its preregistered blinded quality rule and all
-  applicable NFR-001 through NFR-010 guardrails
+  applicable NFR-001 through NFR-013 guardrails
 - the long-session evaluation contains at least 20 sessions of 5-10 minutes and
   reports failures, memory growth, interruption, and quality slices
 - residual risks have owners and mitigations

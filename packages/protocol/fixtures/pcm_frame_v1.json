@@ -1,0 +1,17 @@
+{
+  "description": "Input frame with sample[i] = ((i % 32) - 16) / 16",
+  "header": {
+    "kind": 1,
+    "generation_id": 7,
+    "sequence": 42,
+    "sample_rate": 48000,
+    "channels": 1,
+    "samples_per_channel": 960,
+    "source_monotonic_ns": 1234567890123,
+    "flags": 0
+  },
+  "encoded_header_hex": "4c56010100000020000000070000002a0000bb80000103c00000011f71fb04cb",
+  "payload_sha256": "b0d8907da6860d40261ddfdffa51300e794ffcd88c709410604e649b4563223f",
+  "frame_sha256": "fd740034da309879fe3f0d3cddb2124592ee1e80679c7a098747e935589fbb44",
+  "frame_length": 3872
+}

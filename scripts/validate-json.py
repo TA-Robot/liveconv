@@ -21,7 +21,9 @@ def format_path(parts: list[object]) -> str:
 
 def main() -> int:
     if len(sys.argv) < 3:
-        print("usage: validate-json.py schema.json instance.json [...]", file=sys.stderr)
+        print(
+            "usage: validate-json.py schema.json instance.json [...]", file=sys.stderr
+        )
         return 2
 
     schema_path = Path(sys.argv[1])
@@ -34,7 +36,9 @@ def main() -> int:
     for raw_path in sys.argv[2:]:
         instance_path = Path(raw_path)
         instance = json.loads(instance_path.read_text(encoding="utf-8"))
-        errors = sorted(validator.iter_errors(instance), key=lambda error: list(error.path))
+        errors = sorted(
+            validator.iter_errors(instance), key=lambda error: list(error.path)
+        )
         if not errors:
             print(f"ok   schema: {instance_path}")
             continue
@@ -42,7 +46,10 @@ def main() -> int:
         failed = True
         for error in errors:
             location = format_path(list(error.absolute_path))
-            print(f"fail schema: {instance_path}:{location}: {error.message}", file=sys.stderr)
+            print(
+                f"fail schema: {instance_path}:{location}: {error.message}",
+                file=sys.stderr,
+            )
 
     return 1 if failed else 0
 

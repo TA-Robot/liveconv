@@ -1,0 +1,326 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TA-Robot/liveconv/packages/evaluation/corpus/lv-001-corpus.schema.json",
+  "title": "liveconv LV-001 Japanese smoke corpus",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "corpus_id",
+    "version",
+    "revision",
+    "status",
+    "artifact_kind",
+    "classification",
+    "language",
+    "normalization_revision",
+    "category_targets",
+    "requirements_covered",
+    "license",
+    "provenance",
+    "audio_assets",
+    "revision_policy",
+    "integrity",
+    "utterances"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "corpus_id": { "const": "lv-001-ja-smoke" },
+    "version": { "const": "1.0.0" },
+    "revision": {
+      "type": "string",
+      "pattern": "^lv-001-ja-smoke-v1\\.0\\.0\\+sha256\\.[0-9a-f]{16}$"
+    },
+    "status": { "const": "text-reviewed" },
+    "artifact_kind": { "const": "text-metadata-only" },
+    "classification": { "const": "synthetic" },
+    "language": { "const": "ja-JP" },
+    "normalization_revision": { "const": "liveconv-jp-nfkc-kana-v1" },
+    "category_targets": { "$ref": "#/$defs/categoryTargets" },
+    "requirements_covered": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/japaneseRequirement" }
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spdx_id", "scope", "redistribution", "third_party_material"],
+      "properties": {
+        "spdx_id": { "const": "CC0-1.0" },
+        "scope": { "const": "corpus text and metadata authored for LV-001" },
+        "redistribution": { "const": "permitted-without-restriction" },
+        "third_party_material": { "const": false }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "origin",
+        "derivation",
+        "source_documents",
+        "contains_customer_data",
+        "contains_recorded_voice",
+        "reading_review"
+      ],
+      "properties": {
+        "origin": { "const": "project-authored" },
+        "derivation": { "const": "requirements-driven manual composition" },
+        "source_documents": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "contains_customer_data": { "const": false },
+        "contains_recorded_voice": { "const": false },
+        "reading_review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "scope", "native_speaker_validation"],
+          "properties": {
+            "state": { "const": "engineering-reviewed" },
+            "scope": {
+              "const": "display-to-spoken mapping, entity spelling, and category coverage"
+            },
+            "native_speaker_validation": { "const": "not-performed" }
+          }
+        }
+      }
+    },
+    "audio_assets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["included", "status", "checksum_manifest_status"],
+      "properties": {
+        "included": { "const": false },
+        "status": { "const": "not-generated" },
+        "checksum_manifest_status": { "const": "not-applicable" }
+      }
+    },
+    "revision_policy": {
+      "const": "Published revisions are immutable; any metadata or utterance change requires a new semantic version, revision identifier, and checksum."
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "canonicalization", "digest_scope", "sha256"],
+      "properties": {
+        "algorithm": { "const": "sha256" },
+        "canonicalization": {
+          "const": "utf8-json-sort-keys-compact-without-revision-and-integrity-v1"
+        },
+        "digest_scope": { "const": "complete document excluding revision and integrity" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "utterances": {
+      "type": "array",
+      "minItems": 40,
+      "maxItems": 40,
+      "items": { "$ref": "#/$defs/utterance" }
+    }
+  },
+  "$defs": {
+    "japaneseRequirement": {
+      "enum": ["JP-001", "JP-002", "JP-003", "JP-004", "JP-005", "JP-006", "JP-007", "JP-008"]
+    },
+    "primaryCategory": {
+      "enum": [
+        "ordinary_conversation",
+        "contact_center_language",
+        "telephone_and_postal_numbers",
+        "addresses",
+        "dates_times_money_and_units",
+        "proper_nouns_and_polyphonic_kanji",
+        "code_switching_and_identifiers",
+        "interruption_scenarios",
+        "noise_and_degraded_transport"
+      ]
+    },
+    "categoryTargets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ordinary_conversation",
+        "contact_center_language",
+        "telephone_and_postal_numbers",
+        "addresses",
+        "dates_times_money_and_units",
+        "proper_nouns_and_polyphonic_kanji",
+        "code_switching_and_identifiers",
+        "interruption_scenarios",
+        "noise_and_degraded_transport"
+      ],
+      "properties": {
+        "ordinary_conversation": { "const": 6 },
+        "contact_center_language": { "const": 5 },
+        "telephone_and_postal_numbers": { "const": 5 },
+        "addresses": { "const": 4 },
+        "dates_times_money_and_units": { "const": 5 },
+        "proper_nouns_and_polyphonic_kanji": { "const": 5 },
+        "code_switching_and_identifiers": { "const": 4 },
+        "interruption_scenarios": { "const": 4 },
+        "noise_and_degraded_transport": { "const": 2 }
+      }
+    },
+    "exactEntity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["surface", "kind", "expected_spoken", "normalized_spoken", "high_consequence"],
+      "properties": {
+        "surface": { "type": "string", "minLength": 1 },
+        "kind": {
+          "enum": ["telephone", "postal_code", "address", "date_time", "money", "unit", "identifier", "proper_noun", "foreign_term"]
+        },
+        "expected_spoken": { "type": "string", "minLength": 1 },
+        "normalized_spoken": { "type": "string", "minLength": 1 },
+        "high_consequence": { "type": "boolean" }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "basis"],
+      "properties": {
+        "state": { "const": "engineering-reviewed" },
+        "basis": { "type": "string", "minLength": 1 }
+      }
+    },
+    "interruption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "position",
+        "after_display_text",
+        "after_expected_spoken_text",
+        "expected_action",
+        "generation_scope"
+      ],
+      "properties": {
+        "position": { "enum": ["beginning", "middle", "end"] },
+        "after_display_text": { "type": "string", "minLength": 1 },
+        "after_expected_spoken_text": { "type": "string", "minLength": 1 },
+        "expected_action": { "const": "cancel-and-discard-queued-audio" },
+        "generation_scope": { "const": "current-generation" }
+      }
+    },
+    "transportCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["condition_id", "simulation_revision", "audio_artifact_state", "parameters"],
+      "properties": {
+        "condition_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]+-v1$" },
+        "simulation_revision": { "const": "liveconv-degraded-transport-v1" },
+        "audio_artifact_state": { "const": "absent" },
+        "parameters": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["mode", "sample_rate_hz", "channels"],
+              "properties": {
+                "mode": { "const": "narrowband_pcm" },
+                "sample_rate_hz": { "const": 8000 },
+                "channels": { "const": 1 }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["mode", "packet_duration_ms", "arrival_delay_ms_pattern", "dropped_packet_indices"],
+              "properties": {
+                "mode": { "const": "deterministic_packet_jitter" },
+                "packet_duration_ms": { "const": 20 },
+                "arrival_delay_ms_pattern": {
+                  "type": "array",
+                  "minItems": 5,
+                  "items": { "type": "integer", "minimum": 0 }
+                },
+                "dropped_packet_indices": {
+                  "type": "array",
+                  "items": { "type": "integer", "minimum": 0 },
+                  "uniqueItems": true
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "utterance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "primary_category",
+        "display_text",
+        "expected_spoken_text",
+        "canonical_kana",
+        "exact_entities",
+        "requirements",
+        "tags",
+        "pronunciation_review"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^LV001-JA-[0-9]{3}$" },
+        "primary_category": { "$ref": "#/$defs/primaryCategory" },
+        "display_text": { "type": "string", "minLength": 1 },
+        "expected_spoken_text": { "type": "string", "minLength": 1 },
+        "canonical_kana": { "type": "string", "minLength": 1 },
+        "exact_entities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/exactEntity" }
+        },
+        "requirements": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/japaneseRequirement" }
+        },
+        "tags": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]+$" }
+        },
+        "pronunciation_review": { "$ref": "#/$defs/review" },
+        "interruption": { "$ref": "#/$defs/interruption" },
+        "transport_condition": { "$ref": "#/$defs/transportCondition" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "primary_category": { "const": "interruption_scenarios" } }, "required": ["primary_category"] },
+          "then": { "required": ["interruption"] },
+          "else": { "not": { "required": ["interruption"] } }
+        },
+        {
+          "if": { "properties": { "primary_category": { "const": "noise_and_degraded_transport" } }, "required": ["primary_category"] },
+          "then": { "required": ["transport_condition"] },
+          "else": { "not": { "required": ["transport_condition"] } }
+        },
+        {
+          "if": {
+            "properties": {
+              "primary_category": {
+                "enum": [
+                  "telephone_and_postal_numbers",
+                  "addresses",
+                  "dates_times_money_and_units",
+                  "proper_nouns_and_polyphonic_kanji",
+                  "code_switching_and_identifiers",
+                  "noise_and_degraded_transport"
+                ]
+              }
+            },
+            "required": ["primary_category"]
+          },
+          "then": { "properties": { "exact_entities": { "minItems": 1 } } }
+        }
+      ]
+    }
+  }
+}

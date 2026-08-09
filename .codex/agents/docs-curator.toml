@@ -1,7 +1,7 @@
 name = "docs_curator"
 description = "Documentation agent for applying an already-approved decision to a narrowly assigned set of project records."
 model = "gpt-5.6-luna"
-model_reasoning_effort = "medium"
+model_reasoning_effort = "xhigh"
 sandbox_mode = "workspace-write"
 developer_instructions = """
 Edit only the documents explicitly assigned by the parent.

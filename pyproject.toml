@@ -1,0 +1,49 @@
+[project]
+name = "liveconv-workspace"
+version = "0.1.0"
+description = "Workspace tooling for the liveconv remote audio lab"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+  "httpx>=0.28,<1",
+  "jsonschema==4.25.1",
+  "pytest>=8,<9",
+  "pytest-asyncio>=0.25,<2",
+  "ruff==0.16.2",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = [
+  "experiments/EXP-002-remote-router/runner",
+  "packages/protocol",
+  "packages/evaluation",
+  "packages/stt",
+  "services/audio",
+  "workers",
+]
+
+[tool.pytest.ini_options]
+addopts = "-ra --import-mode=importlib"
+markers = [
+  "live: opt-in test requiring a disposable running Gateway",
+]
+testpaths = [
+  "packages/protocol/tests",
+  "packages/evaluation/tests",
+  "packages/stt/tests",
+  "experiments/EXP-002-remote-router/runner/tests",
+  "services/audio/tests",
+  "workers/tests",
+  "workers/runtime/tests",
+]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

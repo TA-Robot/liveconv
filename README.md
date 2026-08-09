@@ -27,6 +27,7 @@ its contract clear.
 ```bash
 make doctor
 make check
+make server
 make git-auth KEY=/workspace/liveconv/key
 make experiment ID=EXP-002 SLUG=audio-loopback TITLE="Audio loopback"
 make lock-dev
@@ -39,8 +40,13 @@ make luna PROMPT_FILE=prompts/luna/phase0-kickoff.md
 .codex/          Project Codex configuration and custom subagents
 .devcontainer/   Reproducible CPU-side development environment
 .github/         CI and contribution templates
+apps/            Loadable Chrome MV3 capture and exclusive playout Extension
 docs/            Product, architecture, research, planning, and operations
+deploy/          Hardened remote Gateway deployment and TLS termination
 experiments/     Machine-readable experiment plans and tracked conclusions
+packages/        Wire protocol, evaluation, and revision-pinned STT libraries
+services/audio/  Authenticated remote PCM and model-profile gateway
+workers/         Isolated real-model runtimes added one candidate at a time
 schemas/         Schemas for experiment metadata and other contracts
 scripts/         Bootstrap, validation, and workflow helpers
 ```
@@ -55,5 +61,9 @@ custom-agent spawn surface currently exposes only Sol and Terra overrides.
 
 ## Current stage
 
-The repository is at Phase 0: establish the Japanese speech baseline and the
-measurement harness before selecting a voice-conversion or TTS implementation.
+The bounded remote-router engineering foundation is implemented with
+deterministic passthrough and gain profiles. Phase 0 and Phase 1 evidence remain
+open until the authorized corpus, live TLS route, audible browser checks, and
+preregistered sample counts are collected. Real voice-conversion profiles stay
+unavailable until immutable weights, voice authorization, license records, and
+frozen Japanese evaluation inputs are approved.

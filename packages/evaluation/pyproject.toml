@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "liveconv-evaluation"
+version = "0.1.0"
+description = "Deterministic audio and Japanese transcript evaluation for liveconv"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=2.0,<3",
+]
+
+[project.optional-dependencies]
+test = [
+  "jsonschema>=4.23,<5",
+  "pytest>=8.3,<9",
+]
+
+[project.scripts]
+liveconv-eval = "liveconv_evaluation.cli:main"
+
+[tool.setuptools.package-data]
+liveconv_evaluation = ["py.typed"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+pythonpath = ["src"]
+testpaths = ["tests"]

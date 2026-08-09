@@ -1,0 +1,9 @@
+services:
+  gateway:
+    environment:
+      LIVECONV_PROFILE_CONFIG: /etc/liveconv/model-profiles.json
+    volumes:
+      - type: bind
+        source: ${LIVECONV_PROFILE_CONFIG_FILE:?set an absolute host profile registry path}
+        target: /etc/liveconv/model-profiles.json
+        read_only: true

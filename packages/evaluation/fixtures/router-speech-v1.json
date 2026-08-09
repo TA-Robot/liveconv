@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "fixture_set_id": "router-speech-v1",
+  "status": "draft",
+  "classification": "synthetic",
+  "language": "ja-JP",
+  "normalization_revision": "liveconv-jp-nfkc-kana-v1",
+  "source_generation": {
+    "engine": null,
+    "model_revision": null,
+    "voice_revisions": [],
+    "artifact_policy": "Generate only after engine, model, and voice terms are approved; store WAV files and checksums in the access-controlled EXP-002 artifact directory outside Git."
+  },
+  "base_utterances": [
+    {
+      "id": "jp-01",
+      "reference_text": "おでんわばんごうは 090-1234-5678 です",
+      "canonical_kana": "おでんわばんごうは09012345678です",
+      "exact_entities": ["09012345678"],
+      "tags": ["telephone", "digits"]
+    },
+    {
+      "id": "jp-02",
+      "reference_text": "ごちゅうもんばんごうは ABC-123 です",
+      "canonical_kana": "ごちゅうもんばんごうはabc123です",
+      "exact_entities": ["ABC123"],
+      "tags": ["identifier", "latin"]
+    },
+    {
+      "id": "jp-03",
+      "reference_text": "よやくびは 2026ねん8がつ9にち です",
+      "canonical_kana": "よやくびは2026ねん8がつ9にちです",
+      "exact_entities": ["2026", "8", "9"],
+      "tags": ["date", "digits"]
+    },
+    {
+      "id": "jp-04",
+      "reference_text": "かいしじこくは 14じ30ぷん です",
+      "canonical_kana": "かいしじこくは14じ30ぷんです",
+      "exact_entities": ["14", "30"],
+      "tags": ["time", "digits"]
+    },
+    {
+      "id": "jp-05",
+      "reference_text": "ごうけいきんがくは 12800えん です",
+      "canonical_kana": "ごうけいきんがくは12800えんです",
+      "exact_entities": ["12800"],
+      "tags": ["money", "digits"]
+    },
+    {
+      "id": "jp-06",
+      "reference_text": "おとどけさきは しぶやく 3-2-1 です",
+      "canonical_kana": "おとどけさきはしぶやく321です",
+      "exact_entities": ["321"],
+      "tags": ["address", "digits"]
+    },
+    {
+      "id": "jp-07",
+      "reference_text": "かくにんこーどは X7K9 です",
+      "canonical_kana": "かくにんこーどはx7k9です",
+      "exact_entities": ["X7K9"],
+      "tags": ["identifier", "code-switching"]
+    },
+    {
+      "id": "jp-08",
+      "reference_text": "ぷらんBへ きりかえて ください",
+      "canonical_kana": "ぷらんbへきりかえてください",
+      "exact_entities": ["B"],
+      "tags": ["code-switching", "model-switch"]
+    },
+    {
+      "id": "jp-09",
+      "reference_text": "いまのへんかんを ちゅうしして ください",
+      "canonical_kana": "いまのへんかんをちゅうししてください",
+      "exact_entities": [],
+      "tags": ["cancellation", "short"]
+    },
+    {
+      "id": "jp-10",
+      "reference_text": "おんせいが とぎれたばあいは すぐに もとのおとへ もどします",
+      "canonical_kana": "おんせいがとぎれたばあいはすぐにもとのおとへもどします",
+      "exact_entities": [],
+      "tags": ["fallback", "long"]
+    }
+  ],
+  "render_conditions": [
+    { "id": "synth-a", "voice_revision": null, "speaking_rate": 0.9 },
+    { "id": "synth-b", "voice_revision": null, "speaking_rate": 1.0 },
+    { "id": "synth-c", "voice_revision": null, "speaking_rate": 1.1 },
+    { "id": "synth-d", "voice_revision": null, "speaking_rate": 1.2 }
+  ],
+  "schedule": {
+    "expansion": "base_utterances_x_render_conditions",
+    "fixture_count": 40,
+    "repetitions_per_fixture": 15,
+    "eligible_turns_per_variant": 600,
+    "shuffle_seed": 20260809
+  }
+}

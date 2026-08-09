@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "pack_id": "x-vc",
+  "display_name": "X-VC",
+  "status": "research",
+  "ready_for_runtime": false,
+  "role": "streaming_candidate",
+  "implementation_priority": 2,
+  "canonical_source_url": "https://github.com/Jerrister/X-VC",
+  "upstream_urls": [
+    "https://huggingface.co/chenxie95/X-VC",
+    "https://arxiv.org/abs/2604.12456"
+  ],
+  "japanese_evidence": {
+    "level": "none_official",
+    "summary": "Official training and evaluation cover English and Chinese; cross-lingual results do not establish Japanese preservation or quality.",
+    "evidence_urls": [
+      "https://github.com/Jerrister/X-VC",
+      "https://arxiv.org/abs/2604.12456"
+    ],
+    "offline_gate_required": true
+  },
+  "immutability_gate": {
+    "status": "blocked",
+    "source_revision": null,
+    "weight_sha256": null,
+    "approval_record_url": null,
+    "blocking_reasons": [
+      "Select and approve an immutable upstream commit.",
+      "Select an approved model artifact only after the license and Japanese offline gates are defined."
+    ]
+  },
+  "license_gate": {
+    "overall_status": "blocked",
+    "code": {
+      "status": "declared",
+      "declared_license": "MIT",
+      "evidence_urls": [
+        "https://github.com/Jerrister/X-VC/blob/main/LICENSE"
+      ],
+      "notes": "Repository code is declared MIT; approval remains revision-specific."
+    },
+    "weights": {
+      "status": "declared",
+      "declared_license": "MIT",
+      "evidence_urls": [
+        "https://huggingface.co/chenxie95/X-VC"
+      ],
+      "notes": "The official model card declares MIT, subject to artifact digest and dependency review."
+    },
+    "training_data": {
+      "status": "review_required",
+      "declared_license": null,
+      "evidence_urls": [
+        "https://arxiv.org/abs/2604.12456"
+      ],
+      "notes": "Audit Emilia, LibriTTS, generated Seed-VC pairs, and every upstream data-use restriction."
+    },
+    "inference_runtime": {
+      "status": "review_required",
+      "declared_license": null,
+      "evidence_urls": [
+        "https://github.com/Jerrister/X-VC"
+      ],
+      "notes": "Review tokenizer, speaker encoder, codec, and other bundled or downloaded runtime dependencies independently."
+    }
+  },
+  "audio_contract": {
+    "native_sample_rate_hz": 16000,
+    "gateway_input_sample_rate_hz": 48000,
+    "gateway_output_sample_rate_hz": 48000,
+    "context_mode": "windowed_streaming",
+    "minimum_context_ms": 2400,
+    "processing_window_ms": 2400,
+    "lookahead_ms": 100,
+    "notes": "The paper describes a non-causal 2.4-second window with current, overlap, and future regions; liveconv must measure the adapter plus resampling and network path independently."
+  },
+  "target_preparation": {
+    "mode": "zero_shot_reference",
+    "authorization_required": true,
+    "recommended_audio_seconds": null,
+    "procedure": "Validate an authorized reference WAV, then precompute and reuse its mel conditioning and speaker embedding for the experiment run."
+  },
+  "artifact_env": [
+    {
+      "purpose": "Approved X-VC checkpoint bundle",
+      "env_var": "LIVECONV_XVC_CHECKPOINT_PATH",
+      "required_for": "all_modes",
+      "sha256": null,
+      "provenance_url": null
+    },
+    {
+      "purpose": "Authorized target reference WAV",
+      "env_var": "LIVECONV_XVC_TARGET_REFERENCE_PATH",
+      "required_for": "all_modes",
+      "sha256": null,
+      "provenance_url": null
+    }
+  ],
+  "resource_budget_hypothesis": {
+    "evidence_status": "hypothesis",
+    "cpu": {
+      "support": "not_recommended",
+      "max_threads": 16,
+      "max_ram_mb": 16384
+    },
+    "gpu": {
+      "requirement": "required",
+      "max_vram_mb": 24576
+    },
+    "notes": "Initial ceiling follows the class of the published RTX 3090 measurements, not a liveconv capacity result; lower budgets must be measured."
+  },
+  "mode_gates": {
+    "offline": {
+      "status": "required",
+      "blocker_ids": ["xvc-approval", "xvc-license", "xvc-reference", "xvc-japanese-offline"],
+      "acceptance_scope": ["Japanese content", "target-speaker change", "window-boundary integrity"]
+    },
+    "streaming": {
+      "status": "blocked",
+      "blocker_ids": ["xvc-approval", "xvc-license", "xvc-reference", "xvc-japanese-offline"],
+      "acceptance_scope": ["offline eligibility first", "bounded latency", "generation cancellation"]
+    }
+  },
+  "blockers": [
+    {
+      "id": "xvc-approval",
+      "category": "approval",
+      "summary": "Source revision and weight digest are not approved or pinned.",
+      "clear_when": "A reviewed commit, weight SHA-256, and approval record are recorded."
+    },
+    {
+      "id": "xvc-license",
+      "category": "license",
+      "summary": "Training-data and inference dependency chains remain under review.",
+      "clear_when": "The four-part license gate is approved for the intended deployment."
+    },
+    {
+      "id": "xvc-reference",
+      "category": "artifact",
+      "summary": "No authorized target reference has been selected.",
+      "clear_when": "Reference authorization, provenance, checksum, and retention policy are recorded."
+    },
+    {
+      "id": "xvc-japanese-offline",
+      "category": "japanese_evidence",
+      "summary": "No official Japanese evaluation is available.",
+      "clear_when": "The frozen Japanese offline experiment passes STT, speaker, integrity, and boundary rules."
+    }
+  ],
+  "acceptance_checklist": {
+    "adapter_conformance": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Pass the common offline adapter contract before any streaming adapter is enabled.",
+      "blocked_by": ["xvc-approval", "xvc-reference"],
+      "evidence_url": null
+    },
+    "warmup": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Checkpoint and reusable target conditioning warm within the frozen timeout.",
+      "blocked_by": ["xvc-approval", "xvc-reference"],
+      "evidence_url": null
+    },
+    "cancel": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Cancel drops queued windows and prevents stale output from being accepted.",
+      "blocked_by": ["xvc-japanese-offline"],
+      "evidence_url": null
+    },
+    "unload": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Unload releases checkpoint and conditioning state; repeated reload remains healthy.",
+      "blocked_by": ["xvc-approval"],
+      "evidence_url": null
+    },
+    "vram": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Peak and post-unload VRAM meet a preregistered deployment-host budget.",
+      "blocked_by": ["xvc-approval"],
+      "evidence_url": null
+    },
+    "stt": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Japanese STT preservation and exact high-consequence entities pass offline.",
+      "blocked_by": ["xvc-japanese-offline", "xvc-reference"],
+      "evidence_url": null
+    },
+    "speaker": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Authorized-target similarity improves under the calibrated preregistered rule.",
+      "blocked_by": ["xvc-japanese-offline", "xvc-reference"],
+      "evidence_url": null
+    },
+    "integrity": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Audio integrity passes, including non-causal window and overlap boundary checks.",
+      "blocked_by": ["xvc-japanese-offline"],
+      "evidence_url": null
+    }
+  },
+  "decision_notes": "Treat X-VC as a quality candidate only after the Japanese offline gate; do not infer Japanese support from English and Chinese results."
+}

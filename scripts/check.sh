@@ -28,9 +28,43 @@ required_files=(
   docs/planning/roadmap.md
   docs/planning/backlog.md
   docs/development/agent-playbook.md
+  deploy/remote/Dockerfile
+  deploy/remote/Dockerfile.dockerignore
+  deploy/remote/compose.yaml
+  deploy/remote/compose.profile-registry.yaml
+  deploy/remote/Caddyfile
+  deploy/remote/.env.example
+  deploy/remote/entrypoint.sh
+  deploy/remote/check-tools.sh
+  deploy/remote/validate.py
+  deploy/remote/README.md
   experiments/registry.json
   schemas/experiment-registry.schema.json
   schemas/experiment.schema.json
+  schemas/model-profile-registry.schema.json
+  config/model-profiles.json
+  packages/evaluation/schemas/fixture-manifest.schema.json
+  packages/evaluation/fixtures/router-speech-v1.json
+  packages/protocol/pyproject.toml
+  packages/evaluation/pyproject.toml
+  packages/evaluation/schemas/render-report.schema.json
+  packages/evaluation/schemas/aggregate-report.schema.json
+  packages/stt/pyproject.toml
+  packages/stt/README.md
+  packages/stt/src/liveconv_stt/real-run-requirements.txt
+  packages/stt/src/liveconv_stt/schemas/stt-bundle.schema.json
+  experiments/EXP-002-remote-router/runner/pyproject.toml
+  experiments/EXP-002-remote-router/runner/src/liveconv_router_experiment/trace.schema.json
+  services/audio/pyproject.toml
+  services/audio/README.md
+  workers/pyproject.toml
+  workers/model-pack.schema.json
+  workers/packs/rvc-v2.json
+  workers/packs/x-vc.json
+  workers/packs/beatrice-2.json
+  workers/packs/openvoice-v2.json
+  pyproject.toml
+  uv.lock
   requirements-dev.in
   requirements-dev.txt
 )
@@ -60,7 +94,11 @@ else
     else
       fail "JSON syntax: $json_file"
     fi
-  done < <(find experiments schemas .devcontainer .github -type f -name '*.json' -print 2>/dev/null | sort)
+  done < <(
+    find experiments schemas .devcontainer .github \
+      -type d -name .venv -prune -o \
+      -type f -name '*.json' -print 2>/dev/null | sort
+  )
 
   if [[ "$(jq -r '[.experiments[].id] | length == (unique | length)' experiments/registry.json)" == "true" ]]; then
     pass "experiment registry IDs are unique"
@@ -127,6 +165,28 @@ else
     fail "experiment registry JSON Schema validation"
   fi
 
+  if python3 scripts/validate-json.py \
+    schemas/model-profile-registry.schema.json \
+    config/model-profiles.json; then
+    pass "model profile registry matches its full JSON Schema"
+  else
+    fail "model profile registry JSON Schema validation"
+  fi
+
+  if python3 scripts/validate-json.py \
+    packages/evaluation/schemas/fixture-manifest.schema.json \
+    packages/evaluation/fixtures/router-speech-v1.json; then
+    pass "EXP-002 fixture manifest matches its full JSON Schema"
+  else
+    fail "EXP-002 fixture manifest JSON Schema validation"
+  fi
+
+  if [[ "$(jq -r '[.profiles[].profile_id] | length == (unique | length)' config/model-profiles.json)" == "true" ]]; then
+    pass "model profile IDs are unique"
+  else
+    fail "model profile registry contains duplicate IDs"
+  fi
+
   experiment_files=()
   while IFS= read -r experiment_file; do
     experiment_files+=("$experiment_file")
@@ -141,6 +201,22 @@ else
   else
     fail "experiment JSON Schema validation"
   fi
+fi
+
+if command -v uv >/dev/null 2>&1; then
+  if uv lock --check >/dev/null; then
+    pass "uv workspace lock is current"
+  else
+    fail "uv workspace lock is stale"
+  fi
+else
+  fail "uv is required for the Python workspace"
+fi
+
+if python3 deploy/remote/validate.py >/dev/null; then
+  pass "remote TLS deployment static validation"
+else
+  fail "remote TLS deployment static validation"
 fi
 
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then

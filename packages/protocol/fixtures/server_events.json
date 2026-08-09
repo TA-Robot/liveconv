@@ -1,0 +1,90 @@
+[
+  {
+    "type": "session.ready",
+    "protocol_version": 1,
+    "session_id": "123e4567-e89b-12d3-a456-426614174000",
+    "request_id": "ready-1",
+    "profile_id": "test.passthrough.v1",
+    "profile_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "configuration_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "pipeline_id": "987e6543-e21b-12d3-a456-426614174000",
+    "clock_id": "gateway-clock-1",
+    "limits": {
+      "ingress_budget_ms": 500,
+      "max_ingress_frames": 25
+    }
+  },
+  {
+    "type": "model.selected",
+    "protocol_version": 1,
+    "session_id": "123e4567-e89b-12d3-a456-426614174000",
+    "request_id": "select-1",
+    "profile_id": "test.gain.v1",
+    "profile_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "configuration_hash": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "pipeline_id": "887e6543-e21b-12d3-a456-426614174000"
+  },
+  {
+    "type": "generation.ready",
+    "protocol_version": 1,
+    "session_id": "123e4567-e89b-12d3-a456-426614174000",
+    "request_id": "start-1",
+    "generation_id": 7,
+    "profile_id": "test.gain.v1",
+    "profile_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "configuration_hash": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "pipeline_id": "887e6543-e21b-12d3-a456-426614174000"
+  },
+  {
+    "type": "generation.completed",
+    "protocol_version": 1,
+    "session_id": "123e4567-e89b-12d3-a456-426614174000",
+    "request_id": "end-1",
+    "generation_id": 7,
+    "pipeline_id": "887e6543-e21b-12d3-a456-426614174000"
+  },
+  {
+    "type": "generation.canceled",
+    "protocol_version": 1,
+    "session_id": "123e4567-e89b-12d3-a456-426614174000",
+    "request_id": "cancel-1",
+    "generation_id": 8,
+    "pipeline_id": "887e6543-e21b-12d3-a456-426614174000"
+  },
+  {
+    "type": "session.closed",
+    "protocol_version": 1,
+    "session_id": "123e4567-e89b-12d3-a456-426614174000",
+    "request_id": "close-1"
+  },
+  {
+    "type": "fallback.required",
+    "protocol_version": 1,
+    "session_id": "123e4567-e89b-12d3-a456-426614174000",
+    "generation_id": 8,
+    "pipeline_id": "887e6543-e21b-12d3-a456-426614174000",
+    "reason_code": "SEQUENCE_GAP"
+  },
+  {
+    "type": "error",
+    "protocol_version": 1,
+    "session_id": "123e4567-e89b-12d3-a456-426614174000",
+    "request_id": "frame-1",
+    "generation_id": 8,
+    "code": "UNSUPPORTED_AUDIO",
+    "recoverable": true,
+    "required_action": "fallback",
+    "message": "PCM samples must be finite and normalized",
+    "field": "payload"
+  },
+  {
+    "type": "pong",
+    "protocol_version": 1,
+    "session_id": "123e4567-e89b-12d3-a456-426614174000",
+    "request_id": "ping-1",
+    "client_clock_id": "extension-clock-1",
+    "client_monotonic_ns": 1234567890123,
+    "clock_id": "gateway-clock-1",
+    "server_monotonic_ns": 2234567890123
+  }
+]

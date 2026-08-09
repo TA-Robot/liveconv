@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>liveconv</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>liveconv</h1>
+        <output data-role="session-status" aria-live="polite">Stopped</output>
+      </header>
+      <form data-role="configuration">
+        <label>
+          Gateway
+          <input
+            type="url"
+            name="gatewayUrl"
+            value="http://127.0.0.1:8765"
+            required
+            autocomplete="url"
+          >
+        </label>
+        <label>
+          Profile
+          <input
+            type="text"
+            name="profileId"
+            value="test.passthrough.v1"
+            required
+            autocomplete="off"
+            spellcheck="false"
+          >
+        </label>
+        <label>
+          Session token
+          <input
+            type="password"
+            name="token"
+            minlength="32"
+            required
+            autocomplete="off"
+          >
+        </label>
+        <button type="submit" data-action="configure" disabled>Save session</button>
+      </form>
+      <div class="controls" role="group" aria-label="Session controls">
+        <button type="button" data-action="start" aria-label="Start capture">Start</button>
+        <button type="button" data-action="stop" aria-label="Stop capture">Stop</button>
+      </div>
+      <div class="generation-controls" role="group" aria-label="Generation controls">
+        <button type="button" data-action="end" aria-label="End generation">End</button>
+        <button type="button" data-action="cancel" aria-label="Interrupt generation">Interrupt</button>
+        <button type="button" data-action="next" aria-label="Start next generation">Next</button>
+      </div>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

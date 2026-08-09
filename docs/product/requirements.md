@@ -18,6 +18,10 @@ Status: Draft
 | FR-010 | Experiment runs record code commit, environment, model revision, configuration, fixtures, metrics, failures, and external artifact locations. | Schema-valid experiment result |
 | FR-011 | Original and transformed paths cannot be audible at the same time unless an explicit comparison mode is active. | Audio-routing state test |
 | FR-012 | A user can distinguish native, VC, and TTS mode and can return to native mode in one action. | Browser flow test |
+| FR-013 | An authenticated remote session negotiates a versioned audio contract and returns transformed PCM without making the server responsible for final playout. | HTTP/WSS contract and fallback integration tests |
+| FR-014 | A curated server registry exposes multiple immutable model profiles and permits selection only at a generation boundary. | Profile-schema, state, and cross-profile switching tests |
+| FR-015 | Each candidate render is evaluated independently for signal change, content preservation, authorized speaker change, audio integrity, and latency. | Schema-valid render and aggregate reports from frozen fixtures |
+| FR-016 | Model implementations run behind one adapter contract and cannot crash or exhaust the public gateway process. | Worker crash, timeout, resource-cap, and gateway-readiness tests |
 
 ## Non-functional requirements
 
@@ -36,6 +40,9 @@ existing implementation.
 | NFR-008 | Reproducibility | A second operator can reproduce aggregate results from tracked metadata and authorized artifacts |
 | NFR-009 | Browser resilience | Extension failure does not break the native conversation path |
 | NFR-010 | Accessibility | Core controls are keyboard reachable and have programmatic labels |
+| NFR-011 | Remote transport security | TLS outside loopback; authenticated session creation; single-use short-lived WSS ticket; configured Extension Origin |
+| NFR-012 | Worker fault isolation | Worker crash, timeout, or GPU exhaustion requests fallback without terminating the gateway or another worker |
+| NFR-013 | Clock correctness | Durations use one monotonic clock domain; cross-host timestamps retain distinct `clock_id` values and are never directly subtracted |
 
 ### Measurement definitions
 
@@ -54,6 +61,10 @@ existing implementation.
   once for the aggregate rate, with defect categories reported separately.
 - Latency thresholds apply after the preregistered warmup. Report P50, P95, sample
   count, environment, and exclusion rules.
+- End-to-end transport and playout durations are measured entirely on the client
+  clock. Gateway and worker durations are measured on their own clock domains.
+  Cross-host wall or monotonic timestamps are correlation metadata unless an
+  explicit clock-calibration method and uncertainty are recorded.
 
 ## Japanese speech requirements
 

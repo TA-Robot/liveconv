@@ -5,15 +5,16 @@ Status: Active
 ## Supported starting environment
 
 The repository control plane requires Bash 3.2 or newer, Git, OpenSSH, `jq`, Make,
-Python 3, the pinned packages in `requirements-dev.txt`, and Codex. Application
-phases add Node.js, pnpm, uv, FFmpeg, and audio libraries through the Dev
-Container.
+Python 3.12, `uv`, the pinned bootstrap packages in `requirements-dev.txt`, and
+Codex. Extension phases add Node.js and pnpm; audio experiments use FFmpeg and
+audio libraries supplied by the Dev Container.
 
 Run:
 
 ```bash
 make doctor
 make check
+make server
 ```
 
 To start the tested Luna parent-and-child workflow:
@@ -46,6 +47,10 @@ The container supplies:
 The base image is pinned by digest and the Node Feature is pinned by
 `devcontainer-lock.json`. Update those pins deliberately after reviewing upstream
 release notes.
+
+`scripts/bootstrap.sh` syncs every Python workspace member from `uv.lock`, then
+runs repository checks, Ruff, and all focused pytest suites. Do not install an
+unrecorded package into CI to make one lane pass.
 
 GPU model execution is intentionally not assumed by the base container. Use a
 separate authorized GPU runtime and record its image, driver, GPU, precision, and

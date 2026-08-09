@@ -1,0 +1,17 @@
+{
+  "url": "wss://audio.example.test/v1/stream",
+  "session_id": "123e4567-e89b-12d3-a456-426614174000",
+  "ticket": "synthetic-one-use-ticket",
+  "profile_id": "test.passthrough.v1",
+  "next_profile_id": "test.gain.v1",
+  "pipeline_id": "987e6543-e21b-12d3-a456-426614174000",
+  "next_pipeline_id": "887e6543-e21b-12d3-a456-426614174000",
+  "profile_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "configuration_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "clock_id": "gateway-clock-synthetic",
+  "generation_id": 7,
+  "limits": {
+    "ingress_budget_ms": 500,
+    "max_ingress_frames": 25
+  }
+}

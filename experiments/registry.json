@@ -9,6 +9,15 @@
       "phase": 0,
       "path": "experiments/EXP-001-prompt-baseline/experiment.json",
       "owner": null
+    },
+    {
+      "id": "EXP-002",
+      "slug": "remote-router",
+      "title": "Remote multi-model router foundation",
+      "status": "draft",
+      "phase": 1,
+      "path": "experiments/EXP-002-remote-router/experiment.json",
+      "owner": null
     }
   ]
 }

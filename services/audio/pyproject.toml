@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "liveconv-audio"
+version = "0.1.0"
+description = "Authenticated realtime audio gateway for liveconv"
+requires-python = ">=3.12"
+dependencies = [
+  "anyio>=4,<5",
+  "fastapi>=0.116,<1",
+  "liveconv-protocol==0.1.0",
+  "liveconv-worker-runtime==0.1.0",
+  "pydantic>=2.11,<3",
+  "uvicorn>=0.35,<1",
+]
+
+[project.optional-dependencies]
+test = [
+  "httpx2>=2,<3",
+  "pytest>=8,<9",
+]
+
+[tool.setuptools]
+packages = ["liveconv_audio"]
+
+[tool.setuptools.package-data]
+liveconv_audio = ["default-model-profiles.json"]
+
+[tool.uv.sources]
+liveconv-protocol = { workspace = true }
+liveconv-worker-runtime = { workspace = true }
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+pythonpath = ["."]
+testpaths = ["tests"]

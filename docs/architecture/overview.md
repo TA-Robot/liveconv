@@ -64,12 +64,19 @@ Every session carries:
 
 ```text
 session_id
+protocol_version
 generation_id
+pipeline_id
 mode
 input_sample_rate
 output_sample_rate
 voice_id
 style_id
+configuration_hash
+trace_id
+client_clock_id
+server_clock_id
+queue_limits_ms
 capture_started_at
 ```
 
@@ -86,24 +93,33 @@ sample_format
 payload
 ```
 
-The exact wire encoding is deferred until the router experiment. The semantic
-fields are stable enough to build tests around.
+The version 1 wire encoding and session API are accepted in
+`docs/architecture/remote-protocol.md`. A codec or incompatible field change
+requires a new protocol version.
 
-## Generation lifecycle
+## Runtime state
 
 ```text
-idle -> capturing -> generating -> playing -> completed
-                    |             |
-                    +-> canceled <-+
+Transport: DISCONNECTED -> CONNECTING -> READY -> DEGRADED -> CLOSED
+Route:     NATIVE -> REMOTE_PENDING -> REMOTE -> FALLBACK -> NATIVE
+Generation:
+  IDLE -> STARTING -> STREAMING -> DRAINING -> COMPLETED
+                        |             |
+                        +-> CANCELING -> CANCELED
+                        `-> FAILED
 ```
 
-When a new generation begins or interruption occurs:
+Capture, model processing, and playout overlap, so they cannot share one linear
+lifecycle. When a new generation begins or interruption occurs:
 
 1. increment `generation_id`
 2. cancel model or synthesis work when supported
 3. clear not-yet-played frames for older generations
 4. reject late frames whose generation ID is stale
 5. preserve the native bypass path
+
+The Extension owns the route state and exclusive final playout. A selected model
+profile and `pipeline_id` are immutable during one generation. See ADR-0002.
 
 ## Adapter boundary
 
@@ -153,15 +169,20 @@ delegated to an unconstrained model on the hot path.
 - Reference voice authorization is checked before adapter preparation.
 - Logs contain identifiers and timings, not raw text or audio by default.
 - Large artifacts use an access-controlled store with retention rules.
+- The browser creates sessions over authenticated HTTPS, then attaches WSS with a
+  one-use ticket whose digest is stored for at most its short lifetime.
+- Only the gateway is public; model workers bind to private interfaces or Unix
+  sockets and run in isolated environments.
 
 ## Deferred decisions
 
-- Binary wire encoding and transport framing
 - First VC model
 - First external TTS model
 - Voice registry persistence layer
 - Cloud provider and GPU class
 - Final text commit algorithm
+- Production gateway-to-worker RPC encoding
+- Codec transport after the uncompressed PCM baseline
 
 Each deferred decision needs an experiment or ADR before implementation becomes
 shared infrastructure.

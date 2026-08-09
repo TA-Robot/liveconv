@@ -1,0 +1,462 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TA-Robot/liveconv/packages/evaluation/schemas/render-report.schema.json",
+  "title": "liveconv render comparison report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_type",
+    "render_id",
+    "artifacts",
+    "measurements",
+    "threshold_policy",
+    "verdict",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "report_type": { "const": "render-comparison" },
+    "render_id": { "type": "string", "minLength": 1 },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "output"],
+      "properties": {
+        "source": { "$ref": "#/$defs/artifact" },
+        "output": { "$ref": "#/$defs/artifact" }
+      }
+    },
+    "measurements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["analysis_parameters", "waveform", "transcripts", "stt_evidence"],
+      "properties": {
+        "analysis_parameters": { "$ref": "#/$defs/analysis_parameters" },
+        "waveform": { "$ref": "#/$defs/waveform" },
+        "transcripts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "reference_to_source": { "$ref": "#/$defs/transcript_metrics" },
+            "reference_to_output": { "$ref": "#/$defs/transcript_metrics" },
+            "source_to_output": { "$ref": "#/$defs/transcript_metrics" },
+            "exact_entities": { "$ref": "#/$defs/exact_entities" }
+          }
+        },
+        "stt_evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "output"],
+          "properties": {
+            "source": {
+              "oneOf": [
+                { "type": "null" },
+                { "$ref": "#/$defs/stt_evidence" }
+              ]
+            },
+            "output": {
+              "oneOf": [
+                { "type": "null" },
+                { "$ref": "#/$defs/stt_evidence" }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "threshold_policy": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/threshold_policy" }
+      ]
+    },
+    "verdict": { "$ref": "#/$defs/verdict" },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "verdict": {
+            "properties": { "overall": { "const": "pass" } },
+            "required": ["overall"]
+          }
+        },
+        "required": ["verdict"]
+      },
+      "then": {
+        "properties": {
+          "measurements": {
+            "properties": {
+              "transcripts": {
+                "required": [
+                  "reference_to_source",
+                  "reference_to_output",
+                  "exact_entities"
+                ],
+                "properties": {
+                  "reference_to_source": {
+                    "properties": {
+                      "normalized_reference": { "type": "string", "minLength": 1 },
+                      "normalized_hypothesis": { "type": "string", "minLength": 1 },
+                      "character_error_rate": { "type": "number", "minimum": 0 }
+                    },
+                    "required": [
+                      "normalized_reference",
+                      "normalized_hypothesis",
+                      "character_error_rate"
+                    ]
+                  },
+                  "reference_to_output": {
+                    "properties": {
+                      "normalized_reference": { "type": "string", "minLength": 1 },
+                      "normalized_hypothesis": { "type": "string", "minLength": 1 },
+                      "character_error_rate": { "type": "number", "minimum": 0 }
+                    },
+                    "required": [
+                      "normalized_reference",
+                      "normalized_hypothesis",
+                      "character_error_rate"
+                    ]
+                  },
+                  "exact_entities": {
+                    "properties": {
+                      "exact_match_rate": { "type": "number", "minimum": 0, "maximum": 1 }
+                    },
+                    "required": ["exact_match_rate"]
+                  }
+                }
+              },
+              "stt_evidence": {
+                "properties": {
+                  "source": { "$ref": "#/$defs/stt_evidence" },
+                  "output": { "$ref": "#/$defs/stt_evidence" }
+                }
+              },
+              "waveform": {
+                "properties": {
+                  "aligned_gain_normalized_nrmse": { "type": "number", "minimum": 0 },
+                  "mean_absolute_log_spectral_distance": { "type": "number", "minimum": 0 },
+                  "duration_ratio": { "type": "number", "minimum": 0 }
+                }
+              }
+            }
+          },
+          "threshold_policy": {
+            "type": "object",
+            "properties": {
+              "status": { "const": "approved" },
+              "values": {
+                "required": [
+                  "min_aligned_nrmse_for_waveform_difference",
+                  "min_log_spectral_distance_for_waveform_difference",
+                  "max_output_clipped_fraction",
+                  "max_output_silence_fraction",
+                  "max_duration_ratio_delta",
+                  "max_output_nonfinite_samples",
+                  "max_output_adjacent_sample_delta",
+                  "max_output_interior_silence_run_frames",
+                  "max_output_adjacent_repeated_segment_frames",
+                  "max_reference_cer",
+                  "max_cer_degradation",
+                  "min_exact_entity_match_rate"
+                ]
+              }
+            },
+            "required": ["status", "values"]
+          },
+          "verdict": {
+            "properties": {
+              "lanes": {
+                "properties": {
+                  "transformation_evidence": {
+                    "properties": {
+                      "status": { "const": "pass" },
+                      "evidence": {
+                        "type": "array",
+                        "minItems": 2,
+                        "items": { "type": "string", "pattern": "\\S" }
+                      }
+                    }
+                  },
+                  "content_preservation": {
+                    "properties": {
+                      "status": { "const": "pass" },
+                      "evidence": {
+                        "type": "array",
+                        "minItems": 3,
+                        "items": { "type": "string", "pattern": "\\S" }
+                      }
+                    }
+                  },
+                  "speaker_change": {
+                    "properties": {
+                      "status": { "const": "pass" },
+                      "evidence": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": { "type": "string", "pattern": "\\S" }
+                      }
+                    }
+                  },
+                  "audio_integrity": {
+                    "properties": {
+                      "status": { "const": "pass" },
+                      "evidence": {
+                        "type": "array",
+                        "minItems": 7,
+                        "items": { "type": "string", "pattern": "\\S" }
+                      }
+                    }
+                  },
+                  "streaming_operations": {
+                    "properties": {
+                      "status": { "const": "pass" },
+                      "evidence": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": { "type": "string", "pattern": "\\S" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "nullable_number": { "type": ["number", "null"] },
+    "audio_stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frames",
+        "channels",
+        "sample_rate_hz",
+        "sample_width_bytes",
+        "duration_seconds",
+        "peak_amplitude",
+        "rms_amplitude",
+        "rms_dbfs",
+        "dc_offset",
+        "clipped_sample_fraction",
+        "silence_frame_fraction",
+        "nonfinite_sample_count",
+        "max_adjacent_sample_delta",
+        "interior_silence_run_count",
+        "max_interior_silence_run_frames",
+        "adjacent_repeated_segment_count",
+        "max_adjacent_repeated_segment_frames"
+      ],
+      "properties": {
+        "frames": { "type": "integer", "minimum": 0 },
+        "channels": { "type": "integer", "minimum": 1 },
+        "sample_rate_hz": { "type": "integer", "minimum": 1 },
+        "sample_width_bytes": { "type": ["integer", "null"], "minimum": 1 },
+        "duration_seconds": { "type": "number", "minimum": 0 },
+        "peak_amplitude": { "type": "number", "minimum": 0 },
+        "rms_amplitude": { "type": "number", "minimum": 0 },
+        "rms_dbfs": { "$ref": "#/$defs/nullable_number" },
+        "dc_offset": { "type": "number" },
+        "clipped_sample_fraction": { "type": "number", "minimum": 0, "maximum": 1 },
+        "silence_frame_fraction": { "type": "number", "minimum": 0, "maximum": 1 },
+        "nonfinite_sample_count": { "type": "integer", "minimum": 0 },
+        "max_adjacent_sample_delta": { "type": "number", "minimum": 0 },
+        "interior_silence_run_count": { "type": "integer", "minimum": 0 },
+        "max_interior_silence_run_frames": { "type": "integer", "minimum": 0 },
+        "adjacent_repeated_segment_count": { "type": "integer", "minimum": 0 },
+        "max_adjacent_repeated_segment_frames": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["locator", "sha256", "bytes", "audio"],
+      "properties": {
+        "locator": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "audio": { "$ref": "#/$defs/audio_stats" }
+      }
+    },
+    "analysis_parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "silence_floor_dbfs",
+        "clipping_amplitude",
+        "frame_ms",
+        "alignment_hop_ms",
+        "max_alignment_ms",
+        "spectral_fft_size"
+      ],
+      "properties": {
+        "silence_floor_dbfs": { "type": "number" },
+        "clipping_amplitude": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+        "frame_ms": { "type": "number", "exclusiveMinimum": 0 },
+        "alignment_hop_ms": { "type": "number", "exclusiveMinimum": 0 },
+        "max_alignment_ms": { "type": "number", "minimum": 0 },
+        "spectral_fft_size": { "type": "integer", "minimum": 16 }
+      }
+    },
+    "waveform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exact_sample_match",
+        "alignment_lag_samples_at_source_rate",
+        "aligned_overlap_frames",
+        "gain_applied_for_comparison",
+        "aligned_gain_normalized_nrmse",
+        "aligned_gain_normalized_correlation",
+        "mean_absolute_log_spectral_distance",
+        "duration_ratio"
+      ],
+      "properties": {
+        "exact_sample_match": { "type": "boolean" },
+        "alignment_lag_samples_at_source_rate": { "type": "integer" },
+        "aligned_overlap_frames": { "type": "integer", "minimum": 0 },
+        "gain_applied_for_comparison": { "$ref": "#/$defs/nullable_number" },
+        "aligned_gain_normalized_nrmse": { "$ref": "#/$defs/nullable_number" },
+        "aligned_gain_normalized_correlation": { "$ref": "#/$defs/nullable_number" },
+        "mean_absolute_log_spectral_distance": { "$ref": "#/$defs/nullable_number" },
+        "duration_ratio": { "$ref": "#/$defs/nullable_number" }
+      }
+    },
+    "transcript_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference",
+        "hypothesis",
+        "normalized_reference",
+        "normalized_hypothesis",
+        "substitutions",
+        "insertions",
+        "deletions",
+        "reference_characters",
+        "character_error_rate"
+      ],
+      "properties": {
+        "reference": { "type": "string" },
+        "hypothesis": { "type": "string" },
+        "normalized_reference": { "type": "string" },
+        "normalized_hypothesis": { "type": "string" },
+        "substitutions": { "type": "integer", "minimum": 0 },
+        "insertions": { "type": "integer", "minimum": 0 },
+        "deletions": { "type": "integer", "minimum": 0 },
+        "reference_characters": { "type": "integer", "minimum": 0 },
+        "character_error_rate": { "$ref": "#/$defs/nullable_number" }
+      }
+    },
+    "exact_entities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected",
+        "normalized_expected",
+        "matched",
+        "missing",
+        "exact_match_rate"
+      ],
+      "properties": {
+        "expected": { "type": "array", "items": { "type": "string" } },
+        "normalized_expected": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "matched": { "type": "array", "items": { "type": "string" } },
+        "missing": { "type": "array", "items": { "type": "string" } },
+        "exact_match_rate": { "$ref": "#/$defs/nullable_number" }
+      }
+    },
+    "stt_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "model_revision",
+        "decode_config",
+        "language",
+        "transcribed_at",
+        "normalization_revision"
+      ],
+      "properties": {
+        "provider": { "type": "string", "minLength": 1 },
+        "model_revision": { "type": "string", "minLength": 1 },
+        "decode_config": { "type": "object" },
+        "language": { "type": "string", "minLength": 1 },
+        "transcribed_at": { "type": "string", "format": "date-time" },
+        "normalization_revision": { "const": "liveconv-jp-nfkc-kana-v1" }
+      }
+    },
+    "threshold_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "status", "values"],
+      "properties": {
+        "label": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["proposed", "approved"] },
+        "values": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "min_aligned_nrmse_for_waveform_difference": { "type": "number", "minimum": 0 },
+            "min_log_spectral_distance_for_waveform_difference": { "type": "number", "minimum": 0 },
+            "max_output_clipped_fraction": { "type": "number", "minimum": 0, "maximum": 1 },
+            "max_output_silence_fraction": { "type": "number", "minimum": 0, "maximum": 1 },
+            "max_duration_ratio_delta": { "type": "number", "minimum": 0 },
+            "max_output_nonfinite_samples": { "type": "number", "minimum": 0 },
+            "max_output_adjacent_sample_delta": { "type": "number", "minimum": 0 },
+            "max_output_interior_silence_run_frames": { "type": "number", "minimum": 0 },
+            "max_output_adjacent_repeated_segment_frames": { "type": "number", "minimum": 0 },
+            "max_reference_cer": { "type": "number", "minimum": 0 },
+            "max_cer_degradation": { "type": "number", "minimum": 0 },
+            "min_exact_entity_match_rate": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        }
+      }
+    },
+    "lane_verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "summary", "evidence"],
+      "properties": {
+        "status": { "enum": ["pass", "fail", "unassessed"] },
+        "summary": { "type": "string", "minLength": 1 },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overall", "lanes"],
+      "properties": {
+        "overall": { "enum": ["pass", "fail", "unassessed"] },
+        "lanes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "transformation_evidence",
+            "content_preservation",
+            "speaker_change",
+            "audio_integrity",
+            "streaming_operations"
+          ],
+          "properties": {
+            "transformation_evidence": { "$ref": "#/$defs/lane_verdict" },
+            "content_preservation": { "$ref": "#/$defs/lane_verdict" },
+            "speaker_change": { "$ref": "#/$defs/lane_verdict" },
+            "audio_integrity": { "$ref": "#/$defs/lane_verdict" },
+            "streaming_operations": { "$ref": "#/$defs/lane_verdict" }
+          }
+        }
+      }
+    }
+  }
+}

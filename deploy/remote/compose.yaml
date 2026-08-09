@@ -1,0 +1,114 @@
+name: liveconv-remote
+
+services:
+  gateway:
+    image: liveconv-gateway:0.1.0
+    build:
+      context: ../..
+      dockerfile: deploy/remote/Dockerfile
+    restart: unless-stopped
+    init: true
+    read_only: true
+    user: "10001:10001"
+    environment:
+      LIVECONV_API_TOKEN_FILE: /run/secrets/liveconv_api_token
+      LIVECONV_ALLOWED_ORIGINS: ${LIVECONV_ALLOWED_ORIGINS:?set an exact chrome-extension Origin allowlist}
+      LIVECONV_BIND_HOST: 0.0.0.0
+      LIVECONV_BIND_PORT: "8765"
+      LIVECONV_TICKET_TTL_SECONDS: ${LIVECONV_TICKET_TTL_SECONDS:-30}
+      LIVECONV_ATTACH_TIMEOUT_SECONDS: ${LIVECONV_ATTACH_TIMEOUT_SECONDS:-5}
+      LIVECONV_INGRESS_BUDGET_MS: ${LIVECONV_INGRESS_BUDGET_MS:-500}
+      LIVECONV_MAX_SESSIONS: ${LIVECONV_MAX_SESSIONS:-64}
+      LIVECONV_SESSION_LIFETIME_SECONDS: ${LIVECONV_SESSION_LIFETIME_SECONDS:-1800}
+      LIVECONV_REQUEST_CACHE_MAX: ${LIVECONV_REQUEST_CACHE_MAX:-1024}
+      LIVECONV_SEND_TIMEOUT_SECONDS: ${LIVECONV_SEND_TIMEOUT_SECONDS:-1}
+      LIVECONV_MODEL_ARTIFACT_ROOT: /opt/liveconv/artifacts
+    secrets:
+      - source: liveconv_api_token
+        target: liveconv_api_token
+    volumes:
+      - type: bind
+        source: ${LIVECONV_MODEL_ARTIFACT_DIR:?set an absolute host artifact directory}
+        target: /opt/liveconv/artifacts
+        read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m,mode=1770,uid=10001,gid=10001
+    networks:
+      - backend
+    expose:
+      - "8765"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 128
+    cpus: "4.0"
+    mem_limit: 4g
+    stop_grace_period: 15s
+
+  caddy:
+    image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    restart: unless-stopped
+    init: true
+    read_only: true
+    user: "65534:65534"
+    environment:
+      LIVECONV_PUBLIC_HOST: ${LIVECONV_PUBLIC_HOST:?set the public DNS hostname without a scheme or port}
+      LIVECONV_ACME_EMAIL: ${LIVECONV_ACME_EMAIL:?set the ACME account email}
+    depends_on:
+      gateway:
+        condition: service_healthy
+    ports:
+      - "80:80/tcp"
+      - "443:443/tcp"
+      - "443:443/udp"
+    volumes:
+      - type: bind
+        source: ./Caddyfile
+        target: /etc/caddy/Caddyfile
+        read_only: true
+      - type: volume
+        source: caddy_data
+        target: /data
+      - type: volume
+        source: caddy_config
+        target: /config
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=32m,mode=1770,uid=65534,gid=65534
+    networks:
+      - edge
+      - backend
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          curl --fail --silent --show-error
+          --resolve "$${LIVECONV_PUBLIC_HOST}:443:127.0.0.1"
+          "https://$${LIVECONV_PUBLIC_HOST}/health/live" >/dev/null
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 4
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: "0"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 64
+    cpus: "1.0"
+    mem_limit: 256m
+    stop_grace_period: 10s
+
+networks:
+  edge: {}
+  backend:
+    internal: true
+
+volumes:
+  caddy_data: {}
+  caddy_config: {}
+
+secrets:
+  liveconv_api_token:
+    file: ${LIVECONV_API_TOKEN_FILE:?set an absolute path to the API token file}

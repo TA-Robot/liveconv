@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TA-Robot/liveconv/schemas/model-profile-registry.schema.json",
+  "title": "liveconv curated model profile registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "profiles"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/profile" }
+    }
+  },
+  "$defs": {
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "kind",
+        "readiness",
+        "adapter_api_version",
+        "implementation_revision",
+        "weight_revision",
+        "streaming",
+        "cancellation",
+        "input_sample_rates",
+        "output_sample_rates",
+        "frame_ms",
+        "minimum_context_ms",
+        "voice_requirement",
+        "warmup_policy",
+        "resource_class",
+        "license_record",
+        "timeouts",
+        "runtime"
+      ],
+      "properties": {
+        "profile_id": {
+          "type": "string",
+          "pattern": "^(test|vc|tts)\\.[a-z0-9][a-z0-9.-]*\\.v[0-9]+$"
+        },
+        "kind": {
+          "enum": ["deterministic_test", "voice_conversion", "text_to_speech"]
+        },
+        "readiness": { "enum": ["ready", "loading", "unavailable"] },
+        "adapter_api_version": { "const": 1 },
+        "implementation_revision": { "type": "string", "minLength": 1 },
+        "weight_revision": { "type": ["string", "null"] },
+        "streaming": { "type": "boolean" },
+        "cancellation": { "enum": ["immediate", "cooperative", "generation_only"] },
+        "input_sample_rates": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 8000, "maximum": 192000 }
+        },
+        "output_sample_rates": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 8000, "maximum": 192000 }
+        },
+        "frame_ms": { "type": "integer", "minimum": 5, "maximum": 200 },
+        "minimum_context_ms": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "voice_requirement": {
+          "enum": ["none", "authorized_target_required", "pretrained_voice"]
+        },
+        "warmup_policy": { "enum": ["none", "eager", "lazy"] },
+        "resource_class": { "enum": ["cpu", "gpu", "external"] },
+        "license_record": { "type": "string", "minLength": 1 },
+        "timeouts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["first_output_ms", "stall_ms"],
+          "properties": {
+            "first_output_ms": { "type": "integer", "minimum": 1 },
+            "stall_ms": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "runtime": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["adapter", "configuration", "worker_endpoint", "max_vram_mb"],
+          "properties": {
+            "adapter": { "enum": ["passthrough", "gain", "worker"] },
+            "configuration": {
+              "type": "object",
+              "propertyNames": {
+                "not": {
+                  "pattern": "(^|_)(secret|token|password|credential|private_key|path|endpoint)($|_)"
+                }
+              }
+            },
+            "worker_endpoint": { "type": ["string", "null"] },
+            "max_vram_mb": { "type": "integer", "minimum": 0, "maximum": 32607 }
+          }
+        }
+      }
+    }
+  }
+}

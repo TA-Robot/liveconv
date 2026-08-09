@@ -2,7 +2,27 @@
 
 Status: Accepted process
 
-A change is done only when every applicable item is satisfied.
+A change reaches a gate only when every applicable item is satisfied. Small,
+reviewable checkpoints may be committed earlier under the rules below so work
+does not accumulate into one integration batch.
+
+## Checkpoint versus gate
+
+`Checkpoint` means a coherent slice is safe to commit and push while its backlog
+item remains `Review`:
+
+- one owner and one ownership zone
+- traceable behavior, explicit non-scope, and no shared-contract ambiguity
+- accepted tests or explicit acceptance cases existed before implementation when
+  the interface was already stable
+- focused success, failure, and regression tests pass
+- `make control-check`, Ruff on changed Python, and `git diff --check` pass
+- no credential, private audio, model weight, or generated artifact is tracked
+- the next reviewer can understand the slice without unpublished chat context
+
+`Gate Done` means the full checklist in this document passes and the backlog item
+may move to `Done`. A checkpoint is not experiment evidence, production approval,
+or permission to bypass later independent review.
 
 ## Traceability
 
@@ -28,7 +48,9 @@ A change is done only when every applicable item is satisfied.
 ## Review
 
 - The author inspects the complete diff.
-- A read-only reviewer checks correctness, regressions, privacy, and test gaps.
+- A read-only Sol reviewer, separate from the Luna implementation and test-author
+  roles, checks correctness, regressions, privacy, and test gaps on the integrated
+  SHA. Luna self-review is useful but does not satisfy this item.
 - Material findings are fixed or explicitly accepted with an owner.
 
 ## Records

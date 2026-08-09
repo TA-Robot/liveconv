@@ -4,8 +4,8 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 
-required=(bash git ssh jq make python3)
-optional=(codex node pnpm uv ffmpeg docker)
+required=(bash git ssh jq make node python3 uv)
+optional=(codex pnpm ffmpeg docker nvidia-smi)
 missing=0
 
 printf 'liveconv environment doctor\n\n'

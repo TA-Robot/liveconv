@@ -20,6 +20,14 @@ Scales: likelihood and impact are `Low`, `Medium`, or `High`.
 | R-012 | Parallel agents create conflicting or unreviewed changes. | Medium | Medium | Disjoint ownership zones, worktrees, parent integration, final read-only review. | Primary agent | Mitigated |
 | R-013 | GPU environment variation invalidates comparisons. | Medium | Medium | Freeze image, driver, GPU, precision, revision, warmup, and sample method. | Unassigned | Open |
 | R-014 | Speech normalization changes semantic content. | Medium | High | Preserve display text, table tests, audit dictionary changes, and fallback. | Unassigned | Open |
+| R-015 | Session credentials or one-use WSS tickets leak through Extension storage or proxy logs. | Medium | High | Session-memory credential, ticket digest/expiry/one-use enforcement, Origin checks, and redacted logs. | Gateway owner | Open |
+| R-016 | One model worker crashes the gateway or exhausts GPU memory needed by another profile. | Medium | High | Isolated workers, measured memory budgets, one initial GPU slot, health supervision, and fallback. | Audio owner | Open |
+| R-017 | Client and server monotonic timestamps are subtracted as if they share a clock. | Medium | Medium | Carry `clock_id`; measure each duration in one domain; record calibration uncertainty when used. | Protocol owner | Mitigated |
+| R-018 | Mid-generation model switching creates gaps, overlaps, or stale-pipeline audio. | Medium | High | Version 1 permits switching only with no active generation and gates output by pipeline/generation. | Extension owner | Mitigated |
+| R-019 | STT success is mistaken for proof of natural, undamaged, or correctly converted audio. | High | High | Separate signal, content, speaker, integrity, and blinded-listening verdicts. | Evaluation owner | Mitigated |
+| R-020 | Sessions or idempotency history exhaust gateway memory even when audio queues are bounded. | Medium | High | Hard session/lifetime/request-history caps, terminal cleanup, and capacity tests. | Gateway owner | Mitigated |
+| R-021 | A draining generation blocks cancel or hangs after a worker failure. | Medium | High | Asynchronous timed drain, concurrent cancel, terminal worker-error handling, and race tests. | Gateway owner | Mitigated |
+| R-022 | A public profile digest becomes an oracle for private paths or credentials. | Low | High | Exclude private endpoints, reject secret/path-like runtime configuration, and publish only reviewed fingerprints. | Gateway owner | Mitigated |
 
 ## Risk process
 
