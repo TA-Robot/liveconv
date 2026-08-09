@@ -9,9 +9,9 @@ The user-delivery path is:
 
 ```text
 MS-1 executable multi-model lab
-  -> MS-2 candidate and Extension architecture freeze
-  -> MS-3 responsiveness and route stability
-  -> MS-4 SSH-only security baseline
+  -> MS-2 multi-model Extension MVP
+  -> MS-3 candidate and architecture freeze
+  -> MS-4 responsiveness, stability, and SSH baseline
   -> MS-5 personal operations and recovery
   -> MS-6 personal-use v1 acceptance
 ```
@@ -37,7 +37,8 @@ Only these classes stop the active milestone:
 
 Quality misses, cold-start cost, offline-only candidates, public deployment,
 multi-user operation, production-scale sample counts, HA, and SLA work do not
-stop MS-1. They are scheduled to MS-2/MS-3 or post-v1.
+stop basic technical execution. Quality selection starts in MS-3; tuning and the
+full SSH security baseline start in MS-4.
 
 ## Model gate vocabulary
 
@@ -54,8 +55,9 @@ These per-model gates are independent of the six `MS-*` user milestones:
 | M6 client | Extension completes a real audible or captured-output run through SSH |
 
 MS-1 needs multiple M2 candidates, at least two M3 adapters, and one M5 route.
-It does not require every candidate to reach M4-M6. MS-2 chooses which one
-continues; rejected candidates release their implementation and GPU lanes.
+It does not require every candidate to reach M4-M6. MS-2 exposes and exercises
+the technical roster; MS-3 chooses which one continues. Rejected candidates
+then release their implementation and GPU lanes.
 
 ## MS-1 dependency graph
 
@@ -79,53 +81,69 @@ independent leaves that join at `Q0`. Model work, Extension work, package
 checks, documentation, and independent review are parallel. A failing candidate
 does not block `C0` once the explicit three-M2/two-M3 cardinality is satisfied.
 
-Backlog mapping: `F0` covers LV-004/LV-029; the MS-2 calibration and fixture
+Backlog mapping: `F0` covers LV-004/LV-029; the MS-3 calibration and fixture
 items LV-030/LV-032 are deliberately excluded. `C0` covers LV-009/LV-010 and
 the candidate items LV-023 through LV-025/LV-033. `P0` covers LV-005 through
 LV-007 plus LV-019/LV-020/LV-022/LV-027/LV-031, `R0/R1` are LV-023/LV-038,
 `E0` is LV-026, `D0` is the current-client documentation portion of LV-021, and `Q0` is
 LV-036/LV-037.
 
-## MS-1 close record and MS-2 handoff
+## MS-2 multi-model MVP frontier
 
-| Lane | Current checkpoint | Next gate | Disposition if it fails |
+| Lane | Current checkpoint | MS-2 gate | Disposition if it fails |
 |---|---|---|---|
-| Foundation | False-promotion, cross-render replay, schema, STT, and authorization repairs Sol-green | F0 closed | Reopen only for a new current-scope High |
-| RVC v2 | Content-addressed M3/M4 worker and clean-commit EXP-004 route green; content CER fails | R1 closed | Keep technical/nonselectable and compare on intelligible authorized fixtures in MS-2 |
-| Beatrice 2 | Real isolated worker and full installed/runtime identity independently reviewed | M3 closed | Keep technical/nonselectable; product gates remain blocked |
-| X-VC | Real transform and failed-quality evidence exist; full installed-runtime M3 identity remains incomplete | M2 technical failure; revisit only if shortlisted in MS-2 | Preserve failed/nonselectable result; do not block RVC route |
-| OpenVoice V2 | Real Japanese whole-file transform and offline runtime identity are green; no Supervisor evidence | M2 offline comparator; revisit M3 only if shortlisted in MS-2 | Retain offline/nonselectable; never put on streaming route v1 |
-| Extension | MV3 capture/playout/control and restart/underflow/config repairs Sol-green | E0 closed | Audible real-tab run remains MS-6 |
-| Packaging | Nine workspace wheels/sdists, anchored resources, and isolated imports green | P0 closed | Reopen only for a reproducibility blocker |
-| External pool | Concurrent runner and exact symlink repair re-reviewed | not an MS-1 product gate | Fall back to built-in agents or direct tmux immediately |
+| RVC v2 | Content-addressed M3/M5 technical route green; quality failed | Extension trial compatibility and real ChatGPT-tab attempt | Keep technical/nonselectable; failure must fall back native |
+| Beatrice 2 | Isolated M3 worker and identity green; no Gateway profile | Technical profile/bridge and real trial | One bounded repair; otherwise visible unavailable state blocks the two-model count |
+| X-VC | M3 worker smoke exists; quality failed and shared route absent | Technical live profile and actual attempt | Do not promote quality; a missing route blocks MS-2 unless the user changes the roster |
+| OpenVoice V2 | Real offline M2 whole-utterance transform | Bounded End-triggered Extension preview and actual attempt | Keep it explicitly non-live and exclude it from latency/streaming claims |
+| Extension | Capture/playout and idle-boundary model selection exist; incompatible profiles are hidden | Honest all-model roster UI plus actual ChatGPT tab | Native fallback remains the one-action recovery |
+| SSH route | Linux loopback/tunnel instructions reviewed | Minimal preflight plus actual tunnel run | Full threat/negative matrix remains MS-4 |
+| MS-3 evidence | Fixture and speaker work is Ready | Parallel preparation only | Cannot delay first audible technical MVP |
 
-MS-1 is closed: F0, C0, P0, R0, R1, E0, D0, and Q0 are green. The result-bearing
-tree passed `make check` with nine package builds, Python 575 passed/7 opt-in
-skipped, and Extension 109/109. The final integrated Sol audit found no
-current-scope High/Medium.
+MS-2 dependency graph:
 
-The current Ready frontier is LV-032. Freeze the authorized intelligible
-Japanese decision fixtures first. Then run LV-030 speaker calibration and the
-candidate render/evidence lanes in parallel, join them at LV-034, and make the
-LV-039 model decision plus LV-017 architecture ADR. RF-007/RF-008 govern the
-quality evidence; RF-019/RF-020 are activated only for a shortlisted candidate.
+```text
+ R0 safe roster schema + authenticated API contract --+--> U0 Extension live/buffered chooser
+                                                       +--> X0 EXP-005 runner/schema/prompt freeze
+                                                       +--> G0 generic Gateway dispatch/profile/pack contract
 
-Public Caddy DNS/ACME, full blinded experiments, TTS, all-model Gateway switching,
-and an audible external Chrome tab are not in this MS-1 serial list.
+ G0 ---------------------------------------------------+--> RVC technical route compatibility
+                                                       +--> Beatrice live profile
+                                                       +--> X-VC live profile
+                                                       +--> OpenVoice buffered-preview profile
+
+ (four model leaves + R0) -> D0 exact deployment roster freeze, no unavailable entry
+ SSH loopback preflight + actual client setup ----------------------------> S0
+
+ (D0 + U0 + X0 + S0) -> B0 actual ChatGPT tab capture
+                      -> T0 invoke and attempt all four models sequentially
+                      -> A0 >=2 live profiles produce audible changed output
+                      -> F0 forced remote failure/native fallback
+                      -> Q0 metadata record + make check + Sol review -> MS-2
+
+ MS-3 fixtures/speaker calibration prepare in parallel and do not join Q0.
+```
+
+R0, LV-049 SSH preflight, and MS-3 fixtures are the first parallel roots. After
+R0, Extension UI, experiment runner, and G0 run in parallel. After G0, RVC
+compatibility, Beatrice, X-VC, and OpenVoice use disjoint leaves. D0 and the
+final browser/GPU run are serial.
+GPU model attempts remain sequential; failed quality does not consume the serial
+path unless it breaks audio safety or prevents invocation.
 
 ## MS-2 through MS-6 joins
 
 | Milestone | Serial join | Parallel preparation |
 |---|---|---|
-| MS-2 | intelligible authorized decision fixtures -> common evidence -> model/Extension ADR | candidate offline renders, operator listening setup, STT/speaker/integrity checks |
-| MS-3 | frozen primary profile -> measured bottleneck -> one tuned configuration -> stability gate | queue tests, jitter/cancel tests, latency tracing, failure injection, soak harness |
-| MS-4 | frozen route -> SSH threat boundary -> real second-shell tunnel check | docs validation, auth/origin/ticket negatives, firewall/account checks, secret/log scan |
+| MS-2 | four invocable models -> actual ChatGPT tab -> all-model attempts -> >=2 live audible -> native fallback -> review | roster/API, generic Gateway dispatch, UI/runner, four model routes, SSH preflight, MS-3 fixtures |
+| MS-3 | authorized fixtures -> common evidence -> operator decision -> model/Extension ADR | candidate renders, listening setup, STT/speaker/integrity checks |
+| MS-4 | frozen primary -> timing/stability tune -> SSH threat boundary -> second-shell check | queue/jitter/cancel tests, failure injection, auth/origin/ticket negatives, firewall/log scans |
 | MS-5 | release inventory -> start/restart/rollback runbook -> recovery and soak gate | actual client-platform docs, diagnostics, cleanup, maintenance checklist; other OS notes are best-effort |
 | MS-6 | frozen server/client bundle -> external audible session -> final audit and release | release notes, known issues, rollback rehearsal, operator acceptance record |
 
-MS-2 is the largest scope-reduction point. Once a primary is selected, alternate
+MS-3 is the largest scope-reduction point. Once a primary is selected, alternate
 model writers stop unless their named issue can change the decision inside a
-short timebox. MS-3 never retunes multiple models in parallel.
+short timebox. MS-4 never retunes multiple models in parallel.
 
 ## Two-tier agent schedule
 
@@ -203,5 +221,6 @@ At every green leaf:
 6. update the ledger and Ready frontier immediately;
 7. commit/push a coherent checkpoint instead of accumulating an opaque mega-diff.
 
-At MS-1 through MS-5, real browser/GPU/SSH evidence is scoped to that milestone.
-Only MS-6 combines all three into the final personal-use acceptance.
+MS-2 combines a real browser, one GPU lease, and SSH for the first technical MVP.
+MS-6 repeats that combined route with the frozen release and longer personal-use
+acceptance. Intermediate milestones use only the real resources their gate needs.

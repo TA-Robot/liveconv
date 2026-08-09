@@ -36,6 +36,15 @@
       "phase": 1,
       "path": "experiments/EXP-004-rvc-gateway-smoke/experiment.json",
       "owner": "primary-integrator"
+    },
+    {
+      "id": "EXP-005",
+      "slug": "extension-multimodel-mvp",
+      "title": "ChatGPT tab multi-model Extension MVP",
+      "status": "draft",
+      "phase": 2,
+      "path": "experiments/EXP-005-extension-multimodel-mvp/experiment.json",
+      "owner": "primary-integrator"
     }
   ]
 }

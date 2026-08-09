@@ -66,12 +66,17 @@ custom-agent spawn surface currently exposes only Sol and Terra overrides.
 
 ## Current stage
 
-The project is closing MS-1, the executable multi-model lab. The bounded remote
-router, Extension, worker supervisor, evaluation/STT packages, package gate, and
-SSH client path are implemented. Multiple real model engines have technical
-execution evidence; RVC is the first rolling Gateway integration candidate.
-Current model quality failures and unassessed lanes keep those profiles technical
-and nonselectable until MS-2 chooses a useful primary.
+MS-1, the executable multi-model lab, is closed. MS-2 now targets a hands-on
+multi-model Extension MVP: capture an actual ChatGPT voice tab through the SSH
+local forward, invoke RVC, Beatrice 2, X-VC, and an explicitly buffered OpenVoice
+preview from the Extension, and hear at least two live technical profiles through
+the same native-first route.
+Manual generation controls and poor model quality are acceptable at this stage;
+false availability, stale/double playout, or loss of native fallback are not.
+
+MS-3 performs the comparable authorized quality evaluation and chooses a useful
+primary, or records that native remains the default. Technical trial status in
+MS-2 is never a quality or product approval.
 
 The six-milestone target is a lightweight personal v1 reached through an SSH
 local forward to a loopback-only remote Gateway. Public DNS/TLS ingress,

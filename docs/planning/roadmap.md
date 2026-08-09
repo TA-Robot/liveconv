@@ -122,104 +122,134 @@ Allowed known issues: poor voice quality, failed STT or speaker lanes, slow cold
 start, whole-file-only inference, no external audible-tab run, and candidates
 that remain nonselectable. These become MS-2 inputs rather than MS-1 blockers.
 
-## MS-2: Candidate and architecture freeze
+## MS-2: Multi-model Extension MVP
 
-Outcome: choose one primary personal-use conversion path and stop spending equal
-effort on every model.
+Status: **Active.** This milestone puts hands-on use before model selection.
+
+Outcome: use the actual liveconv Extension on an audible `chatgpt.com` voice tab
+through the SSH-loopback route, hear multiple real conversion models, and learn
+their operational shape without making a quality or production claim.
 
 Deliver:
 
-- a same-input comparison of at least two real candidates using an authorized,
-  intelligible Japanese fixture subset plus integrity, STT, speaker, cold/warm
-  timing, and operator listening notes;
-- one primary streaming candidate, one explicit native fallback, and optionally
-  one offline comparator; all other candidates are archived or assigned a
-  bounded follow-up issue;
-- a short ADR freezing the Extension topology: tab capture, always-hot native
-  path, one source playhead, generation isolation, exclusive final playout, and
-  server-returned candidate PCM;
-- frozen model revision, runtime, profile configuration, reference/target
-  authorization, sample rate, frame size, batching, and selection policy.
+- one versioned deployment roster containing RVC, Beatrice 2, X-VC, and
+  OpenVoice V2 with two independent labels: execution state (`live-trial`,
+  `buffered-preview`, or `unavailable`) and decision state (`technical-only`, `quality-failed`,
+  `unassessed`, or later `selected`);
+- a remote-loopback technical Gateway registry for RVC, Beatrice 2, and X-VC,
+  plus a bounded manual-generation buffered preview for whole-utterance
+  OpenVoice V2, all invocable from the Extension;
+- an Extension chooser that shows all roster entries, disables unavailable or
+  unauthorized entries with a safe reason during development, switches a live
+  model only at an idle generation boundary, and invokes buffered preview only
+  after an explicit End;
+- one real Chrome client connected through the pinned OpenSSH local forward,
+  capturing an audible ChatGPT voice tab with explicit Start, End, Interrupt,
+  Next, model selection, and Stop controls;
+- a metadata-only trial record for all four prepared models. Raw audio is not
+  retained.
 
 Gate:
 
-- the primary is intelligible on the selected personal-use fixtures, has no
-  clipping/repetition/gap failure that makes normal use impractical, and is
-  compared honestly even if it misses a product NFR;
-- the decision records why each alternate is selected, deferred, or rejected;
+- all four roster models are operator-invocable from the Extension and attempted;
+  an `unavailable` entry is useful during development but blocks MS-2 closure
+  unless the user explicitly removes that model from the prepared roster;
+- at least two distinct live model profiles produce audible, finite, changed PCM
+  through the same Extension/Gateway contract on the actual ChatGPT tab;
+- RVC, Beatrice 2, and X-VC each receive a live attempt; OpenVoice receives a
+  bounded, manual End-triggered buffered preview through the same Extension,
+  clearly labelled non-live and excluded from latency/streaming claims;
+- native audio is available before remote readiness and immediately on forced
+  tunnel, worker, or profile failure; native and converted output never play
+  together accidentally, and canceled/stale output is not accepted;
+- the Gateway remains bound to remote loopback with `max_sessions=1`; the client
+  uses a pinned-host-key, forwarding-only SSH local forward plus bearer, exact
+  Extension Origin, and one-use ticket;
+- `make check`, the installed-Chrome smoke, the real audible multi-model trial,
+  and one independent Sol review are green with no current-scope High.
+
+Allowed known issues: poor or unintelligible conversion, failed quality lanes,
+slow cold start, manual End/Next boundaries, technical-profile opt-in, Linux-only
+operator instructions, a Gateway or worker restart between model attempts, and
+an honestly failed attempt after the model was actually invocable. Automatic
+ChatGPT turn detection, quality selection, tuning, and a release claim are not
+MS-2 gates.
+
+## MS-3: Candidate and architecture freeze
+
+Outcome: use the MS-2 hands-on results plus comparable authorized evidence to
+choose one personal-use path, or explicitly choose native-only when no candidate
+is useful enough.
+
+Deliver:
+
+- a same-input comparison of at least two real MS-2 candidates using an
+  authorized, intelligible Japanese fixture subset plus integrity, STT, speaker,
+  cold/warm timing, and operator listening notes;
+- one primary streaming candidate and one explicit native fallback, or a
+  recorded `no VC selected` decision; all alternates are archived or assigned a
+  bounded follow-up;
+- an ADR freezing tab capture, always-hot native playout, one source playhead,
+  generation isolation, exclusive final playout, server-returned PCM, and the
+  manual-boundary policy;
+- frozen model, runtime, profile, target authorization, sample rate, frame size,
+  batching, and selection policy.
+
+Gate:
+
+- if a primary is selected, it is intelligible on the personal-use fixtures and
+  has no clipping, repetition, or gap failure that makes ordinary use
+  impractical; if no VC is selected, the recorded no-release decision satisfies
+  this branch and terminates the roadmap before MS-4;
 - no unassessed lane is represented as a pass and no failed quality result is
-  hidden by a technical route pass;
-- the chosen worker and Extension contract have no unresolved current-scope High.
+  hidden by the MS-2 technical route;
+- the decision states why every alternate is selected, deferred, rejected, or
+  retained offline;
+- no current-scope High remains in the chosen worker or Extension architecture.
 
-Allowed known issues: a documented product-threshold miss, synthetic-reference
-limitations, manual model warmup, and a single selected voice. The chosen
-candidate must still be useful enough for the operator's listening test; a
-clearly unintelligible result cannot be accepted merely to close the milestone.
+Allowed known issues: documented NFR misses, synthetic-reference limitations,
+manual warmup, and one selected voice. If MS-3 records `no VC selected`, it
+closes as a no-release decision and the VC path stops; MS-4 through MS-6 do not
+start without a new user decision.
 
-## MS-3: Responsiveness and route stability
+## MS-4: Responsiveness, stability, and SSH baseline
 
-Outcome: tune only the frozen MS-2 path until ordinary conversation feels usable
-and the core audio invariants remain stable.
+Precondition: MS-3 selected one primary VC profile. A `no VC selected` decision
+terminates this roadmap before MS-4.
 
-Deliver:
-
-- capture-to-playout, worker, jitter-buffer, and cancellation timing with warmup,
-  P50, P95, sample count, environment, and exclusions;
-- measured and tuned batching/context/crossfade/jitter settings;
-- bounded backpressure and overflow behavior at every queue;
-- retry, disconnect, stale-output, worker-crash, and cancel-during-drain tests;
-- a 30-minute continuous route run and at least 30 post-warmup turns, including
-  25 scripted interruptions and 25 native/remote mode changes.
-
-Gate:
-
-- zero accepted stale-generation frames and zero accidental double playback in
-  the scripted cases;
-- every injected route/worker failure reaches audible native fallback without an
-  unbounded queue or Gateway-process crash;
-- interruption stop targets NFR-003; any measured miss has a recorded personal-
-  use budget and mitigation rather than an invented pass;
-- warm response latency is measured against NFR-001 and reduced to the best
-  stable configuration selected by the operator;
-- the 30-minute run has no unrecoverable state, monotonic memory/queue growth, or
-  required repository change.
-
-Allowed known issues: a cold start around one minute, manual first warmup, and a
-documented conversational delay above the product target when the operator
-accepts it for personal use.
-
-## MS-4: SSH-only security baseline
-
-Outcome: make the intended one-user network boundary explicit and fail closed
-without building an Internet service.
+Outcome: tune only the MS-3-selected path, keep it stable in ordinary use, and
+verify the minimum one-user SSH security boundary.
 
 Deliver:
 
-- Gateway bound to remote loopback with `max_sessions=1` and technical-profile
-  opt-in explicit;
+- capture-to-playout, worker, jitter, and cancellation timing with warmup, P50,
+  P95, sample count, environment, and exclusions;
+- tuned batching/context/crossfade/jitter plus bounded backpressure and overflow
+  behavior at every queue;
+- retry, disconnect, stale-output, worker-crash, cancel-during-drain, and one
+  30-minute route run with scripted interruptions and native/remote changes;
 - forwarding-only SSH account/key, `permitopen`, disabled shell/session features,
-  host-key pinning, client-local bind, and firewall verification;
-- exact Extension Origin, visible-ASCII bearer policy, short-lived one-use WSS
-  ticket, request/frame/body caps, worker process containment, and redacted logs;
-- authenticated readiness and negative auth/origin/ticket-replay checks through
-  the real SSH tunnel;
-- a concise threat record scoped to one trusted client and one controlled host.
+  host-key pinning, client-local bind, firewall/external-unreachability checks,
+  exact Origin, bearer, one-use ticket, caps, containment, and redacted logs;
+- authenticated readiness and negative auth/Origin/ticket/profile/artifact cases
+  reproduced from a second client shell.
 
 Gate:
 
+- zero accepted stale frames and accidental double playback; every injected
+  route/worker failure reaches native fallback without an unbounded queue or
+  Gateway crash;
+- warm latency and interruption are measured against NFR-001/NFR-003 and tuned
+  to the best stable configuration; any miss is recorded rather than promoted;
 - port 8765 is unreachable from the network and reachable only through the local
-  forward;
-- an invalid token, Origin, ticket, profile identity, artifact digest, or worker
-  startup fails closed to native fallback;
-- no raw audio, secret, reference voice, model weight, or credential is committed
-  or emitted in normal logs/traces;
-- the SSH and Gateway setup is reproduced from a second client shell using the
-  documented commands.
+  forward; invalid credentials, identity, artifacts, or startup fail closed;
+- the 30-minute run has no unrecoverable state or monotonic resource growth, and
+  no sensitive material is committed or emitted in ordinary logs.
 
-Allowed known issues: one manually distributed bearer, no automatic rotation,
-no SSO, no public TLS endpoint, and no defense against the trusted server
-administrator. Public Caddy deployment work is post-v1 unless independently
-useful and must not block this gate.
+Allowed known issues: a cold start around one minute, manual first warmup, one
+manually distributed bearer, no automatic rotation or SSO, and a documented
+delay above product targets when the operator accepts it. Public Caddy ingress
+remains post-v1.
 
 ## MS-5: Personal operations and recovery
 
@@ -252,6 +282,9 @@ Allowed known issues: no automatic failover, no background pager, monthly manual
 maintenance, and an occasional restart when a clear runbook restores service.
 
 ## MS-6: Personal-use v1 acceptance
+
+Precondition: MS-3 selected a primary VC profile and MS-4/MS-5 closed on that
+route. The `no VC selected` branch does not enter MS-6.
 
 Outcome: the actual external client and remote server complete a normal audible
 conversation over the SSH-only route, and the result is frozen as personal v1.

@@ -97,3 +97,28 @@ This is intentionally different from product or production approval. For
 example, MS-1 may close with quality-failed models, while MS-6 may close with a
 documented manual-restart tolerance and no public deployment. Neither result
 claims that all Draft product NFRs or post-v1 experiments passed.
+
+### MS-2 Extension MVP evidence
+
+MS-2 additionally requires direct operator evidence, not only unit or synthetic
+route tests:
+
+- a normal audible `chatgpt.com` voice tab is captured after an explicit
+  Extension user gesture through the documented SSH local forward;
+- RVC, Beatrice 2, X-VC, and OpenVoice V2 are all operator-invocable from the
+  Extension and attempted; OpenVoice is explicitly a bounded buffered preview,
+  not a live-streaming claim;
+- at least two distinct live model profiles produce audible changed output; an
+  `unavailable` roster entry blocks closure unless the user removes it from the
+  prepared roster;
+- every model attempt records profile/configuration/pipeline identity and outcome
+  without PCM, credentials, host paths, or voice data;
+- tunnel or worker failure visibly returns to native-only playout, and explicit
+  Interrupt/End/Next exercises generation isolation;
+- poor quality, long cold start, or an unavailable candidate is recorded but is
+  not promoted into a pass or used to hide a safety failure.
+
+Manual generation boundaries and OpenVoice's explicit End-triggered buffered
+preview are acceptable for this MVP. Popup/CDP loadability
+alone, deterministic passthrough/gain, or a server-only model smoke does not
+satisfy the real multi-model client gate.

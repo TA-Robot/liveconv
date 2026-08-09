@@ -751,6 +751,12 @@ Use the alternate local port in these commands when configured. A successful
 
 ## Configure and smoke-test the Extension
 
+This section supplies the LV-049 minimum transport preflight and the client-side
+steps for EXP-005. In MS-2, invoke all four frozen roster models: use the live
+profile flow for RVC, Beatrice 2, and X-VC, and the explicit End-triggered
+buffered-preview flow for OpenVoice. Record only non-sensitive metadata. MS-4
+later repeats the route with its full security-negative and second-shell gate.
+
 1. Open the liveconv Extension popup from a normal audible tab.
 2. Set Gateway origin to exactly `http://127.0.0.1:8765`, or the chosen
    alternate client-loopback port.

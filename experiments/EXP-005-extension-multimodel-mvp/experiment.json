@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "id": "EXP-005",
+  "title": "ChatGPT tab multi-model Extension MVP",
+  "status": "draft",
+  "phase": 2,
+  "owner": "primary-integrator",
+  "created_at": "2026-08-09T00:00:00Z",
+  "updated_at": "2026-08-09T00:00:00Z",
+  "question": "Can one trusted Chrome client capture an audible ChatGPT voice tab through the SSH-loopback route, invoke and attempt RVC, Beatrice 2, X-VC, and OpenVoice V2 from the Extension, hear transformed live output from at least two profiles, and retain immediate native fallback?",
+  "hypothesis": "A versioned four-model roster, the existing generation-boundary selector, three live technical routes, and one bounded End-triggered OpenVoice preview can provide a manual multi-model MVP without automatic ChatGPT turn detection or a model-quality claim.",
+  "links": [
+    "ADR-0002",
+    "ADR-0003",
+    "FR-001",
+    "FR-002",
+    "FR-006",
+    "FR-011",
+    "FR-012",
+    "FR-013",
+    "FR-014",
+    "FR-016",
+    "NFR-006",
+    "NFR-007",
+    "NFR-009",
+    "LV-035",
+    "LV-048"
+  ],
+  "control": {
+    "id": "native_chatgpt_tab",
+    "description": "The same captured ChatGPT voice tab remains on the Extension's native-only route.",
+    "configuration": {
+      "route": "native",
+      "automatic_turn_detection": false
+    }
+  },
+  "variants": [
+    {
+      "id": "four_model_technical_roster",
+      "description": "RVC, Beatrice 2, and X-VC live trials plus an OpenVoice buffered preview, exercised sequentially from one Extension through one Gateway contract.",
+      "configuration": {
+        "minimum_real_model_profiles": 2,
+        "required_models": "rvc-v2,beatrice-2,x-vc,openvoice-v2",
+        "manual_generation_controls": true,
+        "openvoice_mode": "buffered_preview_after_end",
+        "technical_only": true,
+        "roster_revision": "freeze-before-approval"
+      }
+    }
+  ],
+  "fixtures": {
+    "manifest": "Operator-authored ChatGPT voice prompts and the deployment model roster; freeze before approval without retaining captured audio.",
+    "version": "unfrozen",
+    "classification": "internal",
+    "frozen": false
+  },
+  "environment": {
+    "git_commit": "Persist evidence only from the exact clean checked-out commit.",
+    "runtime": "Chrome 116+ unpacked Extension, pinned OpenSSH local forward, loopback Gateway, and exact roster-bound worker runtimes.",
+    "hardware": "Record a non-sensitive client/server/GPU class summary in the metadata-only result; never record host paths or identifiers.",
+    "model_revisions": {
+      "roster": "Freeze profile, configuration, pipeline, worker, artifact, and execution-state identities before approval."
+    }
+  },
+  "procedure": {
+    "summary": "Validate the roster and deterministic routes, start the remote-loopback Gateway with one session, open the pinned SSH local forward, load the Extension on a normal audible ChatGPT voice tab, and confirm native audio first. Invoke RVC, Beatrice 2, and X-VC sequentially with explicit End or Interrupt, idle-boundary selection, and Next; record whether finite changed PCM becomes exclusively audible. Invoke OpenVoice as a bounded buffered preview whose output starts only after explicit End and is never labelled live. Force one remote failure and verify immediate native fallback, then stop and confirm cleanup.",
+    "warmup": "Allow one documented cold start per real profile while native remains audible; warmup is not latency evidence.",
+    "sample_count": null,
+    "commands": [
+      "make check",
+      "cd apps/extension && npm test",
+      "LV-054 freezes the EXP-005 runner command, prompt sequence, sample count, and report schema before approval"
+    ],
+    "invalidation_conditions": [
+      "The Chrome run does not capture a normal audible chatgpt.com voice tab after an explicit user gesture.",
+      "RVC, Beatrice 2, X-VC, or OpenVoice V2 is not invocable and attempted from the Extension.",
+      "Fewer than two distinct live model profiles produce audible finite changed output through the Extension.",
+      "OpenVoice is represented as live/streaming or its preview is not bounded and End-triggered.",
+      "Any of the four frozen roster entries remains unavailable at experiment approval or execution.",
+      "Native and transformed paths are audible together, native fallback is unavailable, or stale output is accepted after cancel or profile switch.",
+      "The Gateway is not remote-loopback-only with max_sessions=1, or the client bypasses pinned SSH, bearer, exact Origin, or one-use ticket controls.",
+      "The result retains raw audio, credentials, target/reference data, host paths, or model weights.",
+      "A technical listening outcome is presented as a content, speaker, quality, latency, security, or release pass."
+    ]
+  },
+  "metrics": [
+    {
+      "name": "real_profiles_with_audible_changed_output",
+      "kind": "correctness",
+      "unit": "profiles",
+      "primary": true
+    },
+    {
+      "name": "prepared_models_attempted",
+      "kind": "correctness",
+      "unit": "models",
+      "primary": true
+    },
+    {
+      "name": "openvoice_buffered_preview_completed",
+      "kind": "correctness",
+      "unit": "boolean",
+      "primary": true
+    },
+    {
+      "name": "accepted_stale_frames",
+      "kind": "reliability",
+      "unit": "frames",
+      "primary": true
+    },
+    {
+      "name": "forced_failure_native_fallback",
+      "kind": "reliability",
+      "unit": "boolean",
+      "primary": true
+    }
+  ],
+  "decision_rule": "The experiment remains inconclusive for quality. A technical MVP pass requires a frozen four-model roster with no unavailable entry, an actual ChatGPT voice tab through the pinned SSH-loopback route, RVC, Beatrice 2, X-VC, and OpenVoice each invoked and attempted from the Extension, at least two distinct live profiles with audible finite changed output, an explicitly bounded End-triggered non-live OpenVoice preview, exclusive native-or-remote playout, zero accepted stale frames, and successful native fallback under one forced remote failure.",
+  "artifact_policy": {
+    "raw_location": "Captured and transformed audio stays in process memory and is not retained. Optional metadata-only traces use an operator-selected location outside Git.",
+    "git_contents": "Plan, safe roster schema/reason codes, runner source, tests, aggregate metadata, and no audio, credentials, voices, weights, runtime paths, or machine identifiers.",
+    "retention": "Delete optional local metadata traces after review or within 14 days. Do not retain audio recordings for this MVP gate.",
+    "authorization": "Use only the operator's authorized account, prompts, model artifacts, and target/reference material. Each trial profile must carry its existing technical authorization/provenance binding."
+  },
+  "result": null,
+  "decision": null
+}

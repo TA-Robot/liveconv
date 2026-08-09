@@ -241,7 +241,7 @@ After every green checkpoint or material blocker change, the primary:
 4. schedules later quality, performance, security, operations, or public-service
    concerns to their owning milestone;
 5. dispatches all independent Ready work that fits ownership and resource leases;
-6. stops alternate-model work after MS-2 unless a bounded issue can change the
+6. stops alternate-model work after MS-3 unless a bounded issue can change the
    recorded model decision.
 
 Default triage is fast: two hours to reproduce and normally one owner-day for a

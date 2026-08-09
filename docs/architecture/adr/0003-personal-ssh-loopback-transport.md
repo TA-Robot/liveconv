@@ -43,6 +43,8 @@ Public DNS, ACME, Internet ingress, and multi-user identity remain post-v1.
 
 ## Validation
 
-MS-4 verifies remote loopback binding, forwarding-account restrictions, host-key
-pinning, client-local binding, negative auth/Origin/ticket cases, and external
-unreachability. MS-6 repeats the final route from the actual client.
+MS-2 first exercises this boundary from the actual Chrome client with remote and
+client loopback binding, the pinned host key, forwarding-only account,
+`permitopen`, bearer, exact Origin, one-use ticket, and `max_sessions=1`. MS-4
+adds the full negative matrix, external-unreachability proof, second-shell
+reproduction, and tuned-route stability. MS-6 repeats the frozen release route.
