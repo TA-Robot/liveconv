@@ -351,14 +351,14 @@ class GatewayApi:
             "DELETE",
             f"/v1/sessions/{descriptor.session_id}",
         )
-        if result.status_code != 204:
+        if result.status_code != 404:
             raise RouteValidationError(
-                f"Gateway session cleanup returned HTTP {result.status_code}"
+                "Gateway session remained addressable after session.close"
             )
         self.trace.add_result(
             "session.cleanup",
             passed=True,
-            evidence={"http_status_code": 204, "session_invalidated": True},
+            evidence={"http_status_code": 404, "session_invalidated": True},
         )
 
     async def close(self) -> None:

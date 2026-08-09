@@ -46,8 +46,14 @@ class VirtualPacer:
 
 
 class FakeHttp:
-    def __init__(self, profiles: tuple[RegistryProfile, ...]) -> None:
+    def __init__(
+        self,
+        profiles: tuple[RegistryProfile, ...],
+        *,
+        closed_session_status: int = 404,
+    ) -> None:
         self.profiles = profiles
+        self.closed_session_status = closed_session_status
         self.closed = False
         self.requests: list[tuple[str, str]] = []
 
@@ -72,7 +78,7 @@ class FakeHttp:
                 },
             )
         if method == "DELETE" and "/v1/sessions/" in url:
-            return HttpResult(204, None)
+            return HttpResult(self.closed_session_status, None)
         assert method == "POST" and url.endswith("/v1/sessions")
         assert json_body is not None
         profile = next(

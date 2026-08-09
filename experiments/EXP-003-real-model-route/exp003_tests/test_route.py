@@ -69,6 +69,7 @@ async def test_batched_route_credit_partial_cancel_stale_and_switch() -> None:
 
     results = {item["case_id"]: item for item in document["results"]}
     assert results["session.cleanup"]["evidence"]["session_invalidated"] is True
+    assert results["session.cleanup"]["evidence"]["http_status_code"] == 404
     for profile_id in configuration().profile_ids:
         evidence = results[f"route.{profile_id}.partial_flush"]["evidence"]
         assert evidence["input_frames"] == 5
@@ -105,6 +106,28 @@ async def test_batched_route_credit_partial_cancel_stale_and_switch() -> None:
         (ROOT / "src/liveconv_real_model_route/trace.schema.json").read_text()
     )
     Draft202012Validator(schema).validate(document)
+
+
+@pytest.mark.asyncio
+async def test_closed_session_must_be_absent_from_http_api() -> None:
+    registry = ProfileRegistry.load(REGISTRY_PATH)
+    profiles = registry.require_route_profiles(
+        configuration().profile_ids, voice_id_present=False
+    )
+    trace = await run_route_suite(
+        configuration(),
+        registry,
+        http=FakeHttp(profiles, closed_session_status=204),
+        websockets=FakeConnector(FakeWebSocket(profiles, batch_frames=3)),
+        pacer=VirtualPacer(),
+        trace_clock=SteppingClock(),
+    )
+
+    assert trace.document()["technical_outcome"] == "failed"
+    results = {item["case_id"]: item for item in trace.document()["results"]}
+    assert results["harness.failure"]["evidence"]["failure_type"] == (
+        "RouteValidationError"
+    )
 
 
 @pytest.mark.parametrize(
