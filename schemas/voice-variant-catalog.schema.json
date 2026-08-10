@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TA-Robot/liveconv/schemas/voice-variant-catalog.schema.json",
+  "title": "liveconv voice variant candidate catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "catalog_id", "objective", "policy", "variants"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "catalog_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9.-]{1,63}$"
+    },
+    "objective": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "language",
+        "preferred_presentation",
+        "minimum_listenable_variants",
+        "maximum_listenable_variants",
+        "minimum_families",
+        "shortlist_maximum",
+        "shortlist_per_family_maximum"
+      ],
+      "properties": {
+        "language": { "const": "ja-JP" },
+        "preferred_presentation": { "const": "youthful-feminine" },
+        "minimum_listenable_variants": { "const": 9 },
+        "maximum_listenable_variants": { "const": 12 },
+        "minimum_families": { "const": 4 },
+        "shortlist_maximum": { "const": 4 },
+        "shortlist_per_family_maximum": { "const": 2 }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "extension_route_required",
+        "terminal_output_is_debug_only",
+        "one_gpu_lease",
+        "raw_voice_material_in_git",
+        "counted_protocol_version",
+        "counted_lane",
+        "text_to_speech_requires_accepted_transport_decision"
+      ],
+      "properties": {
+        "extension_route_required": { "const": true },
+        "terminal_output_is_debug_only": { "const": true },
+        "one_gpu_lease": { "const": true },
+        "raw_voice_material_in_git": { "const": false },
+        "counted_protocol_version": { "const": 1 },
+        "counted_lane": { "const": "voice-conversion-only" },
+        "text_to_speech_requires_accepted_transport_decision": { "const": true }
+      }
+    },
+    "variants": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 32,
+      "items": { "$ref": "#/$defs/variant" }
+    }
+  },
+  "$defs": {
+    "sha256OrNull": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "variant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "variant_id",
+        "family_id",
+        "family_name",
+        "lane",
+        "variant_kind",
+        "wave",
+        "priority",
+        "candidate_role",
+        "display_name",
+        "target_presentation",
+        "execution_mode",
+        "source_label",
+        "source_kind",
+        "readiness",
+        "license_state",
+        "authorization_state",
+        "profile_id",
+        "expected_profile_hash",
+        "expected_configuration_hash",
+        "official_sources",
+        "license_notes",
+        "next_gate"
+      ],
+      "properties": {
+        "variant_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.-]{2,95}$"
+        },
+        "family_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.-]{1,63}$"
+        },
+        "family_name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "lane": {
+          "enum": ["voice-conversion", "accent-conversion", "text-to-speech"]
+        },
+        "variant_kind": {
+          "enum": ["baseline", "builtin-preset", "checkpoint", "authorized-reference", "training"]
+        },
+        "wave": { "enum": ["first", "second", "later", "excluded"] },
+        "priority": { "type": "integer", "minimum": 1, "maximum": 99 },
+        "candidate_role": { "enum": ["primary", "control", "deferred", "excluded"] },
+        "display_name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "target_presentation": {
+          "enum": [
+            "youthful-feminine",
+            "bright-youthful-feminine",
+            "soft-youthful-feminine",
+            "relaxed-youthful-feminine",
+            "neutral-control",
+            "low-voice-control"
+          ]
+        },
+        "execution_mode": { "enum": ["live", "buffered-end", "text-stream"] },
+        "source_label": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "source_kind": {
+          "enum": ["existing-profile", "official-preset", "licensed-material", "research-corpus"]
+        },
+        "readiness": {
+          "enum": ["route-smoke-passed", "runnable-control", "intake", "license-review", "deferred", "excluded"]
+        },
+        "license_state": { "enum": ["reviewed", "conditional", "blocked"] },
+        "authorization_state": {
+          "enum": ["approved-prepared", "approved-existing", "official-preset", "review-required", "not-applicable", "blocked"]
+        },
+        "profile_id": {
+          "type": ["string", "null"],
+          "pattern": "^(test|vc|tts)\\.[a-z0-9][a-z0-9.-]*\\.v[0-9]+$"
+        },
+        "expected_profile_hash": { "$ref": "#/$defs/sha256OrNull" },
+        "expected_configuration_hash": { "$ref": "#/$defs/sha256OrNull" },
+        "official_sources": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "format": "uri" }
+        },
+        "license_notes": { "type": "string", "minLength": 3, "maxLength": 500 },
+        "next_gate": { "type": "string", "minLength": 3, "maxLength": 500 }
+      }
+    }
+  }
+}

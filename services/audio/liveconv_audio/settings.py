@@ -44,6 +44,7 @@ class Settings:
     allowed_origins: frozenset[str]
     profile_config: Path
     roster_config: Path | None = None
+    deployment_bundle_config: Path | None = None
     ticket_ttl_seconds: float = 30.0
     attach_timeout_seconds: float = 5.0
     ingress_budget_ms: int = 500
@@ -63,6 +64,7 @@ class Settings:
             for origin in os.environ.get("LIVECONV_ALLOWED_ORIGINS", "").split(",")
             if origin.strip()
         )
+        deployment_bundle = os.environ.get("LIVECONV_DEPLOYMENT_BUNDLE")
         return cls(
             api_token=os.environ.get("LIVECONV_API_TOKEN", ""),
             allowed_origins=origins,
@@ -72,6 +74,9 @@ class Settings:
             roster_config=Path(
                 os.environ.get("LIVECONV_ROSTER_CONFIG", _default_roster_path())
             ).resolve(),
+            deployment_bundle_config=(
+                Path(deployment_bundle).resolve() if deployment_bundle else None
+            ),
             ticket_ttl_seconds=float(
                 _positive_number("LIVECONV_TICKET_TTL_SECONDS", "30")
             ),

@@ -1,13 +1,38 @@
-# Verified voice-conversion candidate matrix
+# Verified voice candidate matrix
 
 Status: Research prioritization
 
-Evidence snapshot: 2026-08-09
+Evidence snapshot: 2026-08-10
 
 This document prioritizes experiments. It is not an experiment result, a product
 decision, or legal approval. Published measurements below retain the authors'
 measurement boundary and do not satisfy a liveconv phase gate. Pin an immutable
 source and model revision before implementing an adapter.
+
+## MS-3 youthful-feminine intake
+
+The operator's real MS-2 listening result rejected the prepared voices. The
+active preference is a youthful feminine Japanese voice, and the comparison now
+uses immutable voice variants rather than one entry per model family. The
+machine-readable intake is
+[`config/ms3-voice-variant-candidates.json`](../../config/ms3-voice-variant-candidates.json).
+
+| Candidate | Current official evidence | MS-3 disposition |
+|---|---|---|
+| [Qwen3-TTS 0.6B CustomVoice](https://github.com/QwenLM/Qwen3-TTS) | Apache-2.0; Japanese and streaming are listed. The official `Ono_Anna` preset is described as a playful Japanese female voice with a light, nimble timbre. CustomVoice has fixed presets; it is not arbitrary voice cloning. | High-value deferred TTS candidate. It cannot count in the protocol-v1 VC first wave; LV-063 must first accept a committed-text transport decision. |
+| [Qwen3-TTS 0.6B Base](https://github.com/QwenLM/Qwen3-TTS#voice-clone) | Apache-2.0; Japanese, streaming, three-second rapid voice cloning, and fine-tuning are listed. | Deferred behind LV-063 and an authorized, content-addressed reference preparation. Keep its TTS input/claim separate from VC. |
+| [Fun-CosyVoice3 0.5B](https://github.com/FunAudioLLM/CosyVoice) | Apache-2.0; Japanese, cross-lingual zero-shot cloning, and bi-streaming are listed. The repository's latency figure is a model/runtime claim, not Extension end to end. | Deferred second TTS family behind LV-063. Retain the Japanese normalizer because explicit phoneme control is documented for Chinese and English, not Japanese. |
+| [MeanVC2](https://github.com/ASLP-lab/MeanVC2) | Its README claims Apache-2.0, but the reviewed snapshot has no LICENSE file or separate checkpoint terms. It is a small zero-shot VC with realtime mode and 16 kHz output; Japanese quality is unestablished. | License-review first-wave option only. Code/checkpoint terms, Japanese content preservation, and explicit 16-to-48 kHz route handling must all close before it becomes runnable. |
+| [Amitaro voice material](https://amitaro.net/voice/voice_rule/) | Current creator terms permit AI/model training and RVC with attribution; business product/service use has a notice requirement. | Candidate reference/style source for `yofukashi`, `runrun`, and `punsuka`. Each prepared style needs its own authorization identity; no audio enters Git. |
+| [MOSS-TTS-Nano](https://github.com/OpenMOSS/MOSS-TTS-Nano) | Japanese, streaming/cloning, small and CPU/ONNX options are documented, but repository and model-card license statements are not yet aligned. | License-review only; no artifact acquisition or implementation. |
+| [FasterSVC](https://github.com/uthree/fastersvc) | JVS-pretrained weights are published, but the executable repository lacks a clear license and calls itself experimental. | Excluded until code and training-data terms are resolved. |
+| [Seed-VC](https://github.com/Plachtaa/seed-vc) | GPL-3.0, archived upstream, zero-shot and accent-conversion paths. | Later comparison-only lane if first-wave evidence shows that accent/prosody preservation is the limiting defect. |
+
+[JVS](https://sites.google.com/site/shinnosuketakamichi/research-topics/jvs_corpus)
+and [JSUT](https://sites.google.com/site/shinnosuketakamichi/publication/jsut)
+remain useful research corpora, but their audio terms are
+research/non-commercial/personal-use unless separately licensed. They may not be
+silently treated as unrestricted training data.
 
 ## Candidate evidence
 
@@ -20,22 +45,23 @@ source and model revision before implementing an adapter.
 | [MeanVC2](https://github.com/ASLP-lab/MeanVC2) | Not yet a Japanese candidate. The [paper](https://arxiv.org/abs/2606.09050) trained on 10,000 hours of Mandarin Emilia, uses a Mandarin Fast-U2++ content encoder, and evaluates on Mandarin Seed-TTS pairs only. | **Code:** README claims Apache-2.0, but the repository snapshot has no license file. **Weights:** Google Drive checkpoints have no separately stated terms. **Data:** original Emilia is CC BY-NC 4.0 with source-rights disclaimers; Fast-U2++ and WenetSpeech add another provenance chain. | 18M VC parameters, 16 kHz output, 40 ms chunk plus 40 ms future context. On single-threaded, single-core AMD EPYC 7542, the paper reports 109.88 ms full-pipeline first-packet latency and total RTF 0.633. This excludes liveconv network and playout. | Zero-shot target WAV with optional speaker-specific fine-tuning. The official sources give no recommended reference duration. | Hold. Its low CPU cost is attractive, but a Japanese smoke test and explicit code/checkpoint terms are prerequisites. Do not describe it as the first Japanese streaming VC. |
 | [OpenVoice V2](https://github.com/myshell-ai/OpenVoice) | The official README explicitly lists Japanese as natively supported in V2. It provides no Japanese streaming benchmark. | **Code and weights:** the project declares V1 and V2 MIT and free for commercial and research use. **Data:** the official README and model distribution do not provide a complete training-data license inventory. Reference voices still require authorization. | Tone-color conversion with zero-shot cross-lingual cloning. The official documentation gives no streaming contract, latency benchmark, hardware boundary, or stable adapter sample-rate contract. | Extract a target speaker embedding from reference audio. The source flow is commonly TTS plus tone-color conversion rather than transparent realtime conversion of an arbitrary stream. | Use as an offline Japanese control, not as the first streaming adapter. It can distinguish a Japanese-capable tone converter from the direct streaming VC candidates. |
 
-## Recommended adapter order
+## Recommended variant order
 
-1. Keep `passthrough` and a deterministic DSP transform as protocol and
-   evaluation controls. They validate routing, cancellation, waveform analysis,
-   and STT without introducing a model variable.
-2. Implement RVC v2 as the first model adapter. It has the most mature realtime
-   path and exposes the target-training and model-switching lifecycle early.
-3. Prove X-VC offline on the frozen Japanese corpus. Add streaming only if the
-   preregistered STT, discontinuity, latency, and voice-similarity checks pass.
-4. In parallel, obtain written permission for Beatrice server inference and
-   audit its data chain. If approved, move Beatrice ahead of X-VC as the
-   lightweight Japanese adapter.
-5. Add OpenVoice V2 as an offline Japanese comparison.
-6. Add Seed-VC only as an isolated GPL worker when a diffusion comparison is
-   worth its maintenance cost. Keep MeanVC2 on hold until Japanese and license
-   blockers are resolved.
+1. Keep native, the retained quality-failed RVC profile, and the lower-voice
+   Beatrice profile as controls. Do not spend first-wave tuning time on them.
+2. Prepare separately authorized Amitaro `yofukashi`, `runrun`, and `punsuka`
+   variants across RVC, MeanVC2, X-VC, and OpenVoice for the counted protocol-v1
+   VC first wave.
+3. Route-qualify 9-12 VC variants across at least four families through the exact Extension path before using
+   their output in the listening screen.
+4. Keep Qwen3-TTS `Ono_Anna`, Qwen Base, and CosyVoice3 as the preferred TTS
+   branch, but implement them only after LV-063 accepts a committed-text
+   transport and interruption contract.
+5. Start new Japanese checkpoint training only if the bounded first wave cannot
+   produce a useful shortlist and its data license plus one-GPU-day plan are
+   approved.
+6. Keep Seed-VC, MOSS-TTS-Nano, FasterSVC, and research-only corpora outside the
+   critical path until their explicit blockers close.
 
 Run each third-party runtime in its own worker process or container. This keeps
 Python and CUDA dependencies, copyleft boundaries, model residency, failure
@@ -46,12 +72,12 @@ isolation, and GPU eviction observable at the adapter boundary.
 - Who will provide legal review for model-derived weights and training-data
   restrictions, especially Beatrice inference, Emilia derivatives, and RVC
   dependency checkpoints?
-- Which authorized target voice and minimum recording protocol will be frozen
-  for supervised RVC and Beatrice comparison?
+- Which exact Amitaro styles or other youthful-feminine references pass the
+  authorization, attribution, and business-notice review?
 - Does X-VC pass Japanese offline preservation before any streaming work is
   funded?
-- Is Beatrice server permission obtainable, and does it permit the intended
-  remote service and redistribution model?
+- Does the first-wave authorized-reference VC comparison justify funding any new
+  Japanese checkpoint training at all?
 - Which immutable repository commits, weight hashes, and container digests will
   define each experiment variant?
 

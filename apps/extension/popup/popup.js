@@ -5,21 +5,6 @@ import {
 } from "../src/gateway-url.js";
 import { derivePopupView } from "./popup-state.js";
 
-const LIVE_VOICES = Object.freeze({
-  "vc.rvc.synthetic-ja.v1": Object.freeze({
-    name: "RVC v2",
-    option: "RVC v2（リアルタイム）",
-  }),
-  "vc.beatrice.synthetic-ja.v1": Object.freeze({
-    name: "Beatrice 2・低めの声",
-    option: "Beatrice 2・低め（リアルタイム）",
-  }),
-  "vc.x-vc.synthetic-ja.v1": Object.freeze({
-    name: "X-VC",
-    option: "X-VC（リアルタイム）",
-  }),
-});
-
 const status = document.querySelector('[data-role="session-status"]');
 const routeStatus = document.querySelector('[data-role="route-status"]');
 const conversionProgress = document.querySelector(
@@ -57,17 +42,17 @@ function modelDetail(model) {
   if (model.selectable !== true) {
     return "音声サービスを利用できません";
   }
+  if (model.invocationMode === "buffered_end") {
+    return "区間終了後にまとめて再生";
+  }
   if (model.decisionState === "quality-failed") {
     return "リアルタイム · 日本語品質に難あり";
   }
-  if (model.profileId === "vc.beatrice.synthetic-ja.v1") {
-    return "リアルタイム · 低めのプリセット音声";
-  }
-  return "リアルタイム変換できます";
+  return "リアルタイム";
 }
 
 function voiceFor(profileId) {
-  return LIVE_VOICES[profileId] ?? null;
+  return models.find((model) => model.profileId === profileId) ?? null;
 }
 
 function routeDetail(state, error) {
@@ -83,7 +68,7 @@ function routeDetail(state, error) {
       state?.configuration?.profileId ??
       profileInput.value;
     const voice = voiceFor(profileId);
-    return `● ${voice?.name ?? "選択した声"}へ変換して再生中`;
+    return `● ${voice?.displayName ?? "選択した声"}へ変換して再生中`;
   }
   if (capture === "running" && remote === "degraded") {
     return "⚠ 変換に失敗しました。現在は原音を再生しています。";
@@ -101,7 +86,8 @@ function renderModels(nextModels) {
   if (Array.isArray(nextModels)) {
     models = nextModels.filter(
       (model) =>
-        model.invocationMode === "live" && voiceFor(model.profileId) !== null,
+        ["live", "buffered_end"].includes(model.invocationMode) &&
+        typeof model.profileId === "string",
     );
     const desiredProfileId =
       pendingProfileId ??
@@ -112,7 +98,9 @@ function renderModels(nextModels) {
       ...models.map((model) => {
         const option = document.createElement("option");
         option.value = model.profileId;
-        option.textContent = voiceFor(model.profileId).option;
+        option.textContent = `${model.displayName}${
+          model.invocationMode === "buffered_end" ? "（区間終了後）" : ""
+        }`;
         option.disabled = model.selectable !== true;
         return option;
       }),
@@ -130,7 +118,7 @@ function renderModels(nextModels) {
     (model) => model.profileId === profileInput.value.trim(),
   );
   profileIdentity.textContent = selected
-    ? `${voiceFor(selected.profileId).name} · ${modelDetail(selected)}`
+    ? `${selected.displayName} · ${modelDetail(selected)}`
     : models.length > 0
       ? "変換先の声を利用できません。"
       : "音声サービスの確認待ちです。";
@@ -253,7 +241,7 @@ async function send(type, fields = {}) {
       stopPending = false;
     }
   }
-  renderModels(response?.models);
+  renderModels(response?.variants ?? response?.models);
   render(response?.state, response?.ok ? undefined : response?.error);
   return response;
 }
@@ -276,7 +264,7 @@ modelsButton.addEventListener("click", () => {
         !tokenInput.value &&
         storedGateway === normalizeGatewayUrl(gatewayInput.value)
       ) {
-        await send("models.list");
+        await send("variants.list");
         return;
       }
       const gatewayUrl = normalizeGatewayUrl(gatewayInput.value);
@@ -284,7 +272,7 @@ modelsButton.addEventListener("click", () => {
         permissions: chrome.permissions,
         nextOrigin: gatewayPermissionOrigin(gatewayUrl),
         commit: () =>
-          send("models.list", {
+          send("variants.list", {
             configuration: {
               gatewayUrl,
               profileId: profileInput.value.trim(),
@@ -428,7 +416,7 @@ chrome.runtime.sendMessage({ type: "session.status" }).then(
     }
     render(response?.state, response?.ok ? undefined : response?.error);
     if (response?.ok && response.state?.configuration?.configured) {
-      void send("models.list").catch(() => {});
+      void send("variants.list").catch(() => {});
     }
   },
   () => render(undefined, "Unavailable"),

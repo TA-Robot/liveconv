@@ -24,14 +24,41 @@ into a product decision. Record decisions explicitly.
 ## Default workflow
 
 1. Inspect the relevant source-of-truth documents and current Git state.
-2. State the task boundary, expected evidence, and affected ownership zones.
-3. Delegate independent work when two or more bounded workstreams exist.
-4. Keep the parent agent responsible for decisions, integration, and user-facing
+2. State the active milestone outcome, task boundary, expected evidence, and
+   affected ownership zones.
+3. Apply the milestone relevance gate below before assigning review or fixes.
+4. Delegate independent work when two or more bounded workstreams exist.
+5. Keep the parent agent responsible for decisions, integration, and user-facing
    conclusions.
-5. Implement only after the owning requirement or experiment is identifiable.
-6. Run the narrowest relevant checks, then `make check` before handoff.
-7. Update the experiment, ADR, backlog, or risk record when the work changes what
+6. Implement only after the owning requirement or experiment is identifiable.
+7. Run only the validation tier required by the changed surface. Full
+   `make check` is reserved for implementation integration, a shared production
+   contract, or milestone close; planning-only work uses planning/control checks.
+8. Update the experiment, ADR, backlog, or risk record when the work changes what
    the project knows.
+
+## Milestone relevance gate
+
+Milestones exist to prevent technically valid but currently unnecessary work.
+Before reviewing, fixing, testing, or documenting a finding, answer:
+
+1. Does it prevent an explicit deliverable or real run in the active milestone?
+2. Can it make the active milestone falsely pass, lose user data or secrets, or
+   violate a safety invariant exercised by that milestone?
+3. Is it explicitly required by the active milestone gate or the user's current
+   instruction?
+
+Only work with at least one `yes` is eligible for `fix-now`. Ease, severity in a
+hypothetical deployment, or proximity to edited files is not enough. Everything
+else receives `scheduled`, `accepted-risk`, or `out-of-scope` and must not be
+implemented or re-reviewed in the current milestone.
+
+Review is not a default stage and has no quota. Before starting one, record the
+current-milestone decision it can change, the plausible review outcomes, and the
+different action taken for each outcome. If no plausible result changes what is
+built, run, selected, or accepted in the active milestone, do not perform the
+review. Continue reviewing only while it supplies information needed for that
+decision; stop when the decision is supported.
 
 ## Multi-agent policy
 
@@ -45,6 +72,9 @@ Use project agents from `.codex/agents/`. The default subagent model is
   test execution, and log analysis.
 - Use `qa_reviewer` on `gpt-5.6-sol` for independent correctness, security, and
   evidence review. Luna output never satisfies the independent-review gate.
+- Independent review is required only when its result can change an integrated
+  implementation or milestone-evidence decision. A planning edit does not imply
+  review by itself.
 - Give every subagent a bounded question, expected output, and stop condition.
 - Wait for all delegated work that can affect the decision before integrating.
 - Return summaries and evidence to the parent; do not flood the main thread with
@@ -148,15 +178,18 @@ protocol changes require consumer tests or fixtures on both sides.
 
 ## Validation
 
-Run:
+At implementation integration or milestone close, run:
 
 ```bash
 make check
 ```
 
-As code arrives, add zone-specific lint, unit, integration, audio golden, and
-browser checks behind this command. A successful command is evidence, not the
-whole Definition of Done; consult
+For planning-only edits, run syntax/schema checks for changed records,
+`make control-check`, and `git diff --check`. For a leaf implementation, run its
+focused zone tests. Do not run unrelated Python, browser, audio, packaging, or
+GPU suites merely because they exist. As code arrives, add zone-specific checks
+behind `make check`. A successful command is evidence, not the whole Definition
+of Done; consult
 `docs/development/definition-of-done.md`.
 
 ## Git and secrets

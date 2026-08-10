@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 from liveconv_audio._adapter_registry import (
+    _rvc_model_environment_names,
     validate_profile_adapter,
     worker_profile_for,
 )
@@ -193,6 +194,40 @@ def test_rvc_environment_rejects_a_gateway_source_identity_mismatch(
     monkeypatch.setenv("LIVECONV_RVC_SOURCE_REVISION", "0" * 40)
     with pytest.raises(ValueError, match="source revision does not match"):
         _rvc_environment(retained_profile(), RETAINED_CONFIGURATION)
+
+
+def test_rvc_variants_resolve_distinct_checkpoint_and_index_bindings(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    install_environment(monkeypatch, tmp_path)
+    profile = retained_profile()
+    profile.profile_id = "vc.rvc-v2.amitaro-runrun.v1"
+    checkpoint_sha = "a" * 64
+    index_sha = "b" * 64
+    configuration = deepcopy(RETAINED_CONFIGURATION)
+    artifacts = configuration["artifacts"]
+    assert isinstance(artifacts, dict)
+    artifacts["checkpoint_sha256"] = checkpoint_sha
+    artifacts["index_sha256"] = index_sha
+    profile.runtime.configuration = configuration
+    profile.weight_revision = f"sha256:{checkpoint_sha}"
+    names = _rvc_model_environment_names(profile.profile_id)
+    variant_checkpoint = tmp_path / "runrun.pth"
+    variant_index = tmp_path / "runrun.index"
+    monkeypatch.setenv(names["checkpoint_path"], str(variant_checkpoint))
+    monkeypatch.setenv(names["checkpoint_sha256"], checkpoint_sha)
+    monkeypatch.setenv(names["index_path"], str(variant_index))
+    monkeypatch.setenv(names["index_sha256"], index_sha)
+
+    environment, bound_artifacts = _rvc_environment(profile, configuration)
+
+    assert environment["LIVECONV_RVC_V2_CHECKPOINT_PATH"] == str(variant_checkpoint)
+    assert environment["LIVECONV_RVC_V2_INDEX_PATH"] == str(variant_index)
+    assert {artifact.sha256 for artifact in bound_artifacts} >= {
+        checkpoint_sha,
+        index_sha,
+    }
 
 
 @pytest.mark.parametrize(

@@ -2,9 +2,12 @@
 
 Status: Active
 
-Current milestone: **MS-2**. MS-1 closed on 2026-08-09 with a clean-commit
-technical RVC Gateway route, green integrated checks, and an independent Sol
-audit. This is an executability checkpoint, not a voice-quality approval.
+Current milestone: **MS-3**. MS-1 closed on 2026-08-09 as an executability
+checkpoint. MS-2 closed by explicit user direction on 2026-08-10 after the
+actual Extension route became usable and the first hands-on listening result
+was clearly unacceptable. That observation is a product-quality rejection, not
+a formal EXP-005 evidence pass: the operator did not retain the complete frozen
+receipt required to make the earlier four-model technical claim.
 
 This roadmap targets one person's usable voice-conversion system, not a public
 service. The final MS-6 system uses one trusted Chrome client, one managed remote
@@ -124,7 +127,8 @@ that remain nonselectable. These become MS-2 inputs rather than MS-1 blockers.
 
 ## MS-2: Multi-model Extension MVP
 
-Status: **Active.** This milestone puts hands-on use before model selection.
+Status: **Closed by scope decision 2026-08-10.** This milestone put hands-on use
+before model selection.
 
 Automation checkpoint (2026-08-09): the exact four-model registry, Gateway
 dispatch, Extension UI/receipt path, and SSH preflight are implemented, fully
@@ -145,7 +149,11 @@ The metadata-only raw route records remain outside Git at
 `b11133b79a6ae05238c00a8071671689a1223f322c9485d9a5d27f7640ae15e8`).
 The OpenVoice record is an internally consistent aggregate without a committed
 event transcript or reusable runner, so it is not treated as general stability
-evidence; EXP-005 remains the client-level acceptance gate.
+evidence. The operator subsequently reached the actual Extension path and heard
+the prepared choices, but reported that the audio was not usable. EXP-005 was
+not completed with its machine receipt and therefore remains a historical draft,
+not an MS-2 pass record. The active user instruction advances to MS-3 instead of
+spending more time certifying choices already rejected by listening.
 
 Outcome: use the actual liveconv Extension on an audible `chatgpt.com` voice tab
 through the SSH-loopback route, hear multiple real conversion models, and learn
@@ -196,91 +204,116 @@ an honestly failed attempt after the model was actually invocable. Automatic
 ChatGPT turn detection, quality selection, tuning, and a release claim are not
 MS-2 gates.
 
-## MS-3: Candidate and architecture freeze
+## MS-3: Young-feminine voice Variant Lab
 
-Outcome: use the MS-2 hands-on results plus comparable authorized evidence to
-choose one personal-use path, or explicitly choose native-only when no candidate
-is useful enough.
+Status: **Active.** The preferred direction is a youthful feminine Japanese
+voice. Model family alone is not the comparison unit: checkpoint, training data,
+speaker/style preset, authorized reference voice, and inference configuration
+form one immutable variant.
+
+Outcome: make enough materially different voice choices available through the
+actual Extension to discover a useful direction quickly. This milestone creates
+a shortlist; it does not prematurely freeze one model.
 
 Deliver:
 
-- a same-input comparison of at least two real MS-2 candidates using an
-  authorized, intelligible Japanese fixture subset plus integrity, STT, speaker,
-  cold/warm timing, and operator listening notes;
-- one primary streaming candidate and one explicit native fallback, or a
-  recorded `no VC selected` decision; all alternates are archived or assigned a
-  bounded follow-up;
-- an ADR freezing tab capture, always-hot native playout, one source playhead,
-  generation isolation, exclusive final playout, server-returned PCM, and the
-  manual-boundary policy;
-- frozen model, runtime, profile, target authorization, sample rate, frame size,
-  batching, and selection policy.
+- one generated, immutable deployment bundle containing profiles, model
+  families, public-safe variant metadata, exact configuration identities, and a
+  canonical bundle digest;
+- one dynamic Extension chooser sourced from that bundle, with clear model,
+  voice/style, execution-mode, readiness, and authorization labels;
+- 9 to 12 protocol-v1 voice-conversion variants listenable through the
+  Extension across at least four model families,
+  with a majority targeting youthful feminine Japanese voices and including
+  checkpoint/training-data and authorized-reference differences where useful;
+- a fast first wave using authorized existing youthful-feminine voice/style
+  artifacts across RVC, MeanVC2, X-VC, and OpenVoice, followed by new
+  trained/adapted variants only when the first wave cannot answer the listening
+  question;
+- EXP-006: a 10-utterance screening pass for every runnable variant, then a
+  preregistered shortlist of at most four variants and at most two per family;
+- honest separation of audio-to-audio VC/accent conversion from text-to-speech.
+  Qwen/CosyVoice TTS candidates stay off the counted path until an accepted ADR
+  and shared protocol define committed spoken text, interruption, and played-text
+  accounting; they never inherit a VC or captured-audio claim.
 
 Gate:
 
-- if a primary is selected, it is intelligible on the personal-use fixtures and
-  has no clipping, repetition, or gap failure that makes ordinary use
-  impractical; if no VC is selected, the recorded no-release decision satisfies
-  this branch and terminates the roadmap before MS-4;
-- no unassessed lane is represented as a pass and no failed quality result is
-  hidden by the MS-2 technical route;
-- the decision states why every alternate is selected, deferred, rejected, or
-  retained offline;
-- no current-scope High remains in the chosen worker or Extension architecture.
+- the same content-addressed deployment bundle is loaded by the Gateway,
+  verified by the terminal launcher, fetched by the Extension, and bound into
+  every counted receipt; copied popup constants or terminal-only configuration
+  cannot satisfy the gate;
+- at least nine protocol-v1 VC variants from at least four families are
+  actually selectable and heard through the Extension on the same frozen
+  10-utterance screen;
+- every target preset/reference/training set has a license and authorization
+  disposition before it becomes runnable; its public digest resolves to an
+  approved, nonexpired exact record in the operator-controlled private registry,
+  checked against trusted current UTC at activation/restart and session creation,
+  while raw references and model weights stay outside Git;
+- each variant receives operator ratings for Japanese intelligibility,
+  naturalness, youthful-feminine fit, artifacts, conversational usefulness, and
+  keep/reject, while route failures remain distinct from quality failures;
+- no terminal-only render counts as an Extension result, no unassessed lane is
+  represented as a pass, and the current poor RVC/X-VC observations remain
+  visible as controls rather than being overwritten;
+- a shortlist of no more than four variants is frozen for MS-4, or one bounded
+  second wave is explicitly approved when fewer than two variants are worth
+  continuing;
+- `make check`, an installed-Chrome bundle-parity smoke, the real listening
+  screen, and an independent Sol review are green with no current-scope High.
 
-Allowed known issues: documented NFR misses, synthetic-reference limitations,
-manual warmup, and one selected voice. If MS-3 records `no VC selected`, it
-closes as a no-release decision and the VC path stops; MS-4 through MS-6 do not
-start without a new user decision.
+Allowed known issues: cold starts, manual End/Next boundaries, technical-only
+profiles, a worker restart between variants, missing population-level evidence,
+and variants that fail or are rejected quickly. MS-3 optimizes learning rate,
+not universal coverage or production readiness.
 
-## MS-4: Responsiveness, stability, and SSH baseline
+## MS-4: Shortlist optimization and architecture freeze
 
-Precondition: MS-3 selected one primary VC profile. A `no VC selected` decision
-terminates this roadmap before MS-4.
+Precondition: MS-3 produced a shortlist of no more than four variants.
 
-Outcome: tune only the MS-3-selected path, keep it stable in ordinary use, and
-verify the minimum one-user SSH security boundary.
+Outcome: compare and tune only the shortlist, then select one primary route and
+one fallback choice or record an explicit no-release decision.
 
 Deliver:
 
-- capture-to-playout, worker, jitter, and cancellation timing with warmup, P50,
-  P95, sample count, environment, and exclusions;
-- tuned batching/context/crossfade/jitter plus bounded backpressure and overflow
-  behavior at every queue;
-- retry, disconnect, stale-output, worker-crash, cancel-during-drain, and one
-  30-minute route run with scripted interruptions and native/remote changes;
-- forwarding-only SSH account/key, `permitopen`, disabled shell/session features,
-  host-key pinning, client-local bind, firewall/external-unreachability checks,
-  exact Origin, bearer, one-use ticket, caps, containment, and redacted logs;
-- authenticated readiness and negative auth/Origin/ticket/profile/artifact cases
-  reproduced from a second client shell.
+- a frozen 40-utterance authorized Japanese comparison for the shortlist and a
+  native control, with operator listening notes plus integrity, STT, speaker,
+  cold/warm timing, and failure cases;
+- bounded tuning of at most two configurations per shortlisted variant;
+- one selected primary, one explicit fallback choice, and a disposition for
+  every alternate, or a recorded `no release` decision;
+- an ADR freezing the audio/VC-or-TTS path, Extension capture and playout,
+  generation isolation, manual-boundary policy, model/runtime/profile/voice
+  identities, and selection policy.
 
 Gate:
 
-- zero accepted stale frames and accidental double playback; every injected
-  route/worker failure reaches native fallback without an unbounded queue or
-  Gateway crash;
-- warm latency and interruption are measured against NFR-001/NFR-003 and tuned
-  to the best stable configuration; any miss is recorded rather than promoted;
-- port 8765 is unreachable from the network and reachable only through the local
-  forward; invalid credentials, identity, artifacts, or startup fail closed;
-- the 30-minute run has no unrecoverable state or monotonic resource growth, and
-  no sensitive material is committed or emitted in ordinary logs.
+- the selected primary is intelligible and subjectively useful on the personal
+  fixtures, with no clipping, repetition, gaps, or delay that makes normal use
+  impractical; misses are recorded rather than promoted;
+- all compared evidence binds the same deployment bundle and exact variant
+  identities, and route failures are not scored as voice-quality judgments;
+- no unassessed lane is represented as a pass and no current-scope High remains
+  in the selected worker or Extension architecture.
 
-Allowed known issues: a cold start around one minute, manual first warmup, one
-manually distributed bearer, no automatic rotation or SSO, and a documented
-delay above product targets when the operator accepts it. Public Caddy ingress
-remains post-v1.
+Allowed known issues: a cold start around one minute, manual first warmup,
+documented NFR misses, and one selected voice. A `no release` decision closes the
+roadmap before MS-5 unless the user starts another bounded candidate wave.
 
-## MS-5: Personal operations and recovery
+## MS-5: Responsiveness, SSH baseline, and personal recovery
 
-Outcome: one person can keep the system usable without remembering repository
-internals.
+Outcome: tune the frozen primary, verify the one-user SSH security boundary, and
+make the system recoverable without remembering repository internals.
 
 Deliver:
 
+- capture-to-playout, worker, jitter, interruption, cold/warm P50/P95, bounded
+  queue, retry, disconnect, worker-crash, and 30-minute route evidence;
+- forwarding-only SSH, `permitopen`, host-key pinning, loopback-only reachability,
+  exact Origin, bearer, one-use ticket, caps, and negative auth checks;
 - preflight, start, readiness, stop, restart, update, rollback, tunnel reconnect,
-  Extension reload, and log-inspection procedures;
+  Extension reload, and log-inspection procedures driven by the same bundle;
 - a pinned release inventory for code, profile, model artifacts, runtime, and
   client Extension ID;
 - three clean cold-start/restart cycles, three tunnel-loss recoveries, worker
@@ -291,8 +324,10 @@ Deliver:
 
 Gate:
 
+- zero accepted stale frames or accidental double playback, and every injected
+  route failure reaches native fallback without an unbounded queue;
 - a fresh operator shell can restore the route from stopped processes within ten
-  minutes using the runbook;
+  minutes using the runbook and reproduce the exact deployed bundle digest;
 - a failure during the soak may require one documented manual restart, but it
   must not corrupt the profile, retain raw audio, require code editing, or remove
   native playback;
@@ -304,8 +339,8 @@ maintenance, and an occasional restart when a clear runbook restores service.
 
 ## MS-6: Personal-use v1 acceptance
 
-Precondition: MS-3 selected a primary VC profile and MS-4/MS-5 closed on that
-route. The `no VC selected` branch does not enter MS-6.
+Precondition: MS-4 selected a primary variant and MS-5 closed on that route. The
+`no release` branch does not enter MS-6.
 
 Outcome: the actual external client and remote server complete a normal audible
 conversation over the SSH-only route, and the result is frozen as personal v1.
@@ -330,5 +365,6 @@ Deliver and gate:
 After MS-6, normal operation is intentionally modest: use the system personally,
 inspect it monthly, restart it when a documented failure occurs, and open a
 targeted issue when repair requires more than the runbook. Public access,
-multi-user operation, stronger quality studies, TTS, automatic recovery, and
-service-level objectives begin only in a separately approved post-v1 roadmap.
+multi-user operation, stronger population quality studies, additional TTS
+expansion, automatic recovery, and service-level objectives begin only in a
+separately approved post-v1 roadmap.

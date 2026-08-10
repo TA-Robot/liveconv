@@ -8,14 +8,17 @@ from liveconv_audio.model_adapters import x_vc
 from liveconv_audio.profiles import ModelProfile
 
 
-def _canonical_configuration() -> dict[str, object]:
-    return deepcopy(x_vc._CANONICAL_CONFIGURATION)
+def _canonical_configuration(profile_id: str) -> dict[str, object]:
+    return deepcopy(x_vc._configuration(profile_id))
 
 
-def _profile(endpoint: Path) -> ModelProfile:
+def _profile(
+    endpoint: Path,
+    profile_id: str = "vc.x-vc.synthetic-ja.v1",
+) -> ModelProfile:
     return ModelProfile.model_validate(
         {
-            "profile_id": "vc.x-vc.synthetic-ja.v1",
+            "profile_id": profile_id,
             "kind": "voice_conversion",
             "readiness": "ready",
             "adapter_api_version": 1,
@@ -40,7 +43,7 @@ def _profile(endpoint: Path) -> ModelProfile:
             "timeouts": {"first_output_ms": 60_000, "stall_ms": 60_000},
             "runtime": {
                 "adapter": "worker",
-                "configuration": _canonical_configuration(),
+                "configuration": _canonical_configuration(profile_id),
                 "worker_module": "workers.adapters.x_vc.worker",
                 "worker_endpoint": str(endpoint),
                 "max_vram_mb": 24_576,
@@ -49,7 +52,11 @@ def _profile(endpoint: Path) -> ModelProfile:
     )
 
 
-def _install_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+def _install_environment(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    profile_id: str = "vc.x-vc.synthetic-ja.v1",
+) -> Path:
     source_root = tmp_path / "source"
     glm_root = tmp_path / "glm"
     eres_root = tmp_path / "eres"
@@ -81,6 +88,18 @@ def _install_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Pat
         monkeypatch.setenv(name, str(path))
     for name, value in x_vc._ENVIRONMENT_BINDINGS.items():
         monkeypatch.setenv(name, value)
+    configuration = x_vc._configuration(profile_id)
+    variant_names = x_vc.target_environment_names(profile_id)
+    monkeypatch.setenv(
+        variant_names[0], str(paths["LIVECONV_XVC_TARGET_REFERENCE_PATH"])
+    )
+    monkeypatch.setenv(variant_names[1], str(configuration["target_reference_sha256"]))
+    monkeypatch.setenv(
+        variant_names[2], str(paths["LIVECONV_XVC_TARGET_AUTHORIZATION_PATH"])
+    )
+    monkeypatch.setenv(
+        variant_names[3], str(configuration["target_authorization_sha256"])
+    )
     return endpoint
 
 
@@ -132,9 +151,57 @@ def test_xvc_registration_uses_only_the_retained_identity(
     assert [
         (artifact.env_var, artifact.sha256) for artifact in worker_profile.artifacts
     ] == [
-        (env_var, x_vc._CANONICAL_CONFIGURATION[digest_key])
+        (env_var, x_vc._configuration(profile.profile_id)[digest_key])
         for env_var, digest_key in x_vc._ARTIFACT_BINDINGS
     ]
+
+
+@pytest.mark.parametrize(
+    ("profile_id", "configuration_hash"),
+    (
+        (
+            "vc.x-vc.amitaro-runrun.v1",
+            "sha256:ed6da112af8cbdac1f4e2e05bb3c935b5840be9a01b17aafb8acd8b9a93567e1",
+        ),
+        (
+            "vc.x-vc.amitaro-yofukashi.v1",
+            "sha256:164c6a9b942a04aa299b4b816bbfac3d4ce1f11a285b477f6485ca65792fe022",
+        ),
+    ),
+)
+def test_xvc_registration_binds_each_approved_amitaro_target(
+    profile_id: str,
+    configuration_hash: str,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    endpoint = _install_environment(monkeypatch, tmp_path, profile_id)
+    profile = _profile(endpoint, profile_id)
+
+    worker = x_vc.build_worker_profile(profile, "pipeline-variant", 500)
+
+    assert profile.configuration_hash == configuration_hash
+    assert worker.configuration_hash == configuration_hash
+    configuration = x_vc._configuration(profile_id)
+    assert (
+        worker.environment["LIVECONV_XVC_TARGET_REFERENCE_SHA256"]
+        == (configuration["target_reference_sha256"])
+    )
+    assert (
+        worker.environment["LIVECONV_XVC_TARGET_AUTHORIZATION_SHA256"]
+        == (configuration["target_authorization_sha256"])
+    )
+
+
+def test_xvc_registration_rejects_unapproved_profile_id(tmp_path: Path) -> None:
+    endpoint = tmp_path / "python"
+    endpoint.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    endpoint.chmod(0o700)
+    profile = _profile(endpoint)
+    profile.profile_id = "vc.x-vc.operator-supplied.v1"
+
+    with pytest.raises(ValueError, match="profile ID is not approved"):
+        x_vc.validate_configuration(profile)
 
 
 @pytest.mark.parametrize(

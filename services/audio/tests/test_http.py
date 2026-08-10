@@ -12,6 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 from liveconv_audio import Settings, create_app
 from liveconv_audio import __main__ as audio_main
+from liveconv_audio.deployment import DeploymentManifest
 from liveconv_audio.profiles import ProfileRegistry
 
 from .conftest import ALLOWED_ORIGIN, API_TOKEN, AUTH_HEADERS
@@ -148,6 +149,7 @@ def test_liveness_is_public_and_every_other_api_requires_bearer(
     assert client.get("/v1/runtime-boundary").status_code == 401
     assert client.get("/v1/models").status_code == 401
     assert client.get("/v1/model-roster").status_code == 401
+    assert client.get("/v1/deployment-manifest").status_code == 401
     assert client.post("/v1/sessions", json={}).status_code == 401
     assert client.get("/docs").status_code == 404
     assert client.get("/openapi.json").status_code == 404
@@ -173,6 +175,47 @@ def test_liveness_is_public_and_every_other_api_requires_bearer(
             ]
             == "network"
         )
+
+    assert (
+        client.get("/v1/deployment-manifest", headers=AUTH_HEADERS).status_code == 404
+    )
+
+
+def test_deployment_manifest_endpoint_returns_only_bound_public_projection(
+    monkeypatch: pytest.MonkeyPatch,
+    settings: Settings,
+    tmp_path: Path,
+) -> None:
+    public = {
+        "schema_version": 1,
+        "bundle_id": "ms3-test-bundle-v1",
+        "bundle_revision": f"sha256:{'a' * 64}",
+        "protocol_version": 1,
+        "transport_scope": "loopback-ssh",
+        "max_sessions": 1,
+        "variants": [],
+    }
+    sentinel = SimpleNamespace(public_document=lambda: public)
+    monkeypatch.setattr(
+        DeploymentManifest,
+        "load",
+        lambda *args, **kwargs: sentinel,
+    )
+    configured = replace(
+        settings,
+        deployment_bundle_config=tmp_path / "bundle.json",
+        max_sessions=1,
+    )
+
+    with TestClient(create_app(configured)) as deployment_client:
+        response = deployment_client.get(
+            "/v1/deployment-manifest",
+            headers=AUTH_HEADERS,
+        )
+
+    assert response.status_code == 200
+    assert response.json() == public
+    assert "gateway_profile_registry" not in response.text
 
 
 def test_module_entrypoint_imports_and_selects_the_websockets_backend(

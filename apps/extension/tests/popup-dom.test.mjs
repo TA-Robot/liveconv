@@ -96,6 +96,9 @@ function popupHarness({ initialState, models = [], pendingType }) {
         if (message.type === "models.list") {
           return Promise.resolve({ ok: true, state: runtimeState, models });
         }
+        if (message.type === "variants.list") {
+          return Promise.resolve({ ok: true, state: runtimeState, variants: models });
+        }
         if (message.type === pendingType) {
           return pending.promise;
         }
@@ -223,7 +226,7 @@ test("popup DOM keeps Stop reachable while End is unresolved", async (t) => {
   assert(harness.requests.some((message) => message.type === "session.stop"));
 });
 
-test("popup exposes every realtime voice and excludes buffered conversion", async (t) => {
+test("popup exposes every route-qualified voice including buffered preview", async (t) => {
   const models = [
     {
       modelId: "rvc-v2",
@@ -287,21 +290,23 @@ test("popup exposes every realtime voice and excludes buffered conversion", asyn
     .querySelector('[data-role="configuration"]')
     .elements.namedItem("profileId");
   const options = profile.children;
-  assert.equal(options.length, 3);
+  assert.equal(options.length, 4);
   assert.deepEqual(
     options.map((option) => option.value),
     [
       "vc.rvc.synthetic-ja.v1",
       "vc.beatrice.synthetic-ja.v1",
       "vc.x-vc.synthetic-ja.v1",
+      "vc.openvoice-v2.synthetic-ja.v1",
     ],
   );
   assert.deepEqual(
     options.map((option) => option.textContent),
     [
-      "RVC v2（リアルタイム）",
-      "Beatrice 2・低め（リアルタイム）",
-      "X-VC（リアルタイム）",
+      "RVC v2",
+      "Beatrice 2",
+      "X-VC",
+      "OpenVoice V2（区間終了後）",
     ],
   );
   assert(options.every((option) => option.disabled === false));
@@ -424,6 +429,19 @@ test("popup makes saved-token and active remote playout visible after reopen", a
         profileId: "vc.beatrice.synthetic-ja.v1",
       },
     },
+    models: [
+      {
+        modelId: "beatrice-2",
+        displayName: "Beatrice 2・低めの声",
+        profileId: "vc.beatrice.synthetic-ja.v1",
+        invocationMode: "live",
+        executionState: "live-trial",
+        decisionState: "technical-only",
+        voiceRequirement: "pretrained_voice",
+        reasonCode: null,
+        selectable: true,
+      },
+    ],
   });
   await loadPopup(t, harness, "saved-token-remote-route");
 

@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TA-Robot/liveconv/schemas/voice-authorization-registry.schema.json",
+  "title": "liveconv private voice authorization registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "registry_revision", "records"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "registry_revision": {
+      "$ref": "#/$defs/sha256",
+      "description": "SHA-256 of canonical UTF-8 JSON with registry_revision omitted."
+    },
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/record" }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9.-]{2,95}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_sha256",
+        "variant_id",
+        "family_id",
+        "profile_id",
+        "status",
+        "scope",
+        "authorization_owner",
+        "retention_policy",
+        "deletion_path",
+        "source_material_sha256",
+        "source_manifest_sha256",
+        "terms_sha256",
+        "lineage_manifest_sha256",
+        "reviewed_at",
+        "expires_at",
+        "attribution_state",
+        "notice_state"
+      ],
+      "properties": {
+        "record_sha256": { "$ref": "#/$defs/sha256" },
+        "variant_id": { "$ref": "#/$defs/id" },
+        "family_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.-]{1,63}$"
+        },
+        "profile_id": {
+          "type": "string",
+          "pattern": "^vc\\.[a-z0-9][a-z0-9.-]*\\.v[0-9]+$"
+        },
+        "status": { "const": "approved" },
+        "scope": { "const": "personal-evaluation" },
+        "authorization_owner": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{2,95}$"
+        },
+        "retention_policy": { "const": "delete-on-expiry-or-revocation" },
+        "deletion_path": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 1024,
+          "pattern": "^/[^\\r\\n]+$"
+        },
+        "source_material_sha256": { "$ref": "#/$defs/sha256" },
+        "source_manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "terms_sha256": { "$ref": "#/$defs/sha256" },
+        "lineage_manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "reviewed_at": { "type": "string", "format": "date-time" },
+        "expires_at": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "format": "date-time" }
+          ]
+        },
+        "attribution_state": { "enum": ["satisfied", "not-required"] },
+        "notice_state": {
+          "enum": [
+            "satisfied",
+            "not-required",
+            "not-required-for-personal-evaluation"
+          ]
+        }
+      }
+    }
+  }
+}

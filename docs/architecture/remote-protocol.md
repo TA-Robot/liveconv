@@ -41,6 +41,7 @@ GET    /health/ready
 GET    /v1/runtime-boundary
 GET    /v1/models
 GET    /v1/model-roster
+GET    /v1/deployment-manifest
 POST   /v1/sessions
 GET    /v1/sessions/{session_id}
 DELETE /v1/sessions/{session_id}
@@ -52,6 +53,35 @@ surface. It returns `protocol_version`, `transport_scope` (`loopback` or
 `loopback`, `max_sessions: 1`, and `ticket_one_use: true` from this endpoint; it
 must not infer or hard-code those facts. This endpoint does not alter session or
 WebSocket protocol version 1.
+
+`GET /v1/deployment-manifest` is the authenticated MS-3 deployment-identity and
+variant-display surface. It returns only the `public_manifest` projection from a
+bundle validated against `schemas/deployment-bundle.schema.json`; the
+Gateway-private profile registry, worker endpoints, authorization records,
+credentials, and artifact paths are never returned. This additive control-plane
+endpoint does not add a client or server WebSocket message and therefore does
+not change the version-1 PCM or generation contract.
+
+Each private target-voice authorization record binds an operator owner,
+personal-evaluation scope, source/terms/lineage digests, expiry, attribution and
+notice state, `delete-on-expiry-or-revocation` retention, and the private
+deletion path. Only its canonical digest enters the public manifest.
+
+The Gateway validates the whole bundle before every atomic activation or
+restart, using its current timezone-aware UTC clock rather than the bundle's
+self-declared creation time. It also rechecks authorization expiry before every
+session creation so a once-valid active bundle cannot outlive a reference-voice
+grant. A future bundle/review timestamp, expired authorization, whole-bundle
+hash, schema, profile, authorization, or exact-set mismatch rejects activation
+or the new session; no session may use the candidate bundle and the Extension
+remains native-only.
+An individual public-variant mismatch after activation disables that variant.
+The terminal launcher and Extension independently require the advertised
+`bundle_revision`. The Extension may display the manifest's variants, but it
+enables one only when its exact profile and configuration identity also appears
+ready in `GET /v1/models`. Thus `/v1/models` remains the session-creation and
+runtime-readiness authority. The fixed `GET /v1/model-roster` remains historical
+MS-2 display/trial metadata and cannot authorize an MS-3 variant or session.
 
 `POST /v1/sessions` accepts:
 

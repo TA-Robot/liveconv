@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -80,6 +83,16 @@ _CANONICAL_CONFIGURATION: dict[str, float | int | str] = {
     ),
 }
 
+_APPROVED_TARGET_REFERENCES = {
+    _PROFILE_ID: _CANONICAL_CONFIGURATION["target_reference_sha256"],
+    "vc.openvoice-v2.amitaro-runrun.v1": (
+        "ea78016e6a15eb7236b3f25fca877a6d1117a8fa1c5efda6635d7d4516dd6126"
+    ),
+    "vc.openvoice-v2.amitaro-yofukashi.v1": (
+        "a40396353b2543cc7923b673cdc42c25bb63f9204008e240b3659e55bd3c518f"
+    ),
+}
+
 _REQUIRED_ENVIRONMENT = (
     "LIVECONV_OPENVOICE_V2_SOURCE_ROOT",
     "LIVECONV_OPENVOICE_V2_SOURCE_TREE_SHA256",
@@ -114,9 +127,6 @@ _ENVIRONMENT_BINDINGS = {
     "LIVECONV_OPENVOICE_V2_CHECKPOINT_SHA256": _CANONICAL_CONFIGURATION[
         "checkpoint_sha256"
     ],
-    "LIVECONV_OPENVOICE_V2_TARGET_REFERENCE_SHA256": _CANONICAL_CONFIGURATION[
-        "target_reference_sha256"
-    ],
     "LIVECONV_OPENVOICE_V2_PYVENV_SHA256": _CANONICAL_CONFIGURATION["pyvenv_sha256"],
     "LIVECONV_OPENVOICE_V2_WORKER_WHEEL_SHA256": _CANONICAL_CONFIGURATION[
         "worker_wheel_sha256"
@@ -149,7 +159,7 @@ _ARTIFACT_BINDINGS = (
 def validate_configuration(profile: ModelProfile) -> None:
     """Reject routes that differ from the retained offline preview identity."""
 
-    if profile.profile_id != _PROFILE_ID:
+    if profile.profile_id not in _APPROVED_TARGET_REFERENCES:
         raise ValueError(f"{profile.profile_id}: OpenVoice profile ID is not approved")
     if profile.runtime.adapter != "worker":
         raise ValueError(f"{profile.profile_id}: OpenVoice requires the worker adapter")
@@ -157,12 +167,13 @@ def validate_configuration(profile: ModelProfile) -> None:
         raise ValueError(
             f"{profile.profile_id}: OpenVoice worker module is not approved"
         )
-    if not _is_canonical_configuration(profile.runtime.configuration):
+    configuration = _configuration(profile.profile_id)
+    if not _is_canonical_configuration(profile.runtime.configuration, configuration):
         raise ValueError(
             f"{profile.profile_id}: OpenVoice configuration differs from "
             "retained identity"
         )
-    if profile.configuration_hash != _CONFIGURATION_HASH:
+    if profile.configuration_hash != _configuration_hash(configuration):
         raise ValueError(
             f"{profile.profile_id}: OpenVoice configuration hash does not match"
         )
@@ -170,7 +181,7 @@ def validate_configuration(profile: ModelProfile) -> None:
         raise ValueError(
             f"{profile.profile_id}: OpenVoice implementation revision does not match"
         )
-    if profile.weight_revision != _WEIGHT_REVISION:
+    if profile.weight_revision != _weight_revision(configuration):
         raise ValueError(
             f"{profile.profile_id}: OpenVoice weight revision does not match"
         )
@@ -226,20 +237,24 @@ def build_worker_profile(
     del queue_budget_ms
     validate_configuration(profile)
     endpoint = _worker_endpoint(profile)
-    environment = _environment(profile)
+    configuration = _configuration(profile.profile_id)
+    environment = _environment(profile, configuration)
     artifacts = tuple(
-        ArtifactSpec(env_var=env_var, sha256=_digest(digest_key))
+        ArtifactSpec(
+            env_var=env_var,
+            sha256=_digest(configuration, digest_key),
+        )
         for env_var, digest_key in _ARTIFACT_BINDINGS
     )
     return WorkerProfile(
         profile_id=profile.profile_id,
         pipeline_id=pipeline_id,
-        configuration_hash=_CONFIGURATION_HASH,
+        configuration_hash=_configuration_hash(configuration),
         command=(str(endpoint), "-I", "-m", WORKER_MODULE),
         cwd=Path("/tmp"),
         environment=environment,
         implementation_revision=_IMPLEMENTATION_REVISION,
-        weight_revision=_WEIGHT_REVISION,
+        weight_revision=_weight_revision(configuration),
         frame_ms=_FRAME_MS,
         queue_budget_ms=_QUEUE_BUDGET_MS,
         startup_timeout_ms=max(60_000, profile.timeouts.first_output_ms),
@@ -265,14 +280,68 @@ def queue_capacity_frames(_profile: ModelProfile, _queue_budget_ms: int) -> int:
     return _QUEUE_CAPACITY_FRAMES
 
 
-def _is_canonical_configuration(configuration: object) -> bool:
+def _configuration(profile_id: str) -> dict[str, float | int | str]:
+    try:
+        target_reference_sha256 = _APPROVED_TARGET_REFERENCES[profile_id]
+    except KeyError as exc:
+        raise ValueError(f"{profile_id}: OpenVoice profile ID is not approved") from exc
+    return {
+        **_CANONICAL_CONFIGURATION,
+        "target_reference_sha256": target_reference_sha256,
+    }
+
+
+def _configuration_hash(configuration: dict[str, float | int | str]) -> str:
+    encoded = json.dumps(
+        configuration,
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("ascii")
+    return f"sha256:{hashlib.sha256(encoded).hexdigest()}"
+
+
+def _weight_revision(configuration: dict[str, float | int | str]) -> str:
+    identity = hashlib.sha256()
+    for key in (
+        "source_tree_sha256",
+        "config_sha256",
+        "checkpoint_sha256",
+        "target_reference_sha256",
+    ):
+        value = configuration[key]
+        assert isinstance(value, str)
+        identity.update(bytes.fromhex(value))
+    return f"sha256:{identity.hexdigest()}"
+
+
+def target_environment_names(profile_id: str) -> tuple[str, str]:
+    if profile_id == _PROFILE_ID:
+        return (
+            "LIVECONV_OPENVOICE_V2_TARGET_REFERENCE_PATH",
+            "LIVECONV_OPENVOICE_V2_TARGET_REFERENCE_SHA256",
+        )
+    if profile_id not in _APPROVED_TARGET_REFERENCES:
+        raise ValueError(f"{profile_id}: OpenVoice profile ID is not approved")
+    suffix = re.sub(r"[^A-Za-z0-9]+", "_", profile_id).strip("_").upper()
+    prefix = f"LIVECONV_OPENVOICE_V2_VARIANT_{suffix}"
+    return (
+        f"{prefix}_TARGET_REFERENCE_PATH",
+        f"{prefix}_TARGET_REFERENCE_SHA256",
+    )
+
+
+def _is_canonical_configuration(
+    configuration: object,
+    expected_configuration: dict[str, float | int | str],
+) -> bool:
     if not isinstance(configuration, dict) or set(configuration) != set(
-        _CANONICAL_CONFIGURATION
+        expected_configuration
     ):
         return False
     return all(
         type(configuration[key]) is type(expected) and configuration[key] == expected
-        for key, expected in _CANONICAL_CONFIGURATION.items()
+        for key, expected in expected_configuration.items()
     )
 
 
@@ -290,23 +359,36 @@ def _worker_endpoint(profile: ModelProfile) -> Path:
     return endpoint
 
 
-def _environment(profile: ModelProfile) -> dict[str, str]:
+def _environment(
+    profile: ModelProfile,
+    configuration: dict[str, float | int | str],
+) -> dict[str, str]:
     environment: dict[str, str] = {}
     for name in _REQUIRED_ENVIRONMENT:
-        value = os.environ.get(name)
+        source_name = name
+        if name == "LIVECONV_OPENVOICE_V2_TARGET_REFERENCE_PATH":
+            source_name = target_environment_names(profile.profile_id)[0]
+        elif name == "LIVECONV_OPENVOICE_V2_TARGET_REFERENCE_SHA256":
+            source_name = target_environment_names(profile.profile_id)[1]
+        value = os.environ.get(source_name)
         if not value:
-            raise ValueError(f"required worker environment is missing: {name}")
+            raise ValueError(f"required worker environment is missing: {source_name}")
         environment[name] = value
     for name, expected in _ENVIRONMENT_BINDINGS.items():
         if environment[name] != expected:
             raise ValueError(
                 f"{profile.profile_id}: {name} does not match retained identity"
             )
+    expected_target = configuration["target_reference_sha256"]
+    if environment["LIVECONV_OPENVOICE_V2_TARGET_REFERENCE_SHA256"] != expected_target:
+        raise ValueError(
+            f"{profile.profile_id}: target reference does not match approved identity"
+        )
     environment.update(_OPTIONAL_ENVIRONMENT_BINDINGS)
     return environment
 
 
-def _digest(key: str) -> str:
-    value = _CANONICAL_CONFIGURATION[key]
+def _digest(configuration: dict[str, float | int | str], key: str) -> str:
+    value = configuration[key]
     assert isinstance(value, str)
     return value

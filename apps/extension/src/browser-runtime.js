@@ -15,6 +15,8 @@ const HASH = /^sha256:[0-9a-f]{64}$/;
 const MAXIMUM_CATALOG_PROFILES = 128;
 const MAXIMUM_INGRESS_FRAMES = 500;
 const MAXIMUM_ROSTER_MODELS = 4;
+const MINIMUM_DEPLOYMENT_VARIANTS = 1;
+const MAXIMUM_DEPLOYMENT_VARIANTS = 12;
 const ROSTER_ID = /^[a-z0-9][a-z0-9.-]{1,63}$/;
 const MODEL_ID = /^[a-z0-9][a-z0-9-]{1,63}$/;
 const REASON_CODE = /^[a-z0-9][a-z0-9_]{0,127}$/;
@@ -476,6 +478,176 @@ function bindRosterToCatalog(roster, catalog) {
   );
 }
 
+function requireDeploymentVariant(value, index, catalogByProfileId) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`gateway returned an invalid deployment variant at index ${index}`);
+  }
+  requireExactFields(
+    value,
+    [
+      "variant_id",
+      "family_id",
+      "display_order",
+      "display_name",
+      "target_presentation",
+      "lane",
+      "invocation_mode",
+      "profile_id",
+      "profile_hash",
+      "configuration_hash",
+      "pack_id",
+      "promotion_evidence_sha256",
+      "authorization_record_sha256",
+      "variant_manifest_sha256",
+    ],
+    `deployment variant ${index}`,
+  );
+  const variantId = requireString(value.variant_id, "variant_id", {
+    pattern: ROSTER_ID,
+    maximumLength: 96,
+  });
+  const familyId = requireString(value.family_id, `family_id for ${variantId}`, {
+    pattern: ROSTER_ID,
+    maximumLength: 64,
+  });
+  const profileId = requireString(value.profile_id, `profile_id for ${variantId}`, {
+    pattern: PROFILE_ID,
+    maximumLength: 128,
+  });
+  const packId = requireString(value.pack_id, `pack_id for ${variantId}`, {
+    pattern: MODEL_ID,
+    maximumLength: 64,
+  });
+  const displayName = requireString(value.display_name, `display_name for ${variantId}`, {
+    maximumLength: 100,
+  });
+  if (/[\\/\r\n]/u.test(displayName)) {
+    throw new Error(`gateway returned an invalid display name for ${variantId}`);
+  }
+  if (
+    !Number.isSafeInteger(value.display_order) ||
+    value.display_order !== index + 1 ||
+    value.lane !== "voice-conversion" ||
+    !["live", "buffered_end"].includes(value.invocation_mode) ||
+    ![
+      "youthful-feminine",
+      "bright-youthful-feminine",
+      "soft-youthful-feminine",
+      "relaxed-youthful-feminine",
+    ].includes(value.target_presentation) ||
+    familyId !== packId
+  ) {
+    throw new Error(`gateway returned incompatible deployment metadata for ${variantId}`);
+  }
+  const profileHash = requireString(value.profile_hash, `profile_hash for ${variantId}`, {
+    pattern: HASH,
+    maximumLength: 71,
+  });
+  const configurationHash = requireString(
+    value.configuration_hash,
+    `configuration_hash for ${variantId}`,
+    { pattern: HASH, maximumLength: 71 },
+  );
+  const promotionEvidenceHash = requireString(
+    value.promotion_evidence_sha256,
+    `promotion evidence for ${variantId}`,
+    { pattern: HASH, maximumLength: 71 },
+  );
+  const profile = catalogByProfileId.get(profileId);
+  if (
+    !profile ||
+    profile.kind !== "voice_conversion" ||
+    !profile.compatible ||
+    profile.profileHash !== profileHash ||
+    profile.configurationHash !== configurationHash ||
+    profile.promotion?.packId !== packId ||
+    profile.promotion?.evidenceHash !== promotionEvidenceHash ||
+    (value.invocation_mode === "live" && !profile.streaming)
+  ) {
+    throw new Error(`deployment identity does not match catalog for ${variantId}`);
+  }
+  return Object.freeze({
+    variantId,
+    familyId,
+    displayOrder: value.display_order,
+    displayName,
+    targetPresentation: value.target_presentation,
+    invocationMode: value.invocation_mode,
+    profileId,
+    profileHash,
+    configurationHash,
+    packId,
+    promotionEvidenceHash,
+    authorizationRecordHash: requireString(
+      value.authorization_record_sha256,
+      `authorization record for ${variantId}`,
+      { pattern: HASH, maximumLength: 71 },
+    ),
+    variantManifestHash: requireString(
+      value.variant_manifest_sha256,
+      `variant manifest for ${variantId}`,
+      { pattern: HASH, maximumLength: 71 },
+    ),
+    profile,
+  });
+}
+
+function requireDeploymentManifestResponse(value, catalog) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("gateway returned an invalid deployment manifest");
+  }
+  requireExactFields(
+    value,
+    [
+      "schema_version",
+      "bundle_id",
+      "bundle_revision",
+      "protocol_version",
+      "transport_scope",
+      "max_sessions",
+      "variants",
+    ],
+    "deployment manifest",
+  );
+  if (
+    value.schema_version !== 1 ||
+    value.protocol_version !== 1 ||
+    value.transport_scope !== "loopback-ssh" ||
+    value.max_sessions !== 1 ||
+    !Array.isArray(value.variants) ||
+    value.variants.length < MINIMUM_DEPLOYMENT_VARIANTS ||
+    value.variants.length > MAXIMUM_DEPLOYMENT_VARIANTS
+  ) {
+    throw new Error("gateway returned an incompatible deployment manifest");
+  }
+  const catalogByProfileId = new Map(
+    catalog.map((profile) => [profile.profileId, profile]),
+  );
+  const variants = value.variants.map((variant, index) =>
+    requireDeploymentVariant(variant, index, catalogByProfileId));
+  if (
+    new Set(variants.map((variant) => variant.variantId)).size !== variants.length ||
+    new Set(variants.map((variant) => variant.profileId)).size !== variants.length
+  ) {
+    throw new Error("gateway deployment manifest variants are not unique");
+  }
+  return Object.freeze({
+    schemaVersion: value.schema_version,
+    bundleId: requireString(value.bundle_id, "bundle_id", {
+      pattern: ROSTER_ID,
+      maximumLength: 96,
+    }),
+    bundleRevision: requireString(value.bundle_revision, "bundle_revision", {
+      pattern: HASH,
+      maximumLength: 71,
+    }),
+    protocolVersion: value.protocol_version,
+    transportScope: value.transport_scope,
+    maxSessions: value.max_sessions,
+    variants,
+  });
+}
+
 function expectedProfileIdentity(profile, pipelineId) {
   return Object.freeze({
     profileId: profile.profileId,
@@ -659,6 +831,7 @@ export function createBrowserRuntime(options = {}) {
   let sessionMetadataEpoch = 0;
   let catalogProfiles = [];
   let rosterModels = [];
+  let deploymentVariants = [];
   let profileSelectionEpoch = 0;
   let activeProfileSelection = null;
   let generationControlEpoch = 0;
@@ -1339,6 +1512,35 @@ export function createBrowserRuntime(options = {}) {
     return requireModelRosterResponse(document);
   }
 
+  async function fetchDeploymentManifest(
+    configuration,
+    catalog,
+    startController = null,
+  ) {
+    const operation = fetchWithDeadline(
+      `${configuration.gatewayUrl}/v1/deployment-manifest`,
+      {
+        method: "GET",
+        cache: "no-store",
+        credentials: "omit",
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+        headers: authorizedHeaders(configuration.token),
+      },
+      "deployment manifest",
+    );
+    const response = startController
+      ? await waitForStart(startController, operation)
+      : await operation;
+    const document = startController
+      ? await waitForStart(
+          startController,
+          jsonResponse(response, "deployment manifest"),
+        )
+      : await jsonResponse(response, "deployment manifest");
+    return requireDeploymentManifestResponse(document, catalog);
+  }
+
   async function fetchModelInventory(configuration, startController = null) {
     const catalog = await fetchModelCatalog(configuration, startController);
     const roster = await fetchModelRoster(configuration, startController);
@@ -1394,6 +1596,32 @@ export function createBrowserRuntime(options = {}) {
     return model;
   }
 
+  function deploymentVariantModel(variant) {
+    return Object.freeze({
+      modelId: variant.variantId,
+      variantId: variant.variantId,
+      familyId: variant.familyId,
+      displayName: variant.displayName,
+      targetPresentation: variant.targetPresentation,
+      profileId: variant.profileId,
+      invocationMode: variant.invocationMode,
+      executionState:
+        variant.invocationMode === "live" ? "live-trial" : "buffered-preview",
+      decisionState: "unassessed",
+      voiceRequirement: variant.profile.voiceRequirement,
+      reasonCode: null,
+      selectable: true,
+      profile: variant.profile,
+    });
+  }
+
+  function selectedVoiceModel(profileId) {
+    const variant = deploymentVariants.find(
+      (candidate) => candidate.profileId === profileId,
+    );
+    return variant ?? selectedRosterModel(profileId);
+  }
+
   async function listModels(configurationValue = null) {
     const configuration = configurationValue
       ? normalizeConfiguration(configurationValue)
@@ -1402,6 +1630,23 @@ export function createBrowserRuntime(options = {}) {
       throw new Error("configure Gateway credentials before loading profiles");
     }
     return fetchModelInventory(configuration);
+  }
+
+  async function listVariants(configurationValue = null) {
+    const configuration = configurationValue
+      ? normalizeConfiguration(configurationValue)
+      : await storedConfiguration();
+    if (!configuration) {
+      throw new Error("configure Gateway credentials before loading variants");
+    }
+    const catalog = await fetchModelCatalog(configuration);
+    const deployment = await fetchDeploymentManifest(configuration, catalog);
+    deploymentVariants = deployment.variants.map(deploymentVariantModel);
+    return Object.freeze({
+      catalog,
+      deployment,
+      variants: deploymentVariants,
+    });
   }
 
   async function createGatewaySession(
@@ -1584,8 +1829,8 @@ export function createBrowserRuntime(options = {}) {
     if (capture !== "stopped") {
       throw new Error("configuration can change only while capture is stopped");
     }
-    if (rosterModels.length > 0) {
-      selectedRosterModel(configuration.profileId);
+    if (rosterModels.length > 0 || deploymentVariants.length > 0) {
+      selectedVoiceModel(configuration.profileId);
     }
     await persistConfiguration(configuration);
     lastError = null;
@@ -1651,7 +1896,19 @@ export function createBrowserRuntime(options = {}) {
       remote = "connecting";
       let gatewaySession = null;
       try {
-        await fetchModelInventory(configuration, startController);
+        const inventory = await fetchModelInventory(configuration, startController);
+        if (
+          !rosterModels.some(
+            (candidate) => candidate.profileId === configuration.profileId,
+          )
+        ) {
+          const deployment = await fetchDeploymentManifest(
+            configuration,
+            inventory.catalog,
+            startController,
+          );
+          deploymentVariants = deployment.variants.map(deploymentVariantModel);
+        }
         if (receiptIsActive()) {
           const boundary = await fetchRuntimeBoundary(configuration, startController);
           await receiptTransition("observeGatewayBoundary", {
@@ -1661,7 +1918,7 @@ export function createBrowserRuntime(options = {}) {
             ticket_one_use: boundary.ticketOneUse,
           });
         }
-        const model = selectedRosterModel(configuration.profileId);
+        const model = selectedVoiceModel(configuration.profileId);
         const profile = model.profile;
         gatewaySession = await createGatewaySession(
           configuration,
@@ -1999,7 +2256,7 @@ export function createBrowserRuntime(options = {}) {
         await fetchModelInventory(configuration);
         requireCurrentNextGenerationControl(control);
       }
-      const model = selectedRosterModel(configuration.profileId);
+      const model = selectedVoiceModel(configuration.profileId);
       if (
         session.modelId !== model.modelId ||
         session.invocationMode !== model.invocationMode ||
@@ -2175,7 +2432,7 @@ export function createBrowserRuntime(options = {}) {
         await fetchModelInventory(configuration);
         requireCurrentProfileSelection(selection);
       }
-      const previousModel = selectedRosterModel(configuration.profileId);
+      const previousModel = selectedVoiceModel(configuration.profileId);
       previousSession = await activeSession();
       requireCurrentProfileSelection(selection);
       if (
@@ -2187,7 +2444,7 @@ export function createBrowserRuntime(options = {}) {
       ) {
         throw new Error("remote session metadata does not match the active model");
       }
-      const model = selectedRosterModel(profileId);
+      const model = selectedVoiceModel(profileId);
       const profile = model.profile;
       const nextConfiguration = Object.freeze({
         ...configuration,
@@ -2508,6 +2765,19 @@ export function createBrowserRuntime(options = {}) {
           ok: true,
           state: await snapshot(),
           models: inventory.models,
+          profiles: inventory.catalog,
+        };
+      }
+      if (message?.type === "variants.list") {
+        const inventory = await listVariants(message.configuration ?? null);
+        return {
+          ok: true,
+          state: await snapshot(),
+          bundle: {
+            bundleId: inventory.deployment.bundleId,
+            bundleRevision: inventory.deployment.bundleRevision,
+          },
+          variants: inventory.variants,
           profiles: inventory.catalog,
         };
       }

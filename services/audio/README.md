@@ -37,6 +37,76 @@ Set `LIVECONV_PROFILE_CONFIG` to that generated file,
 The opt-in makes technical routes invocable for the personal trial; it does not
 approve their quality, license, security, or release status.
 
+For the first MS-3 voice-lab wave, fetch and verify the four official Amitaro
+RVC styles, prepare their distinct profiles, and seal one deployment. Keep all
+downloaded voices, private authorization records, and generated identity files
+outside the repository:
+
+```bash
+MS3_ROOT="${XDG_CACHE_HOME:-$HOME/.cache}/liveconv/ms3-amitaro-rvc-v1"
+
+uv run --frozen python scripts/fetch-ms3-rvc-amitaro.py \
+  --output "$MS3_ROOT/candidates"
+
+uv run --frozen python scripts/prepare-ms3-rvc-variants.py \
+  --base-registry artifacts/rvc-v2/gateway-profile.json \
+  --candidate-root "$MS3_ROOT/candidates" \
+  --output "$MS3_ROOT/prepared"
+
+uv run --frozen python scripts/fetch-ms3-openvoice-amitaro.py \
+  --output "$MS3_ROOT/references"
+
+uv run --frozen python scripts/prepare-ms3-openvoice-variants.py \
+  --openvoice-identity-env artifacts/openvoice-v2/identity.env \
+  --prepared "$MS3_ROOT/prepared" \
+  --reference-root "$MS3_ROOT/references" \
+  --output "$MS3_ROOT/prepared-six"
+
+uv run --frozen python scripts/prepare-ms3-xvc-variants.py \
+  --xvc-identity-env artifacts/x-vc/identity.env \
+  --prepared "$MS3_ROOT/prepared-six" \
+  --reference-root "$MS3_ROOT/references" \
+  --output "$MS3_ROOT/prepared-eight"
+
+uv run --frozen python scripts/build-ms3-deployment-bundle.py \
+  "$MS3_ROOT/prepared-eight/draft.json" \
+  "$MS3_ROOT/prepared-eight/authorization-registry.json" \
+  "$MS3_ROOT/deployment"
+```
+
+Then use the same launcher for terminal preflight and the real Gateway. Pass
+the retained RVC runtime identity and the generated variant identity; the
+launcher parses literal
+`LIVECONV_*` assignments without executing the files, removes Python path
+overrides, validates the current authorization time and exact bundle/profile
+identity, and runs a no-worker Gateway construction during `--check`.
+
+```bash
+uv run --frozen python scripts/run-ms3-gateway.py \
+  --deployment "$MS3_ROOT/deployment" \
+  --identity-env artifacts/rvc-v2/identity.env \
+  --identity-env "$MS3_ROOT/prepared/identity.env" \
+  --identity-env artifacts/openvoice-v2/identity.env \
+  --identity-env "$MS3_ROOT/prepared-six/identity.env" \
+  --identity-env artifacts/x-vc/identity.env \
+  --identity-env "$MS3_ROOT/prepared-eight/identity.env" \
+  --check
+
+uv run --frozen python scripts/run-ms3-gateway.py \
+  --deployment "$MS3_ROOT/deployment" \
+  --identity-env artifacts/rvc-v2/identity.env \
+  --identity-env "$MS3_ROOT/prepared/identity.env" \
+  --identity-env artifacts/openvoice-v2/identity.env \
+  --identity-env "$MS3_ROOT/prepared-six/identity.env" \
+  --identity-env artifacts/x-vc/identity.env \
+  --identity-env "$MS3_ROOT/prepared-eight/identity.env"
+```
+
+The API token and exact Extension origin stay in the caller's environment and
+are never written into the generated directory. `--check` hashes every common
+runtime artifact and every selected checkpoint/index before a worker or GPU is
+started; do not launch the Gateway when it fails.
+
 ## HTTP API
 
 - `GET /health/live` is the only unauthenticated endpoint.
@@ -47,6 +117,8 @@ approve their quality, license, security, or release status.
 - `GET /v1/model-roster` returns the authenticated MS-2 four-model display
   roster. It separates execution state from decision evidence, includes only
   fixed reason codes, and never authorizes a session by itself.
+- `GET /v1/deployment-manifest` returns the authenticated public projection of
+  the active MS-3 bundle, or `404` when no bundle is active.
 - `POST /v1/sessions` creates a session and returns one plaintext WSS ticket.
 - `GET /v1/sessions/{session_id}` returns state without ticket material.
 - `DELETE /v1/sessions/{session_id}` invalidates the session.

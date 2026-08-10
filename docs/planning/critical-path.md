@@ -2,17 +2,19 @@
 
 Status: Active
 
-Current milestone: **MS-2**. MS-1 closed on 2026-08-09; its technical pass did
-not select a model or approve voice quality.
+Current milestone: **MS-3**. MS-1 closed on 2026-08-09. MS-2 closed by explicit
+user scope decision on 2026-08-10 after the real Extension path became usable
+but the prepared audio was rejected as unacceptable. The missing EXP-005 receipt
+means no formal MS-2 evidence pass is claimed.
 
 The user-delivery path is:
 
 ```text
 MS-1 executable multi-model lab
   -> MS-2 multi-model Extension MVP
-  -> MS-3 candidate and architecture freeze
-  -> MS-4 responsiveness, stability, and SSH baseline
-  -> MS-5 personal operations and recovery
+  -> MS-3 young-feminine voice Variant Lab
+  -> MS-4 shortlist optimization and architecture freeze
+  -> MS-5 responsiveness, SSH baseline, and personal recovery
   -> MS-6 personal-use v1 acceptance
 ```
 
@@ -37,8 +39,9 @@ Only these classes stop the active milestone:
 
 Quality misses, cold-start cost, offline-only candidates, public deployment,
 multi-user operation, production-scale sample counts, HA, and SLA work do not
-stop basic technical execution. Quality selection starts in MS-3; tuning and the
-full SSH security baseline start in MS-4.
+stop basic technical execution. Voice discovery starts in MS-3; shortlist
+selection starts in MS-4; tuning and the full SSH security baseline start in
+MS-5.
 
 ## Model gate vocabulary
 
@@ -55,9 +58,10 @@ These per-model gates are independent of the six `MS-*` user milestones:
 | M6 client | Extension completes a real audible or captured-output run through SSH |
 
 MS-1 needs multiple M2 candidates, at least two M3 adapters, and one M5 route.
-It does not require every candidate to reach M4-M6. MS-2 exposes and exercises
-the technical roster; MS-3 chooses which one continues. Rejected candidates
-then release their implementation and GPU lanes.
+It does not require every candidate to reach M4-M6. MS-2 exposed and exercised
+the technical roster. MS-3 expands this into immutable voice variants and
+shortlists them; MS-4 chooses which one continues. Rejected variants release
+their implementation and GPU lanes.
 
 ## MS-1 dependency graph
 
@@ -125,25 +129,69 @@ MS-2 dependency graph:
 ```
 
 R0, U0, X0, G0, the four model leaves, D0, and the deterministic SSH preflight
-are green. The sole remaining serial path is LV-048: execute the preflight on the
-operator client, attach the actual audible authenticated ChatGPT tab, attempt all
-four entries sequentially, inject the fifth OpenVoice failure probe, and join the
-runtime receipt with manual audible judgments. Failed quality is recorded and
-does not reopen implementation unless it breaks audio safety or invocation.
+are green. The operator reached the actual Extension path but rejected the audio
+quality and did not retain the frozen receipt. By active user decision the old
+serial join is historical and does not claim an EXP-005 pass.
+
+## MS-3 voice-variant frontier
+
+The selectable unit is an immutable variant profile, not a family name or a
+client-supplied speaker/checkpoint parameter. The initial target is 9-12
+Extension-listenable variants across at least four families, primarily youthful
+feminine Japanese voices. Screening admits at most four variants, and at most two
+per family, to the full comparison.
+
+```text
+ V0 EXP-006 + candidate catalog + bundle schema --------------------------\
+                                                                           +--> B0 immutable deployment bundle
+ F0 authorized 10/40-utterance fixtures + source-STT eligibility --------/
+
+ B0 --> P0 per-variant profile/compiler + exact pack/config identity ------\
+ B0 --> U0 dynamic Extension family/variant chooser -----------------------+--> R0 route-parity receipts
+ first-wave runtimes and authorized voices (gpu0 serial) -----------------/
+
+ R0 + F0 -> S0 all 9-12 protocol-v1 VC variants screened through Gateway -> Extension
+ S0 -> L0 preregister <=4 shortlist, <=2/family
+ L0 + calibrated speaker/content/integrity lanes -> C0 full 40-utterance plan
+ C0 -> MS-3 close and MS-4 shortlist optimization
+```
+
+`B0` is one content-addressed artifact. The Gateway loads it, the terminal
+launcher verifies it after tunnel setup, and the Extension fetches and binds the
+same digest. A direct-worker or terminal render is intake/debug evidence only.
+Any identity or behavior mismatch marks the variant `route_parity_failed`, hides
+it from the chooser, and stops only that variant until repaired.
+
+Bundle activation also requires the exact operator-controlled private
+authorization-registry revision. Every public authorization digest must resolve
+to an approved, nonexpired record with matching variant, family, profile,
+source-material, terms, and external-lineage digests; missing, extra, or mutated
+records reject the whole bundle before session creation.
+Expiry is evaluated against the Gateway's trusted current UTC at every
+activation/restart and again before session creation, never against a bundle's
+self-declared creation timestamp.
+
+The counted first wave uses authorized youthful-feminine reference/style
+material across protocol-v1 audio-to-audio VC families. Qwen and CosyVoice TTS
+remain a parallel deferred path until an accepted ADR defines committed spoken
+text, transport, interruption, and played-text accounting; they cannot satisfy
+`S0`. One GPU lease is active at a time, and unbounded checkpoint or training
+sweeps are not admitted.
 
 ## MS-2 through MS-6 joins
 
 | Milestone | Serial join | Parallel preparation |
 |---|---|---|
-| MS-2 | four invocable models -> actual ChatGPT tab -> all-model attempts -> >=2 live audible -> native fallback -> review | roster/API, generic Gateway dispatch, UI/runner, four model routes, SSH preflight, MS-3 fixtures |
-| MS-3 | authorized fixtures -> common evidence -> operator decision -> model/Extension ADR | candidate renders, listening setup, STT/speaker/integrity checks |
-| MS-4 | frozen primary -> timing/stability tune -> SSH threat boundary -> second-shell check | queue/jitter/cancel tests, failure injection, auth/origin/ticket negatives, firewall/log scans |
-| MS-5 | release inventory -> start/restart/rollback runbook -> recovery and soak gate | actual client-platform docs, diagnostics, cleanup, maintenance checklist; other OS notes are best-effort |
+| MS-2 | historical: technical routes -> actual Extension listening -> quality rejection -> scope decision | formal EXP-005 receipt was not retained and no pass is claimed |
+| MS-3 | bundle/catalog -> 9-12 route-qualified protocol-v1 VC variants across >=4 families -> 10-utterance screen -> <=4 shortlist | runtimes, authorized youthful-feminine voices, fixtures, dynamic chooser, parity receipts; optional TTS ADR is off the serial path |
+| MS-4 | shortlist -> common 40-utterance evidence -> bounded tuning -> primary/fallback or no release -> ADR | blinded listening package, STT/speaker/integrity checks |
+| MS-5 | frozen primary -> timing/stability tune -> SSH boundary -> runbook/recovery and soak | queue/jitter/cancel tests, failure injection, auth negatives, diagnostics, maintenance checklist |
 | MS-6 | frozen server/client bundle -> external audible session -> final audit and release | release notes, known issues, rollback rehearsal, operator acceptance record |
 
-MS-3 is the largest scope-reduction point. Once a primary is selected, alternate
-model writers stop unless their named issue can change the decision inside a
-short timebox. MS-4 never retunes multiple models in parallel.
+MS-3 is the broad but bounded discovery point. It narrows 9-12 protocol-v1 VC
+variants to four or fewer. MS-4 is the largest scope-reduction point and freezes one primary;
+after that, alternate writers stop unless a named issue can change the decision
+inside a short timebox. MS-5 never retunes multiple models in parallel.
 
 ## Two-tier agent schedule
 

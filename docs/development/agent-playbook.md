@@ -52,8 +52,10 @@ As soon as a slice reaches `Checkpoint`, commit it with its backlog item still i
 `Review` and place it in the merge queue. Do not wait for an entire phase or
 several packages to reach Gate Done. Integrate in dependency order, review the
 integration SHA, and push a green checkpoint after two or three leaves. Run the
-full root suite for every shared-contract change and every SHA used as the base of
-new worktrees; leaf workers run focused checks while they iterate.
+full root suite for accepted production-contract changes, integrated
+implementation checkpoints, and every SHA used as the base of new worktrees.
+Draft planning schemas and documentation use focused syntax/control checks;
+leaf workers run focused checks while they iterate.
 
 A worker stops and returns evidence when its stop condition is met. If it expands
 scope, changes a shared file, or cannot produce a focused failing/passing test, the
@@ -158,6 +160,8 @@ Every delegated task includes:
 ```text
 Goal:
 Why now:
+Decision this result can change:
+Action for each plausible outcome:
 Inputs and source-of-truth IDs:
 Owned files or read-only scope:
 Required evidence:
@@ -168,6 +172,10 @@ Return format:
 
 For an experiment runner, also include the experiment ID, frozen commit, fixture
 version, artifact policy, and invalidation conditions.
+
+Review briefs also name the active milestone deliverable and forbid findings
+outside that gate from becoming `fix-now`. Do not dispatch a reviewer when all
+plausible outcomes lead to the same current-milestone action.
 
 ## Recommended orchestrations
 

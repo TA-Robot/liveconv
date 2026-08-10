@@ -48,8 +48,23 @@ required_files=(
   schemas/experiment.schema.json
   schemas/model-profile-registry.schema.json
   schemas/model-roster.schema.json
+  schemas/deployment-bundle.schema.json
+  schemas/voice-authorization-registry.schema.json
+  schemas/voice-variant-catalog.schema.json
+  scripts/build-ms3-deployment-bundle.py
+  scripts/fetch-ms3-rvc-amitaro.py
+  scripts/fetch-ms3-openvoice-amitaro.py
+  scripts/prepare-ms3-rvc-variants.py
+  scripts/prepare-ms3-openvoice-variants.py
+  scripts/prepare-ms3-xvc-variants.py
+  scripts/run-ms3-gateway.py
+  scripts/validate-deployment-bundle.py
   config/model-profiles.json
   config/model-roster.json
+  config/ms3-voice-variant-candidates.json
+  config/ms3-rvc-amitaro-intake.json
+  config/ms3-openvoice-amitaro-intake.json
+  config/ms3-xvc-amitaro-intake.json
   packages/evaluation/schemas/fixture-manifest.schema.json
   packages/evaluation/fixtures/router-speech-v1.json
   packages/protocol/pyproject.toml
@@ -186,6 +201,26 @@ else
     pass "model roster matches its full JSON Schema"
   else
     fail "model roster JSON Schema validation"
+  fi
+
+  if python3 -c 'import json; from jsonschema import Draft202012Validator; Draft202012Validator.check_schema(json.load(open("schemas/deployment-bundle.schema.json", encoding="utf-8")))'; then
+    pass "deployment bundle JSON Schema is valid"
+  else
+    fail "deployment bundle JSON Schema validation"
+  fi
+
+  if python3 -c 'import json; from jsonschema import Draft202012Validator; Draft202012Validator.check_schema(json.load(open("schemas/voice-authorization-registry.schema.json", encoding="utf-8")))'; then
+    pass "voice authorization registry JSON Schema is valid"
+  else
+    fail "voice authorization registry JSON Schema validation"
+  fi
+
+  if python3 scripts/validate-json.py \
+    schemas/voice-variant-catalog.schema.json \
+    config/ms3-voice-variant-candidates.json; then
+    pass "MS-3 voice variant catalog matches its full JSON Schema"
+  else
+    fail "MS-3 voice variant catalog JSON Schema validation"
   fi
 
   if python3 scripts/validate-json.py \

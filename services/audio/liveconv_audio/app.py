@@ -60,6 +60,7 @@ from ._adapter_registry import (
     buffered_input_capacity_frames,
     delivery_mode_for_profile,
 )
+from .deployment import DeploymentManifest
 from .profiles import ModelProfile, ProfileRegistry
 from .roster import ModelRoster
 from .sessions import CachedResponse, Session, SessionCapacityError, SessionStore
@@ -1100,6 +1101,16 @@ class Gateway:
                 str(files("liveconv_audio").joinpath("default-model-roster.json"))
             )
         self.roster = ModelRoster.load(roster_path)
+        self.deployment_manifest = (
+            DeploymentManifest.load(
+                settings.deployment_bundle_config,
+                profile_config=settings.profile_config,
+                registry=self.registry,
+                max_sessions=settings.max_sessions,
+            )
+            if settings.deployment_bundle_config is not None
+            else None
+        )
         self.store = SessionStore(
             ticket_ttl_seconds=settings.ticket_ttl_seconds,
             ingress_budget_ms=settings.ingress_budget_ms,
@@ -1377,6 +1388,12 @@ def create_app(
     @app.get("/v1/model-roster", dependencies=[Depends(require_bearer)])
     async def model_roster() -> dict[str, object]:
         return gateway.roster.public_document(gateway.registry)
+
+    @app.get("/v1/deployment-manifest", dependencies=[Depends(require_bearer)])
+    async def deployment_manifest() -> dict[str, object]:
+        if gateway.deployment_manifest is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "no deployment bundle")
+        return gateway.deployment_manifest.public_document()
 
     @app.post("/v1/sessions", status_code=status.HTTP_201_CREATED)
     async def create_session(

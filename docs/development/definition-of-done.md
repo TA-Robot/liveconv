@@ -48,7 +48,10 @@ or permission to bypass later independent review.
 - Relevant integration, browser, or audio tests pass.
 - Latency-affecting changes report warmup, P50, P95, sample count, and environment.
 - Audio-quality claims include blinded or deterministic evidence as appropriate.
-- `make check` passes from the repository root.
+- `make check` passes from the repository root for shared implementation
+  integration and milestone close. Planning-only changes require changed
+  record/schema validation, `make control-check`, and `git diff --check`; leaf
+  work requires focused zone checks until integration.
 
 ## Review
 

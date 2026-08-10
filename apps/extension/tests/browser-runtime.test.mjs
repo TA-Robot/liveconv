@@ -342,6 +342,56 @@ function modelRoster(options = {}) {
   };
 }
 
+function deploymentCatalog() {
+  const families = [
+    "rvc-v2",
+    "meanvc2",
+    "x-vc",
+    "openvoice-v2",
+  ];
+  const hashCharacters = "abcdef012";
+  return {
+    protocol_version: 1,
+    profiles: Array.from({ length: 9 }, (_, index) => {
+      const familyId = families[index % families.length];
+      return catalogProfile(`vc.${familyId}.voice-${index + 1}.v1`, {
+        kind: "voice_conversion",
+        packId: familyId,
+        profileHashCharacter: hashCharacters[index],
+        configurationHashCharacter: String(index + 1),
+        streaming: familyId !== "openvoice-v2",
+      });
+    }),
+  };
+}
+
+function deploymentManifest(catalog = deploymentCatalog()) {
+  return {
+    schema_version: 1,
+    bundle_id: "ms3-youthful-voices-v1",
+    bundle_revision: hash("d"),
+    protocol_version: 1,
+    transport_scope: "loopback-ssh",
+    max_sessions: 1,
+    variants: catalog.profiles.map((profile, index) => ({
+      variant_id: `${profile.promotion.pack_id}-voice-${index + 1}`,
+      family_id: profile.promotion.pack_id,
+      display_order: index + 1,
+      display_name: `Voice ${index + 1}`,
+      target_presentation: "youthful-feminine",
+      lane: "voice-conversion",
+      invocation_mode: profile.streaming ? "live" : "buffered_end",
+      profile_id: profile.profile_id,
+      profile_hash: profile.profile_hash,
+      configuration_hash: profile.configuration_hash,
+      pack_id: profile.promotion.pack_id,
+      promotion_evidence_sha256: profile.promotion.evidence_sha256,
+      authorization_record_sha256: hash("e"),
+      variant_manifest_sha256: hash("f"),
+    })),
+  };
+}
+
 function gatewayDocument(url, session = sessionResponse()) {
   if (url.endsWith("/v1/models")) {
     return modelCatalog();
@@ -3768,4 +3818,193 @@ test("EXP-005 clear cannot be undone by an older pending receipt write", async (
     harness.sessionStorage.has(sessionStorageKeys.exp005ReceiptState),
     false,
   );
+});
+
+test("deployment manifest lists the exact Gateway-bound voice variants", async () => {
+  const { createBrowserRuntime } = await import(moduleUrl);
+  const harness = createHarness();
+  const catalog = deploymentCatalog();
+  const manifest = deploymentManifest(catalog);
+  const requests = [];
+  const runtime = createBrowserRuntime({
+    chromeApi: harness.chromeApi,
+    fetchFn: async (url, options = {}) => {
+      requests.push({ url, options });
+      if (url.endsWith("/v1/models")) {
+        return okJson(catalog, 200);
+      }
+      if (url.endsWith("/v1/deployment-manifest")) {
+        return okJson(manifest, 200);
+      }
+      throw new Error(`unexpected request: ${url}`);
+    },
+  });
+  const configuration = {
+    gatewayUrl: "https://audio.example.test",
+    profileId: catalog.profiles[0].profile_id,
+    token: "0123456789abcdefghijklmnopqrstuv",
+  };
+  await runtime.configure(configuration);
+
+  const response = await runtime.handleMessage(
+    { type: "variants.list" },
+    {
+      id: harness.extensionId,
+      url: `chrome-extension://${harness.extensionId}/popup/popup.html`,
+    },
+  );
+
+  assert.equal(response.ok, true);
+  assert.deepEqual(response.bundle, {
+    bundleId: manifest.bundle_id,
+    bundleRevision: manifest.bundle_revision,
+  });
+  assert.equal(response.variants.length, 9);
+  assert.equal(new Set(response.variants.map((variant) => variant.familyId)).size, 4);
+  assert.deepEqual(
+    response.variants.map((variant) => variant.profileId),
+    catalog.profiles.map((profile) => profile.profile_id),
+  );
+  assert.deepEqual(
+    requests.map((request) => new URL(request.url).pathname),
+    ["/v1/models", "/v1/deployment-manifest"],
+  );
+  assert.ok(
+    requests.every(
+      (request) =>
+        request.options.headers.authorization === `Bearer ${configuration.token}`,
+    ),
+  );
+});
+
+test("deployment manifest exposes an incremental single-family candidate set", async () => {
+  const { createBrowserRuntime } = await import(moduleUrl);
+  const harness = createHarness();
+  const fullCatalog = deploymentCatalog();
+  const catalog = {
+    protocol_version: 1,
+    profiles: [fullCatalog.profiles[0], fullCatalog.profiles[4]],
+  };
+  const manifest = deploymentManifest(catalog);
+  const runtime = createBrowserRuntime({
+    chromeApi: harness.chromeApi,
+    fetchFn: async (url) =>
+      okJson(url.endsWith("/v1/models") ? catalog : manifest, 200),
+  });
+  await runtime.configure({
+    gatewayUrl: "https://audio.example.test",
+    profileId: catalog.profiles[0].profile_id,
+    token: "0123456789abcdefghijklmnopqrstuv",
+  });
+
+  const response = await runtime.handleMessage(
+    { type: "variants.list" },
+    {
+      id: harness.extensionId,
+      url: `chrome-extension://${harness.extensionId}/popup/popup.html`,
+    },
+  );
+
+  assert.equal(response.ok, true);
+  assert.equal(response.variants.length, 2);
+  assert.equal(new Set(response.variants.map((variant) => variant.familyId)).size, 1);
+});
+
+test("deployment manifest rejects a variant that does not match the catalog", async () => {
+  const { createBrowserRuntime } = await import(moduleUrl);
+  const harness = createHarness();
+  const catalog = deploymentCatalog();
+  const manifest = deploymentManifest(catalog);
+  manifest.variants[0].profile_hash = hash("0");
+  const runtime = createBrowserRuntime({
+    chromeApi: harness.chromeApi,
+    fetchFn: async (url) =>
+      okJson(url.endsWith("/v1/models") ? catalog : manifest, 200),
+  });
+  await runtime.configure({
+    gatewayUrl: "https://audio.example.test",
+    profileId: catalog.profiles[0].profile_id,
+    token: "0123456789abcdefghijklmnopqrstuv",
+  });
+
+  const response = await runtime.handleMessage(
+    { type: "variants.list" },
+    {
+      id: harness.extensionId,
+      url: `chrome-extension://${harness.extensionId}/popup/popup.html`,
+    },
+  );
+
+  assert.equal(response.ok, false);
+  assert.match(response.error, /identity does not match catalog/i);
+  assert.equal(response.variants, undefined);
+});
+
+test("a deployment variant starts the exact Gateway profile selected in the popup", async () => {
+  const { createBrowserRuntime, sessionStorageKeys } = await import(moduleUrl);
+  const harness = createHarness();
+  const variantCatalog = deploymentCatalog();
+  const catalog = {
+    protocol_version: 1,
+    profiles: [...modelCatalog().profiles, ...variantCatalog.profiles],
+  };
+  const manifest = deploymentManifest(variantCatalog);
+  const selectedProfile = variantCatalog.profiles[0];
+  const gatewaySession = {
+    ...sessionResponse(),
+    profile_id: selectedProfile.profile_id,
+    profile_hash: selectedProfile.profile_hash,
+    configuration_hash: selectedProfile.configuration_hash,
+  };
+  const runtime = createBrowserRuntime({
+    chromeApi: harness.chromeApi,
+    fetchFn: async (url, options = {}) => {
+      if (url.endsWith("/v1/models")) {
+        return okJson(catalog, 200);
+      }
+      if (url.endsWith("/v1/model-roster")) {
+        return okJson(modelRoster(), 200);
+      }
+      if (url.endsWith("/v1/deployment-manifest")) {
+        return okJson(manifest, 200);
+      }
+      if (url.endsWith("/v1/sessions") && options.method === "POST") {
+        return okJson(gatewaySession, 201);
+      }
+      throw new Error(`unexpected request: ${url}`);
+    },
+  });
+  await runtime.configure({
+    gatewayUrl: "https://audio.example.test",
+    profileId: selectedProfile.profile_id,
+    token: "0123456789abcdefghijklmnopqrstuv",
+  });
+  const listed = await runtime.handleMessage(
+    { type: "variants.list" },
+    {
+      id: harness.extensionId,
+      url: `chrome-extension://${harness.extensionId}/popup/popup.html`,
+    },
+  );
+  assert.equal(listed.ok, true);
+
+  await runtime.start({ userGesture: true });
+  const state = await runtime.snapshot();
+
+  assert.equal(state.configuration.profileId, selectedProfile.profile_id);
+  assert.equal(
+    harness.sessionStorage.get(sessionStorageKeys.activeSession).profileId,
+    selectedProfile.profile_id,
+  );
+  const connect = harness.calls.find(
+    (call) =>
+      call.name === "runtime.sendMessage" &&
+      call.message.type === "offscreen.remote.connect",
+  );
+  assert.deepEqual(connect.message.expectedProfile, {
+    profileId: selectedProfile.profile_id,
+    profileHash: selectedProfile.profile_hash,
+    configurationHash: selectedProfile.configuration_hash,
+    pipelineId: gatewaySession.pipeline_id,
+  });
 });

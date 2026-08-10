@@ -14,19 +14,25 @@ MATERIAL_PATH = (
 )
 
 
-def _canonical_configuration() -> dict[str, float | int | str]:
-    return deepcopy(openvoice_v2._CANONICAL_CONFIGURATION)
+def _canonical_configuration(
+    profile_id: str = "vc.openvoice-v2.synthetic-ja.v1",
+) -> dict[str, float | int | str]:
+    return deepcopy(openvoice_v2._configuration(profile_id))
 
 
-def _profile(endpoint: Path) -> ModelProfile:
+def _profile(
+    endpoint: Path,
+    profile_id: str = "vc.openvoice-v2.synthetic-ja.v1",
+) -> ModelProfile:
+    configuration = _canonical_configuration(profile_id)
     return ModelProfile.model_validate(
         {
-            "profile_id": "vc.openvoice-v2.synthetic-ja.v1",
+            "profile_id": profile_id,
             "kind": "voice_conversion",
             "readiness": "ready",
             "adapter_api_version": 1,
             "implementation_revision": openvoice_v2._IMPLEMENTATION_REVISION,
-            "weight_revision": openvoice_v2._WEIGHT_REVISION,
+            "weight_revision": openvoice_v2._weight_revision(configuration),
             "streaming": False,
             "cancellation": "cooperative",
             "input_sample_rates": [48_000],
@@ -40,7 +46,7 @@ def _profile(endpoint: Path) -> ModelProfile:
             "timeouts": {"first_output_ms": 60_000, "stall_ms": 60_000},
             "runtime": {
                 "adapter": "worker",
-                "configuration": _canonical_configuration(),
+                "configuration": configuration,
                 "worker_module": "workers.adapters.openvoice_v2",
                 "worker_endpoint": str(endpoint),
                 "max_vram_mb": 8_192,
@@ -66,6 +72,10 @@ def _install_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Non
         if path not in {source_root, runtime_prefix}:
             path.write_bytes(b"synthetic test artifact")
         monkeypatch.setenv(name, str(path))
+    monkeypatch.setenv(
+        "LIVECONV_OPENVOICE_V2_TARGET_REFERENCE_SHA256",
+        str(openvoice_v2._CANONICAL_CONFIGURATION["target_reference_sha256"]),
+    )
 
     for name, value in openvoice_v2._ENVIRONMENT_BINDINGS.items():
         monkeypatch.setenv(name, value)
@@ -177,6 +187,56 @@ def test_openvoice_registration_uses_only_the_retained_identity(
             openvoice_v2._CANONICAL_CONFIGURATION["worker_wheel_sha256"],
         ),
     ]
+
+
+@pytest.mark.parametrize(
+    ("profile_id", "target_sha256"),
+    (
+        (
+            "vc.openvoice-v2.amitaro-runrun.v1",
+            "ea78016e6a15eb7236b3f25fca877a6d1117a8fa1c5efda6635d7d4516dd6126",
+        ),
+        (
+            "vc.openvoice-v2.amitaro-yofukashi.v1",
+            "a40396353b2543cc7923b673cdc42c25bb63f9204008e240b3659e55bd3c518f",
+        ),
+    ),
+)
+def test_openvoice_registration_binds_approved_reference_variants(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    endpoint: Path,
+    profile_id: str,
+    target_sha256: str,
+) -> None:
+    _install_environment(monkeypatch, tmp_path)
+    target_path_name, target_digest_name = openvoice_v2.target_environment_names(
+        profile_id
+    )
+    target = tmp_path / f"{profile_id.rsplit('.', 2)[-2]}.wav"
+    target.write_bytes(b"approved reference")
+    monkeypatch.setenv(target_path_name, str(target))
+    monkeypatch.setenv(target_digest_name, target_sha256)
+    profile = _profile(endpoint, profile_id)
+
+    worker = openvoice_v2.build_worker_profile(profile, "pipeline-variant", 500)
+
+    assert worker.profile_id == profile_id
+    assert worker.configuration_hash == profile.configuration_hash
+    assert worker.weight_revision == profile.weight_revision
+    assert worker.environment["LIVECONV_OPENVOICE_V2_TARGET_REFERENCE_PATH"] == str(
+        target
+    )
+    assert (
+        worker.environment["LIVECONV_OPENVOICE_V2_TARGET_REFERENCE_SHA256"]
+        == target_sha256
+    )
+    target_artifact = next(
+        artifact
+        for artifact in worker.artifacts
+        if artifact.env_var == "LIVECONV_OPENVOICE_V2_TARGET_REFERENCE_PATH"
+    )
+    assert target_artifact.sha256 == target_sha256
 
 
 def test_openvoice_registration_rejects_missing_private_environment(

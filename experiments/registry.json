@@ -45,6 +45,15 @@
       "phase": 2,
       "path": "experiments/EXP-005-extension-multimodel-mvp/experiment.json",
       "owner": "primary-integrator"
+    },
+    {
+      "id": "EXP-006",
+      "slug": "voice-variant-bakeoff",
+      "title": "Young-feminine Japanese voice variant bake-off",
+      "status": "draft",
+      "phase": 3,
+      "path": "experiments/EXP-006-voice-variant-bakeoff/experiment.json",
+      "owner": "primary-integrator"
     }
   ]
 }

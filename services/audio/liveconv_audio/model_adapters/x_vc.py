@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -13,6 +16,7 @@ if TYPE_CHECKING:
 
 
 WORKER_MODULE = "workers.adapters.x_vc.worker"
+_PROFILE_ID = "vc.x-vc.synthetic-ja.v1"
 _IMPLEMENTATION_REVISION = (
     "x-vc-streaming-adapter-v1+sha256:"
     "d0737a67a05ca39616b312443b83610e891f79207066e8e5da6ee9ea2b304959"
@@ -92,6 +96,21 @@ _CANONICAL_CONFIGURATION: dict[str, object] = {
     ),
 }
 
+_APPROVED_TARGETS = {
+    _PROFILE_ID: (
+        _CANONICAL_CONFIGURATION["target_reference_sha256"],
+        _CANONICAL_CONFIGURATION["target_authorization_sha256"],
+    ),
+    "vc.x-vc.amitaro-runrun.v1": (
+        "ea78016e6a15eb7236b3f25fca877a6d1117a8fa1c5efda6635d7d4516dd6126",
+        "7a878609fb31fb2852ccb885405c97aad27bf1016ee7d3f4e1e3b0e751d02199",
+    ),
+    "vc.x-vc.amitaro-yofukashi.v1": (
+        "a40396353b2543cc7923b673cdc42c25bb63f9204008e240b3659e55bd3c518f",
+        "313edea2bc054aa885e58919d560c2708487c3be6f7692a06aab5a907c8d619c",
+    ),
+}
+
 _REQUIRED_ENVIRONMENT = (
     "LIVECONV_XVC_SOURCE_ROOT",
     "LIVECONV_XVC_SOURCE_REVISION",
@@ -134,12 +153,6 @@ _ENVIRONMENT_BINDINGS = {
     "LIVECONV_XVC_GLM_MODEL_SHA256": _CANONICAL_CONFIGURATION["glm_model_sha256"],
     "LIVECONV_XVC_ERES_CONFIG_SHA256": _CANONICAL_CONFIGURATION["eres_config_sha256"],
     "LIVECONV_XVC_ERES_MODEL_SHA256": _CANONICAL_CONFIGURATION["eres_model_sha256"],
-    "LIVECONV_XVC_TARGET_REFERENCE_SHA256": _CANONICAL_CONFIGURATION[
-        "target_reference_sha256"
-    ],
-    "LIVECONV_XVC_TARGET_AUTHORIZATION_SHA256": _CANONICAL_CONFIGURATION[
-        "target_authorization_sha256"
-    ],
     "LIVECONV_XVC_ADAPTER_SOURCE_SHA256": _CANONICAL_CONFIGURATION[
         "adapter_source_sha256"
     ],
@@ -202,15 +215,18 @@ _ARTIFACT_BINDINGS = (
 def validate_configuration(profile: ModelProfile) -> None:
     """Reject every route that is not the retained X-VC worker identity."""
 
+    if profile.profile_id not in _APPROVED_TARGETS:
+        raise ValueError(f"{profile.profile_id}: X-VC profile ID is not approved")
     if profile.runtime.adapter != "worker":
         raise ValueError(f"{profile.profile_id}: X-VC requires the worker adapter")
     if profile.runtime.worker_module != WORKER_MODULE:
         raise ValueError(f"{profile.profile_id}: X-VC worker module is not approved")
-    if not _is_canonical_configuration(profile.runtime.configuration):
+    configuration = _configuration(profile.profile_id)
+    if not _is_canonical_configuration(profile.runtime.configuration, configuration):
         raise ValueError(
             f"{profile.profile_id}: X-VC configuration differs from retained identity"
         )
-    if profile.configuration_hash != _CONFIGURATION_HASH:
+    if profile.configuration_hash != _configuration_hash(configuration):
         raise ValueError(
             f"{profile.profile_id}: X-VC configuration hash does not match"
         )
@@ -253,16 +269,20 @@ def build_worker_profile(
 
     del queue_budget_ms
     validate_configuration(profile)
-    environment = _environment(profile)
+    configuration = _configuration(profile.profile_id)
+    environment = _environment(profile, configuration)
     endpoint = _bound_worker_endpoint(profile, environment)
     artifacts = tuple(
-        ArtifactSpec(env_var=env_var, sha256=_digest(digest_key))
+        ArtifactSpec(
+            env_var=env_var,
+            sha256=_digest(configuration, digest_key),
+        )
         for env_var, digest_key in _ARTIFACT_BINDINGS
     )
     return WorkerProfile(
         profile_id=profile.profile_id,
         pipeline_id=pipeline_id,
-        configuration_hash=_CONFIGURATION_HASH,
+        configuration_hash=_configuration_hash(configuration),
         command=(str(endpoint), "-I", "-B", "-m", WORKER_MODULE),
         cwd=Path("/tmp"),
         environment=environment,
@@ -290,14 +310,61 @@ def queue_capacity_frames(_profile: ModelProfile, _queue_budget_ms: int) -> int:
     return _QUEUE_CAPACITY_FRAMES
 
 
-def _is_canonical_configuration(configuration: object) -> bool:
+def _configuration(profile_id: str) -> dict[str, object]:
+    try:
+        target_reference_sha256, target_authorization_sha256 = _APPROVED_TARGETS[
+            profile_id
+        ]
+    except KeyError as exc:
+        raise ValueError(f"{profile_id}: X-VC profile ID is not approved") from exc
+    return {
+        **_CANONICAL_CONFIGURATION,
+        "target_reference_sha256": target_reference_sha256,
+        "target_authorization_sha256": target_authorization_sha256,
+    }
+
+
+def _configuration_hash(configuration: dict[str, object]) -> str:
+    encoded = json.dumps(
+        configuration,
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("ascii")
+    return f"sha256:{hashlib.sha256(encoded).hexdigest()}"
+
+
+def target_environment_names(profile_id: str) -> tuple[str, str, str, str]:
+    if profile_id == _PROFILE_ID:
+        return (
+            "LIVECONV_XVC_TARGET_REFERENCE_PATH",
+            "LIVECONV_XVC_TARGET_REFERENCE_SHA256",
+            "LIVECONV_XVC_TARGET_AUTHORIZATION_PATH",
+            "LIVECONV_XVC_TARGET_AUTHORIZATION_SHA256",
+        )
+    if profile_id not in _APPROVED_TARGETS:
+        raise ValueError(f"{profile_id}: X-VC profile ID is not approved")
+    suffix = re.sub(r"[^A-Za-z0-9]+", "_", profile_id).strip("_").upper()
+    prefix = f"LIVECONV_XVC_VARIANT_{suffix}"
+    return (
+        f"{prefix}_TARGET_REFERENCE_PATH",
+        f"{prefix}_TARGET_REFERENCE_SHA256",
+        f"{prefix}_TARGET_AUTHORIZATION_PATH",
+        f"{prefix}_TARGET_AUTHORIZATION_SHA256",
+    )
+
+
+def _is_canonical_configuration(
+    configuration: object,
+    expected_configuration: dict[str, object],
+) -> bool:
     if not isinstance(configuration, dict) or set(configuration) != set(
-        _CANONICAL_CONFIGURATION
+        expected_configuration
     ):
         return False
     return all(
         type(configuration[key]) is type(expected) and configuration[key] == expected
-        for key, expected in _CANONICAL_CONFIGURATION.items()
+        for key, expected in expected_configuration.items()
     )
 
 
@@ -324,17 +391,36 @@ def _bound_worker_endpoint(profile: ModelProfile, environment: dict[str, str]) -
     return endpoint
 
 
-def _environment(profile: ModelProfile) -> dict[str, str]:
+def _environment(
+    profile: ModelProfile,
+    configuration: dict[str, object],
+) -> dict[str, str]:
     environment: dict[str, str] = {}
+    variant_names = target_environment_names(profile.profile_id)
+    variant_sources = {
+        "LIVECONV_XVC_TARGET_REFERENCE_PATH": variant_names[0],
+        "LIVECONV_XVC_TARGET_REFERENCE_SHA256": variant_names[1],
+        "LIVECONV_XVC_TARGET_AUTHORIZATION_PATH": variant_names[2],
+        "LIVECONV_XVC_TARGET_AUTHORIZATION_SHA256": variant_names[3],
+    }
     for name in _REQUIRED_ENVIRONMENT:
-        value = os.environ.get(name)
+        source_name = variant_sources.get(name, name)
+        value = os.environ.get(source_name)
         if not value:
-            raise ValueError(f"required worker environment is missing: {name}")
+            raise ValueError(f"required worker environment is missing: {source_name}")
         environment[name] = value
     for name, expected in _ENVIRONMENT_BINDINGS.items():
         if environment[name] != expected:
             raise ValueError(
                 f"{profile.profile_id}: {name} does not match retained identity"
+            )
+    for name, key in (
+        ("LIVECONV_XVC_TARGET_REFERENCE_SHA256", "target_reference_sha256"),
+        ("LIVECONV_XVC_TARGET_AUTHORIZATION_SHA256", "target_authorization_sha256"),
+    ):
+        if environment[name] != configuration[key]:
+            raise ValueError(
+                f"{profile.profile_id}: {name} does not match approved identity"
             )
     for name, (root_name, relative_path) in _DERIVED_ARTIFACT_PATHS.items():
         environment[name] = str(Path(environment[root_name]) / relative_path)
@@ -350,7 +436,7 @@ def _environment(profile: ModelProfile) -> dict[str, str]:
     }
 
 
-def _digest(key: str) -> str:
-    value = _CANONICAL_CONFIGURATION[key]
+def _digest(configuration: dict[str, object], key: str) -> str:
+    value = configuration[key]
     assert isinstance(value, str)
     return value

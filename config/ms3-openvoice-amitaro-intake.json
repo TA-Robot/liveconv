@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "provider_id": "amitaro",
+  "provider_name": "Amitaro's Voice Material Studio",
+  "source_page_url": "https://amitaro.net/voice/corpus-list/mana-corpus/",
+  "download_page_url": "https://amitaro.net/voice/corpus-list/manazip/",
+  "terms_url": "https://amitaro.net/voice/voice_rule/",
+  "required_attribution": "Amitaro's Voice Material Studio (https://amitaro.net/)",
+  "scope": "personal-evaluation",
+  "variants": [
+    {
+      "variant_id": "openvoice-amitaro-runrun",
+      "profile_id": "vc.openvoice-v2.amitaro-runrun.v1",
+      "style_id": "runrun",
+      "display_name": "OpenVoice - Amitaro Runrun",
+      "target_presentation": "bright-youthful-feminine",
+      "download_url": "https://amitaro.net/download/corpus/MANAcorpus_amitaro_runrun.zip",
+      "archive_name": "MANAcorpus_amitaro_runrun.zip",
+      "archive_sha256": "920a87ec5d17b708e3553afd0b9637c57ddc7d0a5c0625d6e26792d88d68c51e",
+      "reference_member": "MANAcorpus_amitaro_runrun/48k/QUESTION_007.wav",
+      "reference_name": "QUESTION_007.wav",
+      "reference_sha256": "ea78016e6a15eb7236b3f25fca877a6d1117a8fa1c5efda6635d7d4516dd6126",
+      "readme_member": "Readme.txt",
+      "readme_name": "Readme.txt",
+      "readme_sha256": "e014f33e8d7c55bcab831d45399b8d65153957312bec889f9b32da946e934416"
+    },
+    {
+      "variant_id": "openvoice-amitaro-yofukashi",
+      "profile_id": "vc.openvoice-v2.amitaro-yofukashi.v1",
+      "style_id": "yofukashi",
+      "display_name": "OpenVoice - Amitaro Yofukashi",
+      "target_presentation": "soft-youthful-feminine",
+      "download_url": "https://amitaro.net/download/corpus/MANAcorpus_amitaro_yofukashi.zip",
+      "archive_name": "MANAcorpus_amitaro_yofukashi.zip",
+      "archive_sha256": "5465d16d11910cae896a390979652c00339af6de5418a76732cf7d1489a6f4d9",
+      "reference_member": "MANAcorpus_amitaro_yofukashi/48k/QUESTION_007.wav",
+      "reference_name": "QUESTION_007.wav",
+      "reference_sha256": "a40396353b2543cc7923b673cdc42c25bb63f9204008e240b3659e55bd3c518f",
+      "readme_member": "Readme.txt",
+      "readme_name": "Readme.txt",
+      "readme_sha256": "e014f33e8d7c55bcab831d45399b8d65153957312bec889f9b32da946e934416"
+    }
+  ]
+}

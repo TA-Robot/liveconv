@@ -15,7 +15,7 @@ integration checkpoint:
 
 | Disposition | Meaning | Required record |
 |---|---|---|
-| `fix-now` | It blocks the current milestone or is a small bounded correction on its critical path. | Owner, ownership zone, regression, stop condition, independent re-review |
+| `fix-now` | It is necessary to complete or truthfully judge an explicit current-milestone deliverable. | Owner, ownership zone, regression, stop condition, independent re-review |
 | `scheduled` | It is real but belongs to a named later milestone. | Target `MS-*`, impact until then, detection/workaround, acceptance evidence |
 | `accepted-risk` | The current personal-use boundary makes the risk tolerable through MS-6. | Named operator/owner, reason, exposure boundary, detection and recovery |
 | `out-of-scope` | It belongs to post-v1 work or a rejected architecture. | Explicit future scope or rejection reason; no silent deletion |
@@ -46,6 +46,9 @@ current milestone's intended workflow and does any of the following:
 
 A theoretical issue outside the frozen personal workflow is not automatically a
 stop-the-line issue merely because the same code could later become public.
+Severity and ease of repair do not determine milestone placement. A High that
+cannot affect the active workflow is scheduled or out of scope; a nearby small
+cleanup is not `fix-now` unless leaving it open can block or falsify the gate.
 
 ## Scheduling defaults
 
@@ -66,6 +69,10 @@ Use these defaults unless a finding's evidence justifies a different decision:
 
 ## Time and review budgets
 
+- A review starts only when a plausible result can change a named decision due in
+  the active milestone. Its brief states the decision, possible outcomes, and the
+  action taken for each. If every outcome leads to the same current action, the
+  review is unnecessary and must not run.
 - Reproduction is timeboxed to two hours. If no deterministic reproduction or
   violated contract is established, record the uncertainty and schedule a
   narrower investigation instead of holding the merge queue.
@@ -80,6 +87,9 @@ Use these defaults unless a finding's evidence justifies a different decision:
   leases. CPU-only tests, docs, packaging, and read-only reviews remain parallel.
 - Passing tests are necessary evidence, not permission to broaden the milestone.
   Reviewers must judge against the current acceptance gate and explicit non-scope.
+- A reviewer must name the exact active-milestone deliverable that a proposed
+  `fix-now` finding blocks or could falsely pass. Without that link, the primary
+  dispositions it later and continues current work.
 
 ## Issue record
 
@@ -120,11 +130,11 @@ returns a concrete result; do not keep completed agents listed as owners.
 | RF-006 | Medium | External Codex pool had cross-state locking and lifecycle races | `scheduled` / MS-5 | Primary | Tooling only; built-in agents/direct tmux are the immediate fallback | Current repair and exact symlink re-review green; cannot block MS-1 |
 | RF-007 | Medium | RVC checkpoint fails content preservation and speaker evidence is unassessed | `scheduled` / MS-3 | Model-selection owner | Profile remains technical/nonselectable; failed CER is visible during MS-2 trial | Compare or replace on authorized decision fixtures |
 | RF-008 | Medium | Frozen source corpus is weak for STT model ranking | `scheduled` / MS-3 | Fixture owner | Existing results cannot select a model but do not block technical listening | Intelligible authorized subset plus source-STT gate required before selection |
-| RF-009 | High | External audible ChatGPT Chrome/SSH multi-model run is uncollected | `fix-now` / MS-2 | Operator | Node/CDP and synthetic route checks cannot support an audible MVP claim | Actual tab capture, at least two real models, forced native fallback, and metadata-only record required |
+| RF-009 | High | External audible ChatGPT Chrome/SSH multi-model run lacked the frozen receipt | `accepted-risk` / historical MS-2 | Operator | The operator did reach the Extension and rejected the audio, but no EXP-005 pass or detailed technical claim is made | Closed by active user scope decision; all MS-3 counted evidence must use the new bundle-bound receipt |
 | RF-010 | Medium | Public Caddy DNS/ACME ingress is unproven | `out-of-scope` / post-v1 | Primary | No public application ingress exists | Re-enter only through a new architecture decision |
 | RF-011 | Medium | HA, multi-user auth, scale, and formal SLA are absent | `out-of-scope` / post-v1 | Primary | One trusted user/session with manual restart | Re-enter only if the product boundary changes |
 | RF-012 | Medium | Restart/rollback/tunnel recovery need an operator runbook | `scheduled` / MS-5 | Operations owner | Manual restart allowed; native route is recovery | Three cycles, two-hour soak, recovery within ten minutes |
-| RF-013 | Medium | External TTS and population comparison are incomplete | `out-of-scope` / post-v1 | Primary | VC-only personal path | Re-enter only through an MS-3 decision |
+| RF-013 | Medium | External TTS and population comparison are incomplete | `scheduled` / optional MS-3 path; population study post-v1 | TTS ADR owner | TTS is deferred and cannot count toward the protocol-v1 VC gate or inherit VC claims | LV-063 must accept committed spoken-text transport, interruption, played-text, bundle, and shared-consumer contracts before Qwen/Cosy implementation; otherwise defer it |
 | RF-014 | High | Gateway 50-frame ingress overflowed the private 25-frame RVC worker | `fix-now` / MS-1 | Gateway owner | Private-25 adversarial regressions are green; real route is the last detection gate | Closed: clean-commit EXP-004 drained 28/28 frames with public credit 50, high-water 28, and no overflow/fallback |
 | RF-015 | High | RVC M1 allowed AF_INET/AF_INET6 and retained evidence was stale | `fix-now` / MS-1 | RVC owner | Profile remains technical/nonselectable | Closed: content-addressed v1.4 identity and AF_INET/AF_INET6 denial were rebound before the successful exact-profile route |
 | RF-016 | High | Packaged Gateway lacked an explicit production WebSocket transport | `fix-now` / MS-1 | Gateway owner | Explicit pinned backend and packaged tests are green | Closed: the packaged explicit WebSocket backend completed the clean-commit EXP-004 lifecycle |
@@ -146,7 +156,12 @@ returns a concrete result; do not keep completed agents listed as owners.
 | RF-032 | High | EXP-005 and Extension lifecycle races could fabricate evidence or let stale controls affect a new generation | `fix-now` / MS-2 | Extension and experiment owners | Runtime receipt is metadata-only; native fallback remains authoritative | Closed: machine receipt/manual judgment split, explicit fifth failure probe, SW persistence, Stop/selection/Next epoch regressions, 148 Extension tests, and Sol review green |
 | RF-033 | High | AudioWorklet buffer transfer detached PCM before EXP-005 changed-output observation | `fix-now` / MS-2 | Extension owner | No raw PCM is retained; a bounded scalar is computed before transfer | Closed: real transfer-detach regression passes and independent Sol re-review found no current-scope High/Medium |
 | RF-034 | Medium | EXP-003 rejected promoted profiles and expected an obsolete post-close DELETE response | `fix-now` / MS-2 | Experiment owner | Harness drift could false-fail otherwise valid technical routes | Closed: promotion parity and DELETE/GET 404 invalidation regressions pass; clean-commit three-model trace is schema-valid |
-| RF-035 | Medium | The one-run OpenVoice Gateway aggregate lacks a committed event schema, reusable runner, and independently replayable transcript | `scheduled` / MS-3 | OpenVoice evidence owner | Treat it only as an operator-observed bounded smoke; EXP-005 still supplies the client acceptance record | If OpenVoice remains a candidate, add a replayable buffered-route harness before using the result for comparison or stability claims |
+| RF-035 | Medium | The one-run OpenVoice Gateway aggregate lacks a committed event schema, reusable runner, and independently replayable transcript | `scheduled` / MS-3 | OpenVoice evidence owner | Treat it only as an operator-observed bounded smoke; it is not comparison evidence | If OpenVoice remains a candidate, add a replayable bundle-bound buffered-route harness before using it in EXP-006 |
+| RF-036 | High | Terminal, Gateway, popup defaults, and Extension selection can resolve different deployment settings | `fix-now` / MS-3 | Deployment-bundle owner | Terminal/direct-worker renders are debug-only and cannot make a variant listenable or selectable | One generated bundle hash must be verified by launcher, Gateway, Extension, and every counted receipt; mismatch hides the variant |
+| RF-037 | High | A voice variant can be misbound to mutable or unauthorized checkpoint, training data, preset, or reference material | `fix-now` / MS-3 | Variant-profile owner | No raw reference, path, speaker knob, or checkpoint is accepted from the client | Resolve the public digest through the operator-controlled private authorization registry; require approved, nonexpired, exact variant/family/profile/source/terms/lineage binding and reject missing, extra, expired, or mutated records before route eligibility |
+| RF-038 | Medium | Current prepared voices are operationally invocable but unacceptable to the operator | `scheduled` / MS-3 | Variant Lab owner | Preserve existing poor results as controls and reject variants quickly rather than recursively repairing them | Screen 9-12 primarily youthful-feminine protocol-v1 VC variants across at least four families through the actual Extension, then shortlist at most four |
+| RF-039 | Medium | The current popup persists Gateway configuration including bearer material and has port/delay/roster constants that drift from operator launch settings | `fix-now` / MS-3 | Extension and bundle owners | Personal trusted browser and loopback/SSH remain the boundary; do not log or sync the token | Bundle owns public settings; secrets get an explicit storage decision and never enter the public manifest; parity smoke covers actual installed Extension |
+| RF-040 | Medium | JVS/JSUT and some candidate code or weights have research-only, absent, conflicting, or attribution/notice terms | `fix-now` per variant / MS-3 | Candidate research owner | Such variants remain `license-review` or `excluded` and consume no GPU integration lane | Record code, weight, data, and voice authorization independently before material acquisition or training |
 
 ## Milestone close query
 

@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "id": "EXP-006",
+  "title": "Young-feminine Japanese voice variant bake-off",
+  "status": "draft",
+  "phase": 3,
+  "owner": "primary-integrator",
+  "created_at": "2026-08-10T00:00:00Z",
+  "updated_at": "2026-08-10T00:00:00Z",
+  "question": "Can a bounded Extension-routed comparison of youthful-feminine Japanese voice variants identify a shortlist that is materially more natural and useful than the rejected MS-2 voices?",
+  "hypothesis": "Reviewing authorized youthful-feminine voice/style references across several protocol-v1 voice-conversion families before longer training work will yield at least two useful shortlist candidates while preserving exact route identity and native fallback.",
+  "links": [
+    "ADR-0001",
+    "ADR-0002",
+    "FR-003",
+    "FR-004",
+    "FR-005",
+    "FR-009",
+    "FR-010",
+    "FR-014",
+    "GOV-001",
+    "GOV-002",
+    "GOV-003",
+    "LV-055",
+    "LV-056",
+    "LV-057",
+    "LV-058",
+    "LV-059",
+    "LV-060",
+    "LV-061"
+  ],
+  "control": {
+    "id": "native_chatgpt_voice",
+    "description": "The same source content remains on the native ChatGPT voice route and is rated in the same operator session.",
+    "configuration": {
+      "route": "native",
+      "retained_audio": false
+    }
+  },
+  "variants": [
+    {
+      "id": "bundle_bound_voice_variants",
+      "description": "Nine to twelve immutable, primarily youthful-feminine Japanese voice variants from at least four families, each eligible only after Gateway-to-Extension route parity.",
+      "configuration": {
+        "candidate_catalog": "config/ms3-voice-variant-candidates.json",
+        "minimum_listenable_variants": 9,
+        "maximum_listenable_variants": 12,
+        "minimum_families": 4,
+        "counted_protocol_version": 1,
+        "counted_lane": "voice-conversion-only",
+        "screen_utterances": 10,
+        "shortlist_maximum": 4,
+        "shortlist_per_family_maximum": 2,
+        "terminal_output_counts": false,
+        "extension_route_required": true
+      }
+    }
+  ],
+  "fixtures": {
+    "manifest": "Freeze an authorized 10-utterance Japanese screen and the existing 40-utterance comparison corpus before approval; prompt text and metadata may be versioned, but raw captured/reference/output audio stays outside Git.",
+    "version": "unfrozen",
+    "classification": "internal",
+    "frozen": false
+  },
+  "environment": {
+    "git_commit": "Persist counted receipts only from the exact clean checked-out commit.",
+    "runtime": "One content-addressed deployment bundle loaded by the loopback Gateway, verified by the terminal launcher, and fetched by the unpacked Extension.",
+    "hardware": "One leased GPU at a time; record only non-sensitive hardware class and runtime revisions.",
+    "model_revisions": {
+      "variants": "Freeze profile, configuration, pack/evidence, implementation, weights, training-data lineage, authorization, and bundle digests before a variant becomes listenable."
+    }
+  },
+  "procedure": {
+    "summary": "Review license and voice authorization before material acquisition. Count only protocol-v1 audio-to-audio voice-conversion variants in the first wave. Build isolated static profiles, generate one immutable deployment bundle, verify the same bundle through terminal, Gateway, and Extension, and require a route-parity receipt before displaying a variant. Exclude one warmup, screen every eligible variant on the same 10 utterances through the actual Extension, retain route failures and quality rejections, freeze a shortlist of at most four and at most two per family, and hand that shortlist to the full 40-utterance MS-4 comparison. Qwen and CosyVoice TTS candidates remain deferred until an accepted ADR defines committed spoken text, transport, interruption, and played-text accounting.",
+    "warmup": "Exclude one declared cold initialization per variant. Record cold time separately and do not use warmup output for listening scores.",
+    "sample_count": null,
+    "commands": [
+      "make check",
+      "cd apps/extension && npm test",
+      "LV-056 freezes the deployment-bundle build and terminal/Gateway/Extension parity commands before experiment approval",
+      "LV-060 freezes the screen runner and metadata-only receipt command before GPU execution"
+    ],
+    "invalidation_conditions": [
+      "The candidate catalog, fixture, deployment bundle, or listening order changes after experiment approval.",
+      "A counted result came from direct worker or terminal output instead of the authenticated Gateway-to-Extension route.",
+      "The terminal launcher, Gateway, Extension, or receipt resolves a different bundle, profile, configuration, pack, voice, training-data, or authorization identity.",
+      "A target voice, style, checkpoint, training corpus, or preset lacks an explicit license and authorization disposition.",
+      "A public authorization digest cannot be resolved to the exact approved, nonexpired record in the operator-controlled private registry, or its variant, family, profile, source, terms, or lineage binding differs.",
+      "Raw captured, reference, or generated audio; credentials; host paths; voice IDs; weights; or private operator notes enter Git or a public manifest.",
+      "Native and remote audio overlap, stale output is accepted, native fallback is unavailable, or any expected-path queue becomes unbounded.",
+      "A TTS result is described as voice conversion, or a terminal-only/debug result is described as Extension-listenable.",
+      "A text-to-speech candidate is counted before an accepted committed-spoken-text transport ADR and shared protocol contract exist.",
+      "Screening selects a winner, admits more than four variants, admits more than two variants from one family, or hides failed attempts.",
+      "A quality, latency, speaker, content, security, or release pass is claimed from an unassessed lane."
+    ]
+  },
+  "metrics": [
+    {
+      "name": "extension_listenable_variants",
+      "kind": "correctness",
+      "unit": "variants",
+      "primary": true
+    },
+    {
+      "name": "japanese_intelligibility",
+      "kind": "quality",
+      "unit": "operator_score_1_to_5",
+      "primary": true
+    },
+    {
+      "name": "voice_naturalness",
+      "kind": "quality",
+      "unit": "operator_score_1_to_5",
+      "primary": true
+    },
+    {
+      "name": "youthful_feminine_fit",
+      "kind": "quality",
+      "unit": "operator_score_1_to_5",
+      "primary": true
+    },
+    {
+      "name": "conversational_usefulness",
+      "kind": "quality",
+      "unit": "operator_score_1_to_5",
+      "primary": true
+    },
+    {
+      "name": "accepted_stale_frames",
+      "kind": "reliability",
+      "unit": "frames",
+      "primary": true
+    },
+    {
+      "name": "cold_and_warm_latency",
+      "kind": "latency",
+      "unit": "milliseconds_p50_p95",
+      "primary": false
+    }
+  ],
+  "decision_rule": "This screening experiment never selects a final model. It may freeze an MS-4 shortlist only after 9 to 12 protocol-v1 voice-conversion variants from at least four families are actually heard through the same bundle-bound Extension route on all 10 screen utterances, every attempt and route failure is retained, no hard authorization/content/integrity/route-safety failure is hidden, and the shortlist contains at most four variants and at most two from one family. Prefer variants the named operator marks keep and scores at least 3/5 for intelligibility, naturalness, youthful-feminine fit, and conversational usefulness. TTS does not count unless a later accepted ADR and protocol revision explicitly admit it. If fewer than two variants are worth continuing, approve at most one bounded second wave instead of declaring a winner or beginning open-ended tuning.",
+  "artifact_policy": {
+    "raw_location": "Authorized source/reference material, weights, captured audio, and optional output renders stay in the ignored artifact store or ephemeral process memory.",
+    "git_contents": "Plan, candidate catalog, schemas, public-safe provenance URLs, immutable digests, aggregate route facts, and operator scores without raw audio or free-form sensitive notes.",
+    "retention": "Delete temporary output audio after the listening decision or within 14 days; retain only authorized source artifacts needed to reproduce shortlisted profiles.",
+    "authorization": "Every preset, reference, training set, checkpoint, and model receives separate code, weight, data, attribution, notice, and target-voice authorization review before use."
+  },
+  "result": null,
+  "decision": null
+}

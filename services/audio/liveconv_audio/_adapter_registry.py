@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import os
+import re
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -63,11 +64,11 @@ _RVC_SETTING_KEYS = {
 _RVC_REQUIRED_ENVIRONMENT = (
     "LIVECONV_RVC_SOURCE_ROOT",
     "LIVECONV_RVC_SOURCE_REVISION",
-    "LIVECONV_RVC_V2_CHECKPOINT_PATH",
-    "LIVECONV_RVC_V2_CHECKPOINT_SHA256",
     "LIVECONV_RVC_V2_WORKER_WHEEL_PATH",
     "LIVECONV_RVC_V2_WORKER_WHEEL_SHA256",
 )
+
+_RVC_RETAINED_PROFILE_ID = "vc.rvc.synthetic-ja.v1"
 
 _RVC_AUXILIARY_ARTIFACTS = (
     ("hubert_config_sha256", "assets/hubert_base/config.json"),
@@ -402,6 +403,20 @@ def _required_environment(names: tuple[str, ...]) -> dict[str, str]:
     return environment
 
 
+def _rvc_model_environment_names(profile_id: str) -> dict[str, str]:
+    if profile_id == _RVC_RETAINED_PROFILE_ID:
+        prefix = "LIVECONV_RVC_V2"
+    else:
+        suffix = re.sub(r"[^A-Za-z0-9]+", "_", profile_id).strip("_").upper()
+        prefix = f"LIVECONV_RVC_VARIANT_{suffix}"
+    return {
+        "checkpoint_path": f"{prefix}_CHECKPOINT_PATH",
+        "checkpoint_sha256": f"{prefix}_CHECKPOINT_SHA256",
+        "index_path": f"{prefix}_INDEX_PATH",
+        "index_sha256": f"{prefix}_INDEX_SHA256",
+    }
+
+
 def _rvc_environment(
     profile: ModelProfile,
     configuration: dict[str, object],
@@ -420,6 +435,16 @@ def _rvc_environment(
     artifacts_config = artifacts_value
     settings = settings_value
     environment = _required_environment(_RVC_REQUIRED_ENVIRONMENT)
+    model_names = _rvc_model_environment_names(profile.profile_id)
+    model_environment = _required_environment(
+        (model_names["checkpoint_path"], model_names["checkpoint_sha256"])
+    )
+    environment["LIVECONV_RVC_V2_CHECKPOINT_PATH"] = model_environment[
+        model_names["checkpoint_path"]
+    ]
+    environment["LIVECONV_RVC_V2_CHECKPOINT_SHA256"] = model_environment[
+        model_names["checkpoint_sha256"]
+    ]
     if environment["LIVECONV_RVC_SOURCE_REVISION"] != source_revision:
         raise ValueError(f"{profile.profile_id}: RVC source revision does not match")
     expected_implementation = f"{adapter_revision}+rvc.{source_revision}"
@@ -465,8 +490,8 @@ def _rvc_environment(
         raise ValueError(
             f"{profile.profile_id}: RVC worker wheel digest does not match"
         )
-    index_path = os.environ.get("LIVECONV_RVC_V2_INDEX_PATH")
-    index_sha = os.environ.get("LIVECONV_RVC_V2_INDEX_SHA256")
+    index_path = os.environ.get(model_names["index_path"])
+    index_sha = os.environ.get(model_names["index_sha256"])
     if index_path or index_sha:
         if not index_path or not index_sha:
             raise ValueError(f"{profile.profile_id}: RVC index binding is incomplete")

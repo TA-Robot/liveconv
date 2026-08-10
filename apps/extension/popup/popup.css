@@ -119,7 +119,7 @@ small {
 }
 
 .internal-controls {
-  display: none;
+  display: grid;
 }
 
 button {
