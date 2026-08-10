@@ -16,7 +16,7 @@ const worker = targets.find(
     target.type === "service_worker" &&
     /^chrome-extension:\/\/[^/]+\/src\/background\.js$/.test(target.url),
 );
-assert(worker, "liveconv service worker was not registered");
+assert(worker, "GPT Live Voice Converter service worker was not registered");
 const extensionId = new URL(worker.url).hostname;
 const popupUrl = `chrome-extension://${extensionId}/popup/popup.html`;
 const popup = await readJson(`/json/new?${encodeURIComponent(popupUrl)}`, {
@@ -82,11 +82,11 @@ const result = await command("Runtime.evaluate", {
 const state = result.result.value;
 assert.deepEqual(state, {
   readyState: "complete",
-  status: "Stopped",
-  startLabel: "Start capture",
-  stopLabel: "Stop capture",
+  status: "停止中",
+  startLabel: "Start voice conversion",
+  stopLabel: "Stop voice conversion",
   tokenType: "password",
-  manifestName: "liveconv",
+  manifestName: "GPT Live Voice Converter",
 });
 assert.deepEqual(exceptions, []);
 assert.deepEqual(errorLogs, []);
