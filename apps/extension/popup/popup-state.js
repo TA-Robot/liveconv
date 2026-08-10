@@ -12,19 +12,19 @@ export function derivePopupView(
     error ??
     state?.lastError ??
     (capture === "starting" || remote === "connecting" || remote === "loading"
-      ? "Loading profile…"
+      ? "接続中…"
       : remote === "selecting"
-        ? "Selecting profile…"
+        ? "声を切替中…"
         : capture === "running" && route === "remote"
-          ? "Remote"
+          ? "● 音声変換中"
           : capture === "running" && remote === "degraded"
-            ? "Native fallback"
+            ? "⚠ 変換失敗・原音"
             : ({
-              stopped: "Stopped",
-              starting: "Starting",
-              running: "Native",
-              stopping: "Stopping",
-            }[capture] ?? "Unavailable"));
+              stopped: "停止中",
+              starting: "開始中",
+              running: "○ 準備中・原音",
+              stopping: "停止中…",
+            }[capture] ?? "利用不可"));
 
   return Object.freeze({
     status,

@@ -3,41 +3,47 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>liveconv</title>
+    <title>GPT Live Voice Converter</title>
     <link rel="stylesheet" href="popup.css">
   </head>
   <body>
     <main>
       <header>
-        <h1>liveconv</h1>
+        <div class="product-title">
+          <h1>GPT Live 音声変換</h1>
+          <strong class="build-badge" data-role="build-version">Realtime Voice · v0.4.0</strong>
+        </div>
         <output data-role="session-status" aria-live="polite">Stopped</output>
       </header>
+      <output class="route-status" data-role="route-status" aria-live="polite">
+        停止中。設定後にGPT LiveタブでStartを押してください。
+      </output>
+      <output class="conversion-progress" data-role="conversion-progress" aria-live="polite">
+        実変換: 0.0秒（0フレーム）
+      </output>
       <form data-role="configuration">
         <label>
           Gateway
           <input
             type="url"
             name="gatewayUrl"
-            value="http://127.0.0.1:8765"
+            value="http://127.0.0.1:18765"
             required
             autocomplete="url"
           >
         </label>
         <label>
-          Profile
-          <input
-            type="text"
+          変換先の声
+          <select
             name="profileId"
-            list="profile-options"
-            value="test.passthrough.v1"
             required
-            autocomplete="off"
-            spellcheck="false"
           >
-          <datalist id="profile-options"></datalist>
-          <small data-role="profile-identity">Load the Gateway catalog to verify a profile.</small>
+            <option value="vc.rvc.synthetic-ja.v1">RVC v2（リアルタイム）</option>
+            <option value="vc.beatrice.synthetic-ja.v1">Beatrice 2・低め（リアルタイム）</option>
+            <option value="vc.x-vc.synthetic-ja.v1">X-VC（リアルタイム）</option>
+          </select>
+          <small data-role="profile-identity">RVC v2 / Beatrice 2 / X-VCから選択できます。</small>
         </label>
-        <div class="model-roster" data-role="model-roster" aria-live="polite"></div>
         <label>
           Session token
           <input
@@ -47,18 +53,18 @@
             required
             autocomplete="off"
           >
+          <small data-role="token-status">Tokenはまだ保存されていません。</small>
         </label>
         <div class="profile-actions">
-          <button type="button" data-action="models" aria-label="Load Gateway profiles">Load profiles</button>
-          <button type="button" data-action="select-profile" aria-label="Select profile for next generation">Select profile</button>
+          <button type="button" data-action="models" aria-label="Reconnect voice service">音声サービスを再確認</button>
         </div>
-        <button type="submit" data-action="configure" disabled>Save session</button>
+        <button type="submit" data-action="configure" disabled>設定を保存</button>
       </form>
       <div class="controls" role="group" aria-label="Session controls">
-        <button type="button" data-action="start" aria-label="Start capture">Start</button>
-        <button type="button" data-action="stop" aria-label="Stop capture">Stop</button>
+        <button type="button" data-action="start" aria-label="Start voice conversion">音声変換を開始</button>
+        <button type="button" data-action="stop" aria-label="Stop voice conversion">停止</button>
       </div>
-      <div class="generation-controls" role="group" aria-label="Generation controls">
+      <div class="generation-controls internal-controls" role="group" aria-label="Internal generation controls">
         <button type="button" data-action="end" aria-label="End generation">End</button>
         <button type="button" data-action="cancel" aria-label="Interrupt generation">Interrupt</button>
         <button type="button" data-action="next" aria-label="Start next generation">Next</button>

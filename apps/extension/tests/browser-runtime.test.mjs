@@ -8,6 +8,7 @@ const popupStateModuleUrl = new URL("../popup/popup-state.js", import.meta.url);
 function createHarness(stageHooks = {}) {
   const calls = [];
   const sessionStorage = new Map();
+  const localStorage = new Map();
   let offscreenOpen = false;
   const offscreenState = {
     capture: "stopped",
@@ -110,6 +111,20 @@ function createHarness(stageHooks = {}) {
       },
     },
     storage: {
+      local: {
+        async get(key) {
+          calls.push({ name: "storage.local.get", key });
+          await stageHooks.localStorageGet?.(key);
+          return localStorage.has(key) ? { [key]: localStorage.get(key) } : {};
+        },
+        async set(values) {
+          calls.push({ name: "storage.local.set", values });
+          await stageHooks.localStorageSet?.(values);
+          for (const [key, value] of Object.entries(values)) {
+            localStorage.set(key, value);
+          }
+        },
+      },
       session: {
         async get(key) {
           calls.push({ name: "storage.session.get", key });
@@ -135,6 +150,7 @@ function createHarness(stageHooks = {}) {
     calls,
     chromeApi,
     extensionId,
+    localStorage,
     offscreenState,
     sessionStorage,
     get offscreenOpen() {
@@ -422,7 +438,7 @@ test("explicit start establishes Offscreen native loopback before any optional r
   assert(harness.calls.some((call) => call.name === "offscreen.closeDocument"));
 });
 
-test("bearer configuration is redacted publicly and persists only in storage.session", async () => {
+test("bearer configuration is redacted publicly and persists across Chrome restarts", async () => {
   const { createBrowserRuntime, sessionStorageKeys } = await import(moduleUrl);
   const harness = createHarness();
   const runtime = createBrowserRuntime({ chromeApi: harness.chromeApi, fetchFn: async () => {} });
@@ -444,8 +460,78 @@ test("bearer configuration is redacted publicly and persists only in storage.ses
     harness.sessionStorage.get(sessionStorageKeys.configuration).token,
     token,
   );
-  assert.equal(Object.hasOwn(harness.chromeApi.storage, "local"), false);
+  assert.equal(
+    harness.localStorage.get(sessionStorageKeys.configuration).token,
+    token,
+  );
   assert.equal(Object.hasOwn(harness.chromeApi.storage, "sync"), false);
+});
+
+test("configuration restores from storage.local after session storage is cleared", async () => {
+  const { createBrowserRuntime, sessionStorageKeys } = await import(moduleUrl);
+  const harness = createHarness();
+  const token = "0123456789abcdefghijklmnopqrstuv";
+  const firstRuntime = createBrowserRuntime({
+    chromeApi: harness.chromeApi,
+    fetchFn: async () => {},
+  });
+  await firstRuntime.configure({
+    gatewayUrl: "https://audio.example.test",
+    profileId: VC_PROFILE_IDS.beatrice,
+    token,
+  });
+
+  harness.sessionStorage.delete(sessionStorageKeys.configuration);
+  const restartedRuntime = createBrowserRuntime({
+    chromeApi: harness.chromeApi,
+    fetchFn: async () => {},
+  });
+  const state = await restartedRuntime.snapshot();
+
+  assert.deepEqual(state.configuration, {
+    configured: true,
+    gatewayUrl: "https://audio.example.test",
+    profileId: VC_PROFILE_IDS.beatrice,
+  });
+  assert.equal(
+    harness.sessionStorage.get(sessionStorageKeys.configuration).token,
+    token,
+  );
+});
+
+test("saved bearer can be reused after popup reopen only for the same Gateway", async () => {
+  const { createBrowserRuntime, sessionStorageKeys } = await import(moduleUrl);
+  const harness = createHarness();
+  const runtime = createBrowserRuntime({
+    chromeApi: harness.chromeApi,
+    fetchFn: async () => {},
+  });
+  const token = "0123456789abcdefghijklmnopqrstuv";
+  await runtime.configure({
+    gatewayUrl: "https://audio.example.test",
+    profileId: VC_PROFILE_IDS.rvc,
+    token,
+  });
+
+  const updated = await runtime.configure({
+    gatewayUrl: "https://audio.example.test/",
+    profileId: VC_PROFILE_IDS.beatrice,
+    token: "",
+  });
+  assert.equal(updated.configuration.profileId, VC_PROFILE_IDS.beatrice);
+  assert.equal(
+    harness.sessionStorage.get(sessionStorageKeys.configuration).token,
+    token,
+  );
+
+  await assert.rejects(
+    runtime.configure({
+      gatewayUrl: "https://different.example.test",
+      profileId: VC_PROFILE_IDS.beatrice,
+      token: "",
+    }),
+    /token is required for a new Gateway/i,
+  );
 });
 
 test("configuration rejects non-ASCII bearer values before storing them", async () => {
@@ -3173,6 +3259,41 @@ test("message dispatch rejects foreign senders and carries the explicit gesture 
     false,
   );
   assert.equal(backgroundResponded, false);
+});
+
+test("validated Offscreen conversion progress is relayed to the popup", async () => {
+  const { createBrowserRuntime } = await import(moduleUrl);
+  const harness = createHarness();
+  const runtime = createBrowserRuntime({
+    chromeApi: harness.chromeApi,
+    fetchFn: async () => {},
+  });
+  const result = await runtime.handleMessage(
+    {
+      target: "background",
+      type: "offscreen.event",
+      event: {
+        progress: { generationId: 7, inputFrames: 50, outputFrames: 25 },
+      },
+    },
+    {
+      id: harness.extensionId,
+      url: `chrome-extension://${harness.extensionId}/offscreen/offscreen.html`,
+    },
+  );
+  assert.equal(result.ok, true);
+  assert.deepEqual(
+    harness.calls.find(
+      (call) =>
+        call.name === "runtime.sendMessage" &&
+        call.message.type === "conversion.progress",
+    )?.message,
+    {
+      target: "popup",
+      type: "conversion.progress",
+      progress: { generationId: 7, inputFrames: 50, outputFrames: 25 },
+    },
+  );
 });
 
 test("only the popup can begin, export, and clear an observed EXP-005 receipt", async () => {

@@ -2,7 +2,11 @@ import { createExclusiveSelector } from "./exclusive-selector.js";
 
 const SAMPLE_RATE = 48_000;
 const MAXIMUM_WORKLET_REMOTE_FRAMES = 10;
-const MAXIMUM_STAGED_REMOTE_FRAMES = 25;
+// A cold Beatrice worker can return several seconds of catch-up audio in one
+// browser task. Stage the full negotiated protocol ceiling while the Worklet
+// consumes at real time; the old 25-frame ceiling rejected valid catch-up
+// bursts before the Worklet could acknowledge its first ten frames.
+const MAXIMUM_STAGED_REMOTE_FRAMES = 500;
 const DEFAULT_CAPTURE_CREDIT_FRAMES = 4;
 const MAXIMUM_CAPTURE_CREDIT_FRAMES = 500;
 const REMOTE_TARGET_FRAMES = 4;

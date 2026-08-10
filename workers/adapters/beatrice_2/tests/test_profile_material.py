@@ -76,7 +76,7 @@ def test_profile_material_matches_backend_identity_construction() -> None:
     assert payload == configuration.canonical_payload
     assert worker["configuration_hash"] == configuration.configuration_hash
     assert worker["configuration_hash"] == (
-        "sha256:93dd010b64771604ab5750b5a8e00ce0dfe21e38e5ad67c746c166f838ca1fd6"
+        "sha256:f22e4937c3c7c217788c352ef1b729c28af8f227db45f3b18f7044c569fde40c"
     )
 
 

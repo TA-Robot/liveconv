@@ -13,7 +13,7 @@
     "module": "workers.adapters.beatrice_2.worker",
     "implementation_revision": "f34836de014b86956096878aecb8d3b17feaaa0b",
     "weight_revision": "sha256:14ecdb01e51cf22b80664973daa3dedeeb0bada48bbf5262e58950c818cdcb1a",
-    "configuration_hash": "sha256:93dd010b64771604ab5750b5a8e00ce0dfe21e38e5ad67c746c166f838ca1fd6",
+    "configuration_hash": "sha256:f22e4937c3c7c217788c352ef1b729c28af8f227db45f3b18f7044c569fde40c",
     "configuration_payload": {
       "adapter_revision": "beatrice-2-worker-v3",
       "batch_ms": 500,
@@ -34,7 +34,7 @@
       "source_revision": "f34836de014b86956096878aecb8d3b17feaaa0b",
       "source_sha256": "c191a4fabdb63730b749fc2fbbe27384223fc27862a06a0d9db713bdee688e83",
       "source_tree_sha256": "e92451a602413e03aefc4135a4d5b288c0a178b1ff7547b2d5943cdd83b150b0",
-      "target_speaker_id": 37,
+      "target_speaker_id": 46,
       "wheel_record_sha256": "7b67024d180a58b11570d7510deb5f0179f97cb23d3f50d87ab609f095888a9f",
       "worker_wheel_sha256": "cf9592ee3461ed3601f84472a6219ee3dec017f25d4ed31a55e93d245fd0b7bc"
     }

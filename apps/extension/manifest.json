@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "liveconv",
-  "version": "0.1.0",
+  "name": "GPT Live Voice Converter",
+  "version": "0.4.0",
   "description": "Explicit native-first audio session controls for liveconv.",
   "minimum_chrome_version": "116",
   "permissions": [
@@ -21,7 +21,7 @@
   },
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "liveconv"
+    "default_title": "GPT Live Voice Converter · v0.4.0"
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"

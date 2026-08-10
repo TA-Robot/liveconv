@@ -1,6 +1,25 @@
 # Beatrice 2 validation record
 
-Status: adapter technical validation complete; profile is not selectable
+Status: adapter technical validation complete; enabled only for the personal GPT
+Live trial and not production-approved
+
+## Current personal GPT Live trial route (2026-08-10)
+
+The historical validation below used pretrained speaker 37. The personal GPT
+Live trial now pins pretrained speaker 46 because it is substantially lower than
+the other evaluated bundled identities and makes an audible A/B check easier.
+On the same converted Japanese candidate, speaker 46 measured a median F0 of
+103.7 Hz, while speakers 37 and 83 measured 247.4 Hz and 252.6 Hz. This is a
+technical trial of a bundled pretrained identity, not an authorized cloned human
+voice or a product-quality approval.
+
+The deployed Gateway accepted a realtime-paced 30.0 second stream through the
+actual HTTP and WebSocket route and returned all 1,500 input frames as 1,500
+finite output frames. Every returned frame differed from its input counterpart;
+there were no `fallback.required` or `error` events, and generation completion
+and session close both succeeded. This proves that the current worker drains the
+400-frame ingress queue continuously. It does not by itself establish subjective
+voice quality.
 
 ## Scope
 

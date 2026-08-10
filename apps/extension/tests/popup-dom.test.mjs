@@ -46,12 +46,16 @@ class FakeElement {
 function popupHarness({ initialState, models = [], pendingType }) {
   const requests = [];
   const pending = deferred();
+  let runtimeState = initialState;
   const gatewayInput = new FakeElement({ value: "http://127.0.0.1:8765" });
   const profileInput = new FakeElement({ value: "test.passthrough.v1" });
   const tokenInput = new FakeElement();
   const elements = new Map(
     [
       '[data-role="session-status"]',
+      '[data-role="route-status"]',
+      '[data-role="conversion-progress"]',
+      '[data-role="token-status"]',
       '[data-action="start"]',
       '[data-action="stop"]',
       '[data-action="end"]',
@@ -87,24 +91,53 @@ function popupHarness({ initialState, models = [], pendingType }) {
       sendMessage(message) {
         requests.push(message);
         if (message.type === "session.status") {
-          return Promise.resolve({ ok: true, state: initialState });
+          return Promise.resolve({ ok: true, state: runtimeState });
         }
         if (message.type === "models.list") {
-          return Promise.resolve({ ok: true, state: initialState, models });
+          return Promise.resolve({ ok: true, state: runtimeState, models });
         }
         if (message.type === pendingType) {
           return pending.promise;
         }
         if (message.type === "session.stop") {
+          runtimeState = {
+            ...runtimeState,
+            capture: "stopped",
+            remote: "disconnected",
+            generationId: null,
+          };
           return Promise.resolve({
             ok: true,
-            state: {
-              ...initialState,
-              capture: "stopped",
-              remote: "disconnected",
-              generationId: null,
-            },
+            state: runtimeState,
           });
+        }
+        if (message.type === "generation.cancel") {
+          runtimeState = {
+            ...runtimeState,
+            route: "native",
+            remote: "ready",
+            generationId: null,
+          };
+          return Promise.resolve({ ok: true, state: runtimeState });
+        }
+        if (message.type === "model.select") {
+          runtimeState = {
+            ...runtimeState,
+            configuration: {
+              ...runtimeState.configuration,
+              profileId: message.profileId,
+            },
+          };
+          return Promise.resolve({ ok: true, state: runtimeState });
+        }
+        if (message.type === "generation.start") {
+          runtimeState = {
+            ...runtimeState,
+            route: "native",
+            remote: "pending",
+            generationId: 10,
+          };
+          return Promise.resolve({ ok: true, state: runtimeState });
         }
         throw new Error(`unexpected popup message: ${message.type}`);
       },
@@ -190,7 +223,7 @@ test("popup DOM keeps Stop reachable while End is unresolved", async (t) => {
   assert(harness.requests.some((message) => message.type === "session.stop"));
 });
 
-test("popup renders every roster model with its honest state and buffered End label", async (t) => {
+test("popup exposes every realtime voice and excludes buffered conversion", async (t) => {
   const models = [
     {
       modelId: "rvc-v2",
@@ -198,7 +231,7 @@ test("popup renders every roster model with its honest state and buffered End la
       profileId: "vc.rvc.synthetic-ja.v1",
       invocationMode: "live",
       executionState: "live-trial",
-      decisionState: "technical-only",
+      decisionState: "quality-failed",
       voiceRequirement: "pretrained_voice",
       reasonCode: null,
       selectable: true,
@@ -208,11 +241,11 @@ test("popup renders every roster model with its honest state and buffered End la
       displayName: "Beatrice 2",
       profileId: "vc.beatrice.synthetic-ja.v1",
       invocationMode: "live",
-      executionState: "unavailable",
-      decisionState: "quality-failed",
+      executionState: "live-trial",
+      decisionState: "technical-only",
       voiceRequirement: "pretrained_voice",
-      reasonCode: "profile_unavailable",
-      selectable: false,
+      reasonCode: null,
+      selectable: true,
     },
     {
       modelId: "x-vc",
@@ -220,10 +253,10 @@ test("popup renders every roster model with its honest state and buffered End la
       profileId: "vc.x-vc.synthetic-ja.v1",
       invocationMode: "live",
       executionState: "live-trial",
-      decisionState: "unassessed",
-      voiceRequirement: "authorized_target_required",
+      decisionState: "quality-failed",
+      voiceRequirement: "pretrained_voice",
       reasonCode: null,
-      selectable: false,
+      selectable: true,
     },
     {
       modelId: "openvoice-v2",
@@ -243,24 +276,180 @@ test("popup renders every roster model with its honest state and buffered End la
       configuration: {
         configured: true,
         gatewayUrl: "https://audio.example.test",
-        profileId: "vc.openvoice-v2.synthetic-ja.v1",
+        profileId: "vc.beatrice.synthetic-ja.v1",
       },
     },
     models,
   });
   await loadPopup(t, harness, "all-roster-models");
 
-  const rows = harness.elements.get('[data-role="model-roster"]').children;
-  assert.equal(rows.length, 4);
-  assert.equal(rows[0].children[0].textContent, "RVC v2");
-  assert.match(rows[1].children[1].textContent, /unavailable: profile unavailable/i);
-  assert.match(rows[2].children[1].textContent, /authorized target required/i);
-  const options = harness.elements.get("#profile-options").children;
-  assert.equal(options.length, 4);
-  assert.equal(options[1].disabled, true);
-  assert.equal(options[2].disabled, true);
+  const profile = harness.document
+    .querySelector('[data-role="configuration"]')
+    .elements.namedItem("profileId");
+  const options = profile.children;
+  assert.equal(options.length, 3);
+  assert.deepEqual(
+    options.map((option) => option.value),
+    [
+      "vc.rvc.synthetic-ja.v1",
+      "vc.beatrice.synthetic-ja.v1",
+      "vc.x-vc.synthetic-ja.v1",
+    ],
+  );
+  assert.deepEqual(
+    options.map((option) => option.textContent),
+    [
+      "RVC v2（リアルタイム）",
+      "Beatrice 2・低め（リアルタイム）",
+      "X-VC（リアルタイム）",
+    ],
+  );
+  assert(options.every((option) => option.disabled === false));
+  assert.equal(profile.value, "vc.beatrice.synthetic-ja.v1");
+});
+
+test("popup selector applies immediately at a running generation boundary", async (t) => {
+  const models = [
+    {
+      modelId: "rvc-v2",
+      displayName: "RVC v2",
+      profileId: "vc.rvc.synthetic-ja.v1",
+      invocationMode: "live",
+      executionState: "live-trial",
+      decisionState: "quality-failed",
+      voiceRequirement: "pretrained_voice",
+      reasonCode: null,
+      selectable: true,
+    },
+  ];
+  const harness = popupHarness({
+    initialState: {
+      ...stoppedState,
+      capture: "running",
+      remote: "ready",
+      generationId: null,
+      configuration: {
+        configured: true,
+        gatewayUrl: "http://127.0.0.1:18765",
+        profileId: "vc.beatrice.synthetic-ja.v1",
+      },
+    },
+    models,
+    pendingType: "model.select",
+  });
+  await loadPopup(t, harness, "row-live-select");
+
+  const profile = harness.document
+    .querySelector('[data-role="configuration"]')
+    .elements.namedItem("profileId");
+  profile.value = "vc.rvc.synthetic-ja.v1";
+  profile.dispatch("change");
+
+  assert(
+    harness.requests.some(
+      (message) =>
+        message.type === "model.select" &&
+        message.profileId === "vc.rvc.synthetic-ja.v1",
+    ),
+  );
+});
+
+test("popup selector automatically interrupts, switches, and resumes an active model", async (t) => {
+  const models = [
+    {
+      modelId: "rvc-v2",
+      displayName: "RVC v2",
+      profileId: "vc.rvc.synthetic-ja.v1",
+      invocationMode: "live",
+      executionState: "live-trial",
+      decisionState: "quality-failed",
+      voiceRequirement: "pretrained_voice",
+      reasonCode: null,
+      selectable: true,
+    },
+    {
+      modelId: "beatrice-2",
+      displayName: "Beatrice 2",
+      profileId: "vc.beatrice.synthetic-ja.v1",
+      invocationMode: "live",
+      executionState: "live-trial",
+      decisionState: "technical-only",
+      voiceRequirement: "pretrained_voice",
+      reasonCode: null,
+      selectable: true,
+    },
+  ];
+  const harness = popupHarness({
+    initialState: {
+      ...stoppedState,
+      capture: "running",
+      remote: "pending",
+      generationId: 9,
+      configuration: {
+        configured: true,
+        gatewayUrl: "http://127.0.0.1:18765",
+        profileId: "vc.beatrice.synthetic-ja.v1",
+      },
+    },
+    models,
+  });
+  await loadPopup(t, harness, "selector-active-switch");
+
+  const profile = harness.document
+    .querySelector('[data-role="configuration"]')
+    .elements.namedItem("profileId");
+  profile.value = "vc.rvc.synthetic-ja.v1";
+  profile.dispatch("change");
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(
+    harness.requests.slice(-3).map((message) => message.type),
+    ["generation.cancel", "model.select", "generation.start"],
+  );
+  assert.equal(harness.requests.at(-2).profileId, "vc.rvc.synthetic-ja.v1");
+});
+
+test("popup makes saved-token and active remote playout visible after reopen", async (t) => {
+  const harness = popupHarness({
+    initialState: {
+      ...stoppedState,
+      capture: "running",
+      route: "remote",
+      remote: "ready",
+      generationId: 7,
+      configuration: {
+        configured: true,
+        gatewayUrl: "http://127.0.0.1:18765",
+        profileId: "vc.beatrice.synthetic-ja.v1",
+      },
+    },
+  });
+  await loadPopup(t, harness, "saved-token-remote-route");
+
+  const token = harness.document
+    .querySelector('[data-role="configuration"]')
+    .elements.namedItem("token");
+  assert.equal(token.required, false);
+  assert.match(token.placeholder, /保存済み/);
+  assert.match(
+    harness.elements.get('[data-role="token-status"]').textContent,
+    /空欄表示が正常/,
+  );
+  assert.match(
+    harness.elements.get('[data-role="route-status"]').textContent,
+    /Beatrice 2・低めの声へ変換して再生中/,
+  );
+  harness.popupMessageListener()(
+    {
+      target: "popup",
+      type: "conversion.progress",
+      progress: { generationId: 7, inputFrames: 75, outputFrames: 50 },
+    },
+    { id: harness.chromeApi.runtime.id },
+  );
   assert.equal(
-    harness.elements.get('[data-action="end"]').textContent,
-    "End & preview",
+    harness.elements.get('[data-role="conversion-progress"]').textContent,
+    "実変換: 1.0秒（50フレーム）",
   );
 });

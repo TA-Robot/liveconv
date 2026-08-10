@@ -595,6 +595,8 @@ export function createBrowserRuntime(options = {}) {
   requireMethod(chromeApi?.storage?.session, "chrome.storage.session", "get");
   requireMethod(chromeApi?.storage?.session, "chrome.storage.session", "set");
   requireMethod(chromeApi?.storage?.session, "chrome.storage.session", "remove");
+  requireMethod(chromeApi?.storage?.local, "chrome.storage.local", "get");
+  requireMethod(chromeApi?.storage?.local, "chrome.storage.local", "set");
   if (typeof fetchFn !== "function") {
     throw new TypeError("fetchFn must be a function");
   }
@@ -1064,11 +1066,33 @@ export function createBrowserRuntime(options = {}) {
   }
 
   async function storedConfiguration(startController = null) {
-    const operation = chromeApi.storage.session.get(CONFIGURATION_KEY);
-    const stored = startController
-      ? await waitForStart(startController, operation)
-      : await operation;
-    return stored?.[CONFIGURATION_KEY] ?? null;
+    const sessionOperation = chromeApi.storage.session.get(CONFIGURATION_KEY);
+    const sessionStored = startController
+      ? await waitForStart(startController, sessionOperation)
+      : await sessionOperation;
+    const sessionConfiguration = sessionStored?.[CONFIGURATION_KEY] ?? null;
+    if (sessionConfiguration) {
+      await chromeApi.storage.local.set({
+        [CONFIGURATION_KEY]: sessionConfiguration,
+      });
+      return sessionConfiguration;
+    }
+    const localOperation = chromeApi.storage.local.get(CONFIGURATION_KEY);
+    const localStored = startController
+      ? await waitForStart(startController, localOperation)
+      : await localOperation;
+    const localConfiguration = localStored?.[CONFIGURATION_KEY] ?? null;
+    if (localConfiguration) {
+      await chromeApi.storage.session.set({
+        [CONFIGURATION_KEY]: localConfiguration,
+      });
+    }
+    return localConfiguration;
+  }
+
+  async function persistConfiguration(configuration) {
+    await chromeApi.storage.session.set({ [CONFIGURATION_KEY]: configuration });
+    await chromeApi.storage.local.set({ [CONFIGURATION_KEY]: configuration });
   }
 
   async function activeSession(startController = null) {
@@ -1527,8 +1551,34 @@ export function createBrowserRuntime(options = {}) {
     }
   }
 
+  async function notifyConversionProgress(progress) {
+    try {
+      await chromeApi.runtime.sendMessage({
+        target: "popup",
+        type: "conversion.progress",
+        progress,
+      });
+    } catch {
+      // The popup is usually closed; the next progress event updates it.
+    }
+  }
+
   async function configure(value) {
-    const configuration = normalizeConfiguration(value);
+    let candidate = value;
+    if (
+      value !== null &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      value.token === ""
+    ) {
+      const existing = await storedConfiguration();
+      const requestedGateway = normalizeGatewayUrl(value.gatewayUrl);
+      if (!existing || existing.gatewayUrl !== requestedGateway) {
+        throw new Error("a token is required for a new Gateway");
+      }
+      candidate = { ...value, token: existing.token };
+    }
+    const configuration = normalizeConfiguration(candidate);
     await waitForCleanupBarrier();
     await synchronize();
     if (capture !== "stopped") {
@@ -1537,7 +1587,7 @@ export function createBrowserRuntime(options = {}) {
     if (rosterModels.length > 0) {
       selectedRosterModel(configuration.profileId);
     }
-    await chromeApi.storage.session.set({ [CONFIGURATION_KEY]: configuration });
+    await persistConfiguration(configuration);
     lastError = null;
     // The successful storage write is the authoritative configuration commit.
     // Avoid a second read turning that committed result into an ambiguous failure
@@ -2070,9 +2120,7 @@ export function createBrowserRuntime(options = {}) {
       cancellationCompensated = true;
       const failures = [];
       try {
-        await chromeApi.storage.session.set({
-          [CONFIGURATION_KEY]: configuration,
-        });
+        await persistConfiguration(configuration);
       } catch (error) {
         failures.push(error);
       }
@@ -2173,6 +2221,9 @@ export function createBrowserRuntime(options = {}) {
           [CONFIGURATION_KEY]: nextConfiguration,
           [ACTIVE_SESSION_KEY]: nextSession,
         });
+        await chromeApi.storage.local.set({
+          [CONFIGURATION_KEY]: nextConfiguration,
+        });
         await throwIfCanceled();
       } catch (error) {
         if (!profileSelectionIsCurrent(selection)) {
@@ -2205,6 +2256,9 @@ export function createBrowserRuntime(options = {}) {
           await chromeApi.storage.session.set({
             [CONFIGURATION_KEY]: configuration,
             [ACTIVE_SESSION_KEY]: previousSession,
+          });
+          await chromeApi.storage.local.set({
+            [CONFIGURATION_KEY]: configuration,
           });
           await throwIfCanceled();
         } catch (rollbackError) {
@@ -2360,6 +2414,21 @@ export function createBrowserRuntime(options = {}) {
     if (message?.target === "background" && message.type === "offscreen.event") {
       const event = message.event ?? {};
       await observeReceiptRuntimeEvent(event.receipt);
+      if (
+        event.progress !== null &&
+        typeof event.progress === "object" &&
+        Number.isInteger(event.progress.generationId) &&
+        Number.isSafeInteger(event.progress.inputFrames) &&
+        event.progress.inputFrames >= 0 &&
+        Number.isSafeInteger(event.progress.outputFrames) &&
+        event.progress.outputFrames >= 0
+      ) {
+        await notifyConversionProgress({
+          generationId: event.progress.generationId,
+          inputFrames: event.progress.inputFrames,
+          outputFrames: event.progress.outputFrames,
+        });
+      }
       if (event.route === "native" || event.route === "remote") {
         route = event.route;
       }

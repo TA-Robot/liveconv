@@ -41,9 +41,9 @@ test("manifest is a loadable MV3 shell with module service worker and popup", as
   const manifest = await readJson(manifestUrl);
 
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(typeof manifest.name, "string");
-  assert(manifest.name.trim().length > 0);
-  assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
+  assert.equal(manifest.name, "GPT Live Voice Converter");
+  assert.equal(manifest.version, "0.4.0");
+  assert.equal(manifest.action?.default_title, "GPT Live Voice Converter · v0.4.0");
 
   assert.equal(manifest.background?.type, "module");
   assert(Number.parseInt(manifest.minimum_chrome_version, 10) >= 116);
@@ -82,7 +82,6 @@ test("popup exposes session and generation lifecycle controls and visible state"
     "cancel",
     "next",
     "models",
-    "select-profile",
   ]) {
     const button = buttons.find((tag) => hasAttribute(tag, "data-action", action));
     assert(button, `popup must expose a ${action} button`);
@@ -101,6 +100,17 @@ test("popup exposes session and generation lifecycle controls and visible state"
     hasAttribute(tag, "name", "token"),
   );
   assert(token && /\brequired\b/i.test(token));
+  const profile = openingTags(html, "select").find((tag) =>
+    hasAttribute(tag, "name", "profileId"),
+  );
+  assert(profile, "popup must expose one model selector");
+  assert(/\brequired\b/i.test(profile));
+
+  assert.match(
+    html,
+    /data-role=(['"])build-version\1[^>]*>Realtime Voice · v0\.4\.0</i,
+    "popup must visibly identify the loaded UI build",
+  );
 
   const status = openingTags(html, "output").find((tag) =>
     hasAttribute(tag, "data-role", "session-status"),

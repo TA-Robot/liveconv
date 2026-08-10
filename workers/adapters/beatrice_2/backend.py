@@ -484,7 +484,7 @@ class BeatriceConfiguration:
     converter_sha256: str
     runtime_lock_sha256: str
     worker_runtime: WorkerRuntimeBinding
-    target_speaker_id: int = 37
+    target_speaker_id: int = 46
     sample_rate: int = 48_000
     batch_ms: int = 500
     device: str = "cpu"
@@ -559,7 +559,7 @@ class BeatriceConfiguration:
                 worker_wheel, worker_wheel_sha256
             ),
             target_speaker_id=int(
-                os.environ.get("LIVECONV_BEATRICE_TARGET_SPEAKER_ID", "37")
+                os.environ.get("LIVECONV_BEATRICE_TARGET_SPEAKER_ID", "46")
             ),
             sample_rate=int(os.environ.get("LIVECONV_BEATRICE_SAMPLE_RATE", "48000")),
             batch_ms=int(os.environ.get("LIVECONV_BEATRICE_BATCH_MS", "500")),

@@ -488,6 +488,19 @@ test("inactive high-rate output emits no receipt and active output stays O(1)", 
     1,
   );
   assert(generationEightReceipts.length <= 4);
+  const generationEightProgress = harness.notifications
+    .map((message) => message.event.progress)
+    .filter((progress) => progress?.generationId === 8);
+  assert.deepEqual(
+    generationEightProgress.map((progress) => progress.outputFrames),
+    [25, 50, 75, 100],
+  );
+  assert.equal(
+    generationEightProgress.every(
+      (progress) => progress.inputFrames === progress.outputFrames,
+    ),
+    true,
+  );
 });
 
 test("explicit EXP-005 injection is native-first and cannot be forged by Gateway fallback", async () => {

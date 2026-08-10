@@ -18,7 +18,7 @@ _WEIGHT_REVISION = (
     "sha256:14ecdb01e51cf22b80664973daa3dedeeb0bada48bbf5262e58950c818cdcb1a"
 )
 _CONFIGURATION_HASH = (
-    "sha256:93dd010b64771604ab5750b5a8e00ce0dfe21e38e5ad67c746c166f838ca1fd6"
+    "sha256:f22e4937c3c7c217788c352ef1b729c28af8f227db45f3b18f7044c569fde40c"
 )
 _FRAME_MS = 20
 _QUEUE_CAPACITY_FRAMES = 25
@@ -63,7 +63,7 @@ _CANONICAL_CONFIGURATION: dict[str, int | str] = {
     "source_tree_sha256": (
         "e92451a602413e03aefc4135a4d5b288c0a178b1ff7547b2d5943cdd83b150b0"
     ),
-    "target_speaker_id": 37,
+    "target_speaker_id": 46,
     "wheel_record_sha256": (
         "7b67024d180a58b11570d7510deb5f0179f97cb23d3f50d87ab609f095888a9f"
     ),

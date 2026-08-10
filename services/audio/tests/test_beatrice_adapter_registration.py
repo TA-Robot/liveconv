@@ -87,7 +87,7 @@ def test_beatrice_registration_uses_only_the_retained_identity(
     )
 
     assert profile.configuration_hash == (
-        "sha256:93dd010b64771604ab5750b5a8e00ce0dfe21e38e5ad67c746c166f838ca1fd6"
+        "sha256:f22e4937c3c7c217788c352ef1b729c28af8f227db45f3b18f7044c569fde40c"
     )
     assert beatrice_2.delivery_mode(profile) == "live_frame_echo"
     assert beatrice_2.queue_capacity_frames(profile, 2_000) == 25

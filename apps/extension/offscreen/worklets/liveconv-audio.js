@@ -7,8 +7,13 @@ const FRAME_SAMPLES = 960;
 const DEFAULT_MAXIMUM_CAPTURE_CREDITS = 4;
 const MAXIMUM_NEGOTIATED_CAPTURE_CREDITS = 500;
 const MAXIMUM_NEGOTIATED_CAPTURE_FRAMES = 500;
-const NATIVE_DELAY_SAMPLES = 9_600;
-const NATIVE_RING_SAMPLES = 16_384;
+// A cold Beatrice session takes about 4.5 seconds to return its first 500 ms
+// batch, then catches up in a burst. Keep native and converted audio on the
+// same six-second delayed timeline so the burst is still ahead of the audible
+// playhead. 288,000 is divisible by both the 960-sample protocol frame and
+// Chrome's 128-sample render quantum.
+const NATIVE_DELAY_SAMPLES = 288_000;
+const NATIVE_RING_SAMPLES = 524_288;
 
 class LiveconvCaptureProcessor extends AudioWorkletProcessor {
   constructor() {

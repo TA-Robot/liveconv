@@ -2,6 +2,7 @@ const UINT32_MAX = 0xffff_ffff;
 const SAMPLE_RATE = 48_000;
 const BUFFERED_PREVIEW_CAPTURE_FRAMES = 25;
 const MAXIMUM_RECEIPT_INPUT_REFERENCES = 500;
+const PROGRESS_NOTIFICATION_FRAMES = 25;
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const HASH = /^sha256:[0-9a-f]{64}$/;
@@ -97,6 +98,9 @@ export function createOffscreenRuntime(options = {}) {
   let receiptEnabled = false;
   let receiptOutputSummary = null;
   let receiptRemotePlayoutEmitted = false;
+  let inputFrameCount = 0;
+  let outputFrameCount = 0;
+  let lastNotifiedOutputFrameCount = 0;
   let receiptNotificationChain = Promise.resolve();
   const receiptInputFrames = new Map();
 
@@ -250,6 +254,29 @@ export function createOffscreenRuntime(options = {}) {
     clearReceiptInputFrames();
     receiptOutputSummary = null;
     receiptRemotePlayoutEmitted = false;
+    inputFrameCount = 0;
+    outputFrameCount = 0;
+    lastNotifiedOutputFrameCount = 0;
+  }
+
+  function notifyProgress({ force = false } = {}) {
+    if (
+      generationId === null ||
+      outputFrameCount === 0 ||
+      (!force &&
+        outputFrameCount - lastNotifiedOutputFrameCount <
+          PROGRESS_NOTIFICATION_FRAMES)
+    ) {
+      return;
+    }
+    lastNotifiedOutputFrameCount = outputFrameCount;
+    notify({
+      progress: {
+        generationId,
+        inputFrames: inputFrameCount,
+        outputFrames: outputFrameCount,
+      },
+    });
   }
 
   function openCaptureAcceptance(nextId) {
@@ -541,6 +568,7 @@ export function createOffscreenRuntime(options = {}) {
     }
     if (sent) {
       sequence += 1;
+      inputFrameCount += 1;
     }
     return sent;
   }
@@ -588,6 +616,10 @@ export function createOffscreenRuntime(options = {}) {
         profileIdentity,
       );
     }
+    if (enqueued) {
+      outputFrameCount += 1;
+      notifyProgress();
+    }
   }
 
   function createGraph(candidateEpoch) {
@@ -631,6 +663,7 @@ export function createOffscreenRuntime(options = {}) {
           });
         }
         notify({ route, remote, generationId });
+        notifyProgress({ force: true });
       },
       onSourceEnded() {
         if (!isCurrent()) {

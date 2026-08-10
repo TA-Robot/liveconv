@@ -411,7 +411,7 @@ test("delayed buffered preview rebases at the current native playhead before exc
   assert.equal(harness.graph.snapshot().route, "remote");
 });
 
-test("a legitimate 25-frame burst is staged and paced into the 10-frame Worklet bound", async () => {
+test("a cold-worker 170-frame catch-up burst is staged and paced into the 10-frame Worklet bound", async () => {
   const { createAudioGraph } = await import(moduleUrl);
   const harness = createHarness(createAudioGraph);
   await harness.graph.startNativeLoopback({
@@ -420,7 +420,7 @@ test("a legitimate 25-frame burst is staged and paced into the 10-frame Worklet 
   });
   harness.graph.beginGeneration(7);
 
-  for (let sequence = 0; sequence < 25; sequence += 1) {
+  for (let sequence = 0; sequence < 170; sequence += 1) {
     assert.equal(
       harness.graph.enqueueRemoteFrame({
         header: { generation_id: 7, sequence },
@@ -430,15 +430,7 @@ test("a legitimate 25-frame burst is staged and paced into the 10-frame Worklet 
       true,
     );
   }
-  assert.equal(
-    harness.graph.enqueueRemoteFrame({
-      header: { generation_id: 7, sequence: 25 },
-      sourceFrame: 25 * 960,
-      samples: new Float32Array(960),
-    }),
-    false,
-  );
-  assert.equal(harness.fallbacks.at(-1).reasonCode, "QUEUE_OVERFLOW");
+  assert.equal(harness.fallbacks.length, 0);
   assert.equal(harness.graph.snapshot().route, "native");
 
   const playout = harness.node("liveconv-playout");
@@ -455,7 +447,7 @@ test("a legitimate 25-frame burst is staged and paced into the 10-frame Worklet 
       depth,
     });
   }
-  for (let index = 0; index < 15; index += 1) {
+  for (let index = 0; index < 160; index += 1) {
     playout.port.receive({
       type: "playout.depth",
       generationId: 7,
@@ -472,8 +464,38 @@ test("a legitimate 25-frame burst is staged and paced into the 10-frame Worklet 
   assert.equal(
     playout.port.messages.filter((message) => message.type === "playout.enqueue")
       .length,
-    25,
+    170,
   );
+});
+
+test("remote catch-up staging remains bounded at the negotiated 500-frame ceiling", async () => {
+  const { createAudioGraph } = await import(moduleUrl);
+  const harness = createHarness(createAudioGraph);
+  await harness.graph.startNativeLoopback({
+    streamId: "synthetic-stream-id",
+    tabId: 42,
+  });
+  harness.graph.beginGeneration(7);
+
+  for (let sequence = 0; sequence < 500; sequence += 1) {
+    assert.equal(
+      harness.graph.enqueueRemoteFrame({
+        header: { generation_id: 7, sequence },
+        sourceFrame: sequence * 960,
+        samples: new Float32Array(960),
+      }),
+      true,
+    );
+  }
+  assert.equal(
+    harness.graph.enqueueRemoteFrame({
+      header: { generation_id: 7, sequence: 500 },
+      sourceFrame: 500 * 960,
+      samples: new Float32Array(960),
+    }),
+    false,
+  );
+  assert.equal(harness.fallbacks.at(-1).reasonCode, "QUEUE_OVERFLOW");
 });
 
 test("negotiated capture credits follow Gateway capacity and replenish only accepted frames", async () => {

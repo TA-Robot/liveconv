@@ -6,6 +6,8 @@ const processorModuleUrl = new URL(
   "../offscreen/worklets/liveconv-audio.js?node-test",
   import.meta.url,
 );
+const PLAYOUT_DELAY_SAMPLES = 288_000;
+const PLAYOUT_DELAY_QUANTA = PLAYOUT_DELAY_SAMPLES / 128;
 
 test("capture assembler emits exact 20 ms frames across 128-sample render quanta", async () => {
   const { CaptureFrameAssembler } = await import(bufferModuleUrl);
@@ -211,7 +213,7 @@ test("registered AudioWorklets forward capture, downmix stereo native playout, a
     );
 
     const stereoPlayout = new PlayoutProcessor();
-    for (let quantum = 0; quantum < 75; quantum += 1) {
+    for (let quantum = 0; quantum < PLAYOUT_DELAY_QUANTA; quantum += 1) {
       globalThis.currentFrame = quantum * 128;
       stereoPlayout.process(
         [[new Float32Array(128), new Float32Array(128).fill(1)]],
@@ -219,7 +221,7 @@ test("registered AudioWorklets forward capture, downmix stereo native playout, a
       );
     }
     const rightOnlyNative = new Float32Array(128);
-    globalThis.currentFrame = 9_600;
+    globalThis.currentFrame = PLAYOUT_DELAY_SAMPLES;
     stereoPlayout.process(
       [[new Float32Array(128), new Float32Array(128).fill(1)]],
       [[rightOnlyNative]],
@@ -240,14 +242,14 @@ test("registered AudioWorklets forward capture, downmix stereo native playout, a
         samples: new Float32Array(960).fill(0.5),
       });
     }
-    for (let quantum = 0; quantum < 75; quantum += 1) {
+    for (let quantum = 0; quantum < PLAYOUT_DELAY_QUANTA; quantum += 1) {
       globalThis.currentFrame = quantum * 128;
       playout.process(
         [[new Float32Array(128).fill(1)]],
         [[new Float32Array(128)]],
       );
     }
-    globalThis.currentFrame = 9_600;
+    globalThis.currentFrame = PLAYOUT_DELAY_SAMPLES;
     const lastNative = new Float32Array(128);
     playout.process(
       [[new Float32Array(128).fill(1)]],
@@ -258,13 +260,13 @@ test("registered AudioWorklets forward capture, downmix stereo native playout, a
     assert(lastNative.every((sample) => sample === 1));
     playout.port.receive({ type: "playout.audible", audible: true });
     const audible = new Float32Array(128);
-    globalThis.currentFrame = 9_728;
+    globalThis.currentFrame = PLAYOUT_DELAY_SAMPLES + 128;
     playout.process([[new Float32Array(128).fill(1)]], [[audible]]);
     assert(audible.every((sample) => sample === 0.5));
 
     playout.port.receive({ type: "playout.cancel", generationId: 7 });
     const canceled = new Float32Array(128);
-    globalThis.currentFrame = 9_856;
+    globalThis.currentFrame = PLAYOUT_DELAY_SAMPLES + 256;
     playout.process([], [[canceled]]);
     assert(
       canceled.every((sample) => sample === 1),
@@ -282,7 +284,7 @@ test("registered AudioWorklets forward capture, downmix stereo native playout, a
         samples: new Float32Array(960).fill(0.25),
       });
     }
-    for (let quantum = 0; quantum <= 75; quantum += 1) {
+    for (let quantum = 0; quantum <= PLAYOUT_DELAY_QUANTA; quantum += 1) {
       globalThis.currentFrame = quantum * 128;
       draining.process(
         [[new Float32Array(128)]],
@@ -292,7 +294,7 @@ test("registered AudioWorklets forward capture, downmix stereo native playout, a
     draining.port.receive({ type: "playout.audible", audible: true });
     draining.port.receive({ type: "playout.end", generationId: 8 });
     for (let quantum = 0; quantum < 30; quantum += 1) {
-      globalThis.currentFrame = 9_728 + quantum * 128;
+      globalThis.currentFrame = PLAYOUT_DELAY_SAMPLES + 128 + quantum * 128;
       draining.process([], [[new Float32Array(128)]]);
     }
     const drainEvents = draining.port.sent.map((entry) => entry.message.type);
@@ -318,7 +320,7 @@ test("registered AudioWorklets forward capture, downmix stereo native playout, a
       false,
       "End must not cancel queued final PCM before it becomes audible",
     );
-    globalThis.currentFrame = 9_600;
+    globalThis.currentFrame = PLAYOUT_DELAY_SAMPLES;
     preAudibleFinal.process(
       [[new Float32Array(128).fill(1)]],
       [[new Float32Array(128)]],
@@ -327,7 +329,7 @@ test("registered AudioWorklets forward capture, downmix stereo native playout, a
     preAudibleFinal.port.receive({ type: "playout.audible", audible: true });
     let renderedRemoteSamples = 0;
     for (let quantum = 1; quantum < 32; quantum += 1) {
-      globalThis.currentFrame = 9_600 + quantum * 128;
+      globalThis.currentFrame = PLAYOUT_DELAY_SAMPLES + quantum * 128;
       const output = new Float32Array(128);
       preAudibleFinal.process([], [[output]]);
       renderedRemoteSamples += output.filter((sample) => sample === 0.75).length;
@@ -350,28 +352,28 @@ test("registered AudioWorklets forward capture, downmix stereo native playout, a
         samples: new Float32Array(960).fill(0.5),
       });
     }
-    for (let quantum = 0; quantum < 75; quantum += 1) {
+    for (let quantum = 0; quantum < PLAYOUT_DELAY_QUANTA; quantum += 1) {
       globalThis.currentFrame = quantum * 128;
       partialUnderflow.process(
         [[new Float32Array(128).fill(1)]],
         [[new Float32Array(128)]],
       );
     }
-    globalThis.currentFrame = 9_600;
+    globalThis.currentFrame = PLAYOUT_DELAY_SAMPLES;
     partialUnderflow.process(
       [[new Float32Array(128).fill(1)]],
       [[new Float32Array(128)]],
     );
     partialUnderflow.port.receive({ type: "playout.audible", audible: true });
     for (let quantum = 1; quantum <= 36; quantum += 1) {
-      globalThis.currentFrame = 9_600 + quantum * 128;
+      globalThis.currentFrame = PLAYOUT_DELAY_SAMPLES + quantum * 128;
       partialUnderflow.process(
         [[new Float32Array(128).fill(1)]],
         [[new Float32Array(128)]],
       );
     }
     const partialOutput = new Float32Array(128);
-    globalThis.currentFrame = 9_600 + 37 * 128;
+    globalThis.currentFrame = PLAYOUT_DELAY_SAMPLES + 37 * 128;
     partialUnderflow.process(
       [[new Float32Array(128).fill(1)]],
       [[partialOutput]],
@@ -397,28 +399,28 @@ test("registered AudioWorklets forward capture, downmix stereo native playout, a
         samples: new Float32Array(960).fill(0.75),
       });
     }
-    for (let quantum = 0; quantum < 75; quantum += 1) {
+    for (let quantum = 0; quantum < PLAYOUT_DELAY_QUANTA; quantum += 1) {
       globalThis.currentFrame = quantum * 128;
       exactBoundary.process(
         [[new Float32Array(128).fill(1)]],
         [[new Float32Array(128)]],
       );
     }
-    globalThis.currentFrame = 9_600;
+    globalThis.currentFrame = PLAYOUT_DELAY_SAMPLES;
     exactBoundary.process(
       [[new Float32Array(128).fill(1)]],
       [[new Float32Array(128)]],
     );
     exactBoundary.port.receive({ type: "playout.audible", audible: true });
     for (let quantum = 1; quantum < 30; quantum += 1) {
-      globalThis.currentFrame = 9_600 + quantum * 128;
+      globalThis.currentFrame = PLAYOUT_DELAY_SAMPLES + quantum * 128;
       exactBoundary.process(
         [[new Float32Array(128).fill(1)]],
         [[new Float32Array(128)]],
       );
     }
     const exactUnderflowOutput = new Float32Array(128);
-    globalThis.currentFrame = 9_600 + 30 * 128;
+    globalThis.currentFrame = PLAYOUT_DELAY_SAMPLES + 30 * 128;
     exactBoundary.process(
       [[new Float32Array(128).fill(1)]],
       [[exactUnderflowOutput]],
@@ -441,7 +443,7 @@ test("registered AudioWorklets forward capture, downmix stereo native playout, a
       (entry) => entry.message.type === "playout.ready",
     ).length;
     const insufficientOutput = new Float32Array(128);
-    globalThis.currentFrame = 9_600 + 31 * 128;
+    globalThis.currentFrame = PLAYOUT_DELAY_SAMPLES + 31 * 128;
     exactBoundary.process(
       [[new Float32Array(128).fill(1)]],
       [[insufficientOutput]],
@@ -465,7 +467,7 @@ test("registered AudioWorklets forward capture, downmix stereo native playout, a
         samples: new Float32Array(960).fill(0.75),
       });
     }
-    globalThis.currentFrame = 9_600 + 32 * 128;
+    globalThis.currentFrame = PLAYOUT_DELAY_SAMPLES + 32 * 128;
     exactBoundary.process(
       [[new Float32Array(128).fill(1)]],
       [[new Float32Array(128)]],
@@ -479,7 +481,7 @@ test("registered AudioWorklets forward capture, downmix stereo native playout, a
     );
     exactBoundary.port.receive({ type: "playout.audible", audible: true });
     const recoveredRemote = new Float32Array(128);
-    globalThis.currentFrame = 9_600 + 33 * 128;
+    globalThis.currentFrame = PLAYOUT_DELAY_SAMPLES + 33 * 128;
     exactBoundary.process(
       [[new Float32Array(128).fill(1)]],
       [[recoveredRemote]],

@@ -14,13 +14,13 @@
     },
     {
       "model_id": "beatrice-2",
-      "display_name": "Beatrice 2",
+      "display_name": "低めの声（リアルタイム）",
       "profile_id": "vc.beatrice.synthetic-ja.v1",
       "invocation_mode": "live",
       "decision_state": "technical-only",
       "voice_requirement": "pretrained_voice",
-      "expected_profile_hash": "sha256:0d60ef370d00e9ff6823221b1d50ec55ce1bda599eb696774e5849c8fae2f224",
-      "expected_configuration_hash": "sha256:93dd010b64771604ab5750b5a8e00ce0dfe21e38e5ad67c746c166f838ca1fd6"
+      "expected_profile_hash": "sha256:b8aea39a27b7f8f915b02d32237e8d993dc11c0bcc658765078ce4f58737b525",
+      "expected_configuration_hash": "sha256:f22e4937c3c7c217788c352ef1b729c28af8f227db45f3b18f7044c569fde40c"
     },
     {
       "model_id": "x-vc",
