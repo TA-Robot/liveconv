@@ -195,18 +195,18 @@
       "execution_mode": "live",
       "source_label": "Amitaro runrun authorized reference",
       "source_kind": "licensed-material",
-      "readiness": "license-review",
+      "readiness": "route-smoke-passed",
       "license_state": "conditional",
-      "authorization_state": "review-required",
-      "profile_id": null,
-      "expected_profile_hash": null,
-      "expected_configuration_hash": null,
+      "authorization_state": "approved-prepared",
+      "profile_id": "vc.meanvc2.amitaro-runrun.v1",
+      "expected_profile_hash": "sha256:f0122d2506cfe97fc09ecc5a1c7b403d755f2ac59e1d63b595338d3918903f8d",
+      "expected_configuration_hash": "sha256:da9835df812bc15cf1d7920592b2878108caa70ebe4d27b3f211a9bacb725c19",
       "official_sources": [
         "https://github.com/ASLP-lab/MeanVC2",
         "https://amitaro.net/voice/voice_rule/"
       ],
-      "license_notes": "The unresolved MeanVC2 code and checkpoint terms apply independently of the separately governed runrun reference; Japanese support remains unclaimed.",
-      "next_gate": "Resolve exact code and checkpoint terms, prepare and authorize the runrun reference separately, then pass content preservation, 16-to-48 kHz handling, and Extension route parity."
+      "license_notes": "The official Hugging Face card declares Apache-2.0 and the upstream README claims Apache-2.0, but the reviewed Git snapshot has no root LICENSE. The route remains personal technical evaluation only; Japanese support is unclaimed.",
+      "next_gate": "Listen through the Extension on the frozen screen utterances; retain Japanese content, resampling, latency, or quality failures as screening evidence and do not approve redistribution or product use."
     },
     {
       "variant_id": "xvc-amitaro-yofukashi",

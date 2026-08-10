@@ -10,7 +10,7 @@ from jsonschema import Draft202012Validator, FormatChecker, ValidationError
 
 WORKERS = Path(__file__).resolve().parents[1]
 PACKS = WORKERS / "packs"
-EXPECTED_ORDER = ["rvc-v2", "x-vc", "beatrice-2", "openvoice-v2"]
+EXPECTED_ORDER = ["rvc-v2", "x-vc", "beatrice-2", "openvoice-v2", "meanvc2"]
 LICENSE_COMPONENTS = {"code", "weights", "training_data", "inference_runtime"}
 CHECKLIST_ITEMS = {
     "adapter_conformance",
@@ -91,6 +91,10 @@ class ModelPackManifestTests(unittest.TestCase):
             "openvoice-v2": (
                 "sha256:bff2066e3ef311dc123f1b8d85d5f98a14610a71cc6f"
                 "4ecf71d34670fc85e057"
+            ),
+            "meanvc2": (
+                "sha256:b103f6382092606d4c8351963066dcaa3b23994773d07"
+                "973a6cc37bd8a804e3b"
             ),
         }
         for manifest in self.manifests:

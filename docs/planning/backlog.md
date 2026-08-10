@@ -64,10 +64,10 @@ name one owner and ownership zone below.
 | LV-053 | Done | P0 | MS-2 | Add bounded End-triggered OpenVoice buffered preview invocable from the Extension | Actual 25-frame Gateway route emitted no output before End and passed cancel/stale/cleanup; no streaming claim |
 | LV-054 | Done | P0 | MS-2 | Implement and review the EXP-005 metadata runner, schema, and frozen prompt/sample plan | Runtime receipt, separate manual judgments, fifth failure probe, persistence, strict identity checks, and Sol review green |
 | LV-055 | Done | P0 | MS-3 | Define EXP-006, the young-feminine candidate catalog, and the deployment-bundle contract | Protocol-v1 VC first wave, public/private identity and authorization schemas, trusted-clock validation, 24 focused tests, and independent Sol review are green with no High/Medium |
-| LV-056 | Ready | P0 | MS-3 | Implement one immutable deployment-bundle compiler and authenticated manifest | Implement the reviewed schema/validator in Gateway and consumers; terminal launcher and Extension must resolve one bundle hash with atomic fail-closed mismatch handling, using trusted current UTC at activation/restart |
-| LV-057 | Planned | P0 | MS-3 | Implement per-variant route-parity receipt and fail-closed eligibility | LV-056; resolve every public authorization digest against the exact operator-controlled private registry, require approved/nonexpired status at session creation and exact variant/family/profile/lineage binding, and reject missing/extra/mutated records |
-| LV-058 | Planned | P0 | MS-3 | Replace the fixed model chooser with a dynamic family/variant chooser | LV-056 manifest plus exact profile/config/pack binding; preserve native-first and generation isolation |
-| LV-059 | Planned | P0 | MS-3 | Prepare first-wave youthful-feminine VC runtimes and authorized voice variants | RVC, bounded MeanVC2, X-VC, OpenVoice, and reviewed Amitaro style material; emit private approved owner/scope/retention/deletion/terms/source/lineage records consumed by LV-057; one GPU lease at a time |
+| LV-056 | Done | P0 | MS-3 | Implement one immutable deployment-bundle compiler and authenticated manifest | Gateway, Extension, and one-command terminal activation resolve sealed bundle `sha256:468babb589f31d3a48a4bd07ca8a939da5ef9fefef89488bc78be7db4fb32df4`; activation fails closed on bundle, identity, artifact, or trusted-clock mismatch |
+| LV-057 | Ready | P0 | MS-3 | Implement per-variant route-parity receipt and fail-closed eligibility | Resolve every public authorization digest against the exact operator-controlled private registry, require approved/nonexpired status at session creation and exact variant/family/profile/lineage binding, and reject missing/extra/mutated records |
+| LV-058 | Done | P0 | MS-3 | Replace the fixed model chooser with a dynamic family/variant chooser | The chooser renders the authenticated deployment manifest and preserves exact profile/config/pack binding, native-first playout, and generation isolation |
+| LV-059 | Review | P0 | MS-3 | Prepare first-wave youthful-feminine VC runtimes and authorized voice variants | Nine selectable profiles across RVC, MeanVC2, X-VC, and OpenVoice are active; the MeanVC2 Runrun Gateway route passed bounded PCM/cancel/cleanup checks, while all nine still require Extension listening and EXP-006 screening |
 | LV-060 | Planned | P0 | MS-3 | Run the 10-utterance EXP-006 Extension screening pass | LV-032, LV-057 through LV-059; target 9-12 protocol-v1 VC variants across at least four families |
 | LV-061 | Planned | P0 | MS-3 | Freeze a four-or-fewer shortlist and common 40-utterance comparison plan | LV-030 and LV-060; maximum two variants per family; this unblocks LV-034 without depending on it |
 | LV-062 | Planned | P0 | MS-4 | Run shortlist tuning/comparison and record the selection ADR | LV-034 and LV-061; select one exact primary and fallback or record no release |
@@ -105,11 +105,12 @@ closes MS-2 by scope decision and starts the quality-discovery milestone.
 
 | Ready item | Intended ownership zone | Stop condition |
 |---|---|---|
-| LV-056 | scripts/deploy plus audio manifest contract | One generated bundle is atomically accepted by Gateway and independently matched by terminal and Extension |
+| LV-057 | evaluation receipt plus Gateway/Extension consumers | Each selectable variant receives an exact bundle/profile/config/authorization-bound route receipt or is hidden |
 | LV-032 | authorized fixture metadata zone | Ten-utterance screen and 40-utterance comparison fixtures are frozen without raw audio in Git |
 
-LV-055 is complete. LV-056 and LV-032 may run in parallel. Model runtime work is
-serialized by the single GPU lease. A poor voice is retained as rejection
-evidence and removed from the next wave; it does not trigger an open-ended repair
-cycle. No terminal WAV or direct-worker render can make a variant listenable or
-decision-eligible without LV-057 route parity.
+LV-055, LV-056, and LV-058 are complete. LV-057 and LV-032 may run in parallel;
+LV-059 is at review with nine Gateway-selectable variants across four families.
+Model runtime work is serialized by the single GPU lease. A poor voice is
+retained as rejection evidence and removed from the next wave; it does not
+trigger an open-ended repair cycle. No terminal WAV or direct-worker render can
+make a variant decision-eligible without LV-057 route parity.

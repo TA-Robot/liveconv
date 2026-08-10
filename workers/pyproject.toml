@@ -19,6 +19,7 @@ packages = [
   "workers.adapters",
   "workers.adapters.beatrice_2",
   "workers.adapters.openvoice_v2",
+  "workers.adapters.meanvc2",
   "workers.adapters.rvc_v2",
   "workers.adapters.rvc_v2.tools",
   "workers.adapters.x_vc",
@@ -30,6 +31,7 @@ package-dir = { workers = "." }
 "workers.packs" = ["*.json"]
 "workers.adapters.beatrice_2" = ["*.md", "requirements-runtime*"]
 "workers.adapters.openvoice_v2" = ["*.md", "requirements-runtime*"]
+"workers.adapters.meanvc2" = ["*.md", "requirements-runtime*"]
 "workers.adapters.rvc_v2" = ["*.md", "requirements-runtime*"]
 "workers.adapters.x_vc" = ["*.md", "requirements-runtime*"]
 
@@ -41,6 +43,7 @@ testpaths = [
   "tests",
   "adapters/beatrice_2/tests",
   "adapters/openvoice_v2/tests",
+  "adapters/meanvc2/tests",
   "adapters/rvc_v2/tests",
   "adapters/x_vc/tests",
 ]

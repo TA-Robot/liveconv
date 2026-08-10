@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Literal
 
 from workers.runtime import ArtifactSpec, WorkerProfile
 
-from .model_adapters import beatrice_2, openvoice_v2, x_vc
+from .model_adapters import beatrice_2, meanvc2, openvoice_v2, x_vc
 
 if TYPE_CHECKING:
     from .profiles import ModelProfile
@@ -567,6 +567,15 @@ _BUILTIN_REGISTRATIONS = {
 }
 
 _WORKER_REGISTRATIONS = {
+    meanvc2.WORKER_MODULE: _AdapterRegistration(
+        runtime_adapter="worker",
+        worker_module=meanvc2.WORKER_MODULE,
+        expected_pack_id="meanvc2",
+        validate_configuration=meanvc2.validate_configuration,
+        build_worker_profile=meanvc2.build_worker_profile,
+        delivery_mode=meanvc2.delivery_mode,
+        queue_capacity_frames=meanvc2.queue_capacity_frames,
+    ),
     openvoice_v2.WORKER_MODULE: _AdapterRegistration(
         runtime_adapter="worker",
         worker_module=openvoice_v2.WORKER_MODULE,

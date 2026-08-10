@@ -54,14 +54,18 @@ required_files=(
   scripts/build-ms3-deployment-bundle.py
   scripts/fetch-ms3-rvc-amitaro.py
   scripts/fetch-ms3-openvoice-amitaro.py
+  scripts/materialize-ms3-activation.py
+  scripts/prepare-ms3-meanvc2-variant.py
   scripts/prepare-ms3-rvc-variants.py
   scripts/prepare-ms3-openvoice-variants.py
   scripts/prepare-ms3-xvc-variants.py
   scripts/run-ms3-gateway.py
+  scripts/start-ms3-variant-lab.sh
   scripts/validate-deployment-bundle.py
   config/model-profiles.json
   config/model-roster.json
   config/ms3-voice-variant-candidates.json
+  config/ms3-meanvc2-amitaro-intake.json
   config/ms3-rvc-amitaro-intake.json
   config/ms3-openvoice-amitaro-intake.json
   config/ms3-xvc-amitaro-intake.json
@@ -84,6 +88,7 @@ required_files=(
   workers/packs/rvc-v2.json
   workers/packs/x-vc.json
   workers/packs/beatrice-2.json
+  workers/packs/meanvc2.json
   workers/packs/openvoice-v2.json
   pyproject.toml
   uv.lock

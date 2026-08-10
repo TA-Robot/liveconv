@@ -35,6 +35,28 @@ A pull request must state:
 
 Run `make check` before requesting review.
 
+## Local MS-3 Variant Lab
+
+The operator machine keeps the active private bundle and model paths under
+`artifacts/ms3/current`. Validate that exact activation before starting it:
+
+```bash
+scripts/start-ms3-variant-lab.sh --check
+```
+
+Start the loopback Gateway with the same bundle and identities:
+
+```bash
+scripts/start-ms3-variant-lab.sh
+```
+
+The defaults are `127.0.0.1:8877`, `~/.config/liveconv/gateway.env`, and the
+current private activation. Override them only with `LIVECONV_MS3_BIND_HOST`,
+`LIVECONV_MS3_BIND_PORT`, `LIVECONV_GATEWAY_ENV`, or
+`LIVECONV_MS3_DEPLOYMENT`. The launcher validates the sealed bundle and every
+model artifact before listening, so terminal and Extension sessions resolve the
+same public manifest.
+
 For every reproduced High or Medium review finding, use the `Review finding`
 issue form or an equivalent private record and choose exactly one disposition:
 `fix-now`, `scheduled`, `accepted-risk`, or `out-of-scope`. A scheduled finding

@@ -47,7 +47,13 @@ EVALUATION_SCHEMAS = (
     "speaker-lane.schema.json",
     "streaming-lane.schema.json",
 )
-WORKER_PACKS = ("beatrice-2.json", "openvoice-v2.json", "rvc-v2.json", "x-vc.json")
+WORKER_PACKS = (
+    "beatrice-2.json",
+    "meanvc2.json",
+    "openvoice-v2.json",
+    "rvc-v2.json",
+    "x-vc.json",
+)
 
 PACKAGE_SPECS = (
     PackageSpec(
@@ -152,6 +158,8 @@ PACKAGE_SPECS = (
             *(f"workers/packs/{name}" for name in WORKER_PACKS),
             "workers/adapters/beatrice_2/requirements-runtime.lock.txt",
             "workers/adapters/beatrice_2/requirements-runtime.txt",
+            "workers/adapters/meanvc2/requirements-runtime.lock",
+            "workers/adapters/meanvc2/requirements-runtime.txt",
             "workers/adapters/openvoice_v2/requirements-runtime.lock",
             "workers/adapters/openvoice_v2/requirements-runtime.txt",
             "workers/adapters/rvc_v2/requirements-runtime.lock",
@@ -166,6 +174,8 @@ PACKAGE_SPECS = (
             *(f"packs/{name}" for name in WORKER_PACKS),
             "adapters/beatrice_2/requirements-runtime.lock.txt",
             "adapters/beatrice_2/requirements-runtime.txt",
+            "adapters/meanvc2/requirements-runtime.lock",
+            "adapters/meanvc2/requirements-runtime.txt",
             "adapters/openvoice_v2/requirements-runtime.lock",
             "adapters/openvoice_v2/requirements-runtime.txt",
             "adapters/rvc_v2/requirements-runtime.lock",
@@ -178,6 +188,8 @@ PACKAGE_SPECS = (
             *(f"packs/{name}" for name in WORKER_PACKS),
             "adapters/beatrice_2/requirements-runtime.lock.txt",
             "adapters/beatrice_2/requirements-runtime.txt",
+            "adapters/meanvc2/requirements-runtime.lock",
+            "adapters/meanvc2/requirements-runtime.txt",
             "adapters/openvoice_v2/requirements-runtime.lock",
             "adapters/openvoice_v2/requirements-runtime.txt",
             "adapters/rvc_v2/requirements-runtime.lock",

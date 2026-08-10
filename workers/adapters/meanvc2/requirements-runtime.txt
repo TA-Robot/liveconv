@@ -1,0 +1,13 @@
+--index-url https://pypi.org/simple
+--extra-index-url https://download.pytorch.org/whl/cu128
+
+torch==2.8.0+cu128
+torchaudio==2.8.0+cu128
+numpy==1.26.4
+soundfile==0.12.1
+librosa==0.10.2
+safetensors==0.8.0
+einops==0.8.0
+x-transformers==1.40.2
+soxr==0.3.7
+s3prl==0.4.18

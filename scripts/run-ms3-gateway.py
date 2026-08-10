@@ -161,7 +161,11 @@ def activation_environment(
     directory = directory.resolve()
     bundle = load_deployment(directory, validation_time=validation_time)
     environment = dict(base_environment)
-    for identity_file in identity_files:
+    effective_identity_files = list(identity_files)
+    embedded_identity = directory / "identity.env"
+    if not effective_identity_files and embedded_identity.is_file():
+        effective_identity_files.append(embedded_identity)
+    for identity_file in effective_identity_files:
         values, removed = read_identity_environment(identity_file)
         environment.update(values)
         for name in removed:
@@ -182,6 +186,9 @@ def activation_environment(
 def _arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--deployment", type=Path, required=True)
+    parser.add_argument("--gateway-env", type=Path)
+    parser.add_argument("--bind-host")
+    parser.add_argument("--bind-port", type=int)
     parser.add_argument(
         "--identity-env", type=Path, action="append", default=[], metavar="PATH"
     )
@@ -192,10 +199,24 @@ def _arguments() -> argparse.Namespace:
 def main() -> int:
     arguments = _arguments()
     try:
+        base_environment = dict(os.environ)
+        if arguments.gateway_env is not None:
+            gateway_values, gateway_removed = read_identity_environment(
+                arguments.gateway_env
+            )
+            base_environment.update(gateway_values)
+            for name in gateway_removed:
+                base_environment.pop(name, None)
+        if arguments.bind_host is not None:
+            base_environment["LIVECONV_BIND_HOST"] = arguments.bind_host
+        if arguments.bind_port is not None:
+            if not 1 <= arguments.bind_port <= 65_535:
+                raise ValueError("bind port must be between 1 and 65535")
+            base_environment["LIVECONV_BIND_PORT"] = str(arguments.bind_port)
         environment, bundle = activation_environment(
             arguments.deployment,
             arguments.identity_env,
-            base_environment=dict(os.environ),
+            base_environment=base_environment,
             validation_time=datetime.now(UTC),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:

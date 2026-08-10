@@ -1,0 +1,248 @@
+{
+  "schema_version": 1,
+  "pack_id": "meanvc2",
+  "display_name": "MeanVC2",
+  "status": "research",
+  "ready_for_runtime": false,
+  "promotion_evidence": {
+    "status": "technical_validation",
+    "evidence_sha256": "sha256:b103f6382092606d4c8351963066dcaa3b23994773d07973a6cc37bd8a804e3b"
+  },
+  "role": "streaming_candidate",
+  "implementation_priority": 5,
+  "canonical_source_url": "https://github.com/ASLP-lab/MeanVC2",
+  "upstream_urls": [
+    "https://huggingface.co/ASLP-lab/MeanVC2"
+  ],
+  "japanese_evidence": {
+    "level": "none_official",
+    "summary": "The official model card identifies English and Chinese; Japanese preservation and voice quality remain unassessed in liveconv.",
+    "evidence_urls": [
+      "https://huggingface.co/ASLP-lab/MeanVC2"
+    ],
+    "offline_gate_required": true
+  },
+  "immutability_gate": {
+    "status": "blocked",
+    "source_revision": null,
+    "weight_sha256": null,
+    "approval_record_url": null,
+    "blocking_reasons": [
+      "The exact local MS-3 profile remains technical-only until license and Japanese evidence gates pass."
+    ]
+  },
+  "license_gate": {
+    "overall_status": "review_required",
+    "code": {
+      "status": "declared",
+      "declared_license": "Apache-2.0",
+      "evidence_urls": [
+        "https://github.com/ASLP-lab/MeanVC2"
+      ],
+      "notes": "The official README declares Apache-2.0, but the pinned checkout has no root LICENSE file; retain personal technical-evaluation scope pending clarification."
+    },
+    "weights": {
+      "status": "declared",
+      "declared_license": "Apache-2.0",
+      "evidence_urls": [
+        "https://huggingface.co/ASLP-lab/MeanVC2"
+      ],
+      "notes": "The official Hugging Face model card declares Apache-2.0; artifact digests are pinned independently."
+    },
+    "training_data": {
+      "status": "review_required",
+      "declared_license": null,
+      "evidence_urls": [
+        "https://github.com/ASLP-lab/MeanVC2"
+      ],
+      "notes": "Training-corpus terms have not been approved for product redistribution or retraining."
+    },
+    "inference_runtime": {
+      "status": "review_required",
+      "declared_license": null,
+      "evidence_urls": [
+        "https://github.com/ASLP-lab/MeanVC2"
+      ],
+      "notes": "WavLM, s3prl, Vocos, FastU2++ and transitive runtime terms require a separate product review."
+    }
+  },
+  "audio_contract": {
+    "native_sample_rate_hz": 16000,
+    "gateway_input_sample_rate_hz": 48000,
+    "gateway_output_sample_rate_hz": 48000,
+    "context_mode": "windowed_streaming",
+    "minimum_context_ms": 160,
+    "processing_window_ms": 160,
+    "lookahead_ms": 40,
+    "notes": "The adapter buffers eight 20 ms Gateway frames, runs the official 40+40 ms path, and returns ordered 48 kHz frames with a bounded final drain."
+  },
+  "target_preparation": {
+    "mode": "zero_shot_reference",
+    "authorization_required": true,
+    "recommended_audio_seconds": 6,
+    "procedure": "Validate one authorized reference WAV, precompute its WavLM speaker representation during worker warmup, and never expose its path publicly."
+  },
+  "artifact_env": [
+    {
+      "purpose": "MeanVC2 40+40 ms safetensors checkpoint",
+      "env_var": "LIVECONV_MEANVC2_CHECKPOINT_PATH",
+      "required_for": "all_modes",
+      "sha256": null,
+      "provenance_url": null
+    },
+    {
+      "purpose": "FastU2++ 80 ms content encoder",
+      "env_var": "LIVECONV_MEANVC2_ASR_PATH",
+      "required_for": "all_modes",
+      "sha256": null,
+      "provenance_url": null
+    },
+    {
+      "purpose": "Vocos vocoder",
+      "env_var": "LIVECONV_MEANVC2_VOCODER_PATH",
+      "required_for": "all_modes",
+      "sha256": null,
+      "provenance_url": null
+    },
+    {
+      "purpose": "WavLM speaker encoder configuration",
+      "env_var": "LIVECONV_MEANVC2_SPEAKER_CONFIG_PATH",
+      "required_for": "all_modes",
+      "sha256": null,
+      "provenance_url": null
+    },
+    {
+      "purpose": "MeanVC2 WavLM speaker checkpoint",
+      "env_var": "LIVECONV_MEANVC2_SPEAKER_CHECKPOINT_PATH",
+      "required_for": "all_modes",
+      "sha256": null,
+      "provenance_url": null
+    },
+    {
+      "purpose": "Authorized Amitaro Runrun reference WAV",
+      "env_var": "LIVECONV_MEANVC2_TARGET_REFERENCE_PATH",
+      "required_for": "all_modes",
+      "sha256": null,
+      "provenance_url": null
+    }
+  ],
+  "resource_budget_hypothesis": {
+    "evidence_status": "hypothesis",
+    "cpu": {
+      "support": "claimed",
+      "max_threads": 16,
+      "max_ram_mb": 16384
+    },
+    "gpu": {
+      "requirement": "preferred",
+      "max_vram_mb": 16384
+    },
+    "notes": "One local RTX 5090 technical smoke passed; no NFR, soak, or capacity claim is made."
+  },
+  "mode_gates": {
+    "offline": {
+      "status": "required",
+      "blocker_ids": [
+        "meanvc2-license",
+        "meanvc2-japanese"
+      ],
+      "acceptance_scope": [
+        "Japanese content preservation",
+        "target-speaker change",
+        "audio integrity"
+      ]
+    },
+    "streaming": {
+      "status": "blocked",
+      "blocker_ids": [
+        "meanvc2-license",
+        "meanvc2-japanese",
+        "meanvc2-extension-route"
+      ],
+      "acceptance_scope": [
+        "offline eligibility first",
+        "Extension route parity",
+        "generation cancellation"
+      ]
+    }
+  },
+  "blockers": [
+    {
+      "id": "meanvc2-license",
+      "category": "license",
+      "summary": "Exact code and transitive runtime terms are not approved beyond personal technical evaluation.",
+      "clear_when": "The pinned source, checkpoint and dependency terms are accepted for the intended use."
+    },
+    {
+      "id": "meanvc2-japanese",
+      "category": "japanese_evidence",
+      "summary": "The official model has no Japanese claim and the local technical smoke did not evaluate content or voice quality.",
+      "clear_when": "The frozen Japanese screen records content, speaker and integrity results without a hard failure."
+    },
+    {
+      "id": "meanvc2-extension-route",
+      "category": "integration",
+      "summary": "The exact MeanVC2 profile has not yet been heard through the Extension route.",
+      "clear_when": "Gateway and Extension route parity passes for the exact profile and reference identity."
+    }
+  ],
+  "acceptance_checklist": {
+    "adapter_conformance": {
+      "required": true,
+      "status": "pending",
+      "criterion": "Pass worker protocol and exact identity checks through the Gateway.",
+      "blocked_by": ["meanvc2-extension-route"],
+      "evidence_url": null
+    },
+    "warmup": {
+      "required": true,
+      "status": "pending",
+      "criterion": "Warm the exact model and authorized target within the frozen timeout.",
+      "blocked_by": ["meanvc2-extension-route"],
+      "evidence_url": null
+    },
+    "cancel": {
+      "required": true,
+      "status": "pending",
+      "criterion": "Cancel acknowledges promptly and stale output is never accepted.",
+      "blocked_by": ["meanvc2-extension-route"],
+      "evidence_url": null
+    },
+    "unload": {
+      "required": true,
+      "status": "pending",
+      "criterion": "Worker close releases its model process and GPU allocation.",
+      "blocked_by": ["meanvc2-extension-route"],
+      "evidence_url": null
+    },
+    "vram": {
+      "required": true,
+      "status": "pending",
+      "criterion": "Record peak and post-close VRAM under the exact Gateway route.",
+      "blocked_by": ["meanvc2-extension-route"],
+      "evidence_url": null
+    },
+    "stt": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Japanese STT and high-consequence entities pass the frozen screen.",
+      "blocked_by": ["meanvc2-japanese"],
+      "evidence_url": null
+    },
+    "speaker": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "The authorized Runrun target is audibly and measurably approached.",
+      "blocked_by": ["meanvc2-japanese"],
+      "evidence_url": null
+    },
+    "integrity": {
+      "required": true,
+      "status": "blocked",
+      "criterion": "Resampling, batch boundaries and final drain pass the frozen integrity rules.",
+      "blocked_by": ["meanvc2-japanese"],
+      "evidence_url": null
+    }
+  },
+  "decision_notes": "The retained 24-frame WorkerSupervisor run is technical validation only. MeanVC2 is a personal MS-3 audition candidate, not a Japanese quality, latency, stability, or product-readiness claim."
+}

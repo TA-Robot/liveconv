@@ -312,6 +312,35 @@ def test_terminal_activation_uses_only_the_sealed_bundle_and_literal_identity_en
     assert "PYTHONHOME" not in environment
 
 
+def test_terminal_activation_uses_embedded_identity_when_no_override_is_given(
+    tmp_path: Path,
+) -> None:
+    draft = deployment_bundle()
+    registry = authorization_registry_for(draft)
+    sealed = BUILDER.seal_bundle(
+        draft,
+        registry,
+        validation_time=VALIDATION_TIME,
+    )
+    destination = tmp_path / "deployment-v1"
+    BUILDER.write_bundle_directory(destination, sealed, registry)
+    (destination / "identity.env").write_text(
+        "unset PYTHONPATH PYTHONHOME\n"
+        "export LIVECONV_RVC_SOURCE_ROOT='/private/embedded runtime'\n",
+        encoding="utf-8",
+    )
+
+    environment, _activated = LAUNCHER.activation_environment(
+        destination,
+        [],
+        base_environment={"PYTHONPATH": "unsafe"},
+        validation_time=VALIDATION_TIME,
+    )
+
+    assert environment["LIVECONV_RVC_SOURCE_ROOT"] == "/private/embedded runtime"
+    assert "PYTHONPATH" not in environment
+
+
 def test_terminal_activation_rejects_a_manifest_from_another_bundle(
     tmp_path: Path,
 ) -> None:
