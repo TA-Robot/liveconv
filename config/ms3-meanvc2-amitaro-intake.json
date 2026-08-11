@@ -1,19 +1,13 @@
 {
   "schema_version": 1,
-  "variant_id": "meanvc2-amitaro-runrun",
   "family_id": "meanvc2",
-  "profile_id": "vc.meanvc2.amitaro-runrun.v1",
-  "display_name": "MeanVC2 - Amitaro Runrun",
-  "target_presentation": "bright-youthful-feminine",
   "provider_id": "amitaro",
   "provider_name": "Amitaro's Voice Material Studio",
   "source_page_url": "https://amitaro.net/voice/corpus-list/mana-corpus/",
   "terms_url": "https://amitaro.net/voice/voice_rule/",
   "required_attribution": "Amitaro's Voice Material Studio (https://amitaro.net/)",
   "scope": "personal-evaluation",
-  "reference_sha256": "ea78016e6a15eb7236b3f25fca877a6d1117a8fa1c5efda6635d7d4516dd6126",
   "reference_terms_sha256": "e014f33e8d7c55bcab831d45399b8d65153957312bec889f9b32da946e934416",
-  "target_authorization_sha256": "b5e7994c1cabaef4ac24a63a607e9d4e4a040c7f7db8e38fe6ac07def6e541ec",
   "model_source_url": "https://github.com/ASLP-lab/MeanVC2",
   "model_revision": "0d39c8ae416a37edb9884db67334e4b9d0c3e308",
   "model_snapshot_url": "https://huggingface.co/ASLP-lab/MeanVC2",
@@ -21,5 +15,29 @@
   "license_state": "personal-technical-evaluation-only",
   "license_notes": "The official Hugging Face card declares Apache-2.0 and the upstream README claims Apache-2.0, but the reviewed Git checkout has no root LICENSE and Japanese support is not claimed. This route is not approved for redistribution or product use.",
   "quality_state": "unassessed",
-  "quality_notes": "The retained worker smoke proves bounded changed PCM only. It does not establish Japanese content preservation, speaker similarity, latency compliance, or subjective quality."
+  "quality_notes": "The retained worker smoke proves bounded changed PCM only. It does not establish Japanese content preservation, speaker similarity, latency compliance, or subjective quality.",
+  "variants": [
+    {
+      "variant_id": "meanvc2-amitaro-runrun",
+      "profile_id": "vc.meanvc2.amitaro-runrun.v1",
+      "style_id": "runrun",
+      "display_name": "MeanVC2 - Amitaro Runrun ・ 短い参照 Q007",
+      "target_presentation": "bright-youthful-feminine",
+      "reference_name": "QUESTION_007.wav",
+      "reference_sha256": "ea78016e6a15eb7236b3f25fca877a6d1117a8fa1c5efda6635d7d4516dd6126",
+      "authorization_name": "runrun.json",
+      "target_authorization_sha256": "b5e7994c1cabaef4ac24a63a607e9d4e4a040c7f7db8e38fe6ac07def6e541ec"
+    },
+    {
+      "variant_id": "meanvc2-amitaro-runrun-q34",
+      "profile_id": "vc.meanvc2.amitaro-runrun-q34.v1",
+      "style_id": "runrun",
+      "display_name": "MeanVC2 - Amitaro Runrun ・ 長い参照 Q034",
+      "target_presentation": "bright-youthful-feminine",
+      "reference_name": "QUESTION_034.wav",
+      "reference_sha256": "0cd4bd58aabbf438ab11b304a9f01d9d0fdf5c49e73e1a3edbc22bae1273f3bd",
+      "authorization_name": "runrun-q34.json",
+      "target_authorization_sha256": "76392ed4fe498dbefe3f1adc6381534c048f571d6163e21cbd2f30191097361f"
+    }
+  ]
 }

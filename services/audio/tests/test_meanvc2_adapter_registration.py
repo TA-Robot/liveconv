@@ -8,10 +8,10 @@ from liveconv_audio.model_adapters import meanvc2
 from liveconv_audio.profiles import ModelProfile
 
 
-def profile(endpoint: Path) -> ModelProfile:
+def profile(endpoint: Path, profile_id: str = meanvc2.PROFILE_ID) -> ModelProfile:
     return ModelProfile.model_validate(
         {
-            "profile_id": meanvc2.PROFILE_ID,
+            "profile_id": profile_id,
             "kind": "voice_conversion",
             "readiness": "ready",
             "adapter_api_version": 1,
@@ -30,7 +30,7 @@ def profile(endpoint: Path) -> ModelProfile:
             "timeouts": {"first_output_ms": 120_000, "stall_ms": 30_000},
             "runtime": {
                 "adapter": "worker",
-                "configuration": deepcopy(meanvc2.CANONICAL_CONFIGURATION),
+                "configuration": deepcopy(meanvc2._configuration(profile_id)),
                 "worker_module": meanvc2.WORKER_MODULE,
                 "worker_endpoint": str(endpoint),
                 "max_vram_mb": 16_384,
@@ -84,6 +84,46 @@ def test_meanvc2_registration_builds_only_the_static_route(
     assert "PYTHONPATH" not in worker.environment
     assert len(worker.artifacts) == len(meanvc2._ARTIFACT_BINDINGS)
     assert meanvc2.delivery_mode(candidate) == "live_frame_echo"
+
+
+def test_meanvc2_registration_binds_the_long_reference_variant(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    endpoint = install_environment(monkeypatch, tmp_path)
+    profile_id = "vc.meanvc2.amitaro-runrun-q34.v1"
+    reference_digest, authorization_digest = meanvc2._APPROVED_TARGETS[profile_id]
+    reference_path = tmp_path / "runrun-q34.wav"
+    authorization_path = tmp_path / "runrun-q34.json"
+    reference_path.write_bytes(b"long reference")
+    authorization_path.write_text("{}\n", encoding="utf-8")
+    (
+        reference_path_name,
+        reference_sha_name,
+        authorization_path_name,
+        authorization_sha_name,
+    ) = meanvc2.target_environment_names(profile_id)
+    monkeypatch.setenv(reference_path_name, str(reference_path))
+    monkeypatch.setenv(reference_sha_name, reference_digest)
+    monkeypatch.setenv(authorization_path_name, str(authorization_path))
+    monkeypatch.setenv(authorization_sha_name, authorization_digest)
+
+    worker = meanvc2.build_worker_profile(
+        profile(endpoint, profile_id), "pipeline-q34", 500
+    )
+    artifact_digests = {
+        artifact.env_var: artifact.sha256 for artifact in worker.artifacts
+    }
+
+    assert worker.environment["LIVECONV_MEANVC2_TARGET_REFERENCE_PATH"] == str(
+        reference_path
+    )
+    assert (
+        artifact_digests["LIVECONV_MEANVC2_TARGET_REFERENCE_PATH"] == reference_digest
+    )
+    assert (
+        artifact_digests["LIVECONV_MEANVC2_TARGET_AUTHORIZATION_PATH"]
+        == authorization_digest
+    )
 
 
 @pytest.mark.parametrize(

@@ -66,6 +66,23 @@ def _base_registry() -> dict[str, object]:
                             "checkpoint_sha256": "1" * 64,
                             "index_sha256": "5" * 64,
                         },
+                        "settings": {
+                            "block_ms": 500,
+                            "context_ms": 2500,
+                            "crossfade_ms": 50,
+                            "f0_method": "rmvpe",
+                            "formant_shift": 0.0,
+                            "frame_ms": 20,
+                            "index_rate": 0.75,
+                            "inference_batch_frames": 25,
+                            "pitch_shift": 0,
+                            "queue_capacity_frames": 25,
+                            "resident_capacity_frames": 50,
+                            "rms_mix_rate": 1.0,
+                            "sample_rate": 48000,
+                            "speaker_id": 0,
+                            "threshold_dbfs": -60.0,
+                        },
                     },
                     "worker_endpoint": "/private/runtime/bin/python",
                     "max_vram_mb": 2048,
@@ -149,6 +166,14 @@ def test_preparation_binds_profile_authorization_and_private_environment(
         == registry["records"][0]["record_sha256"]
     )
     assert materials["manifests"][0]["source_manifest_sha256"].startswith("sha256:")
+    settings = profile["runtime"]["configuration"]["settings"]
+    assert {key: settings[key] for key in PREPARE.RVC_PARAMETER_KEYS} == {
+        "context_ms": 2500,
+        "crossfade_ms": 50,
+        "index_rate": 0.75,
+        "pitch_shift": 0,
+        "rms_mix_rate": 1.0,
+    }
     names = PREPARE.rvc_variant_environment_names(profile["profile_id"])
     assert environment[names["checkpoint_path"]].endswith("voice.pth")
     assert environment[names["index_path"]].endswith("voice.index")
@@ -188,3 +213,45 @@ def test_private_preparation_is_atomic_and_outside_repository(tmp_path: Path) ->
     assert oct((destination / "identity.env").stat().st_mode & 0o777) == "0o600"
     with pytest.raises(FileExistsError):
         PREPARE.write_preparation(destination, *prepared)
+
+
+def test_preparation_expands_each_voice_into_distinct_parameter_profiles(
+    tmp_path: Path,
+) -> None:
+    candidate_root, intake = _candidate_fixture(tmp_path)
+    intake["parameter_presets"] = [
+        {
+            "preset_id": "standard",
+            "preserve_base_identity": True,
+            "display_suffix": "standard",
+            "settings": {
+                "pitch_shift": 0,
+                "index_rate": 0.75,
+                "rms_mix_rate": 1.0,
+                "context_ms": 2500,
+                "crossfade_ms": 50,
+            },
+        },
+        {
+            "preset_id": "girl-bright",
+            "display_suffix": "girl bright",
+            "settings": {
+                "pitch_shift": 4,
+                "index_rate": 0.6,
+                "rms_mix_rate": 0.65,
+                "context_ms": 3000,
+                "crossfade_ms": 80,
+            },
+        },
+    ]
+
+    draft, *_ = PREPARE.prepare_documents(
+        _base_registry(), intake, candidate_root, reviewed_at=REVIEWED_AT
+    )
+
+    profiles = draft["gateway_profile_registry"]["profiles"]
+    assert [profile["profile_id"] for profile in profiles] == [
+        "vc.rvc-v2.provider-bright.v1",
+        "vc.rvc-v2.provider-bright-girl-bright.v1",
+    ]
+    assert profiles[1]["runtime"]["configuration"]["settings"]["pitch_shift"] == 4

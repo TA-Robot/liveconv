@@ -342,7 +342,7 @@ function modelRoster(options = {}) {
   };
 }
 
-function deploymentCatalog() {
+function deploymentCatalog(profileCount = 9) {
   const families = [
     "rvc-v2",
     "meanvc2",
@@ -352,13 +352,14 @@ function deploymentCatalog() {
   const hashCharacters = "abcdef012";
   return {
     protocol_version: 1,
-    profiles: Array.from({ length: 9 }, (_, index) => {
+    profiles: Array.from({ length: profileCount }, (_, index) => {
       const familyId = families[index % families.length];
       return catalogProfile(`vc.${familyId}.voice-${index + 1}.v1`, {
         kind: "voice_conversion",
         packId: familyId,
-        profileHashCharacter: hashCharacters[index],
-        configurationHashCharacter: String(index + 1),
+        profileHashCharacter: hashCharacters[index % hashCharacters.length],
+        configurationHashCharacter:
+          hashCharacters[(index + 1) % hashCharacters.length],
         streaming: familyId !== "openvoice-v2",
       });
     }),
@@ -3823,7 +3824,7 @@ test("EXP-005 clear cannot be undone by an older pending receipt write", async (
 test("deployment manifest lists the exact Gateway-bound voice variants", async () => {
   const { createBrowserRuntime } = await import(moduleUrl);
   const harness = createHarness();
-  const catalog = deploymentCatalog();
+  const catalog = deploymentCatalog(32);
   const manifest = deploymentManifest(catalog);
   const requests = [];
   const runtime = createBrowserRuntime({
@@ -3859,7 +3860,7 @@ test("deployment manifest lists the exact Gateway-bound voice variants", async (
     bundleId: manifest.bundle_id,
     bundleRevision: manifest.bundle_revision,
   });
-  assert.equal(response.variants.length, 9);
+  assert.equal(response.variants.length, 32);
   assert.equal(new Set(response.variants.map((variant) => variant.familyId)).size, 4);
   assert.deepEqual(
     response.variants.map((variant) => variant.profileId),

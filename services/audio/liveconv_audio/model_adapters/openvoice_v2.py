@@ -83,13 +83,31 @@ _CANONICAL_CONFIGURATION: dict[str, float | int | str] = {
     ),
 }
 
-_APPROVED_TARGET_REFERENCES = {
-    _PROFILE_ID: _CANONICAL_CONFIGURATION["target_reference_sha256"],
+_APPROVED_VARIANTS = {
+    _PROFILE_ID: (_CANONICAL_CONFIGURATION["target_reference_sha256"], 0.3),
     "vc.openvoice-v2.amitaro-runrun.v1": (
-        "ea78016e6a15eb7236b3f25fca877a6d1117a8fa1c5efda6635d7d4516dd6126"
+        "ea78016e6a15eb7236b3f25fca877a6d1117a8fa1c5efda6635d7d4516dd6126",
+        0.3,
+    ),
+    "vc.openvoice-v2.amitaro-runrun-tau015.v1": (
+        "ea78016e6a15eb7236b3f25fca877a6d1117a8fa1c5efda6635d7d4516dd6126",
+        0.15,
+    ),
+    "vc.openvoice-v2.amitaro-runrun-tau060.v1": (
+        "ea78016e6a15eb7236b3f25fca877a6d1117a8fa1c5efda6635d7d4516dd6126",
+        0.6,
     ),
     "vc.openvoice-v2.amitaro-yofukashi.v1": (
-        "a40396353b2543cc7923b673cdc42c25bb63f9204008e240b3659e55bd3c518f"
+        "a40396353b2543cc7923b673cdc42c25bb63f9204008e240b3659e55bd3c518f",
+        0.3,
+    ),
+    "vc.openvoice-v2.amitaro-yofukashi-tau015.v1": (
+        "a40396353b2543cc7923b673cdc42c25bb63f9204008e240b3659e55bd3c518f",
+        0.15,
+    ),
+    "vc.openvoice-v2.amitaro-yofukashi-tau060.v1": (
+        "a40396353b2543cc7923b673cdc42c25bb63f9204008e240b3659e55bd3c518f",
+        0.6,
     ),
 }
 
@@ -159,7 +177,7 @@ _ARTIFACT_BINDINGS = (
 def validate_configuration(profile: ModelProfile) -> None:
     """Reject routes that differ from the retained offline preview identity."""
 
-    if profile.profile_id not in _APPROVED_TARGET_REFERENCES:
+    if profile.profile_id not in _APPROVED_VARIANTS:
         raise ValueError(f"{profile.profile_id}: OpenVoice profile ID is not approved")
     if profile.runtime.adapter != "worker":
         raise ValueError(f"{profile.profile_id}: OpenVoice requires the worker adapter")
@@ -282,12 +300,13 @@ def queue_capacity_frames(_profile: ModelProfile, _queue_budget_ms: int) -> int:
 
 def _configuration(profile_id: str) -> dict[str, float | int | str]:
     try:
-        target_reference_sha256 = _APPROVED_TARGET_REFERENCES[profile_id]
+        target_reference_sha256, tau = _APPROVED_VARIANTS[profile_id]
     except KeyError as exc:
         raise ValueError(f"{profile_id}: OpenVoice profile ID is not approved") from exc
     return {
         **_CANONICAL_CONFIGURATION,
         "target_reference_sha256": target_reference_sha256,
+        "tau": tau,
     }
 
 
@@ -321,7 +340,7 @@ def target_environment_names(profile_id: str) -> tuple[str, str]:
             "LIVECONV_OPENVOICE_V2_TARGET_REFERENCE_PATH",
             "LIVECONV_OPENVOICE_V2_TARGET_REFERENCE_SHA256",
         )
-    if profile_id not in _APPROVED_TARGET_REFERENCES:
+    if profile_id not in _APPROVED_VARIANTS:
         raise ValueError(f"{profile_id}: OpenVoice profile ID is not approved")
     suffix = re.sub(r"[^A-Za-z0-9]+", "_", profile_id).strip("_").upper()
     prefix = f"LIVECONV_OPENVOICE_V2_VARIANT_{suffix}"
@@ -384,7 +403,12 @@ def _environment(
         raise ValueError(
             f"{profile.profile_id}: target reference does not match approved identity"
         )
-    environment.update(_OPTIONAL_ENVIRONMENT_BINDINGS)
+    environment.update(
+        {
+            **_OPTIONAL_ENVIRONMENT_BINDINGS,
+            "LIVECONV_OPENVOICE_V2_TAU": str(configuration["tau"]),
+        }
+    )
     return environment
 
 

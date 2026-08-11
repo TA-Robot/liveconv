@@ -16,12 +16,14 @@ class StubRegistry:
         return self._profiles.get(profile_id)
 
 
-def deployment_fixture() -> tuple[dict[str, object], StubRegistry]:
+def deployment_fixture(
+    variant_count: int = 9,
+) -> tuple[dict[str, object], StubRegistry]:
     families = ("rvc-v2", "meanvc2", "x-vc", "openvoice-v2")
     profiles: dict[str, object] = {}
     profile_documents = []
     variants = []
-    for index in range(1, 10):
+    for index in range(1, variant_count + 1):
         family = families[(index - 1) % len(families)]
         profile_id = f"vc.{family}.voice-{index}.v1"
         profile_hash = f"sha256:{index:064x}"
@@ -73,7 +75,9 @@ def deployment_fixture() -> tuple[dict[str, object], StubRegistry]:
             "profiles": profile_documents,
         },
         "authorization_registry_revision": f"sha256:{500:064x}",
-        "authorization_records": [{"record": index} for index in range(1, 10)],
+        "authorization_records": [
+            {"record": index} for index in range(1, variant_count + 1)
+        ],
         "public_manifest": {
             "schema_version": 1,
             "bundle_id": "ms3-runtime-test-v1",
@@ -145,6 +149,22 @@ def test_runtime_manifest_allows_an_incremental_single_family_bundle(
     )
 
     assert len(manifest.public_document()["variants"]) == 1
+
+
+def test_runtime_manifest_accepts_the_full_parameter_lab_capacity(
+    tmp_path: Path,
+) -> None:
+    bundle, registry = deployment_fixture(32)
+    bundle_path, profile_path = write_bundle(tmp_path, bundle)
+
+    manifest = deployment.DeploymentManifest.load(
+        bundle_path,
+        profile_config=profile_path,
+        registry=registry,
+        max_sessions=1,
+    )
+
+    assert len(manifest.public_document()["variants"]) == 32
 
 
 @pytest.mark.parametrize(

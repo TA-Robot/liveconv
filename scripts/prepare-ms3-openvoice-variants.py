@@ -26,10 +26,28 @@ ZERO_SHA256 = "sha256:" + "0" * 64
 BASE_PROFILE_ID = "vc.openvoice-v2.synthetic-ja.v1"
 APPROVED_TARGETS = {
     "vc.openvoice-v2.amitaro-runrun.v1": (
-        "ea78016e6a15eb7236b3f25fca877a6d1117a8fa1c5efda6635d7d4516dd6126"
+        "ea78016e6a15eb7236b3f25fca877a6d1117a8fa1c5efda6635d7d4516dd6126",
+        0.3,
+    ),
+    "vc.openvoice-v2.amitaro-runrun-tau015.v1": (
+        "ea78016e6a15eb7236b3f25fca877a6d1117a8fa1c5efda6635d7d4516dd6126",
+        0.15,
+    ),
+    "vc.openvoice-v2.amitaro-runrun-tau060.v1": (
+        "ea78016e6a15eb7236b3f25fca877a6d1117a8fa1c5efda6635d7d4516dd6126",
+        0.6,
     ),
     "vc.openvoice-v2.amitaro-yofukashi.v1": (
-        "a40396353b2543cc7923b673cdc42c25bb63f9204008e240b3659e55bd3c518f"
+        "a40396353b2543cc7923b673cdc42c25bb63f9204008e240b3659e55bd3c518f",
+        0.3,
+    ),
+    "vc.openvoice-v2.amitaro-yofukashi-tau015.v1": (
+        "a40396353b2543cc7923b673cdc42c25bb63f9204008e240b3659e55bd3c518f",
+        0.15,
+    ),
+    "vc.openvoice-v2.amitaro-yofukashi-tau060.v1": (
+        "a40396353b2543cc7923b673cdc42c25bb63f9204008e240b3659e55bd3c518f",
+        0.6,
     ),
 }
 
@@ -110,6 +128,53 @@ def target_environment_names(profile_id: str) -> tuple[str, str]:
         f"{prefix}_TARGET_REFERENCE_PATH",
         f"{prefix}_TARGET_REFERENCE_SHA256",
     )
+
+
+def _expanded_candidates(intake_document: dict[str, Any]) -> list[dict[str, Any]]:
+    voices = _array(intake_document.get("variants"), "intake variants")
+    raw_presets = intake_document.get("parameter_presets")
+    presets = (
+        _array(raw_presets, "parameter presets")
+        if raw_presets is not None
+        else [
+            {
+                "preset_id": "tau030",
+                "preserve_base_identity": True,
+                "display_suffix": "tau 0.30",
+                "tau": 0.3,
+            }
+        ]
+    )
+    if not voices or not presets or len(voices) * len(presets) > 8:
+        raise ValueError(
+            "OpenVoice intake must expand to between one and eight variants"
+        )
+    expanded: list[dict[str, Any]] = []
+    for voice in voices:
+        base_variant_id = _text(voice.get("variant_id"), "variant_id")
+        base_profile_id = _text(voice.get("profile_id"), "profile_id")
+        base_display_name = _text(voice.get("display_name"), "display_name")
+        if not base_profile_id.endswith(".v1"):
+            raise ValueError(f"{base_profile_id}: base profile must end in .v1")
+        for preset in presets:
+            preset_id = _text(preset.get("preset_id"), "preset_id")
+            display_suffix = _text(preset.get("display_suffix"), "display_suffix")
+            tau = preset.get("tau")
+            if type(tau) not in {int, float} or not 0.0 <= tau <= 1.0:
+                raise ValueError(f"{preset_id}: tau must be a number from 0 to 1")
+            candidate = copy.deepcopy(voice)
+            if preset.get("preserve_base_identity") is True:
+                candidate["variant_id"] = base_variant_id
+                candidate["profile_id"] = base_profile_id
+            else:
+                candidate["variant_id"] = f"{base_variant_id}-{preset_id}"
+                candidate["profile_id"] = (
+                    f"{base_profile_id.removesuffix('.v1')}-{preset_id}.v1"
+                )
+            candidate["display_name"] = f"{base_display_name} ・ {display_suffix}"
+            candidate["tau"] = float(tau)
+            expanded.append(candidate)
+    return expanded
 
 
 def _base_openvoice_profile(base_registry: object) -> dict[str, Any]:
@@ -194,9 +259,7 @@ def extend_documents(
     intake_document = _object(intake, "intake")
     if intake_document.get("schema_version") != 1:
         raise ValueError("unsupported intake schema")
-    candidates = _array(intake_document.get("variants"), "intake variants")
-    if not 1 <= len(candidates) <= 4:
-        raise ValueError("intake must contain between one and four variants")
+    candidates = _expanded_candidates(intake_document)
     base_profile = _base_openvoice_profile(base_registry)
     reference_root = reference_root.resolve(strict=True)
     profile_registry = _object(
@@ -220,8 +283,13 @@ def extend_documents(
         profile_id = _text(candidate.get("profile_id"), f"{variant_id} profile_id")
         if variant_id in existing_variants or profile_id in existing_profiles:
             raise ValueError(f"duplicate prepared identity: {variant_id}")
-        expected_reference = APPROVED_TARGETS.get(profile_id)
-        if candidate.get("reference_sha256") != expected_reference:
+        expected = APPROVED_TARGETS.get(profile_id)
+        if isinstance(expected, str):
+            expected = (expected, 0.3)
+        if (
+            expected is None
+            or (candidate.get("reference_sha256"), candidate.get("tau")) != expected
+        ):
             raise ValueError(f"{profile_id}: reference is not statically approved")
         style_id = _text(candidate.get("style_id"), f"{variant_id} style_id")
         archive_sha256 = _text(candidate.get("archive_sha256"), "archive_sha256")
@@ -258,6 +326,7 @@ def extend_documents(
             runtime.get("configuration"), f"{variant_id} configuration"
         )
         configuration["target_reference_sha256"] = reference_sha256
+        configuration["tau"] = candidate["tau"]
         profile["weight_revision"] = _weight_revision(configuration)
         profiles.append(profile)
         existing_profiles.add(profile_id)
@@ -279,6 +348,7 @@ def extend_documents(
             "required_attribution": _text(
                 intake_document.get("required_attribution"), "required_attribution"
             ),
+            "tau": candidate["tau"],
         }
         source_manifest_sha256 = VALIDATOR.canonical_hash(material_manifest)
         lineage_manifest_sha256 = VALIDATOR.canonical_hash(

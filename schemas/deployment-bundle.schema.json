@@ -33,14 +33,14 @@
       "required": ["schema_version", "profiles"],
       "properties": {
         "schema_version": { "const": 1 },
-        "profiles": { "type": "array", "minItems": 1, "maxItems": 12 }
+        "profiles": { "type": "array", "minItems": 1, "maxItems": 32 }
       }
     },
     "authorization_records": {
       "type": "array",
       "description": "Gateway-private approved records. The public manifest exposes only each canonical record digest.",
       "minItems": 1,
-      "maxItems": 12,
+      "maxItems": 32,
       "uniqueItems": true,
       "items": { "$ref": "#/$defs/authorizationRecord" }
     },
@@ -67,7 +67,7 @@
         "variants": {
           "type": "array",
           "minItems": 1,
-          "maxItems": 12,
+          "maxItems": 32,
           "uniqueItems": true,
           "items": { "$ref": "#/$defs/variant" }
         }
@@ -208,7 +208,7 @@
           "type": "string",
           "pattern": "^[a-z0-9][a-z0-9.-]{1,63}$"
         },
-        "display_order": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "display_order": { "type": "integer", "minimum": 1, "maximum": 32 },
         "display_name": {
           "type": "string",
           "minLength": 1,

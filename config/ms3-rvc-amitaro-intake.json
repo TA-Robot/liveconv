@@ -6,6 +6,64 @@
   "terms_url": "https://amitaro.net/voice/voice_rule/",
   "required_attribution": "あみたろの声素材工房 (https://amitaro.net/)",
   "scope": "personal-evaluation",
+  "parameter_presets": [
+    {
+      "preset_id": "standard",
+      "preserve_base_identity": true,
+      "display_suffix": "標準 p0 ・ index 0.75 ・ RMS 1.00",
+      "settings": {
+        "pitch_shift": 0,
+        "index_rate": 0.75,
+        "rms_mix_rate": 1.0,
+        "context_ms": 2500,
+        "crossfade_ms": 50
+      }
+    },
+    {
+      "preset_id": "girl-soft",
+      "display_suffix": "少女ソフト p+2 ・ index 0.60 ・ RMS 0.65",
+      "settings": {
+        "pitch_shift": 2,
+        "index_rate": 0.6,
+        "rms_mix_rate": 0.65,
+        "context_ms": 3000,
+        "crossfade_ms": 80
+      }
+    },
+    {
+      "preset_id": "girl-bright",
+      "display_suffix": "少女ブライト p+4 ・ index 0.60 ・ RMS 0.65",
+      "settings": {
+        "pitch_shift": 4,
+        "index_rate": 0.6,
+        "rms_mix_rate": 0.65,
+        "context_ms": 3000,
+        "crossfade_ms": 80
+      }
+    },
+    {
+      "preset_id": "girl-high",
+      "display_suffix": "少女ハイ p+6 ・ index 0.50 ・ RMS 0.55",
+      "settings": {
+        "pitch_shift": 6,
+        "index_rate": 0.5,
+        "rms_mix_rate": 0.55,
+        "context_ms": 3500,
+        "crossfade_ms": 90
+      }
+    },
+    {
+      "preset_id": "clean-bright",
+      "display_suffix": "かすれ抑制 p+4 ・ index 0.30 ・ RMS 0.50",
+      "settings": {
+        "pitch_shift": 4,
+        "index_rate": 0.3,
+        "rms_mix_rate": 0.5,
+        "context_ms": 3500,
+        "crossfade_ms": 90
+      }
+    }
+  ],
   "variants": [
     {
       "variant_id": "rvc-amitaro-hakihaki",

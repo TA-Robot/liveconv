@@ -21,6 +21,13 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INTAKE = REPOSITORY_ROOT / "config" / "ms3-rvc-amitaro-intake.json"
 VALIDATOR_PATH = REPOSITORY_ROOT / "scripts" / "validate-deployment-bundle.py"
 ZERO_SHA256 = "sha256:" + "0" * 64
+RVC_PARAMETER_KEYS = {
+    "context_ms",
+    "crossfade_ms",
+    "index_rate",
+    "pitch_shift",
+    "rms_mix_rate",
+}
 
 
 def _load_validator() -> ModuleType:
@@ -53,6 +60,91 @@ def _text(value: object, label: str) -> str:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{label} must be non-empty text")
     return value
+
+
+def _parameter_settings(value: object, label: str) -> dict[str, int | float]:
+    settings = _object(value, label)
+    if set(settings) != RVC_PARAMETER_KEYS:
+        raise ValueError(f"{label} must define the approved RVC parameter set")
+    pitch_shift = settings["pitch_shift"]
+    context_ms = settings["context_ms"]
+    crossfade_ms = settings["crossfade_ms"]
+    index_rate = settings["index_rate"]
+    rms_mix_rate = settings["rms_mix_rate"]
+    if type(pitch_shift) is not int or not -12 <= pitch_shift <= 12:
+        raise ValueError(f"{label} pitch_shift must be an integer from -12 to 12")
+    if type(context_ms) is not int or not 500 <= context_ms <= 10_000:
+        raise ValueError(f"{label} context_ms must be an integer from 500 to 10000")
+    if type(crossfade_ms) is not int or not 0 <= crossfade_ms <= 100:
+        raise ValueError(f"{label} crossfade_ms must be an integer from 0 to 100")
+    for key, candidate in (
+        ("index_rate", index_rate),
+        ("rms_mix_rate", rms_mix_rate),
+    ):
+        if type(candidate) not in {int, float} or not 0.0 <= candidate <= 1.0:
+            raise ValueError(f"{label} {key} must be a number from 0 to 1")
+    return {
+        "context_ms": context_ms,
+        "crossfade_ms": crossfade_ms,
+        "index_rate": float(index_rate),
+        "pitch_shift": pitch_shift,
+        "rms_mix_rate": float(rms_mix_rate),
+    }
+
+
+def _expanded_candidates(intake_document: dict[str, Any]) -> list[dict[str, Any]]:
+    voices = _array(intake_document.get("variants"), "intake variants")
+    raw_presets = intake_document.get("parameter_presets")
+    presets = (
+        _array(raw_presets, "parameter presets")
+        if raw_presets is not None
+        else [
+            {
+                "preset_id": "standard",
+                "preserve_base_identity": True,
+                "display_suffix": "standard",
+                "settings": {
+                    "pitch_shift": 0,
+                    "index_rate": 0.75,
+                    "rms_mix_rate": 1.0,
+                    "context_ms": 2500,
+                    "crossfade_ms": 50,
+                },
+            }
+        ]
+    )
+    if not voices or not presets or len(voices) * len(presets) > 32:
+        raise ValueError(
+            "RVC intake must expand to between one and thirty-two variants"
+        )
+
+    expanded: list[dict[str, Any]] = []
+    for voice in voices:
+        base_variant_id = _text(voice.get("variant_id"), "variant_id")
+        base_profile_id = _text(voice.get("profile_id"), "profile_id")
+        if not base_profile_id.endswith(".v1"):
+            raise ValueError(f"{base_profile_id}: base profile must end in .v1")
+        base_display_name = _text(voice.get("display_name"), "display_name")
+        for preset in presets:
+            preset_id = _text(preset.get("preset_id"), "preset_id")
+            display_suffix = _text(preset.get("display_suffix"), "display_suffix")
+            settings = _parameter_settings(
+                preset.get("settings"), f"{preset_id} settings"
+            )
+            candidate = copy.deepcopy(voice)
+            if preset.get("preserve_base_identity") is True:
+                candidate["variant_id"] = base_variant_id
+                candidate["profile_id"] = base_profile_id
+            else:
+                candidate["variant_id"] = f"{base_variant_id}-{preset_id}"
+                candidate["profile_id"] = (
+                    f"{base_profile_id.removesuffix('.v1')}-{preset_id}.v1"
+                )
+            candidate["display_name"] = f"{base_display_name} ・ {display_suffix}"
+            candidate["parameter_preset_id"] = preset_id
+            candidate["parameter_settings"] = settings
+            expanded.append(candidate)
+    return expanded
 
 
 def _sha256_file(path: Path) -> str:
@@ -134,9 +226,7 @@ def prepare_documents(
     required_attribution = _text(
         intake_document.get("required_attribution"), "required_attribution"
     )
-    candidates = _array(intake_document.get("variants"), "intake variants")
-    if not 1 <= len(candidates) <= 12:
-        raise ValueError("intake must contain between one and twelve variants")
+    candidates = _expanded_candidates(intake_document)
     base_profile = _base_rvc_profile(base_registry)
     candidate_root = candidate_root.resolve(strict=True)
 
@@ -199,6 +289,11 @@ def prepare_documents(
         artifacts = _object(configuration.get("artifacts"), f"{variant_id} artifacts")
         artifacts["checkpoint_sha256"] = expected["checkpoint_sha256"]
         artifacts["index_sha256"] = expected["index_sha256"]
+        settings = _object(configuration.get("settings"), f"{variant_id} settings")
+        parameter_settings = _parameter_settings(
+            candidate.get("parameter_settings"), f"{variant_id} parameter settings"
+        )
+        settings.update(parameter_settings)
         profiles.append(profile)
 
         material_manifest = {
@@ -212,6 +307,10 @@ def prepare_documents(
             "index_sha256": f"sha256:{expected['index_sha256']}",
             "readme_sha256": f"sha256:{expected['readme_sha256']}",
             "required_attribution": required_attribution,
+            "parameter_preset_id": _text(
+                candidate.get("parameter_preset_id"), "parameter_preset_id"
+            ),
+            "parameter_settings": parameter_settings,
         }
         source_manifest_sha256 = VALIDATOR.canonical_hash(material_manifest)
         lineage_manifest_sha256 = VALIDATOR.canonical_hash(

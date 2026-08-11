@@ -33,6 +33,14 @@ APPROVED_TARGETS = {
         "a40396353b2543cc7923b673cdc42c25bb63f9204008e240b3659e55bd3c518f",
         "313edea2bc054aa885e58919d560c2708487c3be6f7692a06aab5a907c8d619c",
     ),
+    "vc.x-vc.amitaro-runrun-q34.v1": (
+        "0cd4bd58aabbf438ab11b304a9f01d9d0fdf5c49e73e1a3edbc22bae1273f3bd",
+        "d6f1d11f4ae33dda256b6998d301970c5cd83c514d07bd422be48cae971cb444",
+    ),
+    "vc.x-vc.amitaro-yofukashi-q34.v1": (
+        "bf1077b82a5c310d85ceeb6db3290679f87ff89971b21603956e5031101e2d8f",
+        "597e2fa1daa518979fbd3844f62a1f91d79e292c9cf793f8fcec221f8680348f",
+    ),
 }
 
 
@@ -142,10 +150,17 @@ def base_registry_from_identity(identity_path: Path) -> dict[str, Any]:
 
 def _authorization_document(candidate: dict[str, Any]) -> dict[str, object]:
     style_id = _text(candidate.get("style_id"), "style_id")
+    reference_id = candidate.get("reference_id")
+    if reference_id is not None:
+        reference_id = _text(reference_id, "reference_id")
+    reference_name = _text(candidate.get("reference_name"), "reference_name")
     archive_sha256 = _text(candidate.get("archive_sha256"), "archive_sha256")
     reference_sha256 = _text(candidate.get("reference_sha256"), "reference_sha256")
     return {
-        "authorization_id": f"liveconv-ms3-amitaro-{style_id}-v1",
+        "authorization_id": (
+            f"liveconv-ms3-amitaro-{style_id}"
+            f"{'-' + reference_id if reference_id else ''}-v1"
+        ),
         "authorization_record": (
             f"amitaro-mana-corpus-{style_id}@sha256:{archive_sha256}"
         ),
@@ -153,7 +168,7 @@ def _authorization_document(candidate: dict[str, Any]) -> dict[str, object]:
             "licensed human voice; attribution required; no impersonation"
         ),
         "deletion_path": (
-            f"operator-private:amitaro-reference/{style_id}/QUESTION_007.wav"
+            f"operator-private:amitaro-reference/{style_id}/{reference_name}"
         ),
         "owner": "personal operator",
         "permitted_purpose": "personal Japanese voice-conversion evaluation",
@@ -196,8 +211,8 @@ def extend_documents(
     if intake_document.get("schema_version") != 1:
         raise ValueError("unsupported intake schema")
     candidates = _array(intake_document.get("variants"), "intake variants")
-    if not 1 <= len(candidates) <= 4:
-        raise ValueError("intake must contain between one and four variants")
+    if not 1 <= len(candidates) <= 8:
+        raise ValueError("intake must contain between one and eight variants")
     base_profile = _base_xvc_profile(base_registry)
     reference_root = reference_root.resolve(strict=True)
     authorization_directory = authorization_directory.resolve()
@@ -263,7 +278,12 @@ def extend_documents(
             != authorization_sha256
         ):
             raise ValueError(f"{profile_id}: generated authorization digest differs")
-        authorization_name = f"{style_id}.json"
+        reference_id = candidate.get("reference_id")
+        authorization_name = (
+            f"{style_id}-{reference_id}.json"
+            if isinstance(reference_id, str)
+            else f"{style_id}.json"
+        )
         authorization_documents[authorization_name] = authorization
 
         profile = copy.deepcopy(base_profile)

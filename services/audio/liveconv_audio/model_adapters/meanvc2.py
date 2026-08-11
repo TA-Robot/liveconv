@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -65,6 +66,17 @@ CANONICAL_CONFIGURATION: dict[str, object] = {
     ),
     "worker_wheel_sha256": (
         "e4971f2dbf9dd5181002e7a192e13f09dd75c7b3397c9efdb4a8fc9e2105cd9f"
+    ),
+}
+
+_APPROVED_TARGETS = {
+    PROFILE_ID: (
+        CANONICAL_CONFIGURATION["target_reference_sha256"],
+        CANONICAL_CONFIGURATION["target_authorization_sha256"],
+    ),
+    "vc.meanvc2.amitaro-runrun-q34.v1": (
+        "0cd4bd58aabbf438ab11b304a9f01d9d0fdf5c49e73e1a3edbc22bae1273f3bd",
+        "76392ed4fe498dbefe3f1adc6381534c048f571d6163e21cbd2f30191097361f",
     ),
 }
 
@@ -154,19 +166,35 @@ def _configuration_hash(configuration: object) -> str:
     return "sha256:" + hashlib.sha256(encoded).hexdigest()
 
 
+def _configuration(profile_id: str) -> dict[str, object]:
+    try:
+        target_reference_sha256, target_authorization_sha256 = _APPROVED_TARGETS[
+            profile_id
+        ]
+    except KeyError as exc:
+        raise ValueError(f"{profile_id}: MeanVC2 profile ID is not approved") from exc
+    return {
+        **CANONICAL_CONFIGURATION,
+        "target_reference_sha256": target_reference_sha256,
+        "target_authorization_sha256": target_authorization_sha256,
+    }
+
+
 def validate_configuration(profile: ModelProfile) -> None:
-    if profile.profile_id != PROFILE_ID:
+    if profile.profile_id not in _APPROVED_TARGETS:
         raise ValueError(f"{profile.profile_id}: MeanVC2 profile ID is not approved")
     if (
         profile.runtime.adapter != "worker"
         or profile.runtime.worker_module != WORKER_MODULE
     ):
         raise ValueError(f"{profile.profile_id}: MeanVC2 worker is not approved")
-    if profile.runtime.configuration != CANONICAL_CONFIGURATION:
+    configuration = _configuration(profile.profile_id)
+    if profile.runtime.configuration != configuration:
         raise ValueError(f"{profile.profile_id}: MeanVC2 configuration differs")
-    if (
-        profile.configuration_hash != CONFIGURATION_HASH
-        or _configuration_hash(profile.runtime.configuration) != CONFIGURATION_HASH
+    if profile.configuration_hash != _configuration_hash(
+        configuration
+    ) or _configuration_hash(profile.runtime.configuration) != _configuration_hash(
+        configuration
     ):
         raise ValueError(f"{profile.profile_id}: MeanVC2 configuration hash differs")
     if profile.implementation_revision != IMPLEMENTATION_REVISION:
@@ -198,19 +226,20 @@ def build_worker_profile(
 ) -> WorkerProfile:
     del queue_budget_ms
     validate_configuration(profile)
-    environment = _environment(profile)
+    configuration = _configuration(profile.profile_id)
+    environment = _environment(profile, configuration)
     endpoint = _worker_endpoint(profile)
     artifacts = tuple(
         ArtifactSpec(
             env_var=env_var,
-            sha256=_artifact_digest(env_var, digest_key),
+            sha256=_artifact_digest(configuration, env_var, digest_key),
         )
         for env_var, digest_key in _ARTIFACT_BINDINGS
     )
     return WorkerProfile(
         profile_id=profile.profile_id,
         pipeline_id=pipeline_id,
-        configuration_hash=CONFIGURATION_HASH,
+        configuration_hash=_configuration_hash(configuration),
         command=(str(endpoint), "-I", "-B", "-m", WORKER_MODULE),
         cwd=Path("/tmp"),
         environment=environment,
@@ -238,15 +267,58 @@ def queue_capacity_frames(_profile: ModelProfile, _queue_budget_ms: int) -> int:
     return QUEUE_CAPACITY_FRAMES
 
 
-def _environment(profile: ModelProfile) -> dict[str, str]:
+def target_environment_names(profile_id: str) -> tuple[str, str, str, str]:
+    if profile_id == PROFILE_ID:
+        return (
+            "LIVECONV_MEANVC2_TARGET_REFERENCE_PATH",
+            "LIVECONV_MEANVC2_TARGET_REFERENCE_SHA256",
+            "LIVECONV_MEANVC2_TARGET_AUTHORIZATION_PATH",
+            "LIVECONV_MEANVC2_TARGET_AUTHORIZATION_SHA256",
+        )
+    if profile_id not in _APPROVED_TARGETS:
+        raise ValueError(f"{profile_id}: MeanVC2 profile ID is not approved")
+    suffix = re.sub(r"[^A-Za-z0-9]+", "_", profile_id).strip("_").upper()
+    prefix = f"LIVECONV_MEANVC2_VARIANT_{suffix}"
+    return (
+        f"{prefix}_TARGET_REFERENCE_PATH",
+        f"{prefix}_TARGET_REFERENCE_SHA256",
+        f"{prefix}_TARGET_AUTHORIZATION_PATH",
+        f"{prefix}_TARGET_AUTHORIZATION_SHA256",
+    )
+
+
+def _environment(
+    profile: ModelProfile, configuration: dict[str, object]
+) -> dict[str, str]:
     environment: dict[str, str] = {}
+    variant_names = target_environment_names(profile.profile_id)
+    variant_sources = {
+        "LIVECONV_MEANVC2_TARGET_REFERENCE_PATH": variant_names[0],
+        "LIVECONV_MEANVC2_TARGET_REFERENCE_SHA256": variant_names[1],
+        "LIVECONV_MEANVC2_TARGET_AUTHORIZATION_PATH": variant_names[2],
+        "LIVECONV_MEANVC2_TARGET_AUTHORIZATION_SHA256": variant_names[3],
+    }
     for name in _REQUIRED_ENVIRONMENT:
-        value = os.environ.get(name)
+        value = os.environ.get(variant_sources.get(name, name))
         if not value:
             raise ValueError(f"{profile.profile_id}: {name} is required")
         environment[name] = value
     for name, expected in _ENVIRONMENT_BINDINGS.items():
+        if name in {
+            "LIVECONV_MEANVC2_TARGET_REFERENCE_SHA256",
+            "LIVECONV_MEANVC2_TARGET_AUTHORIZATION_SHA256",
+        }:
+            continue
         if environment[name] != expected:
+            raise ValueError(f"{profile.profile_id}: {name} differs")
+    for name, key in (
+        ("LIVECONV_MEANVC2_TARGET_REFERENCE_SHA256", "target_reference_sha256"),
+        (
+            "LIVECONV_MEANVC2_TARGET_AUTHORIZATION_SHA256",
+            "target_authorization_sha256",
+        ),
+    ):
+        if environment[name] != configuration[key]:
             raise ValueError(f"{profile.profile_id}: {name} differs")
     environment.update(
         {
@@ -258,10 +330,15 @@ def _environment(profile: ModelProfile) -> dict[str, str]:
     return environment
 
 
-def _artifact_digest(env_var: str, digest_key: str) -> str:
-    digest = _ENVIRONMENT_BINDINGS.get(env_var.replace("_PATH", "_SHA256"))
-    if digest is None:
-        digest = CANONICAL_CONFIGURATION[digest_key]
+def _artifact_digest(
+    configuration: dict[str, object], env_var: str, digest_key: str
+) -> str:
+    if digest_key in {"target_reference_sha256", "target_authorization_sha256"}:
+        digest = configuration[digest_key]
+    else:
+        digest = _ENVIRONMENT_BINDINGS.get(env_var.replace("_PATH", "_SHA256"))
+        if digest is None:
+            digest = configuration[digest_key]
     if not isinstance(digest, str):
         raise ValueError(f"{env_var}: MeanVC2 artifact digest is invalid")
     return digest

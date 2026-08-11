@@ -7,6 +7,24 @@
   "terms_url": "https://amitaro.net/voice/voice_rule/",
   "required_attribution": "Amitaro's Voice Material Studio (https://amitaro.net/)",
   "scope": "personal-evaluation",
+  "parameter_presets": [
+    {
+      "preset_id": "tau015",
+      "display_suffix": "色づけ弱 tau 0.15",
+      "tau": 0.15
+    },
+    {
+      "preset_id": "tau030",
+      "preserve_base_identity": true,
+      "display_suffix": "標準 tau 0.30",
+      "tau": 0.3
+    },
+    {
+      "preset_id": "tau060",
+      "display_suffix": "色づけ強 tau 0.60",
+      "tau": 0.6
+    }
+  ],
   "variants": [
     {
       "variant_id": "openvoice-amitaro-runrun",

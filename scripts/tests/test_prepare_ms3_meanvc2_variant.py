@@ -61,16 +61,23 @@ def _identity(tmp_path: Path) -> dict[str, str]:
         "LIVECONV_MEANVC2_TARGET_REFERENCE_PATH": str(
             tmp_path / "runrun" / "QUESTION_007.wav"
         ),
+        "LIVECONV_MEANVC2_TARGET_AUTHORIZATION_PATH": str(tmp_path / "runrun.json"),
     }
+
+
+def _single_intake() -> dict[str, object]:
+    return {**INTAKE, "variants": [dict(INTAKE["variants"][0])]}
 
 
 def test_extends_bundle_with_one_exact_fourth_family(tmp_path: Path) -> None:
     bundle, registry = _base_documents()
-    draft, trusted, materials = SCRIPT.extend_documents(
+    draft, trusted, materials, environment = SCRIPT.extend_documents(
         bundle,
         registry,
-        INTAKE,
+        _single_intake(),
         _identity(tmp_path),
+        tmp_path,
+        tmp_path,
         reviewed_at=datetime(2026, 8, 10, 12, tzinfo=UTC),
     )
 
@@ -86,18 +93,21 @@ def test_extends_bundle_with_one_exact_fourth_family(tmp_path: Path) -> None:
     assert materials["manifests"][0]["license_state"] == (
         "personal-technical-evaluation-only"
     )
+    assert environment == {}
 
 
 def test_rejects_target_or_duplicate_identity(tmp_path: Path) -> None:
     bundle, registry = _base_documents()
-    changed = dict(INTAKE)
-    changed["reference_sha256"] = "0" * 64
+    changed = _single_intake()
+    changed["variants"][0]["reference_sha256"] = "0" * 64
     with pytest.raises(ValueError, match="target identity differs"):
         SCRIPT.extend_documents(
             bundle,
             registry,
             changed,
             _identity(tmp_path),
+            tmp_path,
+            tmp_path,
             reviewed_at=datetime(2026, 8, 10, 12, tzinfo=UTC),
         )
 
@@ -108,7 +118,9 @@ def test_rejects_target_or_duplicate_identity(tmp_path: Path) -> None:
         SCRIPT.extend_documents(
             bundle,
             registry,
-            INTAKE,
+            _single_intake(),
             _identity(tmp_path),
+            tmp_path,
+            tmp_path,
             reviewed_at=datetime(2026, 8, 10, 12, tzinfo=UTC),
         )

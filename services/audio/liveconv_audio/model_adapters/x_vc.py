@@ -109,6 +109,14 @@ _APPROVED_TARGETS = {
         "a40396353b2543cc7923b673cdc42c25bb63f9204008e240b3659e55bd3c518f",
         "313edea2bc054aa885e58919d560c2708487c3be6f7692a06aab5a907c8d619c",
     ),
+    "vc.x-vc.amitaro-runrun-q34.v1": (
+        "0cd4bd58aabbf438ab11b304a9f01d9d0fdf5c49e73e1a3edbc22bae1273f3bd",
+        "d6f1d11f4ae33dda256b6998d301970c5cd83c514d07bd422be48cae971cb444",
+    ),
+    "vc.x-vc.amitaro-yofukashi-q34.v1": (
+        "bf1077b82a5c310d85ceeb6db3290679f87ff89971b21603956e5031101e2d8f",
+        "597e2fa1daa518979fbd3844f62a1f91d79e292c9cf793f8fcec221f8680348f",
+    ),
 }
 
 _REQUIRED_ENVIRONMENT = (

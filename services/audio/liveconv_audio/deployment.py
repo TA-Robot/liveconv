@@ -16,7 +16,7 @@ class PublicVariant(BaseModel):
 
     variant_id: StrictStr = Field(pattern=r"^[a-z0-9][a-z0-9.-]{2,95}$")
     family_id: StrictStr = Field(pattern=r"^[a-z0-9][a-z0-9.-]{1,63}$")
-    display_order: StrictInt = Field(ge=1, le=12)
+    display_order: StrictInt = Field(ge=1, le=32)
     display_name: StrictStr = Field(min_length=1, max_length=100)
     target_presentation: Literal[
         "youthful-feminine",
@@ -44,7 +44,7 @@ class PublicManifest(BaseModel):
     protocol_version: Literal[1]
     transport_scope: Literal["loopback-ssh"]
     max_sessions: Literal[1]
-    variants: list[PublicVariant] = Field(min_length=1, max_length=12)
+    variants: list[PublicVariant] = Field(min_length=1, max_length=32)
 
 
 def _canonical_hash(value: object) -> str:

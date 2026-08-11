@@ -53,7 +53,7 @@ def test_openvoice_extension_binds_reference_profile_and_private_environment(
     readme = b"test terms"
     reference_sha256 = _sha256(reference)
     profile_id = "vc.openvoice-v2.amitaro-runrun.v1"
-    monkeypatch.setitem(PREPARE.APPROVED_TARGETS, profile_id, reference_sha256)
+    monkeypatch.setitem(PREPARE.APPROVED_TARGETS, profile_id, (reference_sha256, 0.3))
     root = tmp_path / "references"
     (root / "downloads").mkdir(parents=True)
     (root / "extracted" / "runrun").mkdir(parents=True)
@@ -127,6 +127,7 @@ def test_openvoice_extension_binds_reference_profile_and_private_environment(
     assert profile["runtime"]["configuration"]["target_reference_sha256"] == (
         reference_sha256
     )
+    assert profile["runtime"]["configuration"]["tau"] == 0.3
     assert variant["invocation_mode"] == "buffered_end"
     path_name, digest_name = PREPARE.target_environment_names(profile_id)
     assert result[3][path_name].endswith("reference.wav")

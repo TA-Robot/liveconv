@@ -9,6 +9,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import shlex
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -75,6 +76,20 @@ def _json_bytes(value: object) -> bytes:
     ).encode("utf-8")
 
 
+def _bound_file(root: Path, relative: Path, expected_sha256: str) -> Path:
+    root = root.resolve(strict=True)
+    candidate = (root / relative).resolve(strict=True)
+    if (
+        root not in candidate.parents
+        or candidate.is_symlink()
+        or not candidate.is_file()
+    ):
+        raise ValueError(f"MeanVC2 candidate material is unsafe: {relative}")
+    if _sha256_file(candidate) != expected_sha256:
+        raise ValueError(f"MeanVC2 candidate material digest differs: {relative}")
+    return candidate
+
+
 def _pack_identity() -> tuple[str, str]:
     path = REPOSITORY_ROOT / "workers" / "packs" / "meanvc2.json"
     pack = _object(json.loads(path.read_text(encoding="utf-8")), "MeanVC2 pack")
@@ -129,8 +144,9 @@ def verify_identity_environment(values: dict[str, str]) -> None:
             raise ValueError(f"MeanVC2 artifact differs: {name}")
 
 
-def _profile(values: dict[str, str]) -> dict[str, Any]:
+def _profile(values: dict[str, str], profile_id: str) -> dict[str, Any]:
     pack_sha256, evidence_sha256 = _pack_identity()
+    configuration = meanvc2._configuration(profile_id)
     return {
         "adapter_api_version": 1,
         "cancellation": "immediate",
@@ -145,7 +161,7 @@ def _profile(values: dict[str, str]) -> dict[str, Any]:
         ),
         "minimum_context_ms": 160,
         "output_sample_rates": [48_000],
-        "profile_id": meanvc2.PROFILE_ID,
+        "profile_id": profile_id,
         "promotion": {
             "endpoint_sha256": EXPECTED_ENDPOINT_SHA256,
             "evidence_sha256": evidence_sha256,
@@ -157,7 +173,7 @@ def _profile(values: dict[str, str]) -> dict[str, Any]:
         "resource_class": "gpu",
         "runtime": {
             "adapter": "worker",
-            "configuration": copy.deepcopy(meanvc2.CANONICAL_CONFIGURATION),
+            "configuration": copy.deepcopy(configuration),
             "max_vram_mb": 16_384,
             "worker_endpoint": _text(
                 values.get("LIVECONV_MEANVC2_INTERPRETER_PATH"), "worker endpoint"
@@ -177,34 +193,23 @@ def extend_documents(
     authorization_registry: object,
     intake: object,
     identity_values: dict[str, str],
+    reference_root: Path,
+    authorization_root: Path,
     *,
     reviewed_at: datetime,
-) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, str]]:
     if reviewed_at.tzinfo is None or reviewed_at.utcoffset() is None:
         raise ValueError("reviewed_at must be timezone-aware")
     draft = copy.deepcopy(_object(base_bundle, "base bundle"))
     registry = copy.deepcopy(_object(authorization_registry, "authorization registry"))
-    candidate = _object(intake, "MeanVC2 intake")
-    if candidate.get("schema_version") != 1:
+    intake_document = _object(intake, "MeanVC2 intake")
+    if intake_document.get("schema_version") != 1:
         raise ValueError("unsupported MeanVC2 intake schema")
-    expected_identity = (
-        "meanvc2-amitaro-runrun",
-        "meanvc2",
-        meanvc2.PROFILE_ID,
-    )
-    if (
-        candidate.get("variant_id"),
-        candidate.get("family_id"),
-        candidate.get("profile_id"),
-    ) != expected_identity:
-        raise ValueError("MeanVC2 intake identity is not approved")
-    if (
-        candidate.get("reference_sha256")
-        != meanvc2.CANONICAL_CONFIGURATION["target_reference_sha256"]
-        or candidate.get("target_authorization_sha256")
-        != meanvc2.CANONICAL_CONFIGURATION["target_authorization_sha256"]
-    ):
-        raise ValueError("MeanVC2 target identity differs")
+    candidates = _array(intake_document.get("variants"), "MeanVC2 variants")
+    if not 1 <= len(candidates) <= 4:
+        raise ValueError("MeanVC2 intake must contain between one and four variants")
+    reference_root = reference_root.resolve(strict=True)
+    authorization_root = authorization_root.resolve(strict=True)
 
     profile_registry = _object(
         draft.get("gateway_profile_registry"), "profile registry"
@@ -213,93 +218,143 @@ def extend_documents(
     public_manifest = _object(draft.get("public_manifest"), "public manifest")
     variants = _array(public_manifest.get("variants"), "variants")
     records = _array(registry.get("records"), "authorization records")
-    if meanvc2.PROFILE_ID in {item.get("profile_id") for item in profiles} or (
-        candidate["variant_id"] in {item.get("variant_id") for item in variants}
-    ):
-        raise ValueError("MeanVC2 variant already exists")
-
-    profile = _profile(identity_values)
-    profiles.append(profile)
-    material_manifest = {
-        "schema_version": 1,
-        "variant_id": candidate["variant_id"],
-        "provider_id": candidate["provider_id"],
-        "source_page_url": candidate["source_page_url"],
-        "terms_url": candidate["terms_url"],
-        "model_source_url": candidate["model_source_url"],
-        "model_revision": candidate["model_revision"],
-        "model_snapshot_url": candidate["model_snapshot_url"],
-        "model_snapshot_revision": candidate["model_snapshot_revision"],
-        "license_state": candidate["license_state"],
-        "reference_sha256": "sha256:" + candidate["reference_sha256"],
-        "target_authorization_sha256": (
-            "sha256:" + candidate["target_authorization_sha256"]
-        ),
-        "adapter_source_sha256": (
-            "sha256:" + str(meanvc2.CANONICAL_CONFIGURATION["adapter_source_sha256"])
-        ),
-        "checkpoint_sha256": (
-            "sha256:" + str(meanvc2.CANONICAL_CONFIGURATION["checkpoint_sha256"])
-        ),
-        "worker_smoke_evidence_sha256": EXPECTED_EVIDENCE,
-    }
-    source_manifest_sha256 = VALIDATOR.canonical_hash(material_manifest)
-    lineage_manifest_sha256 = VALIDATOR.canonical_hash(
-        {
-            "source_manifest_sha256": source_manifest_sha256,
-            "profile_id": meanvc2.PROFILE_ID,
-            "profile_hash": VALIDATOR.profile_hash(profile),
-            "configuration_hash": VALIDATOR.configuration_hash(profile),
-            "implementation_revision": profile["implementation_revision"],
-        }
-    )
     reviewed_text = (
         reviewed_at.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
     )
-    record = {
-        "record_sha256": ZERO_SHA256,
-        "variant_id": candidate["variant_id"],
-        "family_id": "meanvc2",
-        "profile_id": meanvc2.PROFILE_ID,
-        "status": "approved",
-        "scope": "personal-evaluation",
-        "authorization_owner": "personal-operator",
-        "retention_policy": "delete-on-expiry-or-revocation",
-        "deletion_path": str(
-            Path(identity_values["LIVECONV_MEANVC2_TARGET_REFERENCE_PATH"]).parent
-        ),
-        "source_material_sha256": "sha256:" + candidate["reference_sha256"],
-        "source_manifest_sha256": source_manifest_sha256,
-        "terms_sha256": "sha256:" + candidate["reference_terms_sha256"],
-        "lineage_manifest_sha256": lineage_manifest_sha256,
-        "reviewed_at": reviewed_text,
-        "expires_at": None,
-        "attribution_state": "satisfied",
-        "notice_state": "not-required-for-personal-evaluation",
-    }
-    record["record_sha256"] = VALIDATOR.authorization_record_hash(record)
-    records.append(record)
-    variants.append(
-        {
-            "variant_id": candidate["variant_id"],
-            "family_id": "meanvc2",
-            "display_order": max(
-                (int(item.get("display_order", 0)) for item in variants), default=0
-            )
-            + 1,
-            "display_name": candidate["display_name"],
-            "target_presentation": candidate["target_presentation"],
-            "lane": "voice-conversion",
-            "invocation_mode": "live",
-            "profile_id": meanvc2.PROFILE_ID,
-            "profile_hash": ZERO_SHA256,
-            "configuration_hash": ZERO_SHA256,
-            "pack_id": "meanvc2",
-            "promotion_evidence_sha256": EXPECTED_EVIDENCE,
-            "authorization_record_sha256": record["record_sha256"],
-            "variant_manifest_sha256": ZERO_SHA256,
-        }
+    manifests: list[dict[str, Any]] = []
+    environment: dict[str, str] = {}
+    existing_profiles = {item.get("profile_id") for item in profiles}
+    existing_variants = {item.get("variant_id") for item in variants}
+    display_order = max(
+        (int(item.get("display_order", 0)) for item in variants), default=0
     )
+    for candidate_item in candidates:
+        candidate = {**intake_document, **candidate_item}
+        variant_id = _text(candidate.get("variant_id"), "variant_id")
+        profile_id = _text(candidate.get("profile_id"), "profile_id")
+        if (
+            candidate.get("family_id") != "meanvc2"
+            or profile_id not in meanvc2._APPROVED_TARGETS
+        ):
+            raise ValueError("MeanVC2 intake identity is not approved")
+        expected_reference, expected_authorization = meanvc2._APPROVED_TARGETS[
+            profile_id
+        ]
+        if (
+            candidate.get("reference_sha256"),
+            candidate.get("target_authorization_sha256"),
+        ) != (expected_reference, expected_authorization):
+            raise ValueError("MeanVC2 target identity differs")
+        if profile_id in existing_profiles or variant_id in existing_variants:
+            raise ValueError("MeanVC2 variant already exists")
+
+        if profile_id == meanvc2.PROFILE_ID:
+            reference = Path(identity_values["LIVECONV_MEANVC2_TARGET_REFERENCE_PATH"])
+            authorization = Path(
+                identity_values["LIVECONV_MEANVC2_TARGET_AUTHORIZATION_PATH"]
+            )
+        else:
+            reference = _bound_file(
+                reference_root,
+                Path("extracted")
+                / _text(candidate.get("style_id"), "style_id")
+                / _text(candidate.get("reference_name"), "reference_name"),
+                expected_reference,
+            )
+            authorization = _bound_file(
+                authorization_root,
+                Path(_text(candidate.get("authorization_name"), "authorization_name")),
+                expected_authorization,
+            )
+            names = meanvc2.target_environment_names(profile_id)
+            environment.update(
+                {
+                    names[0]: str(reference),
+                    names[1]: expected_reference,
+                    names[2]: str(authorization),
+                    names[3]: expected_authorization,
+                }
+            )
+
+        profile = _profile(identity_values, profile_id)
+        profiles.append(profile)
+        existing_profiles.add(profile_id)
+        material_manifest = {
+            "schema_version": 1,
+            "variant_id": variant_id,
+            "provider_id": candidate["provider_id"],
+            "source_page_url": candidate["source_page_url"],
+            "terms_url": candidate["terms_url"],
+            "model_source_url": candidate["model_source_url"],
+            "model_revision": candidate["model_revision"],
+            "model_snapshot_url": candidate["model_snapshot_url"],
+            "model_snapshot_revision": candidate["model_snapshot_revision"],
+            "license_state": candidate["license_state"],
+            "reference_sha256": "sha256:" + expected_reference,
+            "target_authorization_sha256": "sha256:" + expected_authorization,
+            "adapter_source_sha256": (
+                "sha256:"
+                + str(meanvc2.CANONICAL_CONFIGURATION["adapter_source_sha256"])
+            ),
+            "checkpoint_sha256": (
+                "sha256:" + str(meanvc2.CANONICAL_CONFIGURATION["checkpoint_sha256"])
+            ),
+            "worker_smoke_evidence_sha256": EXPECTED_EVIDENCE,
+        }
+        source_manifest_sha256 = VALIDATOR.canonical_hash(material_manifest)
+        lineage_manifest_sha256 = VALIDATOR.canonical_hash(
+            {
+                "source_manifest_sha256": source_manifest_sha256,
+                "profile_id": profile_id,
+                "profile_hash": VALIDATOR.profile_hash(profile),
+                "configuration_hash": VALIDATOR.configuration_hash(profile),
+                "implementation_revision": profile["implementation_revision"],
+            }
+        )
+        record = {
+            "record_sha256": ZERO_SHA256,
+            "variant_id": variant_id,
+            "family_id": "meanvc2",
+            "profile_id": profile_id,
+            "status": "approved",
+            "scope": "personal-evaluation",
+            "authorization_owner": "personal-operator",
+            "retention_policy": "delete-on-expiry-or-revocation",
+            "deletion_path": str(reference.parent),
+            "source_material_sha256": "sha256:" + expected_reference,
+            "source_manifest_sha256": source_manifest_sha256,
+            "terms_sha256": "sha256:" + candidate["reference_terms_sha256"],
+            "lineage_manifest_sha256": lineage_manifest_sha256,
+            "reviewed_at": reviewed_text,
+            "expires_at": None,
+            "attribution_state": "satisfied",
+            "notice_state": "not-required-for-personal-evaluation",
+        }
+        record["record_sha256"] = VALIDATOR.authorization_record_hash(record)
+        records.append(record)
+        display_order += 1
+        variants.append(
+            {
+                "variant_id": variant_id,
+                "family_id": "meanvc2",
+                "display_order": display_order,
+                "display_name": candidate["display_name"],
+                "target_presentation": candidate["target_presentation"],
+                "lane": "voice-conversion",
+                "invocation_mode": "live",
+                "profile_id": profile_id,
+                "profile_hash": ZERO_SHA256,
+                "configuration_hash": ZERO_SHA256,
+                "pack_id": "meanvc2",
+                "promotion_evidence_sha256": EXPECTED_EVIDENCE,
+                "authorization_record_sha256": record["record_sha256"],
+                "variant_manifest_sha256": ZERO_SHA256,
+            }
+        )
+        existing_variants.add(variant_id)
+        material_manifest["source_manifest_sha256"] = source_manifest_sha256
+        material_manifest["lineage_manifest_sha256"] = lineage_manifest_sha256
+        manifests.append(material_manifest)
     registry["registry_revision"] = ZERO_SHA256
     registry["registry_revision"] = VALIDATOR.authorization_registry_revision(registry)
     bundle_id = "ms3-amitaro-rvc-openvoice-xvc-meanvc2-first-wave-v1"
@@ -309,14 +364,12 @@ def extend_documents(
     draft["authorization_records"] = copy.deepcopy(records)
     public_manifest["bundle_id"] = bundle_id
     public_manifest["bundle_revision"] = ZERO_SHA256
-    material_manifest["source_manifest_sha256"] = source_manifest_sha256
-    material_manifest["lineage_manifest_sha256"] = lineage_manifest_sha256
     materials = {
         "schema_version": 1,
         "provider_id": "amitaro-meanvc2",
-        "manifests": [material_manifest],
+        "manifests": manifests,
     }
-    return draft, registry, materials
+    return draft, registry, materials, environment
 
 
 def _write_json(path: Path, value: object) -> None:
@@ -329,6 +382,7 @@ def write_preparation(
     draft: dict[str, Any],
     registry: dict[str, Any],
     materials: dict[str, Any],
+    environment: dict[str, str],
 ) -> None:
     destination = destination.resolve()
     if destination == REPOSITORY_ROOT or REPOSITORY_ROOT in destination.parents:
@@ -342,6 +396,12 @@ def write_preparation(
         _write_json(staging / "draft.json", draft)
         _write_json(staging / "authorization-registry.json", registry)
         _write_json(staging / "material-manifests.json", materials)
+        lines = [
+            f"export {name}={shlex.quote(value)}"
+            for name, value in sorted(environment.items())
+        ]
+        (staging / "identity.env").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        (staging / "identity.env").chmod(0o600)
         os.replace(staging, destination)
     except BaseException:
         for child in staging.iterdir() if staging.exists() else ():
@@ -355,6 +415,12 @@ def _arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--deployment", type=Path, required=True)
     parser.add_argument("--meanvc2-identity-env", type=Path, required=True)
+    parser.add_argument("--reference-root", type=Path, required=True)
+    parser.add_argument(
+        "--authorization-root",
+        type=Path,
+        default=REPOSITORY_ROOT / "artifacts" / "meanvc2" / "target-authorizations",
+    )
     parser.add_argument("--intake", type=Path, default=DEFAULT_INTAKE)
     parser.add_argument("--output", type=Path, required=True)
     return parser.parse_args()
@@ -381,6 +447,8 @@ def main() -> int:
             authorization_registry,
             intake,
             values,
+            arguments.reference_root,
+            arguments.authorization_root,
             reviewed_at=datetime.now(UTC),
         )
         write_preparation(arguments.output, *prepared)
