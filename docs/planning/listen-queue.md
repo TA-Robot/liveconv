@@ -45,7 +45,7 @@ authorize promote claims or several speculative sweeps in parallel.
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
 | 1 | Help the operator finish the six rows above; EXP-027--031 are superseded diagnostics and do not need separate draining | parent | n/a | decisions recorded |
-| 2 | Reuse the established future-200 endpoint with unadapted base to test whether more context restores actual-input content | parent | no: base future-120 isolated LoRA repetition but still lost content | one future-200 base system WAV and coarse content screen, then close this stream search |
+| 2 | Compare the five existing RVC Runrun presets on the exact 8.17 s actual input through the live Gateway | parent | no: X-VC machine streaming search is closed; profiles and route already exist | one source/Runrun/Sasayaki-reference collection and coarse content screen |
 | 3 | If EXP-032 receives a `keep`, bind that exact candidate to the formal Gateway profile and exercise native fallback/Extension playout | parent | yes: EXP-032 `keep` | one route-qualified system listen or a recorded integration blocker |
 | 4 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
 
@@ -83,6 +83,13 @@ source-relative ASR distance over the old expanded79 system output from 0.561
 to 0.512, but remained worse than offline base at 0.317. Reuse only the
 already-established future-200 endpoint with base to test whether additional
 context recovers content. Do not add intermediate points after the result.
+
+Base future-200 improved source-relative ASR distance to 0.463 without gross
+repetition, but still trailed offline base at 0.317. Publish it for hearing and
+close X-VC horizon/LR/scope/lookahead machine search. The next single GPU lane
+uses the already-deployed RVC Runrun standard plus four presets on the same
+actual source, with the existing Sasayaki standard as a cross-style reference.
+It adds no RVC training and cannot select a perceptual winner.
 
 ## Keepers
 

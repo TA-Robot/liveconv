@@ -875,3 +875,49 @@ job queue.
   established 200-ms lookahead endpoint once with base. Do not add a new
   intermediate point; improvement admits hearing only, and failure closes the
   X-VC machine-screened streaming search.
+
+## 2026-08-13T05:09:00Z - base future-200 endpoint completed
+
+- Agent: `primary-integrator`.
+- Task: Reuse the already-established future-200 endpoint with unadapted X-VC
+  base, holding actual input, target, worker, cancellation, and pacing fixed.
+- Dependencies: commit `e47cf25`, exact base checkpoint, and exclusive `gpu0`.
+- Result: cancel acknowledgement was 0.029 ms with zero stale frames. The
+  retained generation completed contiguous 409/409 frames in 9.668 seconds,
+  max in-flight 25, with 70 calls and zero failures. Compute P50/P95 was
+  36.83/44.39 ms; peak allocation was 2,697,716,736 bytes. The WAV was
+  published as `exp026-base-future200-system-path-v1`.
+- Machine screen: no gross repetition; normalized source-relative ASR distance
+  improved from 0.512 at future 120 to 0.463 at future 200, but remained worse
+  than offline base at 0.317. This is hearing-only, not a quality selection.
+- Changed action: close X-VC horizon, LR, scope, and lookahead machine search.
+  Do not spend the 400-ms latency budget on a larger endpoint.
+
+## 2026-08-13T05:15:18Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, no tools or delegation).
+- Result: `CONTINUE`. Grok confirmed that the preceding 30 minutes produced
+  several committed, sequential, single-variable audio collections and that
+  future-200 was the board's explicit final X-VC stream endpoint.
+- Adopted: yes. Screen future-200, close the X-VC stream search regardless of
+  perceptual outcome, and replan exactly one quality lane independent of human
+  hearing. Reject more lookahead/LR/horizon/control69 work, parallel sweeps,
+  route binding, and promote ceremony.
+- Changed action: the next lane is the already-deployed RVC Runrun preset set
+  on the same actual input. It is a bounded comparison, not retraining and not
+  a quality winner declaration.
+- Expected saving: avoid at least one further X-VC diagnostic cycle and keep
+  the next GPU lane ready immediately after closure.
+
+## 2026-08-13T05:16:00Z - existing Sasayaki presets machine-screened
+
+- Agent: `primary-integrator`.
+- Task: Reuse the six already-rendered Sasayaki parameter outputs on the exact
+  actual-input source for a common auxiliary-ASR corruption/content screen.
+- Result: normalized source-relative distances were 0.537 for the anchor,
+  0.561/0.780/0.561/0.659 for index 0.00/0.10/0.20/0.30 at RMS 0.25, and 0.537
+  for index 0.20/RMS 0.00. No new audio or perceptual selection was claimed.
+- Changed action: presets materially change content behavior, so compare the
+  five existing Runrun presets through the actual Gateway next rather than
+  training RVC or extrapolating from the standard profile alone.

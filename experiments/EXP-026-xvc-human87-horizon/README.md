@@ -85,6 +85,13 @@ window still loses content without LoRA. The already-established 200-ms
 lookahead endpoint is reused once with base; no new intermediate point is
 opened. Failure to improve closes this X-VC machine-screened stream search.
 
+Base future-200 improved source-relative ASR distance from `0.512` to `0.463`
+without gross repetition. It remains worse than offline base at `0.317`, and
+its 340-ms model context is already the largest endpoint kept below the
+400-ms added-latency target before network/playout. It is published for later
+hearing, not selected. The X-VC machine-screened horizon/LR/scope/lookahead
+search is closed; do not add another point while the operator is unavailable.
+
 ## Goal and stop condition
 
 Use the otherwise-idle GPU to answer one audible question: with the exact
