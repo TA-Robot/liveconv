@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare fresh X-VC with the same utterance immediately after cancellation."""
+"""Compare fresh stable VC with the same utterance after cancellation."""
 
 from __future__ import annotations
 
@@ -29,20 +29,40 @@ ROOT = Path(__file__).resolve().parents[2]
 GENERALIZATION_RUNNER = Path(__file__).with_name(
     "render_stable_vc_generalization.py"
 )
-PROFILE_ID = "vc.x-vc.amitaro-yofukashi-q34.v1"
+RVC_PROFILE_ID = "vc.rvc-v2.amitaro-sasayaki-clean-bright-seed0.v1"
+XVC_PROFILE_ID = "vc.x-vc.amitaro-yofukashi-q34.v1"
 CANCELED_SOURCE_ID = "EMOTION100_027"
 RECOVERY_SOURCE_ID = "RECITATION324_049"
 CANCEL_AFTER_FRAMES = 100
-BASELINE_WAV = (
+PROFILE_SPECS = {
+    RVC_PROFILE_ID: {
+        "label": "Stable seed-0 RVC",
+        "slug": "rvc-seed0",
+        "baseline_file": "10-stable-rvc-seed0.wav",
+        "baseline_sha256": (
+            "fe59f8e9e34f8019d6325fc0a0750e741094fc8ee3732de4219edf54268e7a62"
+        ),
+        "result_kind": "liveconv-ms3-rvc-cancel-recovery-result",
+    },
+    XVC_PROFILE_ID: {
+        "label": "Stable X-VC Yofukashi Q034",
+        "slug": "xvc-q34",
+        "baseline_file": "20-stable-xvc-q34.wav",
+        "baseline_sha256": (
+            "a9e98fa89ef41766549853e7b1fcf5d12307e8171a55d519f9412e27938fcdf5"
+        ),
+        "result_kind": "liveconv-ms3-xvc-cancel-recovery-result",
+    },
+}
+BASELINE_ROOT = (
     ROOT
     / "artifacts/ms3/listening/ms3-stable-vc-generalization-v1"
-    / "01-RECITATION324_049/20-stable-xvc-q34.wav"
+    / "01-RECITATION324_049"
 )
-BASELINE_SHA256 = "a9e98fa89ef41766549853e7b1fcf5d12307e8171a55d519f9412e27938fcdf5"
 
 
 class CancelRecoveryError(RuntimeError):
-    """The bounded X-VC cancellation-recovery comparison cannot continue."""
+    """The bounded stable-VC cancellation comparison cannot continue."""
 
 
 def sha256_file(path: Path) -> str:
@@ -76,6 +96,13 @@ def source_by_id(generalization: ModuleType, source_id: str) -> dict[str, Any]:
     return matches[0]
 
 
+def profile_spec(profile_id: str) -> dict[str, str]:
+    try:
+        return PROFILE_SPECS[profile_id]
+    except KeyError:
+        raise CancelRecoveryError("profile is outside the bounded comparison") from None
+
+
 def staging_path(listener_dir: Path) -> Path:
     return listener_dir.with_name(f".{listener_dir.name}.staging")
 
@@ -85,14 +112,18 @@ def validate(
 ) -> tuple[Path, ModuleType, ModuleType, ModuleType]:
     generalization = load_generalization()
     generalization.validate_source_manifest()
-    generalization.checked_file(BASELINE_WAV, BASELINE_SHA256, "fresh baseline")
+    spec = profile_spec(arguments.profile_id)
+    baseline_wav = BASELINE_ROOT / spec["baseline_file"]
+    generalization.checked_file(
+        baseline_wav, spec["baseline_sha256"], "fresh baseline"
+    )
     repeat = generalization.load_repeat_runner()
     session = repeat._load_session_runner()  # noqa: SLF001
     heldout = session._load_heldout_runner()  # noqa: SLF001
     renderer = heldout._load_renderer()  # noqa: SLF001
     deployment = arguments.deployment.resolve(strict=True)
     generalization.selected_profile(
-        heldout, renderer, deployment, PROFILE_ID
+        heldout, renderer, deployment, arguments.profile_id
     )
     if (
         arguments.work_dir.exists()
@@ -180,6 +211,8 @@ async def execute(
     source_f32 = arguments.work_dir / "source-f32"
     source_f32.mkdir()
     frames_by_id: dict[str, list[bytes]] = {}
+    profile_id = arguments.profile_id
+    spec = profile_spec(profile_id)
     for source_id in (CANCELED_SOURCE_ID, RECOVERY_SOURCE_ID):
         source = source_by_id(generalization, source_id)
         wav = generalization.SOURCE_ROOT / source["relative_path"]
@@ -190,7 +223,7 @@ async def execute(
         raise CancelRecoveryError("canceled source is too short")
 
     variant, profile = generalization.selected_profile(
-        heldout, renderer, deployment, PROFILE_ID
+        heldout, renderer, deployment, profile_id
     )
     token = os.environ["LIVECONV_API_TOKEN"]
     origin = next(
@@ -210,18 +243,18 @@ async def execute(
             item.get("profile_id"): item
             for item in catalog.json().get("profiles", [])
             if isinstance(item, dict)
-        }.get(PROFILE_ID)
+        }.get(profile_id)
         if catalog.status_code != 200 or not isinstance(current, dict) or any(
             current.get(field) != variant.get(field)
             for field in ("profile_hash", "configuration_hash")
         ):
-            raise CancelRecoveryError("Gateway X-VC identity differs")
+            raise CancelRecoveryError("Gateway stable VC identity differs")
         response = await client.post(
             f"{gateway_url}/v1/route-parity-sessions",
             headers=headers,
             json={
                 "protocol_version": 1,
-                "profile_id": PROFILE_ID,
+                "profile_id": profile_id,
                 "input": {
                     "sample_rate": renderer.SAMPLE_RATE,
                     "channels": 1,
@@ -278,7 +311,7 @@ async def execute(
                 arguments.timeout_seconds,
                 renderer.SessionReadyEvent,
             )
-            if ready.pipeline_id != pipeline_id or ready.profile_id != PROFILE_ID:
+            if ready.pipeline_id != pipeline_id or ready.profile_id != profile_id:
                 raise CancelRecoveryError("session.ready identity differs")
             credit = min(
                 ready.limits.max_ingress_frames,
@@ -476,35 +509,40 @@ async def execute(
     recovery_source = source_by_id(generalization, RECOVERY_SOURCE_ID)
     source_wav = generalization.SOURCE_ROOT / recovery_source["relative_path"]
     shutil.copyfile(source_wav, staging / "00-source.wav")
-    shutil.copyfile(BASELINE_WAV, staging / "10-xvc-fresh-session.wav")
-    recovery_wav = staging / "20-xvc-after-cancel.wav"
+    baseline_wav = BASELINE_ROOT / spec["baseline_file"]
+    baseline_output = f"10-{spec['slug']}-fresh-session.wav"
+    recovery_output = f"20-{spec['slug']}-after-cancel.wav"
+    shutil.copyfile(baseline_wav, staging / baseline_output)
+    recovery_wav = staging / recovery_output
     renderer.write_wav(recovery_wav, output_pcm)
     recovery_sha256 = sha256_file(recovery_wav)
     variants = [
         {
-            "variant_id": "xvc-fresh-session",
-            "display_name": "X-VC Q034 / fresh session",
+            "variant_id": f"{spec['slug']}-fresh-session",
+            "display_name": f"{spec['label']} / fresh session",
             "display_order": 1,
-            "output_file": "10-xvc-fresh-session.wav",
-            "output_sha256": "sha256:" + BASELINE_SHA256,
-            "profile_id": PROFILE_ID,
+            "output_file": baseline_output,
+            "output_sha256": "sha256:" + spec["baseline_sha256"],
+            "profile_id": profile_id,
             "status": "passed",
             "operator_judgment": "unreviewed",
         },
         {
-            "variant_id": "xvc-after-cancel",
-            "display_name": "X-VC Q034 / after canceling prior generation",
+            "variant_id": f"{spec['slug']}-after-cancel",
+            "display_name": (
+                f"{spec['label']} / after canceling prior generation"
+            ),
             "display_order": 2,
             "output_file": recovery_wav.name,
             "output_sha256": "sha256:" + recovery_sha256,
-            "profile_id": PROFILE_ID,
+            "profile_id": profile_id,
             "status": "passed",
             "operator_judgment": "unreviewed",
         },
     ]
     index = {
         "schema_version": 1,
-        "title": "Stable X-VC cancellation recovery",
+        "title": f"{spec['label']} cancellation recovery",
         "run_kind": "MS-3 realtime interruption recovery comparison",
         "status": "completed-listen-now-unselected",
         "source_file": f"Hadou public validation / {RECOVERY_SOURCE_ID}",
@@ -537,7 +575,7 @@ async def execute(
     staging.rename(arguments.listener_dir)
     result = {
         "schema_version": 1,
-        "kind": "liveconv-ms3-xvc-cancel-recovery-result",
+        "kind": spec["result_kind"],
         "status": "completed-listen-now-unselected",
         "git_commit": subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -546,8 +584,8 @@ async def execute(
             capture_output=True,
             text=True,
         ).stdout.strip(),
-        "profile_id": PROFILE_ID,
-        "baseline_sha256": "sha256:" + BASELINE_SHA256,
+        "profile_id": profile_id,
+        "baseline_sha256": "sha256:" + spec["baseline_sha256"],
         "recovery_sha256": "sha256:" + recovery_sha256,
         "cancel_evidence": index["cancel_evidence"],
         "claims": {"perceptual_winner": False, "product_selected": False},
@@ -562,7 +600,9 @@ async def execute(
 async def run(arguments: argparse.Namespace) -> int:
     deployment, generalization, heldout, renderer = validate(arguments)
     if arguments.check:
-        print("ok   stable X-VC cancellation-recovery CPU admission complete")
+        print(
+            f"ok   {arguments.profile_id} cancellation-recovery CPU admission complete"
+        )
         return 0
     await execute(
         arguments,
@@ -580,6 +620,9 @@ def parser() -> argparse.ArgumentParser:
     mode.add_argument("--check", action="store_true")
     mode.add_argument("--execute", action="store_true")
     value.add_argument("--deployment", type=Path, required=True)
+    value.add_argument(
+        "--profile-id", choices=tuple(PROFILE_SPECS), default=XVC_PROFILE_ID
+    )
     value.add_argument("--work-dir", type=Path, required=True)
     value.add_argument("--listener-dir", type=Path, required=True)
     value.add_argument("--gateway-url", default="http://127.0.0.1:8882")
