@@ -1730,3 +1730,35 @@ job queue.
 - Changed action: retain both switch points for later hearing. Do not add a
   crossfade, gap length, alternate switch time, or profile binding until the
   operator reports whether the current hard switch is actually disruptive.
+
+## 2026-08-13T11:21:44Z - corrected-premise Grok audit redirected to method work
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, exact 1,800-second cadence).
+- Task: Re-audit the project after the operator corrected the 8.17-second
+  recording's provenance and requested stronger evaluation plus X-VC methods.
+- Result: `REDIRECT`. No new audio was produced in the preceding 30 minutes and
+  `gpu0` was idle. Grok requested a small diverse fixed evaluation followed by
+  one method-level X-VC pilot, and rejected another system/fallback/cancel or
+  human87 epoch/LR/scope variant.
+- Adopted: yes. The 8.17-second tongue-twister is demoted to historical local
+  diagnostics. EXP-033 changes source construction only, using three official
+  JVS sample donor voices to create generated same-content pairs while holding
+  target exposure and 1,044 optimizer updates fixed.
+- Expected time saved: 30--60 minutes versus another invalid single-clip or
+  closed-axis run.
+
+## 2026-08-13T11:40:00Z - EXP-033 method pilot prepared
+
+- Agent: `primary-integrator`.
+- Task: Freeze a ten-row cross-speaker/tempo/pitch/noise/silence evaluation and
+  implement a generated-source-diversity X-VC training runner.
+- Dependencies: official JVS sample WAVs; immutable X-VC base; completed 87
+  Amitaro target windows and legacy control69-e12 adapter; exclusive `gpu0`.
+- Result: CPU admission confirms 87 targets, 261 generated pairs, 12 exposures
+  per target, 1,044 updates, and ten evaluation rows. Four focused tests pass.
+- Problems: the full JVS Google Drive archive was quota-blocked and SpeechBSD
+  was gated; the bounded pilot uses only the three official public JVS samples
+  and records that limitation instead of substituting untracked data.
+- Changed action: commit the plan and runner, start exactly one GPU run, then
+  machine-screen corruption by evaluation group and publish all arms on 8878.

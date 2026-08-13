@@ -1,12 +1,19 @@
 # EXP-020: Actual input x existing human-trained RVC
 
+> Provenance correction (2026-08-13): the retained 8.170667-second recording
+> saying `隣の客はよく柿食う客だ` is a local tongue-twister diagnostic, not
+> ChatGPT browser audio. Stage-0 audio and metrics remain historical gross
+> diagnostics, but every `actual ChatGPT` label and browser-domain conclusion
+> attached to that artifact is superseded. The separate 100-text capture script
+> below remains a future intended ChatGPT capture plan; it was not the source of
+> the 8.17-second artifact.
+
 This is the quality reset after the synthetic eSpeak/X-VC lane. It compares the
 existing human-trained RVC profiles on the audio that the live system actually
 receives: the pre-VC ChatGPT audio path. It does not train a new model.
 
-Listen-now: Stage 0 is already published on port 8878. Hear it before opening
-another experiment. A `continue` is not a quality pass; a `rejected` drops
-that profile from later actual-input listens.
+Listen-now: Stage 0 is already published on port 8878 as a historical local
+diagnostic. It no longer gates new experiments or ChatGPT-domain conclusions.
 
 Operator availability update (2026-08-13): human hearing is temporarily
 unavailable, while the active instruction is to keep one bounded GPU quality

@@ -144,8 +144,25 @@ EXP-025/026 already completed the bounded 87-pair listen-now training path and
 its useful renders; its scope, horizon, and learning-rate axes are closed. Qwen
 TTS stays a separate fallback and is not mixed into the human VC corpus.
 
+The active-thread provenance correction removes the 8.17-second local
+tongue-twister recording from the `actual ChatGPT` role. Earlier browser-domain
+claims from that artifact are superseded. The active join is now:
+
 ```text
- Unheard on 8878: stable RVC/X-VC sets / EXP-020 / EXP-021 / EXP-023 Qwen
+ fixed 10-row diverse evaluation
+        -> EXP-033 one-variable generated-source-diversity training (gpu0)
+        -> groupwise content/corruption screen
+        -> publish base / legacy / new audio on 8878
+        -> operator hearing when available
+```
+
+EXP-033 holds target text exposure and 1,044 updates fixed while replacing one
+real Hadou source speaker with three base-X-VC-generated JVS donor voices. This
+reopens X-VC at the method/data level without retrying the closed human87
+epoch/LR/scope or EXP-024 DTW axes.
+
+```text
+ Unheard on 8878: EXP-033 diverse set / stable public RVC-XVC / EXP-023 Qwen
         |
         +--> operator keep / continue / rejected
 

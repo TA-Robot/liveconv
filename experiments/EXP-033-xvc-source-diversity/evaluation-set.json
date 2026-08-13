@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "kind": "liveconv-exp033-xvc-source-diversity-evaluation/v1",
+  "purpose": "Small fixed cross-speaker and constraint-robustness screen; auxiliary ASR may reject corruption but cannot rank naturalness or voice quality.",
+  "source_provenance": {
+    "jvs": "Official JVS Corpus public sample WAVs, https://sites.google.com/site/shinnosuketakamichi/research-topics/jvs_corpus",
+    "hadou-heldout": "Three source-only heldout WAVs already frozen by EXP-026; no heldout target is accessed"
+  },
+  "items": [
+    {
+      "id": "jvs001-clean",
+      "group": "clean-cross-speaker",
+      "source_set": "jvs",
+      "filename": "jvs001.wav",
+      "sha256": "ad812d499e23ff37929402915cdf8d3034b6bc602b8471bb6a504d5432c19869",
+      "corpus": "JVS speaker jvs001",
+      "label": "clean first 2.4 s",
+      "transform": {"kind": "clean"}
+    },
+    {
+      "id": "jvs002-clean",
+      "group": "clean-cross-speaker",
+      "source_set": "jvs",
+      "filename": "jvs002.wav",
+      "sha256": "40298305cd0b063143ad5e5a7623f2a49d3c846aa6f535adfe682c19b7abbffd",
+      "corpus": "JVS speaker jvs002",
+      "label": "clean first 2.4 s",
+      "transform": {"kind": "clean"}
+    },
+    {
+      "id": "jvs003-clean",
+      "group": "clean-cross-speaker",
+      "source_set": "jvs",
+      "filename": "jvs003.wav",
+      "sha256": "b538f57686020e37cb82cfeda8dc7c369c4ffb174510a70344b7523fce0fb774",
+      "corpus": "JVS speaker jvs003",
+      "label": "clean first 2.4 s",
+      "transform": {"kind": "clean"}
+    },
+    {
+      "id": "hadou-002-clean",
+      "group": "clean-cross-speaker",
+      "source_set": "hadou-heldout",
+      "filename": "EMOTION100_002.wav",
+      "sha256": "8f27065d5b2f66baeafea5e96653f87c57ce866ea42f4e19df82886078c5e536",
+      "corpus": "Hadou heldout",
+      "label": "EMOTION100_002 clean",
+      "transform": {"kind": "clean"}
+    },
+    {
+      "id": "hadou-004-clean",
+      "group": "clean-cross-speaker",
+      "source_set": "hadou-heldout",
+      "filename": "EMOTION100_004.wav",
+      "sha256": "0a3828c54f83fb28f885d0d452beab029a38030f6429a32e6720e5bb4f4c9ab5",
+      "corpus": "Hadou heldout",
+      "label": "EMOTION100_004 clean",
+      "transform": {"kind": "clean"}
+    },
+    {
+      "id": "hadou-017-clean",
+      "group": "clean-cross-speaker",
+      "source_set": "hadou-heldout",
+      "filename": "EMOTION100_017.wav",
+      "sha256": "9fad53ec17379745bc7e56d9306a1ffa1fda1ee0dfdf077826792e6e8199d455",
+      "corpus": "Hadou heldout",
+      "label": "EMOTION100_017 clean",
+      "transform": {"kind": "clean"}
+    },
+    {
+      "id": "jvs001-tempo120",
+      "group": "tempo",
+      "source_set": "jvs",
+      "filename": "jvs001.wav",
+      "sha256": "ad812d499e23ff37929402915cdf8d3034b6bc602b8471bb6a504d5432c19869",
+      "corpus": "JVS speaker jvs001",
+      "label": "tempo 1.20x, pitch preserved",
+      "transform": {"kind": "tempo", "factor": 1.2}
+    },
+    {
+      "id": "jvs002-pitch-plus3",
+      "group": "pitch",
+      "source_set": "jvs",
+      "filename": "jvs002.wav",
+      "sha256": "40298305cd0b063143ad5e5a7623f2a49d3c846aa6f535adfe682c19b7abbffd",
+      "corpus": "JVS speaker jvs002",
+      "label": "pitch +3 semitones, tempo preserved",
+      "transform": {"kind": "pitch", "factor": 1.189207115}
+    },
+    {
+      "id": "jvs003-noise20",
+      "group": "noise",
+      "source_set": "jvs",
+      "filename": "jvs003.wav",
+      "sha256": "b538f57686020e37cb82cfeda8dc7c369c4ffb174510a70344b7523fce0fb774",
+      "corpus": "JVS speaker jvs003",
+      "label": "deterministic white noise at 20 dB SNR",
+      "transform": {"kind": "noise", "snr_db": 20.0}
+    },
+    {
+      "id": "hadou-002-leading300",
+      "group": "leading-silence",
+      "source_set": "hadou-heldout",
+      "filename": "EMOTION100_002.wav",
+      "sha256": "8f27065d5b2f66baeafea5e96653f87c57ce866ea42f4e19df82886078c5e536",
+      "corpus": "Hadou heldout",
+      "label": "300 ms leading silence, fixed 2.4 s window",
+      "transform": {"kind": "leading-silence", "milliseconds": 300}
+    }
+  ]
+}

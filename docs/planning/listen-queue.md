@@ -21,16 +21,22 @@ committed, single-variable job at a time, publish its comparison on 8878, apply
 only coarse machine rejection for corruption/content failure, and replan after
 each result. Accumulated candidates remain unselected until human hearing.
 
+Provenance correction (2026-08-13): the retained 8.17-second recording saying
+`隣の客はよく柿食う客だ` is a local tongue-twister diagnostic, **not** audio
+captured from the ChatGPT browser. All earlier `actual ChatGPT` labels for that
+artifact and browser-domain conclusions drawn from it are superseded. It stays
+available only as historical diagnostics and is not an active optimization
+target.
+
 | Item | What to hear | Action | Afterward |
 |---|---|---|---|
-| EXP-020 Stage 0 | Native vs existing human RVC `hakihaki` / `runrun` / `yofukashi` on the 8.17 s actual ChatGPT input | per profile: `rejected` if grossly dead, else `continue` | all rejected → skip more RVC-on-actual and go to the 87-pair X-VC listen-now; any `continue` → that profile may enter a larger actual-input listen |
-| EXP-021 | MeanVC2 and OpenVoice V2 on the same 8.17 s input | per family: `continue` or `rejected` | `rejected` kills that family for this input; `continue` only admits a later larger actual-input listen |
+| EXP-033 source diversity | Base vs legacy human87 control69-e12 vs JVS3 generated-pair X-VC on ten fixed cross-speaker/constraint rows | after hearing returns: prefer one arm per group or reject all; judge naturalness and target voice by ear | machine ASR may reject corruption only; a consistent audible result admits the next method decision, not promotion |
 | EXP-023 | 12 Qwen3-TTS Ono_Anna texts | per text: `continue` or `rejected` | one `rejected` stops this exact TTS profile; all `continue` only admits later TTS transport work, not a VC win |
 | EXP-025 whole-short 87 | Frozen base vs human-paired adapted X-VC on three public heldout source-only utterances | `keep` only if adapted is clearly preferable on the set; otherwise `rejected` | `keep` admits a separate promote pass; `rejected` closes this exact 87-pair schedule |
 | EXP-026 horizon | The same three X-VC rows at base / epoch 4 / epoch 8 / epoch 12 | nominate one horizon only if it is clearly preferable across the set; otherwise `rejected` | a nomination chooses the next listen-now model state only; it is not a route or product decision |
-| EXP-032 stream floor + system path | Actual 8.17 s input at epoch 8 with future 100 / 110 / 120 / 125 ms, followed by the future-120 candidate through the bounded worker/cancellation path | hear 120 and 125 ms, then compare the source/system pair; record the lowest acceptable arm, or `rejected` | 100/110 have auxiliary-ASR repetition; the worker probe completed with zero stale frames but is not Gateway-, Extension-, or route-qualified |
+| EXP-032 stream floor + system path | Historical local tongue-twister diagnostic at epoch 8 with future 100 / 110 / 120 / 125 ms | optional archive only | not browser-domain evidence; no more lookahead points |
 | MS-3 stable VC heldout shortlist | The same three public utterances through stable seed-0 RVC Sasayaki clean-bright and stable X-VC Yofukashi Q034 | per row prefer one arm, or reject both; judge clarity, naturalness, and target-voice fit by ear | a consistent preference admits one next listen-now route; it is not promotion or product selection |
-| MS-3 stable VC exact actual-input shortlist | The exact 8.17 s raw PCM previously consumed by X-VC, through stable seed-0 RVC and stable X-VC Yofukashi Q034 | prefer one arm, or reject both; judge clarity, naturalness, and target-voice fit by ear | a preference corroborates the heldout set; it is not promotion or product selection |
+| MS-3 stable VC local diagnostic shortlist | The exact 8.17 s local tongue-twister PCM previously consumed by X-VC, through stable seed-0 RVC and stable X-VC Yofukashi Q034 | optional archive only | not ChatGPT-browser or generalization evidence |
 | MS-3 stable VC interrupt recovery | Fresh-session output versus the same short utterance immediately after canceling an older generation, once for RVC and X-VC | listen only for a post-cancel clarity/voice change; record `continue` or `rejected` per family | stale-frame safety is machine-closed; hearing may identify a quality issue but does not promote a route |
 | MS-3 stable VC native fallback | Continuous remote output versus an exclusive hard switch to aligned native audio at 2.0 s, once for RVC and X-VC | listen at the switch for a click, missing syllable, or disruptive voice jump | identifies a fallback-quality issue only; it does not bind either profile |
 | RVC turn-consistency diagnostic | `ms3-rvc-repeat-turn-v1` versus the explicit seed-0/seed-34 repeat collections | compare whether the seeded output removes audible turn-to-turn voice changes; do not choose by auxiliary CER alone | seed 0 is the system integration candidate only; a later audible preference may change it |
@@ -45,14 +51,24 @@ it produces new listening audio or directly advances the realtime system.
 Publish or record a technical stop before starting the next lane. This does not
 authorize promote claims or several speculative sweeps in parallel.
 
+Method reset (2026-08-13): the later `actual-input` statements in this file's
+historical narrative refer to the now-corrected local tongue-twister artifact;
+they do not establish ChatGPT-browser performance. Exact human87 horizon, LR,
+LoRA-scope and EXP-024 DTW retries remain closed. New data construction,
+conditioning, loss, and freeze-scope methods are open. EXP-033 is the current
+single GPU lane: it changes source construction to three JVS generated
+same-content voices while holding 87 target texts, 12 exposures per text,
+1,044 updates, control69, LR, loss, and target voice fixed. Its fixed ten-row
+evaluation spans clean cross-speaker, tempo, pitch, noise, and leading-silence
+conditions. Auxiliary ASR can only screen content/corruption by group.
+
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Help the operator finish the six rows above; EXP-027--031 are superseded diagnostics and do not need separate draining | parent | n/a | decisions recorded |
-| 2 | Hear `ms3-stable-vc-heldout-shortlist-v1` first, the new public-validation generalization set second, and the exact actual-input pair third; the unseeded predecessor is historical | parent | no: all candidates are already published | one operator preference set or both arms rejected |
-| 3 | If EXP-032 receives a `keep`, bind that exact candidate to the formal Gateway profile and exercise native fallback/Extension playout | parent | yes: EXP-032 `keep` | one route-qualified system listen or a recorded integration blocker |
-| 4 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
+| 1 | Commit and run EXP-033: JVS3 generated same-content source pairs, fixed 1,044-update control69 pilot | parent | no | ten-row base/legacy/new comparison published and coarse group screen recorded |
+| 2 | If EXP-033 avoids a clear machine regression, preserve it for hearing; otherwise record the failure and change method, not epoch/LR/scope | parent | no human dependency for machine reject | one technical stop and replan |
+| 3 | After hearing returns, hear EXP-033 and the stable public heldout/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.
 EXP-032 closes the lookahead sweep at a 120-ms auxiliary-ASR floor; do not open

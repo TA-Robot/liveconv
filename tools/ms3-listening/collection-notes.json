@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "top_status": {
-    "updated_at": "2026-08-13T10:50:00Z",
-    "current": "MS-3の最優先は、会話ターン安定化済みRVC seed 0と数値安定なX-VC Yofukashi Q034のstable shortlistです。既存heldout、未使用validation 3発話、完全一致する実ChatGPT入力に加え、両familyの割り込み復帰とnative fallback切替音も公開しました。EXP-020、EXP-021、EXP-023は未聴の副次queueとして残ります。",
-    "hold": "履歴のX-VC比較、EXP-027〜031、370本の発音確認は今回の判定を止めません。EXP-024のDTW pilotやlookahead sweepは再開せず、RVC再学習、TTSの人間VC corpusへの混入、keep前のpromote作業も行いません。",
-    "next": "人間が戻ったら、まずstable VC heldout shortlist、次に未使用validation generalization、最後にexact actual-inputを聴いてください。割り込み復帰はfresh/after-cancel、native fallbackは2.0秒の切替点にclickや内容飛びがないか確認し、continueまたはrejectedを記録します。補助CERは内容screenで音質順位ではありません。固定ポート: 8878。"
+    "updated_at": "2026-08-13T11:40:00Z",
+    "current": "8.17秒の『隣の客はよく柿食う客だ』はChatGPTブラウザ音声ではなく、local早口言葉diagnosticです。旧actual ChatGPTラベルとdomain結論は失効しました。現在の最優先は、JVS 3話者生成pairで再学習するEXP-033を、多話者・tempo・pitch・noise・leading silenceの固定10条件でbase/旧human87/新adapter比較することです。",
+    "hold": "旧8.17秒入力の追加攻略、EXP-024 DTW retry、human87のepoch/LR/scope再点、RVC再学習、TTSの人間VC corpus混入、keep前のpromote作業は行いません。新しいX-VCのdata construction・conditioning・loss・freeze scope方法は開いています。",
+    "next": "EXP-033をGPUで完走し、group別の補助ASR/反復screen後に固定ポート8878へ公開します。人間が戻ったらEXP-033とstable public heldout/generalizationを先に聴き、local早口言葉diagnosticは後回しにしてください。補助CERは内容screenで音質順位ではありません。"
   },
   "collections": [
     {
@@ -18,11 +18,11 @@
     },
     {
       "match_all": ["ms3-stable-vc-actual-shortlist-v1"],
-      "display_title": "次点: stable VC exact actual-input shortlist（RVC seed 0 vs X-VC）",
-      "purpose": "過去X-VC比較で実際に消費されたものと完全一致する8.17秒の生PCMを、stable RVC seed 0とstable X-VC Yofukashi Q034で比較",
+      "display_title": "履歴: stable VC local早口言葉diagnostic（RVC seed 0 vs X-VC）",
+      "purpose": "ChatGPTブラウザ音声ではない8.17秒のlocal早口言葉PCMを、stable RVC seed 0とstable X-VC Yofukashi Q034で比較",
       "data": "同一入力2候補。RVCは新規live Gateway出力、X-VCは同じ生PCMから作られた既存出力をhash一致で再利用。補助CERはRVC 0.417、X-VC 0.833。gross repetitionなし。",
       "status": "明瞭さ・自然さ・目標声への近さを聴き、RVC、X-VC、または両方rejectedを記録してください。機械値は内容screenのみで、声質選定ではありません。",
-      "review_priority": "priority",
+      "review_priority": "low",
       "review_mode": "gross_reject_only"
     },
     {
@@ -55,7 +55,7 @@
     {
       "match_all": ["ms3-stable-vc-native-fallback-v1"],
       "display_title": "stable VC: 実音声の途中で排他的native fallback",
-      "purpose": "exact actual ChatGPT入力でremoteを2.0秒まで再生し、現在のExtension実装と同じくremoteをmuteしてから次sampleでnativeを有効化した切替音をRVC/X-VC別に確認",
+      "purpose": "ChatGPTブラウザ音声ではないlocal早口言葉入力でremoteを2.0秒まで再生し、現在のExtension実装と同じくremoteをmuteしてから次sampleでnativeを有効化した履歴切替音をRVC/X-VC別に確認",
       "data": "simultaneous routeは0。切替sample jumpはRVC 0.0488、X-VC 0.1122。固定faster-whisper-smallではRVC remote/fallback CER 0.917/0.778、X-VCは1.000/1.000で、追加gross loopはありません。",
       "status": "各runの2.0秒地点でclick、音節の飛び、急な声色変化だけ確認してください。sample jumpや補助CERだけでrouteを不合格・選定しません。",
       "review_priority": "normal",
@@ -162,11 +162,11 @@
     },
     {
       "match_all": ["ms3-rvc-seed0-actual-input-v5"],
-      "display_title": "RVC stable seed 0: 実ChatGPT入力",
-      "purpose": "ターン安定化済みの凍結RVC候補を8.17秒の実入力へ1回だけ通し、過去の未seed clean-bright出力と比較",
+      "display_title": "RVC stable seed 0: local早口言葉diagnostic",
+      "purpose": "ターン安定化済みの凍結RVC候補を、ChatGPTブラウザ音声ではない8.17秒のlocal早口言葉へ通した履歴比較",
       "data": "source-relative補助CERは旧unseed 0.727、stable seed0 0.636。gross repetitionなし。両腕は同じPCM24 listening sourceですが、旧raw float32は未保持なので厳密なseed-only因果比較ではありません。",
       "status": "明瞭さ・自然さ・声色を旧unseedと比較してください。機械screenは内容崩壊除外のみで、stable seed0を音質選定したものではありません。",
-      "review_priority": "normal",
+      "review_priority": "low",
       "review_mode": "gross_reject_only"
     },
     {
@@ -326,11 +326,11 @@
     },
     {
       "match_all": ["exp020-human-rvc-smoke-8s-plain"],
-      "display_title": "EXP-020: 実入力8.17秒の粗い却下チェック",
-      "purpose": "実際の変換前ChatGPTタブ音声を、Nativeと人間音声学習済みRVC 3種へ同条件で入力",
-      "data": "2026-08-11収録の実入力1件・8.17秒。小型Whisperから推定した発話内容は『隣の客はよく柿食う客だ』を2回＋『生麦生米生卵』。Native / はきはき / るんるん / よふかし",
+      "display_title": "履歴 EXP-020: local早口言葉8.17秒の粗い却下チェック",
+      "purpose": "ChatGPTブラウザ音声ではないlocal診断録音を、Nativeと人間音声学習済みRVC 3種へ同条件で入力",
+      "data": "2026-08-11収録のlocal診断1件・8.17秒。小型Whisperから推定した発話内容は『隣の客はよく柿食う客だ』を2回＋『生麦生米生卵』。Native / はきはき / るんるん / よふかし。browser-domain evidenceではありません。",
       "status": "最初にNativeを基準として聴き、3変換を候補ごとにcontinueまたは理由つきrejected。小型Whisperでは3変換ともNativeから文字列が大きく崩れ、よふかしは反復あり。品質合格やモデル選定には使いません。",
-      "review_priority": "highest",
+      "review_priority": "low",
       "review_mode": "gross_reject_only"
     },
     {

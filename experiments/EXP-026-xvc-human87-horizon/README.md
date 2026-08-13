@@ -1,5 +1,13 @@
 # EXP-026: X-VC human87 training-horizon listen-now
 
+> Provenance correction (2026-08-13): the 8.17-second tongue-twister used by
+> later offline/system-path checks is not ChatGPT browser audio. Its reported
+> source-relative ASR values remain bounded corruption diagnostics for that
+> local clip only; they do not show browser-domain generalization and do not
+> rank voice quality. Exact horizon/LR/scope points remain closed, while the
+> active thread has reopened materially different data, conditioning, loss, or
+> freeze-scope methods.
+
 Status: **listen-now completed; operator selection pending**.
 
 The committed run completed 1,044 updates in 181.74 seconds. Loss at epochs
@@ -53,7 +61,7 @@ The half-LR run completed 2,088 updates in 247.54 seconds. Loss at epochs
 error was `0.255 / 0.348 / 0.441`. It therefore shifted the degradation later
 but did not beat the standard-LR control69 epoch-12 error of `0.198`. Further
 human87 horizon and learning-rate refinement is closed. The next comparison
-reuses the existing exact adapters on the 8.17-second actual ChatGPT input,
+reuses the existing exact adapters on the 8.17-second local tongue-twister input,
 with no new training, to check whether control69's heldout content advantage
 generalizes before spending a system-path run on it.
 
