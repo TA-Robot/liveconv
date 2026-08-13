@@ -44,6 +44,23 @@ class PostRehearsalError(RuntimeError):
     """The bounded clean post-adaptation rehearsal cannot safely continue."""
 
 
+def listening_policy() -> dict[str, str]:
+    """Return the complete shared-listener identity for EXP-141."""
+
+    return {
+        "slug": "exp141",
+        "candidate_id": CANDIDATE_ID,
+        "candidate_name": (
+            "EXP-141 / control69 + one clean unique teacher rehearsal pass"
+        ),
+        "run_kind": "EXP-141 X-VC clean post-rehearsal external evaluation",
+        "question": (
+            "Does a clean post-adaptation teacher pass retain control69 while "
+            "reducing off-distribution corruption?"
+        ),
+    }
+
+
 def load_manifest(path: Path, source_work: Path) -> dict[str, Any]:
     value = load_json(path)
     items = value.get("items")
@@ -334,17 +351,7 @@ def run(
     del plain_base
     torch.cuda.empty_cache()
 
-    policy = {
-        "candidate_id": CANDIDATE_ID,
-        "candidate_name": (
-            "EXP-141 / control69 + one clean unique teacher rehearsal pass"
-        ),
-        "run_kind": "EXP-141 X-VC clean post-rehearsal external evaluation",
-        "question": (
-            "Does a clean post-adaptation teacher pass retain control69 while "
-            "reducing off-distribution corruption?"
-        ),
-    }
+    policy = listening_policy()
     staging = arguments.work_dir / "listener-staging"
     staging.mkdir()
     listener_rows: list[dict[str, Any]] = []
