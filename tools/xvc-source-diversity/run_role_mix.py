@@ -42,6 +42,25 @@ RECONSTRUCTION_CYCLE = (
     "standard",
     "standard",
 )
+SOURCE_CONDITION_CYCLE = (
+    {"kind": "clean"},
+    {"kind": "noise", "snr_db": 20.0},
+    {"kind": "clean"},
+    {"kind": "tempo", "factor": 1.2},
+    {"kind": "clean"},
+    {"kind": "pitch", "factor": 1.189207115},
+    {"kind": "clean"},
+    {"kind": "leading-silence", "milliseconds": 300},
+    {"kind": "clean"},
+    {"kind": "clean"},
+)
+SOURCE_CONDITION_COUNTS = {
+    "clean": 626,
+    "noise": 105,
+    "tempo": 105,
+    "pitch": 104,
+    "leading-silence": 104,
+}
 TOTAL_UPDATES = breadth.TOTAL_UPDATES
 SPEAKER7_TARGETS = tuple(
     [
@@ -76,6 +95,8 @@ def training_modes(policy: str) -> list[str]:
         return role_schedule()
     if policy == "all-standard":
         return ["standard"] * TOTAL_UPDATES
+    if policy == "source-augmentation":
+        return ["standard"] * TOTAL_UPDATES
     if policy == "standard-reconstruction":
         repeats, remainder = divmod(TOTAL_UPDATES, len(RECONSTRUCTION_CYCLE))
         tail = ("standard", "standard", "reconstruction", "standard")
@@ -86,6 +107,18 @@ def training_modes(policy: str) -> list[str]:
             raise RoleMixError("reconstruction schedule proportions drifted")
         return schedule
     raise RoleMixError(f"unknown training policy: {policy}")
+
+
+def source_condition_schedule(policy: str) -> list[dict[str, object]]:
+    if policy != "source-augmentation":
+        return [{"kind": "clean"} for _ in range(TOTAL_UPDATES)]
+    repeats, remainder = divmod(TOTAL_UPDATES, len(SOURCE_CONDITION_CYCLE))
+    schedule = [dict(item) for item in SOURCE_CONDITION_CYCLE] * repeats
+    schedule.extend(dict(item) for item in SOURCE_CONDITION_CYCLE[:remainder])
+    observed = Counter(item["kind"] for item in schedule)
+    if len(schedule) != TOTAL_UPDATES or observed != SOURCE_CONDITION_COUNTS:
+        raise RoleMixError("source-condition schedule proportions drifted")
+    return schedule
 
 
 def training_scope(inventory: Path, name: str) -> dict[str, object]:
@@ -164,6 +197,29 @@ def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
             "independent_variable": (
                 "training roles: all-standard versus 835 standard and 209 "
                 "same-target reconstruction updates, with zero reversed updates"
+            ),
+        }
+    if (
+        arguments.training_policy == "source-augmentation"
+        and arguments.lora_scope == "control69"
+    ):
+        return {
+            "experiment_id": "EXP-043",
+            "slug": "exp043",
+            "candidate_id": "cv12-source-conditions",
+            "candidate_name": (
+                "EXP-043 / CV12 / 60% clean + 40% source-condition augmentation"
+            ),
+            "run_kind": "EXP-043 X-VC source-condition augmentation evaluation",
+            "result_kind": "liveconv-exp043-xvc-source-condition-result/v1",
+            "question": (
+                "Does source-side audio-condition augmentation improve X-VC "
+                "robustness without corrupting clean unseen speech?"
+            ),
+            "independent_variable": (
+                "source acoustics: all-clean versus deterministic 626 clean, "
+                "105 noise20, 105 tempo1.2, 104 pitch+3, and 104 leading300ms "
+                "updates; target audio and all optimizer settings stay fixed"
             ),
         }
     raise RoleMixError("unsupported training-policy and LoRA-scope combination")
@@ -472,8 +528,10 @@ def run(
     torch.cuda.empty_cache()
 
     modes = training_modes(arguments.training_policy)
+    source_conditions = source_condition_schedule(arguments.training_policy)
     training_rows: list[dict[str, Any]] = []
     generated_inventory: list[dict[str, str]] = []
+    training_source_inventory: list[dict[str, object]] = []
     row_index = 0
     for target_index, (target_pair, target_tensor) in enumerate(
         zip(target_pairs, target_tensors, strict=True)
@@ -500,8 +558,37 @@ def run(
             )
             if digest != base.sha256_file(predecessor_path):
                 raise RoleMixError("generated source no longer reproduces EXP-035")
+            condition = source_conditions[row_index]
+            condition_kind = str(condition["kind"])
+            training_source = output
+            training_source_path = output_path
+            if condition_kind != "clean":
+                training_source_path = (
+                    pair_root
+                    / f"train-{donor_pair.pair_id}-{condition_kind}-16k.wav"
+                )
+                method.transform_window(
+                    output_path,
+                    condition,
+                    destination=training_source_path,
+                    process_audio=process_audio,
+                    config=config,
+                    seed=base.SEED + row_index,
+                )
+                values = method._model_window(
+                    training_source_path,
+                    process_audio=process_audio,
+                    config=config,
+                )
+                training_source = (
+                    torch.from_numpy(values)
+                    .reshape(1, 1, -1)
+                    .to(device=device, dtype=torch.float32)
+                )
             with torch.inference_mode():
-                features = model.semantic_encoder.extract_and_encode(output.squeeze(1))
+                features = model.semantic_encoder.extract_and_encode(
+                    training_source.squeeze(1)
+                )
             tokens = features.get("speech_tokens")
             hidden = features.get("whisper_hidden_states_50hz")
             if (
@@ -514,7 +601,10 @@ def run(
             ):
                 raise RoleMixError("generated semantic feature shape drifted")
             generated = {
-                "source_wav": output.detach().cpu().to(torch.float32).contiguous(),
+                "source_wav": training_source.detach()
+                .cpu()
+                .to(torch.float32)
+                .contiguous(),
                 "semantic_tokens": tokens[:, : base.SEMANTIC_FRAMES]
                 .detach()
                 .cpu()
@@ -535,6 +625,14 @@ def run(
                     "target_id": target_pair.pair_id,
                     "donor_id": donor_pair.pair_id,
                     "source_sha256": digest,
+                }
+            )
+            training_source_inventory.append(
+                {
+                    "target_id": target_pair.pair_id,
+                    "donor_id": donor_pair.pair_id,
+                    "condition": condition,
+                    "source_sha256": base.sha256_file(training_source_path),
                 }
             )
             row_index += 1
@@ -653,6 +751,15 @@ def run(
         },
         "role_counts": observed_role_counts,
         "role_schedule_sha256": method._canonical_sha256(modes),
+        "source_condition_counts": dict(
+            Counter(item["kind"] for item in source_conditions)
+        ),
+        "source_condition_schedule_sha256": method._canonical_sha256(
+            source_conditions
+        ),
+        "training_source_inventory_sha256": method._canonical_sha256(
+            training_source_inventory
+        ),
         "donor_manifest_sha256": base.sha256_file(arguments.donors),
         "evaluation_set_sha256": base.sha256_file(arguments.evaluation_set),
         "generated_pair_count": len(training_rows),
@@ -699,7 +806,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--check", action="store_true")
     parser.add_argument(
         "--training-policy",
-        choices=("role-mix", "all-standard", "standard-reconstruction"),
+        choices=(
+            "role-mix",
+            "all-standard",
+            "standard-reconstruction",
+            "source-augmentation",
+        ),
         default="role-mix",
     )
     parser.add_argument(
@@ -749,6 +861,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "generated_pairs": TOTAL_UPDATES,
                         "updates": TOTAL_UPDATES,
                         "role_counts": dict(Counter(modes)),
+                        "source_condition_counts": dict(
+                            Counter(
+                                item["kind"]
+                                for item in source_condition_schedule(
+                                    arguments.training_policy
+                                )
+                            )
+                        ),
                         "lora_scope": arguments.lora_scope,
                     },
                     sort_keys=True,

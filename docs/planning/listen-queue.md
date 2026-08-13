@@ -89,16 +89,18 @@ replaced speaker7 with reconstruction20 on twelve new utterances. It also had
 no loops and retained the same 0.571 maximum source-relative distance as
 control69, but its mean moved slightly from 0.184 to 0.198 while the secondary
 full-text reference moved from 0.576 to 0.565. This is neither a clear reject
-nor a machine-selected win. EXP-042 is the final render-only robustness check
-on the frozen clean/tempo/F0/noise/silence rows, with the existing noise
-regression as the decision-relevant condition.
+nor a machine-selected win. EXP-042 then produced the exact same auxiliary
+result as control69 in all ten clean/tempo/F0/noise/silence rows, including the
+unchanged 0.375 noise regression. Target reconstruction is closed. EXP-043 is
+the current method lane: return to all-standard training and apply a fixed
+60/40 clean/source-condition schedule to the generated source side only.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Render EXP-042 control69/reconstruction20 on the frozen ten clean/tempo/F0/noise/silence rows | parent | no human dependency for machine reject | fixed-condition comparison published; no automated winner |
-| 2 | Replan one X-VC method axis from the combined 7 + 12 + 10 screens | parent | no | one bounded train-or-stop decision recorded |
+| 1 | Train EXP-043 with 626 clean plus 418 noise/tempo/F0/silence source updates at fixed targets/exposure/scope | parent | no | seven-row external comparison and corruption screen published |
+| 2 | If EXP-043 survives, render the already-frozen twelve new utterances and ten condition rows | parent | no human dependency for machine reject | generalization and stress screens published; no automated winner |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

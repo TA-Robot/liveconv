@@ -2120,3 +2120,33 @@ job queue.
   adapters, and `git diff --check` passed. No training update is scheduled.
 - Changed action: commit before execution, then use the sole GPU lane for 30
   converted candidates and one condition-stratified corruption screen.
+
+## 2026-08-13T13:39:02Z - EXP-042 condition audio published; reconstruction closed
+
+- Agent: `primary-integrator`.
+- Task: Compare reconstruction20 with control69 on six clean rows plus tempo,
+  pitch, 20 dB noise, and 300 ms leading silence.
+- Dependencies: commit `cf4becf`; exclusive `gpu0`; listener `8878`.
+- Result: 30 converted candidates completed in 96.15 seconds with 4.77 GB peak
+  allocation. Reconstruction20 and control69 produced identical auxiliary
+  content/repetition results in every group: macro 0.153, noise 0.375, leading
+  silence 0.400, tempo 0.250, pitch 0.000, and zero gross loops.
+- Changed action: close target reconstruction as a training method. It did not
+  address the robustness hypothesis and another ratio would be a low-value
+  sweep. Keep the audio unheard and redirect training to source-side condition
+  augmentation.
+
+## 2026-08-13T13:41:36Z - EXP-043 robust-source training prepared
+
+- Agent: `primary-integrator`.
+- Task: Hold EXP-035's exact 1,044 target/donor/update schedule and replace 418
+  clean generated-source windows with deterministic noise20, tempo1.2,
+  pitch+3, or leading-300ms windows; targets remain clean Amitaro.
+- Result: the exact schedule is 626 clean, 105 noise, 105 tempo, 104 pitch, and
+  104 leading-silence updates, all with the standard training role. Ruff, 30
+  focused tests, all-1,044-artifact CPU admission, and `git diff --check`
+  passed after correcting the recorded predecessor directory name.
+- Rework: one artifact-root correction; no source or training output changed.
+- Changed action: commit before execution and launch EXP-043 as the sole GPU
+  lane. The first decision remains a seven-speaker corruption screen; no
+  naturalness selection occurs without hearing.

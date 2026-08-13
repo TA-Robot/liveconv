@@ -108,3 +108,19 @@ def test_target_preserving_reconstruction_has_no_reversed_updates() -> None:
     assert Counter(schedule) == ROLE_MIX.RECONSTRUCTION_COUNTS
     assert "reversed" not in schedule
     assert policy["experiment_id"] == "EXP-040"
+
+
+def test_source_augmentation_is_exact_and_keeps_standard_roles() -> None:
+    conditions = ROLE_MIX.source_condition_schedule("source-augmentation")
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(training_policy="source-augmentation", lora_scope="control69")
+    )
+
+    assert len(conditions) == 1_044
+    assert Counter(row["kind"] for row in conditions) == (
+        ROLE_MIX.SOURCE_CONDITION_COUNTS
+    )
+    assert Counter(ROLE_MIX.training_modes("source-augmentation")) == {
+        "standard": 1_044
+    }
+    assert policy["experiment_id"] == "EXP-043"

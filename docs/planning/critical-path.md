@@ -162,7 +162,9 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-040 80% standard / 20% same-target reconstruction (complete)
         -> seven disjoint-speaker screen (non-corrupt; mixed small changes)
         -> EXP-041 twelve new utterances / six heldout speakers (non-corrupt; mixed)
-        -> EXP-042 ten frozen audio conditions, especially 20 dB noise (gpu0)
+        -> EXP-042 ten frozen audio conditions (identical to control69; closed)
+        -> EXP-043 60% clean / 40% varied source-condition training (gpu0)
+        -> seven external speakers, then only if safe 12 new utterances + 10 conditions
         -> operator hearing when available
 ```
 
