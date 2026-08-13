@@ -2471,3 +2471,20 @@ job queue.
 - Changed action: retain all audio as unheard on 8878, close target-count and
   exposure-ratio sweeps, and make the next method about generated pseudo-source
   content quality. The next runner should load models once for its full bundle.
+
+## 2026-08-13T15:35:00Z - EXP-059 pseudo-source content audit prepared
+
+- Agent: `primary-integrator`.
+- Task: Audit the immutable 1,044 EXP-035 generated training sources against
+  their own 87 target windows, then admit at most one content-quality-filtered
+  retraining method.
+- Dependencies: EXP-035 generated inventory digest `e909e465`; local pinned
+  faster-whisper-small; exclusive `gpu0` only during execution.
+- Result: CPU admission bound all 87 targets, twelve donors, and 1,044 source
+  WAV hashes to the original EXP-035 inventory. Three focused tests and Ruff
+  passed. The frozen policy keeps the best six nonempty, non-gross sources per
+  target and uses two passes for the same 1,044-update budget.
+- Changed action: commit the audit before its single GPU pass. Stop before
+  retraining unless every target retains six candidates, at least ten donors
+  survive globally, and selected mean content distance improves at least 25%.
+  No keep-count sweep is admitted.
