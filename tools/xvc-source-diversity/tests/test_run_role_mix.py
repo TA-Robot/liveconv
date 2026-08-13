@@ -143,3 +143,20 @@ def test_paired_augmentation_preserves_time_condition_alignment() -> None:
         "leading-silence": 104,
     }
     assert policy["experiment_id"] == "EXP-044"
+
+
+def test_authentic_anchor_replaces_exactly_one_donor_per_target() -> None:
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(training_policy="authentic-anchor", lora_scope="control69")
+    )
+    anchors = [
+        ROLE_MIX.uses_authentic_anchor("authentic-anchor", donor_index)
+        for _target_index in range(87)
+        for donor_index in range(12)
+    ]
+
+    assert sum(anchors) == 87
+    assert Counter(ROLE_MIX.training_modes("authentic-anchor")) == {
+        "standard": 1_044
+    }
+    assert policy["experiment_id"] == "EXP-046"

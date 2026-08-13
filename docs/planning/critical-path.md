@@ -165,8 +165,9 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-042 ten frozen audio conditions (identical to control69; closed)
         -> EXP-043 source-only varied conditions (external regression; closed)
         -> EXP-044 alignment-preserving varied conditions (seven-row improvement)
-        -> EXP-045 twelve changed utterances (gpu0)
-        -> only if safe, ten frozen audio conditions
+        -> EXP-045 twelve changed utterances (regressed; augmentation closed)
+        -> EXP-046 eleven synthetic + one authentic source per target (gpu0)
+        -> seven external speakers, then only if safe 12 new + 10 conditions
         -> operator hearing when available
 ```
 

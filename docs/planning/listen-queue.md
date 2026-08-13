@@ -99,16 +99,19 @@ applies tempo, F0, and leading silence to both source and target windows so
 alignment is preserved; noise remains source-only with a clean target.
 Its first seven-speaker screen had no loops and improved control69 on all three
 auxiliary summaries: source-relative mean 0.360 to 0.278, known-text mean 0.399
-to 0.362, and maximum source-relative distance 0.571 to 0.556. EXP-045 now
-tests whether that result survives twelve changed utterances before any frozen
-condition render or method claim.
+to 0.362, and maximum source-relative distance 0.571 to 0.556. EXP-045 showed
+that it did not generalize: on twelve changed utterances the mean regressed
+from control69 0.184 to 0.289 and maximum distance rose from 0.571 to 1.0.
+Aligned augmentation is closed. EXP-046 now replaces exactly one of twelve
+synthetic donor exposures per target with its already-authorized aligned human
+source, retaining eleven synthetic donors and every optimizer control.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Render EXP-045 base/control69/aligned-condition on the twelve changed utterances | parent | no | 36 candidates and source-relative corruption screen published |
-| 2 | If EXP-045 survives, render EXP-044 once on the frozen ten condition rows | parent | no human dependency for machine reject | stress screen published; no automated winner |
+| 1 | Train EXP-046 with eleven synthetic donors plus one authentic aligned source per target | parent | no | seven-row external comparison and corruption screen published |
+| 2 | If EXP-046 survives, render the twelve changed utterances and ten frozen conditions | parent | no human dependency for machine reject | generalization and stress screens published; no automated winner |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

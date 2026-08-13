@@ -95,7 +95,11 @@ def training_modes(policy: str) -> list[str]:
         return role_schedule()
     if policy == "all-standard":
         return ["standard"] * TOTAL_UPDATES
-    if policy in {"source-augmentation", "paired-augmentation"}:
+    if policy in {
+        "source-augmentation",
+        "paired-augmentation",
+        "authentic-anchor",
+    }:
         return ["standard"] * TOTAL_UPDATES
     if policy == "standard-reconstruction":
         repeats, remainder = divmod(TOTAL_UPDATES, len(RECONSTRUCTION_CYCLE))
@@ -127,6 +131,32 @@ def target_condition_kind(policy: str, source_kind: str) -> str:
     if source_kind not in {"tempo", "pitch", "leading-silence"}:
         raise RoleMixError(f"unknown source condition: {source_kind}")
     return source_kind
+
+
+def uses_authentic_anchor(policy: str, donor_index: int) -> bool:
+    return policy == "authentic-anchor" and donor_index == 0
+
+
+def authentic_pairs(
+    pair_root: Path, targets: Sequence[tuple[str, Path, str]]
+) -> list[base.MaterializedPair]:
+    pairs: list[base.MaterializedPair] = []
+    for pair_id, target_path, target_digest in targets:
+        source_path = pair_root / pair_id / "source-48k.wav"
+        if source_path.is_symlink() or not source_path.is_file():
+            raise RoleMixError(f"authentic source is unavailable: {pair_id}")
+        pairs.append(
+            base.MaterializedPair(
+                pair_id,
+                source_path,
+                target_path,
+                base.sha256_file(source_path),
+                target_digest,
+            )
+        )
+    if len(pairs) != method.PAIR_COUNT:
+        raise RoleMixError("authentic source count drifted")
+    return pairs
 
 
 def training_scope(inventory: Path, name: str) -> dict[str, object]:
@@ -254,6 +284,29 @@ def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
                 "the rejected source-only augmentation"
             ),
         }
+    if (
+        arguments.training_policy == "authentic-anchor"
+        and arguments.lora_scope == "control69"
+    ):
+        return {
+            "experiment_id": "EXP-046",
+            "slug": "exp046",
+            "candidate_id": "cv11-authentic1",
+            "candidate_name": (
+                "EXP-046 / eleven synthetic donors + one authentic source"
+            ),
+            "run_kind": "EXP-046 X-VC authentic-anchor evaluation",
+            "result_kind": "liveconv-exp046-xvc-authentic-anchor-result/v1",
+            "question": (
+                "Does one authentic aligned source per target anchor synthetic "
+                "donor diversity without losing external generalization?"
+            ),
+            "independent_variable": (
+                "source construction: twelve synthetic donor exposures versus "
+                "eleven synthetic exposures plus one authentic Hadou source per "
+                "Amitaro target; target exposure and optimizer controls stay fixed"
+            ),
+        }
     raise RoleMixError("unsupported training-policy and LoRA-scope combination")
 
 
@@ -367,6 +420,8 @@ def validate_inputs(
     experiment_policy(arguments)
     training_modes(arguments.training_policy)
     training_scope(arguments.inventory, arguments.lora_scope)
+    if arguments.training_policy == "authentic-anchor":
+        authentic_pairs(arguments.pair_root, targets)
     method._validate_xvc(arguments)
     base._require_new_output(
         arguments.work_dir,
@@ -501,6 +556,22 @@ def run(
         )
         for pair in target_pairs
     ]
+    anchor_pairs = (
+        authentic_pairs(arguments.pair_root, target_rows)
+        if arguments.training_policy == "authentic-anchor"
+        else []
+    )
+    anchor_tensors = [
+        base._extract_pair_tensors(
+            model,
+            pair,
+            process_audio=process_audio,
+            config=config,
+            torch=torch,
+            device=device,
+        )
+        for pair in anchor_pairs
+    ]
     donor_pairs: list[base.MaterializedPair] = []
     donor_tensors: list[dict[str, Any]] = []
     for item in donors["items"]:
@@ -596,6 +667,17 @@ def run(
             condition_kind = str(condition["kind"])
             training_source = output
             training_source_path = output_path
+            authentic_row = uses_authentic_anchor(
+                arguments.training_policy, donor_index
+            )
+            authentic_tensor = (
+                anchor_tensors[target_index] if authentic_row else None
+            )
+            if authentic_row:
+                training_source = authentic_tensor["source_wav"].to(
+                    device=device, dtype=torch.float32
+                )
+                training_source_path = anchor_pairs[target_index].source_path
             if condition_kind != "clean":
                 training_source_path = (
                     pair_root
@@ -668,12 +750,16 @@ def run(
                     )
                 else:
                     training_target, target_source_digest = cached
-            with torch.inference_mode():
-                features = model.semantic_encoder.extract_and_encode(
-                    training_source.squeeze(1)
-                )
-            tokens = features.get("speech_tokens")
-            hidden = features.get("whisper_hidden_states_50hz")
+            if authentic_tensor is None:
+                with torch.inference_mode():
+                    features = model.semantic_encoder.extract_and_encode(
+                        training_source.squeeze(1)
+                    )
+                tokens = features.get("speech_tokens")
+                hidden = features.get("whisper_hidden_states_50hz")
+            else:
+                tokens = authentic_tensor["semantic_tokens"].to(device=device)
+                hidden = target_tensor["ssl_feat"].to(device=device)
             if (
                 tokens is None
                 or hidden is None
@@ -715,6 +801,7 @@ def run(
                     "target_id": target_pair.pair_id,
                     "donor_id": donor_pair.pair_id,
                     "condition": condition,
+                    "authentic_anchor": authentic_row,
                     "source_sha256": base.sha256_file(training_source_path),
                 }
             )
@@ -856,6 +943,23 @@ def run(
         "training_target_inventory_sha256": method._canonical_sha256(
             training_target_inventory
         ),
+        "authentic_anchor_count": sum(
+            bool(item["authentic_anchor"]) for item in training_source_inventory
+        ),
+        "authentic_pair_inventory_sha256": (
+            method._canonical_sha256(
+                [
+                    {
+                        "pair_id": pair.pair_id,
+                        "source_sha256": pair.source_sha256,
+                        "target_sha256": pair.target_sha256,
+                    }
+                    for pair in anchor_pairs
+                ]
+            )
+            if anchor_pairs
+            else None
+        ),
         "donor_manifest_sha256": base.sha256_file(arguments.donors),
         "evaluation_set_sha256": base.sha256_file(arguments.evaluation_set),
         "generated_pair_count": len(training_rows),
@@ -908,6 +1012,7 @@ def _parser() -> argparse.ArgumentParser:
             "standard-reconstruction",
             "source-augmentation",
             "paired-augmentation",
+            "authentic-anchor",
         ),
         default="role-mix",
     )
@@ -975,6 +1080,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                                     arguments.training_policy
                                 )
                             )
+                        ),
+                        "authentic_anchor_count": (
+                            method.PAIR_COUNT
+                            if arguments.training_policy == "authentic-anchor"
+                            else 0
                         ),
                         "lora_scope": arguments.lora_scope,
                     },

@@ -2242,3 +2242,28 @@ job queue.
   `git diff --check` passed. No training update is scheduled.
 - Changed action: commit before execution, publish 36 candidates, then run the
   source-window-relative corruption screen as the sole GPU lane.
+
+## 2026-08-13T14:10:16Z - EXP-045 audio published; augmentation closed
+
+- Agent: `primary-integrator`.
+- Task: Test the EXP-044 adapter on twelve changed utterances from six heldout
+  speakers.
+- Dependencies: commit `4e96ae9`; exclusive `gpu0`; listener `8878`.
+- Result: 36 candidates completed in 109.43 seconds with 4.78 GB peak
+  allocation. No arm gross-looped, but aligned conditions regressed control69's
+  source-relative mean 0.184 to 0.289, known-text reference 0.576 to 0.603, and
+  maximum source-relative distance 0.571 to 1.0.
+- Changed action: close the augmentation method without a ten-condition render.
+  The initial seven-row improvement did not generalize to changed content.
+
+## 2026-08-13T14:12:01Z - EXP-046 authentic-anchor training prepared
+
+- Agent: `primary-integrator`.
+- Task: Replace one synthetic donor exposure per each of 87 targets with its
+  existing authorized, aligned Hadou source; keep eleven synthetic exposures,
+  twelve total exposures per target, and 1,044 updates.
+- Result: all 87 source/target pairs and 1,044 predecessor pseudo-sources passed
+  CPU admission. Ruff, 34 focused tests, and `git diff --check` passed. Roles,
+  target voice, control69 scope, LR, loss, seed, and zero condition stay fixed.
+- Changed action: commit the mixed-data method before execution and start it as
+  the sole GPU lane. Screen seven external speakers before other renders.
