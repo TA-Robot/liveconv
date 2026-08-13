@@ -128,3 +128,10 @@ def test_decoder_final_uses_exp079_condition_policy() -> None:
     policy = RENDER.candidate_policy("decoder-final")
     assert policy["experiment_id"] == "EXP-079"
     assert policy["candidate"][0] == "cv12-decoder-final"
+
+
+def test_source_semantic_uses_exp083_condition_policy() -> None:
+    policy = RENDER.candidate_policy("source-semantic")
+
+    assert policy["experiment_id"] == "EXP-083"
+    assert policy["candidate"][0] == "cv12-source-semantic"

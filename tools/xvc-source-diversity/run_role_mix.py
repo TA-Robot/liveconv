@@ -122,6 +122,7 @@ def training_modes(policy: str) -> list[str]:
         "paired-augmentation",
         "authentic-anchor",
         "semantic2x",
+        "source-semantic",
     }:
         return ["standard"] * TOTAL_UPDATES
     if policy == "standard-reconstruction":
@@ -262,6 +263,30 @@ def training_scope(inventory: Path, name: str) -> dict[str, object]:
 
 
 def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
+    if (
+        arguments.training_policy == "source-semantic"
+        and arguments.lora_scope == "control69"
+    ):
+        return {
+            "experiment_id": "EXP-081",
+            "slug": "exp081",
+            "candidate_id": "cv12-source-semantic",
+            "candidate_name": (
+                "EXP-081 / CV12 / source-hidden semantic supervision"
+            ),
+            "run_kind": "EXP-081 X-VC source-semantic evaluation",
+            "result_kind": "liveconv-exp081-xvc-source-semantic-result/v1",
+            "question": (
+                "Does supervising the semantic decoder with source hidden states "
+                "preserve unseen input content better than target-hidden supervision?"
+            ),
+            "independent_variable": (
+                "semantic MSE target: target-voice Whisper hidden states versus "
+                "generated-source Whisper hidden states; target waveform, target "
+                "speaker, loss weights, data, control69 scope, LR, seed, zero "
+                "condition, and 1,044 updates stay fixed"
+            ),
+        }
     if (
         arguments.training_policy == "all-standard"
         and arguments.lora_scope == "decoder-final"
@@ -510,6 +535,7 @@ def assigned_tensors(
     role: str,
     *,
     real_donor: Mapping[str, Any] | None = None,
+    semantic_target: str = "reference",
 ) -> dict[str, Any]:
     """Assign waveform and feature roles using the upstream role semantics."""
     if role == "real-donor-reconstruction":
@@ -529,11 +555,17 @@ def assigned_tensors(
         source, reference = target, generated
     else:
         raise RoleMixError(f"unknown role assignment: {role}")
+    if semantic_target not in {"reference", "source"}:
+        raise RoleMixError(f"unknown semantic target: {semantic_target}")
     return {
         "source_wav": source["source_wav"],
         "semantic_tokens": source["semantic_tokens"],
         "target_wav": reference["target_wav"],
-        "ssl_feat": reference["ssl_feat"],
+        "ssl_feat": (
+            source["ssl_feat"]
+            if semantic_target == "source"
+            else reference["ssl_feat"]
+        ),
     }
 
 
@@ -1027,6 +1059,11 @@ def run(
                     generated,
                     modes[row_index],
                     real_donor=donor_tensor,
+                    semantic_target=(
+                        "source"
+                        if arguments.training_policy == "source-semantic"
+                        else "reference"
+                    ),
                 )
             )
             generated_inventory.append(
@@ -1168,6 +1205,11 @@ def run(
             "learning_rate": base.LEARNING_RATE,
             "gradient_clip_norm": base.GRADIENT_CLIP_NORM,
             "target_wav_cond": "zeros",
+            "semantic_supervision": (
+                "source_whisper_hidden_states_50hz"
+                if arguments.training_policy == "source-semantic"
+                else "target_whisper_hidden_states_50hz"
+            ),
             "loss_weights": loss_weights,
         },
         "role_counts": observed_role_counts,
@@ -1258,6 +1300,7 @@ def _parser() -> argparse.ArgumentParser:
             "paired-augmentation",
             "authentic-anchor",
             "semantic2x",
+            "source-semantic",
             "real-reconstruction20",
         ),
         default="role-mix",
@@ -1336,6 +1379,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                         ),
                         "loss_weights": training_loss_weights(
                             arguments.training_policy
+                        ),
+                        "semantic_supervision": (
+                            "source_whisper_hidden_states_50hz"
+                            if arguments.training_policy == "source-semantic"
+                            else "target_whisper_hidden_states_50hz"
                         ),
                         "lora_scope": arguments.lora_scope,
                     },

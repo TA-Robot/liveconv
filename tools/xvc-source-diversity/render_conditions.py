@@ -205,6 +205,22 @@ def candidate_policy(kind: str) -> dict[str, Any]:
                 "30-xvc-cv12-decoder-final.wav",
             ),
         }
+    if kind == "source-semantic":
+        return {
+            "experiment_id": "EXP-083",
+            "result_kind": "liveconv-exp083-xvc-source-semantic-condition/v1",
+            "run_kind": "EXP-083 X-VC source-semantic condition evaluation",
+            "control": (
+                "cv12-control69",
+                "EXP-035 / target-hidden semantic supervision",
+                "20-xvc-cv12-control69.wav",
+            ),
+            "candidate": (
+                "cv12-source-semantic",
+                "EXP-081 / source-hidden semantic supervision",
+                "30-xvc-cv12-source-semantic.wav",
+            ),
+        }
     raise ConditionRenderError(f"unknown candidate kind: {kind}")
 
 
@@ -482,6 +498,7 @@ def _parser() -> argparse.ArgumentParser:
             "output2",
             "real-reconstruction20",
             "decoder-final",
+            "source-semantic",
         ),
         default="donor-breadth",
     )

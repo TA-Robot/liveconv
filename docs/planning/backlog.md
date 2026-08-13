@@ -93,13 +93,14 @@ name one owner and ownership zone below.
 | LV-082 | Done | P0 | MS-3 | Restore X-VC's omitted pretrained waveform-adversarial objective in one bounded adapter run | EXP-064--067 completed with no loops across 60 rows; external and condition sets tied control69, changed utterances slightly regressed, and Hadou improved 5/24/2, so retain it unheard without a naturalness claim and prohibit objective sweeps |
 | LV-083 | Done | P0 | MS-3 | Test decoder-interface X-VC adaptation as one function-aware scope | EXP-068--071 regressed twelve changed utterances from 0.184 to 0.375 and added one Hadou gross loop; reject output2 and prohibit adjacent scope/rank/LR sweeps |
 | LV-084 | Done | P0 | MS-3 | Rehearse real donor speech during target-voice X-VC retraining | EXP-072--075 regressed changed utterances and added one Hadou gross loop; reject rehearsal and prohibit ratio sweeps |
-| LV-085 | In progress | P0 | MS-3 | Adapt one bounded final waveform-decoder stage | Freeze converter/encoder and train only the 297,890 parameters in `acoustic_decoder.model.4--6`, with EXP-035 data/loss/LR/updates fixed, then apply 7 + 12 + 10 + 31 |
+| LV-085 | Done | P0 | MS-3 | Adapt one bounded final waveform-decoder stage | EXP-077--080 regressed every aggregate content screen, including changed utterances from 0.184 to 0.394 and Hadou from 0.210 to 0.305; reject the method and prohibit decoder-depth/LR sweeps |
+| LV-086 | In progress | P0 | MS-3 | Change X-VC's semantic learning target from target-voice hidden states to source hidden states | Keep EXP-035 data/scope/LR/weights/updates fixed, train one source-semantic point, then apply the frozen 7 + 12 + 10 + 31 + 33 bundle |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| LV-085 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-077--080 notes, and their ignored artifacts | Commit one final-decoder stage point or reject it before GPU admission |
+| LV-086 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-081--085 notes, and their ignored artifacts | Commit one source-semantic learning-target point or reject it before GPU admission |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.

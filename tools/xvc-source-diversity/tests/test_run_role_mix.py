@@ -228,6 +228,46 @@ def test_semantic2x_changes_only_ssl_reconstruction_weight() -> None:
     assert policy["experiment_id"] == "EXP-049"
 
 
+def test_source_semantic_changes_learning_target_without_changing_schedule() -> None:
+    target = {
+        "source_wav": "target-wave",
+        "semantic_tokens": "target-token",
+        "target_wav": "target-wave",
+        "ssl_feat": "target-ssl",
+    }
+    generated = {
+        "source_wav": "source-wave",
+        "semantic_tokens": "source-token",
+        "target_wav": "source-wave",
+        "ssl_feat": "source-ssl",
+    }
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(training_policy="source-semantic", lora_scope="control69")
+    )
+
+    assert ROLE_MIX.assigned_tensors(
+        target, generated, "standard", semantic_target="source"
+    ) == {
+        "source_wav": "source-wave",
+        "semantic_tokens": "source-token",
+        "target_wav": "target-wave",
+        "ssl_feat": "source-ssl",
+    }
+    assert Counter(ROLE_MIX.training_modes("source-semantic")) == {
+        "standard": 1_044
+    }
+    assert ROLE_MIX.training_loss_weights("source-semantic") == (
+        ROLE_MIX.STANDARD_LOSS_WEIGHTS
+    )
+    assert policy["experiment_id"] == "EXP-081"
+    choices = next(
+        action.choices
+        for action in ROLE_MIX._parser()._actions
+        if action.dest == "training_policy"
+    )
+    assert "source-semantic" in choices
+
+
 def test_source36_excludes_frame_condition_and_speaker_modulators() -> None:
     inventory = (
         ROLE_MIX.REPO_ROOT

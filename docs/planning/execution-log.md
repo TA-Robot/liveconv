@@ -2664,3 +2664,47 @@ job queue.
   loop with distance 223, revoking its prior no-loop observation.
 - Changed action: adapt one bounded final waveform decoder stage rather than
   another converter/output scope or data ratio.
+
+## 2026-08-13T17:20:25Z - Grok progress audit
+
+- Agent: `grok` in tmux `liveconv-grok-auditor`; read-only, no delegation.
+- Verdict: `CONTINUE`.
+- Adopted: finish the single committed final-decoder point, then close it on a
+  failed frozen screen without a depth/LR/adjacent-scope sweep and move to a
+  distinct loss or conditioning hypothesis. Continue one committed GPU lane
+  while hearing is unavailable and do not use ASR to rank naturalness.
+- Not adopted: the snapshot reported gpu0 idle and the job unlaunched while
+  EXP-077 had already completed and its follow-up renders were in progress. No
+  running work was interrupted.
+
+## 2026-08-13T17:27:00Z - EXP-077--080 rejected final decoder adaptation
+
+- Agent: `primary-integrator`.
+- Task: train only `acoustic_decoder.model.4--6` and screen the result on seven
+  external, twelve changed-utterance, ten condition, and 31 Hadou rows.
+- Dependencies: commit `74b502f`; fixed EXP-035 data, loss, LR, seed, zero
+  condition, and 1,044 updates; exclusive `gpu0`.
+- Result: training completed in 234.13 seconds at 5.13 GB peak, but loss rose
+  from 144.22 to 165.58. The candidate lost all seven first comparisons,
+  produced 0/3/9 wins/ties/losses on changed utterances (`0.394` versus
+  `0.184` mean), 0/6/4 on conditions (`0.243` versus `0.153`), and 3/11/17 on
+  Hadou (`0.305` versus `0.210`). No gross loop was detected. The full bundle
+  is on 8878 and remains unheard.
+- Changed action: reject decoder adaptation and all adjacent decoder-depth/LR
+  points. Next test changes the semantic supervision target itself: preserve
+  source hidden states while retaining target waveform and speaker losses.
+
+## 2026-08-13T17:32:00Z - EXP-081--085 source-semantic method prepared
+
+- Agent: `primary-integrator`.
+- Task: change only semantic-decoder MSE supervision from the target-voice
+  Whisper hidden states to the generated source's frozen Whisper hidden states.
+- Dependencies: exact EXP-035 generated inventory, target waveforms, target
+  speaker objective, standard loss weights, control69 scope, LR, seed, zero
+  condition, and 1,044 updates remain fixed.
+- Result: 47 focused tests, Ruff, `git diff --check`, and exact CPU admissions
+  for 7 + 12 + 10 + 31 + 33 rows passed. The 33-row set adds 33 locally unused
+  Common Voice speakers without adding a training row.
+- Changed action: commit before one GPU run, then publish every frozen screen.
+  Do not sweep source/target blend weights and do not interpret machine ASR as
+  naturalness or target-voice quality.

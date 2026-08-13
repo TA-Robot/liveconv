@@ -190,6 +190,23 @@ def test_decoder_final_policies_cover_changed_and_hadou_sets() -> None:
     assert changed["variant_id"] == hadou["variant_id"] == "cv12-decoder-final"
 
 
+def test_source_semantic_policies_cover_changed_hadou_and_expanded() -> None:
+    changed = NEW.candidate_policy("source-semantic")
+    hadou = NEW.candidate_policy("source-semantic-hadou")
+    expanded = NEW.candidate_policy("source-semantic-expanded")
+
+    assert (
+        changed["experiment_id"],
+        hadou["experiment_id"],
+        expanded["experiment_id"],
+    ) == ("EXP-082", "EXP-084", "EXP-085")
+    assert {
+        changed["variant_id"],
+        hadou["variant_id"],
+        expanded["variant_id"],
+    } == {"cv12-source-semantic"}
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"

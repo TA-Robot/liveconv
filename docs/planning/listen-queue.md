@@ -157,14 +157,22 @@ EXP-068--071 rejected that scope: twelve changed utterances regressed from
 though two condition rows and the Hadou aggregate improved. Do not sweep output
 layers or rank. The next distinct data hypothesis retains control69 and replaces
 exactly 209 target-conversion updates with self-reconstruction rehearsal of the
-twelve real Common Voice training-donor windows.
+twelve real Common Voice training-donor windows. That rehearsal regressed the
+changed-utterance screen and added one Hadou loop, so its ratio is closed. A
+separate final-waveform-decoder point then regressed every aggregate screen:
+changed utterances moved from `0.184` to `0.394` and Hadou from `0.210` to
+`0.305`. Decoder depth and LR are closed. The next distinct learning-target
+hypothesis keeps target waveform and target speaker objectives but supervises
+the semantic decoder with the generated source's frozen Whisper hidden states
+instead of the target-voice hidden states. It will also reuse the 33-speaker
+expanded set; no tongue-twister optimization is involved.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Train one control69 adapter with 835 target conversions + 209 real-donor self-reconstructions | parent | no | one-variable plan, exact role schedule, and real donor binding committed, or rejected before GPU |
-| 2 | Publish that one adapter on the full 7 + 12 + 10 + 31 varied evaluation bundle | parent | no human dependency for machine reject | corruption screen complete and next method decision recorded |
+| 1 | Train one control69 adapter with source-hidden semantic supervision at fixed EXP-035 data, loss weights, LR, and 1,044 updates | parent | no | one-variable plan and exact tensor binding committed, or rejected before GPU |
+| 2 | Publish that one adapter on the full 7 + 12 + 10 + 31 + 33 varied evaluation bundle | parent | no human dependency for machine reject | corruption screen complete and next method decision recorded |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

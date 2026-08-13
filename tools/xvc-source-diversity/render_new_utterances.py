@@ -257,6 +257,39 @@ def candidate_policy(kind: str) -> dict[str, str]:
             "result_kind": "liveconv-exp080-xvc-decoder-final-hadou/v1",
             "question": "Does decoder-final preserve 31 clean Hadou sentences?",
         }
+    if kind == "source-semantic":
+        return {
+            "experiment_id": "EXP-082",
+            "variant_id": "cv12-source-semantic",
+            "display_name": "EXP-081 / source-hidden semantic supervision",
+            "result_kind": "liveconv-exp082-xvc-source-semantic-new/v1",
+            "question": (
+                "Does source-hidden supervision preserve changed heldout "
+                "utterances?"
+            ),
+        }
+    if kind == "source-semantic-hadou":
+        return {
+            "experiment_id": "EXP-084",
+            "variant_id": "cv12-source-semantic",
+            "display_name": "EXP-081 / source-hidden semantic supervision",
+            "result_kind": "liveconv-exp084-xvc-source-semantic-hadou/v1",
+            "question": (
+                "Does source-hidden supervision preserve 31 clean Hadou "
+                "sentences?"
+            ),
+        }
+    if kind == "source-semantic-expanded":
+        return {
+            "experiment_id": "EXP-085",
+            "variant_id": "cv12-source-semantic",
+            "display_name": "EXP-081 / source-hidden semantic supervision",
+            "result_kind": "liveconv-exp085-xvc-source-semantic-expanded/v1",
+            "question": (
+                "Does source-hidden supervision remain content-viable on 33 "
+                "locally unused Common Voice speakers and utterances?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -653,6 +686,9 @@ def _parser() -> argparse.ArgumentParser:
             "real-reconstruction20-hadou",
             "decoder-final",
             "decoder-final-hadou",
+            "source-semantic",
+            "source-semantic-hadou",
+            "source-semantic-expanded",
         ),
         default="speaker7",
     )
