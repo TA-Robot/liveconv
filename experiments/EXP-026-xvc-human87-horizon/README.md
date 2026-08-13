@@ -67,6 +67,15 @@ gross repetition seen in shorter-lookahead streaming runs. This admits exactly
 one reuse of control69 epoch 12 through the established future-120 worker and
 cancellation probe; failure there closes this machine-screened branch.
 
+The control69 system-path probe completed safely at the transport boundary:
+generation cancel acknowledgement was 0.016 ms, stale output was zero, and the
+retained generation produced contiguous `409/409` frames with no model-call
+failure. The audio nevertheless failed the coarse screen: auxiliary ASR ended
+in a long `ななな...` repetition that was absent offline. Control69 is closed
+for further machine-only work. One final base/future-120 system control now
+separates an adaptation interaction from a base streaming failure; it changes
+no geometry or worker behavior.
+
 ## Goal and stop condition
 
 Use the otherwise-idle GPU to answer one audible question: with the exact
@@ -232,5 +241,22 @@ HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
   --actual-source artifacts/ms3/listening/exp020-human-rvc-smoke-8s-plain-20260812/00-native-source.wav \
   --work-dir artifacts/xvc-human-paired/listen-now/exp026-actual-scope-offline-v1 \
   --listener-dir artifacts/ms3/listening/exp026-actual-scope-offline-v1 \
+  --confirm-gpu-lease gpu0 --device cuda:0
+```
+
+## Base actual-input system control command
+
+```bash
+HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
+  artifacts/exp007/peft-resolve-20260811/runtime-1e52ef9ab8f1/bin/python \
+  tools/xvc-human-paired/system_path_smoke.py \
+  --candidate base \
+  --xvc-source-root artifacts/x-vc/source \
+  --xvc-config artifacts/x-vc/xvc-local.yaml \
+  --checkpoint artifacts/x-vc/checkpoint/xvc.pt \
+  --target-reference artifacts/xvc-human-paired/listen-now/exp026-human87-control69-v1/train-pairs/EMOTION100_003/target-48k.wav \
+  --actual-source artifacts/ms3/listening/exp020-human-rvc-smoke-8s-plain-20260812/00-native-source.wav \
+  --work-dir artifacts/xvc-human-paired/listen-now/exp026-base-system-path-v1 \
+  --listener-dir artifacts/ms3/listening/exp026-base-system-path-v1 \
   --confirm-gpu-lease gpu0 --device cuda:0
 ```

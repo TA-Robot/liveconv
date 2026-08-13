@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the EXP-032 candidate through the retained XvcWorker state machine.
+"""Run an exact X-VC candidate through the retained XvcWorker state machine.
 
 This is a listen-now system-path probe.  It deliberately does not mint or bind
 a Gateway profile: the retained worker identity remains unchanged until an
@@ -99,15 +99,24 @@ class GeometrySnapshot:
 @dataclass(frozen=True, slots=True)
 class CandidateProfile:
     candidate_id: str
-    adapter_sha256: str
-    adapter_config_sha256: str
-    adapter_name: str
+    adapter_sha256: str | None
+    adapter_config_sha256: str | None
+    adapter_name: str | None
     display_name: str
     output_file: str
     profile_id: str
 
 
 CANDIDATE_PROFILES = {
+    "base": CandidateProfile(
+        candidate_id="base",
+        adapter_sha256=None,
+        adapter_config_sha256=None,
+        adapter_name=None,
+        display_name="X-VC base / future 120 ms / worker state machine",
+        output_file="10-xvc-base-future-120-system.wav",
+        profile_id="xvc.base.future-120.system-path.listen-now",
+    ),
     "expanded79-e08": CandidateProfile(
         candidate_id="expanded79-e08",
         adapter_sha256=EXPECTED_ADAPTER_SHA256,
@@ -245,7 +254,7 @@ class CandidateBackend(backend_module.OfficialXvcBackend):
         xvc_source_root: Path,
         xvc_config: Path,
         checkpoint: Path,
-        adapter_dir: Path,
+        adapter_dir: Path | None,
         target_reference: Path,
         device_name: str,
         profile: CandidateProfile,
@@ -275,13 +284,16 @@ class CandidateBackend(backend_module.OfficialXvcBackend):
         model = XVC.load_from_checkpoint(
             str(xvc_config), str(checkpoint), device, ema_load=False
         )
-        model = PeftModel.from_pretrained(
-            model,
-            adapter_dir,
-            adapter_name=profile.adapter_name,
-            is_trainable=False,
-        )
-        model.set_adapter(profile.adapter_name)
+        if profile.adapter_name is not None:
+            if adapter_dir is None:
+                raise SystemPathError("candidate adapter directory is required")
+            model = PeftModel.from_pretrained(
+                model,
+                adapter_dir,
+                adapter_name=profile.adapter_name,
+                is_trainable=False,
+            )
+            model.set_adapter(profile.adapter_name)
         model.eval()
         target = np.asarray(
             process_audio(
@@ -299,7 +311,8 @@ class CandidateBackend(backend_module.OfficialXvcBackend):
         self.implementation_revision = (
             "x-vc-human87-system-path-probe-v1/" + profile.candidate_id
         )
-        self.weight_revision = "sha256:" + profile.adapter_sha256
+        weight_sha256 = profile.adapter_sha256 or EXPECTED_CHECKPOINT_SHA256
+        self.weight_revision = "sha256:" + weight_sha256
         self.configuration_hash = (
             "sha256:"
             + hashlib.sha256(
@@ -470,19 +483,9 @@ def write_pcm16(path: Path, samples: np.ndarray) -> str:
 
 
 def validate_inputs(args: argparse.Namespace, profile: CandidateProfile) -> None:
-    checks = (
+    checks = [
         (args.actual_source, EXPECTED_SOURCE_SHA256, "actual source"),
         (args.target_reference, EXPECTED_TARGET_SHA256, "target reference"),
-        (
-            args.adapter_dir / "adapter_model.safetensors",
-            profile.adapter_sha256,
-            f"{profile.candidate_id} adapter",
-        ),
-        (
-            args.adapter_dir / "adapter_config.json",
-            profile.adapter_config_sha256,
-            f"{profile.candidate_id} adapter config",
-        ),
         (args.xvc_config, EXPECTED_CONFIG_SHA256, "X-VC config"),
         (args.checkpoint, EXPECTED_CHECKPOINT_SHA256, "X-VC checkpoint"),
         (
@@ -490,7 +493,27 @@ def validate_inputs(args: argparse.Namespace, profile: CandidateProfile) -> None
             EXPECTED_UPSTREAM_STREAM_SHA256,
             "upstream stream code",
         ),
-    )
+    ]
+    if profile.adapter_sha256 is None:
+        if args.adapter_dir is not None:
+            raise SystemPathError("base candidate must not receive an adapter")
+    else:
+        if args.adapter_dir is None or profile.adapter_config_sha256 is None:
+            raise SystemPathError("adapted candidate requires an adapter directory")
+        checks.extend(
+            (
+                (
+                    args.adapter_dir / "adapter_model.safetensors",
+                    profile.adapter_sha256,
+                    f"{profile.candidate_id} adapter",
+                ),
+                (
+                    args.adapter_dir / "adapter_config.json",
+                    profile.adapter_config_sha256,
+                    f"{profile.candidate_id} adapter config",
+                ),
+            )
+        )
     for path, expected, label in checks:
         if path.is_symlink() or not path.is_file() or sha256_file(path) != expected:
             raise SystemPathError(f"{label} identity drifted")
@@ -667,7 +690,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--xvc-source-root", type=Path, required=True)
     value.add_argument("--xvc-config", type=Path, required=True)
     value.add_argument("--checkpoint", type=Path, required=True)
-    value.add_argument("--adapter-dir", type=Path, required=True)
+    value.add_argument("--adapter-dir", type=Path)
     value.add_argument(
         "--candidate",
         choices=tuple(CANDIDATE_PROFILES),

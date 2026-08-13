@@ -835,3 +835,23 @@ job queue.
 - Changed action: admit one control69 epoch-12/future-120 worker/cancellation
   probe. A stale frame, queue failure, gross repetition, or content collapse
   closes this branch; do not add another training point.
+
+## 2026-08-13T05:01:00Z - control69 system-path branch closed
+
+- Agent: `primary-integrator`.
+- Task: Run the exact control69 epoch-12 adapter on the actual input through
+  the established future-120 `XvcWorker` queue and cancellation path.
+- Dependencies: commit `547b132`, fixed source/target/adapter hashes, and
+  exclusive `gpu0`.
+- Result: generation cancellation acknowledged in 0.016 ms with zero stale
+  frames. The retained generation completed contiguous 409/409 input/output
+  frames in 9.575 seconds, max in-flight 25, with 70 model calls and zero
+  failures. Compute P50/P95 was 42.59/49.35 ms; peak GPU allocation was
+  2,701,059,072 bytes. The WAV was published as
+  `exp026-control69-e12-system-path-v1`.
+- Machine screen: the output transcript ended in a long repeated `な`, unlike
+  its offline control. This is a gross corruption stop, not a naturalness or
+  speaker-quality judgment.
+- Changed action: close control69 from further machine-only tuning. Run the
+  unadapted base through exactly the same future-120 worker path once to
+  distinguish an adapter/stream interaction from base streaming failure.

@@ -45,7 +45,7 @@ authorize promote claims or several speculative sweeps in parallel.
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
 | 1 | Help the operator finish the six rows above; EXP-027--031 are superseded diagnostics and do not need separate draining | parent | n/a | decisions recorded |
-| 2 | Run control69 epoch 12 through the established future-120 worker/cancellation path | parent | no: actual-input offline screen completed without gross repetition | one system WAV with zero stale frames, or a technical stop |
+| 2 | Run unadapted X-VC base through the same future-120 worker/cancellation path | parent | no: isolates the gross control69 system repetition without another training axis | one base system WAV and coarse repetition screen, or a technical stop |
 | 3 | If EXP-032 receives a `keep`, bind that exact candidate to the formal Gateway profile and exercise native fallback/Extension playout | parent | yes: EXP-032 `keep` | one route-qualified system listen or a recorded integration blocker |
 | 4 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
 
@@ -71,6 +71,12 @@ control69 epoch 12. Control69 did not beat base, but preserved its small
 relative advantage over expanded79 and showed no gross loop. Admit only the
 single control69 epoch-12/future-120 system-path probe now; do not interpret
 its admission as a model selection.
+
+That system probe preserved all queue/cancellation invariants but failed its
+audio stop: auxiliary ASR ended with a long repeated `な`. Close control69 for
+additional machine-only work. Admit one unadapted-base system control with the
+same actual input, target, future-120 geometry, and worker; this is fault
+isolation, not another tuning sweep.
 
 ## Keepers
 
