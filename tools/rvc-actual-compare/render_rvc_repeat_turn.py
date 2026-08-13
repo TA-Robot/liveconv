@@ -24,6 +24,13 @@ PROFILE_ID = "vc.rvc-v2.amitaro-sasayaki-clean-bright.v1"
 SEEDED_PROFILE_ID = "vc.rvc-v2.amitaro-sasayaki-clean-bright-seed0.v1"
 SOURCE_ID = "EMOTION100_017"
 REPEAT_COUNT = 3
+ACTUAL_SOURCE_ID = "ACTUAL_CHATGPT_20260811_114251"
+ACTUAL_SOURCE_SHA256 = (
+    "78b15cd5e9d25ee10d8cb27084c63275221d773a04b21d11e4e3ba2be8056da6"
+)
+ACTUAL_UNSEEDED_CONTROL_SHA256 = (
+    "004b443754f8d1d9615a520220b6ca2d04e05f317bda53228be853d3d5bcd03e"
+)
 
 
 class RepeatTurnError(RuntimeError):
@@ -76,6 +83,20 @@ def validate_scope(profile_id: str) -> None:
         raise RepeatTurnError("repeat diagnostic must contain exactly three turns")
 
 
+def actual_input_mode(arguments: argparse.Namespace) -> bool:
+    source = arguments.actual_source_wav
+    control = arguments.actual_unseeded_control_wav
+    if (source is None) != (control is None):
+        raise RepeatTurnError(
+            "actual source and historical unseeded control must be supplied together"
+        )
+    if source is not None and arguments.profile_id != SEEDED_PROFILE_ID:
+        raise RepeatTurnError(
+            "actual-input comparison requires the frozen seed-0 profile"
+        )
+    return source is not None
+
+
 async def execute(
     arguments: argparse.Namespace,
     session: ModuleType,
@@ -84,7 +105,19 @@ async def execute(
     renderer: ModuleType,
 ) -> dict[str, Any]:
     profile_id = arguments.profile_id
-    source = next(item for item in heldout.SOURCES if item["source_id"] == SOURCE_ID)
+    is_actual = actual_input_mode(arguments)
+    if is_actual:
+        source = {
+            "source_id": ACTUAL_SOURCE_ID,
+            "path": arguments.actual_source_wav.resolve(strict=True),
+            "display_text": "Actual ChatGPT-tab input (reference text unavailable)",
+        }
+        repeat_count = 1
+    else:
+        source = next(
+            item for item in heldout.SOURCES if item["source_id"] == SOURCE_ID
+        )
+        repeat_count = REPEAT_COUNT
     arguments.work_dir.mkdir(parents=True)
     source_f32 = arguments.work_dir / "source.f32le"
     heldout.wav_to_f32le(source["path"], source_f32)
@@ -134,21 +167,46 @@ async def execute(
             token=token,
             origin=origin,
             profile=profile,
-            turns=[(f"repeat-{index}", frames) for index in range(1, 4)],
+            turns=[
+                (f"repeat-{index}", frames)
+                for index in range(1, repeat_count + 1)
+            ],
             timeout=arguments.timeout_seconds,
             route_parity_qualification=(profile_id == SEEDED_PROFILE_ID),
         )
 
-    if len(outputs) != REPEAT_COUNT:
+    if len(outputs) != repeat_count:
         raise RepeatTurnError("repeat generation count drifted")
     staging = arguments.work_dir / "listener-staging"
     staging.mkdir()
     shutil.copyfile(source["path"], staging / "00-source.wav")
     anchor_pcm = outputs[0][1]
     comparisons: list[dict[str, Any]] = []
-    variants = []
+    variants: list[dict[str, Any]] = []
+    position_offset = 0
+    if is_actual:
+        control_file = "10-unseeded-clean-bright-control.wav"
+        shutil.copyfile(arguments.actual_unseeded_control_wav, staging / control_file)
+        variants.append(
+            {
+                "variant_id": "rvc-actual-unseeded-control",
+                "display_name": "Historical unseeded RVC clean-bright control",
+                "display_order": 1,
+                "output_file": control_file,
+                "output_sha256": "sha256:" + ACTUAL_UNSEEDED_CONTROL_SHA256,
+                "status": "passed",
+                "profile_id": PROFILE_ID,
+                "operator_judgment": "unreviewed",
+            }
+        )
+        position_offset = 1
     for order, (_, pcm, generation) in enumerate(outputs, start=1):
-        output_file = f"{order}0-generation-{order}.wav"
+        display_order = order + position_offset
+        output_file = (
+            f"{display_order}0-seed0-gateway.wav"
+            if is_actual
+            else f"{display_order}0-generation-{order}.wav"
+        )
         output_path = staging / output_file
         renderer.write_wav(output_path, pcm)
         comparison = (
@@ -171,8 +229,12 @@ async def execute(
         variants.append(
             {
                 "variant_id": f"rvc-repeat-generation-{order}",
-                "display_name": f"RVC clean-bright / same session generation {order}",
-                "display_order": order,
+                "display_name": (
+                    "Stable seed-0 RVC clean-bright / live Gateway"
+                    if is_actual
+                    else f"RVC clean-bright / same session generation {order}"
+                ),
+                "display_order": display_order,
                 "output_file": output_file,
                 "output_sha256": "sha256:" + session.sha256_file(output_path),
                 "status": "passed",
@@ -181,30 +243,45 @@ async def execute(
                 "generation": generation,
             }
         )
+    index = {
+        "schema_version": 1,
+        "title": (
+            "RVC stable seed-0 actual-input comparison"
+            if is_actual
+            else "RVC same-input repeat turn diagnostic"
+        ),
+        "run_kind": (
+            "MS-3 frozen-profile actual-input quality comparison"
+            if is_actual
+            else "MS-3 persistent-session RVC state diagnostic"
+        ),
+        "status": "completed-listen-now-unselected",
+        "source_file": (
+            "Native / actual ChatGPT-tab input (2026-08-11)"
+            if is_actual
+            else f"Hadou public heldout / {SOURCE_ID}"
+        ),
+        "source_id": source["source_id"],
+        "source_output_file": "00-source.wav",
+        "comparison_scope": {
+            "single_changed_variable": (
+                "historical unseeded versus frozen explicit seed 0"
+                if is_actual
+                else "generation position in one session"
+            ),
+            "machine_selection_allowed": False,
+            "question": (
+                "How does the stable seed-0 converter compare on actual input?"
+                if is_actual
+                else "Does RVC output drift across repeated conversation turns?"
+            ),
+        },
+        "variants": variants,
+    }
+    if not is_actual:
+        index["source_text"] = source["display_text"]
     (staging / "index.json").write_text(
-        json.dumps(
-            {
-                "schema_version": 1,
-                "title": "RVC same-input repeat turn diagnostic",
-                "run_kind": "MS-3 persistent-session RVC state diagnostic",
-                "status": "completed-listen-now-unselected",
-                "source_file": f"Hadou public heldout / {SOURCE_ID}",
-                "source_text": source["display_text"],
-                "source_id": SOURCE_ID,
-                "source_output_file": "00-source.wav",
-                "comparison_scope": {
-                    "single_changed_variable": "generation position in one session",
-                    "machine_selection_allowed": False,
-                    "question": (
-                        "Does RVC output drift across repeated conversation turns?"
-                    ),
-                },
-                "variants": variants,
-            },
-            ensure_ascii=False,
-            indent=2,
-            sort_keys=True,
-        )
+        json.dumps(index, ensure_ascii=False, indent=2, sort_keys=True)
         + "\n"
     )
     staging.rename(arguments.listener_dir)
@@ -220,8 +297,8 @@ async def execute(
             text=True,
         ).stdout.strip(),
         "profile_id": profile_id,
-        "source_id": SOURCE_ID,
-        "repeat_count": REPEAT_COUNT,
+        "source_id": source["source_id"],
+        "repeat_count": repeat_count,
         "comparisons": comparisons,
         "claims": {"perceptual_winner": False, "product_selected": False},
     }
@@ -233,6 +310,7 @@ async def execute(
 
 async def run(arguments: argparse.Namespace) -> int:
     validate_scope(arguments.profile_id)
+    is_actual = actual_input_mode(arguments)
     session = _load_session_runner()
     heldout = session._load_heldout_runner()  # noqa: SLF001
     if arguments.profile_id == PROFILE_ID:
@@ -250,12 +328,24 @@ async def run(arguments: argparse.Namespace) -> int:
         heldout._selected_records(  # noqa: SLF001
             renderer_document, "profiles", (arguments.profile_id,)
         )
-        source = next(
-            item for item in heldout.SOURCES if item["source_id"] == SOURCE_ID
-        )
-        heldout._checked_file(  # noqa: SLF001
-            source["path"], source["sha256"], SOURCE_ID
-        )
+        if is_actual:
+            heldout._checked_file(  # noqa: SLF001
+                arguments.actual_source_wav,
+                ACTUAL_SOURCE_SHA256,
+                ACTUAL_SOURCE_ID,
+            )
+            heldout._checked_file(  # noqa: SLF001
+                arguments.actual_unseeded_control_wav,
+                ACTUAL_UNSEEDED_CONTROL_SHA256,
+                "historical unseeded actual-input control",
+            )
+        else:
+            source = next(
+                item for item in heldout.SOURCES if item["source_id"] == SOURCE_ID
+            )
+            heldout._checked_file(  # noqa: SLF001
+                source["path"], source["sha256"], SOURCE_ID
+            )
         if arguments.work_dir.exists() or arguments.listener_dir.exists():
             raise RepeatTurnError("work and listener outputs must be new")
         if not os.environ.get("LIVECONV_API_TOKEN"):
@@ -285,6 +375,8 @@ def parser() -> argparse.ArgumentParser:
         choices=(PROFILE_ID, SEEDED_PROFILE_ID),
         default=PROFILE_ID,
     )
+    value.add_argument("--actual-source-wav", type=Path)
+    value.add_argument("--actual-unseeded-control-wav", type=Path)
     value.add_argument("--timeout-seconds", type=float, default=180.0)
     return value
 

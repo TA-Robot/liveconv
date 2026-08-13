@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+from argparse import Namespace
 from pathlib import Path
 
 import numpy as np
@@ -33,3 +34,20 @@ def test_signal_comparison_reports_exact_and_changed_pcm() -> None:
     comparison = run.signal_comparison(anchor, changed)
     assert comparison["correlation_to_generation_1"] == 1.0
     assert comparison["rms_difference"] > 0.0
+
+
+def test_actual_mode_is_one_frozen_seeded_profile() -> None:
+    arguments = Namespace(
+        actual_source_wav=Path("source.wav"),
+        actual_unseeded_control_wav=Path("control.wav"),
+        profile_id=run.SEEDED_PROFILE_ID,
+    )
+    assert run.actual_input_mode(arguments)
+
+    arguments.profile_id = run.PROFILE_ID
+    try:
+        run.actual_input_mode(arguments)
+    except run.RepeatTurnError as error:
+        assert "seed-0" in str(error)
+    else:
+        raise AssertionError("unseeded actual-input rerender was admitted")
