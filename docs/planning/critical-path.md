@@ -259,7 +259,12 @@ EXP-025's CPU inventory found 87 train and 16 heldout complete short
 utterances. The bounded stretch+pad training and its EXP-026 follow-ups are
 complete. Stable RVC/X-VC heldout, actual-input, and three-row public-validation
 comparisons are published on 8878. Their machine screens reject gross content
-failure only; no perceptual winner or promote decision exists.
+failure only; no perceptual winner or promote decision exists. The bounded
+stable RVC/X-VC cancellation-recovery comparisons are also published: both
+families produced zero stale frames after cancel acknowledgment and fully
+drained the next generation. Additional cancel variants and RVC state
+decomposition are closed; the RVC post-cancel waveform difference remains an
+operator hearing question rather than a new machine-selection axis.
 
 ## MS-2 through MS-6 joins
 
