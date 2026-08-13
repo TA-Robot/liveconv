@@ -104,11 +104,13 @@ name one owner and ownership zone below.
 | LV-093 | Done | P0 | MS-3 | Test the retained EXP-106 checkpoint on genuinely fresh Japanese speakers and sentences | EXP-112 rendered 48 new speakers; excluding any source where an arm looped, EXP-106 regressed control69 in mean, median, and 10/19/16 W/T/L, so close the generic method and keep fresh48 evaluation-only |
 | LV-094 | Done | P0 | MS-3 | Test the retained waveform-adversarial retraining method on fresh48 | EXP-113 tied control69 on common non-loop rows at 6/33/6 but added a separate catastrophic repetition, so reject it as a generic keeper without adversarial-weight tuning |
 | LV-095 | Done | P0 | MS-3 | Expand real semantic-teacher training-source diversity without contaminating fresh48 | EXP-114/115 trained on 48 disjoint speakers but added two fresh48 failures and regressed common non-loop median with 10/22/12 W/T/L; reject and close source-count/share/weight sweeps |
+| LV-096 | In progress | P0 | MS-3 | Distill frozen X-VC's complete converted output on varied real sources | EXP-116 keeps train48, 835/209 positions, scope, LR, and seed fixed and changes only semantic-only teacher rows to complete waveform/semantic/speaker/mel/VQ targets; one runtime smoke and one lane |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
+| LV-096 / EXP-116--117 | primary-integrator | `run_role_mix.py`, `render_new_utterances.py`, focused tests, `experiments/EXP-116-*`/`EXP-117-*`, and planning records | committed one-row smoke, one 1,044-update lane, and frozen fresh48 technical disposition |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.

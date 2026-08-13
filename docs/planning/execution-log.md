@@ -3141,3 +3141,36 @@ job queue.
 - Rework: none. Stop before stress60. Close teacher-source count, share, and
   semantic-weight sweeps. Preserve train48 as training-only and fresh48 as
   evaluation-only for a genuinely different objective.
+
+## 2026-08-13T20:20:25Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux `liveconv-grok-auditor`; independent, read-only,
+  no tools or delegation.
+- Verdict: `REDIRECT`.
+- Adopted: stop teacher count/share/weight and adversarial-weight neighbors;
+  move immediately to one committed method-level loss or learning-target point
+  that directly addresses waveform instability. EXP-116 does exactly that by
+  changing only the same train48 teacher rows from semantic-only targets to
+  frozen-base complete converted outputs and full composite loss.
+- Not adopted: Grok reported that noise, tempo, F0, silence, and clean axes were
+  not yet frozen because its short snapshot omitted EXP-086. The existing
+  60-row, 12-source balanced stress matrix already freezes those five named
+  conditions. Rebuilding it would duplicate work; it remains downstream of a
+  fresh48 survival gate.
+- Evidence gap resolved: Grok's file snapshot missed the newest EXP-115 WAVs,
+  but 48 base/control/candidate rows and listener 8878 were verified directly.
+  No operator keep/continue/rejected result is claimed.
+
+## 2026-08-13T20:24:00Z - EXP-116 full-output teacher prepared
+
+- Agent: `primary-integrator`.
+- Task: replace semantic-only supervision on EXP-114's same 209 train48 slots
+  with the frozen base's full Amitaro-conditioned converted waveform, retaining
+  standard semantic, speaker, mel, and VQ losses.
+- Dependencies: Grok `REDIRECT`; frozen train48/fresh48; EXP-114 rejection;
+  exact 835/209 schedule and control69 optimization.
+- Result: training policy, complete teacher-target construction, a one-row LoRA
+  backward smoke path, EXP-117 fresh48 policy, and focused tests prepared.
+- Problems: none so far.
+- Changed action: commit before the runtime smoke. Run one smoke and one lane
+  only; stop at fresh48 before stress60 on added repetition or broad regression.

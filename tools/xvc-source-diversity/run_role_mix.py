@@ -44,6 +44,7 @@ REAL_TEACHER_SEMANTIC_COUNTS = {
     "real-donor-teacher-semantic": 209,
 }
 REAL_TEACHER_BREADTH_POLICY = "real-teacher-breadth48"
+REAL_TEACHER_OUTPUT_POLICY = "real-teacher-output48"
 REAL_TEACHER_POOL_KIND = "liveconv-exp114-commonvoice-teacher48/v1"
 REAL_TEACHER_POOL_GROUP = "commonvoice-teacher-train-disjoint"
 REAL_TEACHER_POOL_COUNT = 48
@@ -193,20 +194,47 @@ def training_modes(policy: str) -> list[str]:
         if Counter(schedule) != REAL_TEACHER_SEMANTIC_COUNTS:
             raise RoleMixError("real-teacher-semantic proportions drifted")
         return schedule
+    if policy == REAL_TEACHER_OUTPUT_POLICY:
+        repeats, remainder = divmod(TOTAL_UPDATES, len(RECONSTRUCTION_CYCLE))
+        tail = (
+            "standard",
+            "standard",
+            "real-donor-teacher-output",
+            "standard",
+        )
+        cycle = (
+            "standard",
+            "standard",
+            "real-donor-teacher-output",
+            "standard",
+            "standard",
+        )
+        schedule = list(cycle) * repeats + list(tail)
+        if remainder != len(tail) or Counter(schedule) != {
+            "standard": 835,
+            "real-donor-teacher-output": 209,
+        }:
+            raise RoleMixError("real-teacher-output proportions drifted")
+        return schedule
     raise RoleMixError(f"unknown training policy: {policy}")
 
 
 def real_teacher_pool_schedule(
     policy: str, pool_size: int
 ) -> list[int | None]:
-    if policy != REAL_TEACHER_BREADTH_POLICY:
+    if policy not in {REAL_TEACHER_BREADTH_POLICY, REAL_TEACHER_OUTPUT_POLICY}:
         return [None] * TOTAL_UPDATES
     if pool_size != REAL_TEACHER_POOL_COUNT:
         raise RoleMixError("real-teacher pool size drifted")
     schedule: list[int | None] = []
     teacher_index = 0
+    teacher_role = (
+        "real-donor-teacher-output"
+        if policy == REAL_TEACHER_OUTPUT_POLICY
+        else "real-donor-teacher-semantic"
+    )
     for role in training_modes(policy):
-        if role == "real-donor-teacher-semantic":
+        if role == teacher_role:
             schedule.append(teacher_index % pool_size)
             teacher_index += 1
         else:
@@ -384,6 +412,32 @@ def training_scope(inventory: Path, name: str) -> dict[str, object]:
 
 
 def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
+    if (
+        arguments.training_policy == REAL_TEACHER_OUTPUT_POLICY
+        and arguments.lora_scope == "control69"
+    ):
+        return {
+            "experiment_id": "EXP-116",
+            "slug": "exp116",
+            "candidate_id": "cv12-real-teacher-output48",
+            "candidate_name": (
+                "EXP-116 / 20% frozen-base full-output teacher / 48 speakers"
+            ),
+            "run_kind": "EXP-116 X-VC full-output teacher evaluation",
+            "result_kind": "liveconv-exp116-xvc-real-teacher-output48/v1",
+            "question": (
+                "Does full converted-output distillation on real Japanese "
+                "sources prevent the waveform failures left by semantic-only "
+                "teacher rehearsal?"
+            ),
+            "independent_variable": (
+                "teacher target on the same 209 train48 positions: semantic-only "
+                "frozen-base prediction versus the frozen base's complete "
+                "Amitaro-conditioned converted waveform with standard semantic, "
+                "speaker, mel, and VQ losses; data, 835 standard rows, total "
+                "updates, control69, LR, seed, and zero frame condition stay fixed"
+            ),
+        }
     if (
         arguments.training_policy == REAL_TEACHER_BREADTH_POLICY
         and arguments.lora_scope == "control69"
@@ -795,7 +849,10 @@ def assigned_tensors(
             "target_wav": real_donor["target_wav"],
             "ssl_feat": real_donor["ssl_feat"],
         }
-    if role == "real-donor-teacher-semantic":
+    if role in {
+        "real-donor-teacher-semantic",
+        "real-donor-teacher-output",
+    }:
         if real_donor is None:
             raise RoleMixError("real donor tensors are required for teacher rehearsal")
         return {
@@ -848,6 +905,46 @@ def teacher_semantic_target(
     ):
         raise RoleMixError("frozen teacher semantic prediction drifted")
     return prediction.detach().cpu().to(torch.float32).contiguous()
+
+
+def teacher_output_targets(
+    model: Any,
+    real_donor: Mapping[str, Any],
+    target: Mapping[str, Any],
+    *,
+    seed: int,
+    torch: Any,
+    device: Any,
+) -> dict[str, Any]:
+    """Freeze one complete base conversion as a paired distillation target."""
+    waveform = base._inference(
+        model,
+        real_donor,
+        target,
+        seed=seed,
+        torch=torch,
+        device=device,
+    )
+    with torch.inference_mode():
+        features = model.semantic_encoder.extract_and_encode(waveform.squeeze(1))
+    hidden = features.get("whisper_hidden_states_50hz")
+    if (
+        hidden is None
+        or hidden[..., : base.TARGET_HIDDEN_FRAMES].shape[-1]
+        != base.TARGET_HIDDEN_FRAMES
+        or not bool(torch.isfinite(hidden).all())
+    ):
+        raise RoleMixError("full-output teacher semantic target drifted")
+    return {
+        "source_wav": real_donor["source_wav"],
+        "semantic_tokens": real_donor["semantic_tokens"],
+        "target_wav": waveform.detach().cpu().to(torch.float32).contiguous(),
+        "ssl_feat": hidden[..., : base.TARGET_HIDDEN_FRAMES]
+        .detach()
+        .cpu()
+        .to(torch.float32)
+        .contiguous(),
+    }
 
 
 def training_loss(
@@ -1034,7 +1131,10 @@ def validate_inputs(
             raise RoleMixError(f"Common Voice input drifted: {item['filename']}")
 
     teacher_pool: dict[str, Any] | None = None
-    if arguments.training_policy == REAL_TEACHER_BREADTH_POLICY:
+    if arguments.training_policy in {
+        REAL_TEACHER_BREADTH_POLICY,
+        REAL_TEACHER_OUTPUT_POLICY,
+    }:
         if (
             arguments.real_teacher_manifest is None
             or arguments.real_teacher_root is None
@@ -1191,6 +1291,115 @@ def listening_index(
             for variant_id, display_name, filename, order in variants
         ],
     }
+
+
+def run_teacher_output_smoke(
+    arguments: argparse.Namespace,
+    teacher_pool: Mapping[str, Any] | None,
+    target_rows: list[tuple[str, Path, str]],
+) -> int:
+    """Run one full-output teacher row through LoRA backward without saving it."""
+    if (
+        arguments.training_policy != REAL_TEACHER_OUTPUT_POLICY
+        or teacher_pool is None
+        or arguments.real_teacher_root is None
+    ):
+        raise RoleMixError("full-output smoke requires EXP-116 inputs")
+    for name in ("HF_DATASETS_OFFLINE", "HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"):
+        if os.environ.get(name) != "1":
+            raise RoleMixError(f"{name}=1 is required before model import")
+    if arguments.confirm_gpu_lease != "gpu0" or arguments.device != "cuda:0":
+        raise RoleMixError("EXP-116 smoke requires the explicit gpu0 lease")
+    arguments.work_dir.mkdir()
+    reference_root = arguments.work_dir / "teacher-reference"
+    reference_root.mkdir()
+
+    import torch
+    from peft import LoraConfig, get_peft_model
+
+    device = torch.device(arguments.device)
+    base._configure_deterministic_cuda(torch, device)
+    torch.cuda.reset_peak_memory_stats(device)
+    xvc_root = str(arguments.xvc_source_root.resolve())
+    if xvc_root not in sys.path:
+        sys.path.insert(0, xvc_root)
+    from models.codec.sac.model import XVC
+    from models.codec.sac.utils import process_audio
+    from utils.file import load_config
+
+    config = load_config(str(arguments.xvc_config))
+    if "config" in config:
+        config = config["config"]
+    model = method._load_xvc(arguments, XVC, device)
+    base._initialize_loss(model, arguments.xvc_config)
+    target_id, target_path, target_digest = target_rows[0]
+    target_pair = base.MaterializedPair(
+        target_id, target_path, target_path, target_digest, target_digest
+    )
+    target = base._extract_pair_tensors(
+        model,
+        target_pair,
+        process_audio=process_audio,
+        config=config,
+        torch=torch,
+        device=device,
+    )
+    _teacher_pair, real_donor = breadth._reference_tensor(
+        model,
+        teacher_pool["items"][0],
+        source_root=arguments.real_teacher_root,
+        output_root=reference_root,
+        process_audio=process_audio,
+        config=config,
+        torch=torch,
+        device=device,
+    )
+    tensors = teacher_output_targets(
+        model,
+        real_donor,
+        target,
+        seed=base.SEED + TOTAL_UPDATES,
+        torch=torch,
+        device=device,
+    )
+    scope = training_scope(arguments.inventory, arguments.lora_scope)
+    trained = get_peft_model(
+        model,
+        LoraConfig(
+            r=8,
+            lora_alpha=8,
+            lora_dropout=0.0,
+            bias="none",
+            use_dora=False,
+            use_rslora=False,
+            target_modules=list(scope["target_modules"]),
+        ),
+    )
+    trainable = _set_scope_training_only(trained, scope)
+    batch = base._gpu_batch(tensors, torch=torch, device=device)
+    with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+        loss, numeric = training_loss(
+            trained, batch, "real-donor-teacher-output", torch=torch
+        )
+    loss.backward()
+    gradient_norm = torch.nn.utils.clip_grad_norm_(
+        trainable, base.GRADIENT_CLIP_NORM
+    )
+    if not math.isfinite(float(gradient_norm.detach().cpu())):
+        raise RoleMixError("full-output smoke gradient is non-finite")
+    print(
+        json.dumps(
+            {
+                "status": "smoked-one-full-output-row",
+                "loss": numeric,
+                "gradient_norm": float(gradient_norm.detach().cpu()),
+                "target_samples": int(tensors["target_wav"].numel()),
+                "peak_gpu_bytes": int(torch.cuda.max_memory_allocated(device)),
+            },
+            sort_keys=True,
+        )
+    )
+    return 0
 
 
 def run(
@@ -1539,15 +1748,17 @@ def run(
                 .to(torch.float32)
                 .contiguous(),
             }
+            teacher_pool_index = teacher_pool_indices[row_index]
+            selected_real_donor = (
+                teacher_tensors[teacher_pool_index]
+                if teacher_pool_index is not None
+                else donor_tensor
+            )
             assigned = assigned_tensors(
                 training_target,
                 generated,
                 modes[row_index],
-                real_donor=(
-                    teacher_tensors[teacher_pool_indices[row_index]]
-                    if teacher_pool_indices[row_index] is not None
-                    else donor_tensor
-                ),
+                real_donor=selected_real_donor,
                 semantic_target=(
                     "source"
                     if arguments.training_policy
@@ -1561,6 +1772,24 @@ def run(
                     assigned,
                     torch=torch,
                     device=device,
+                )
+            if modes[row_index] == "real-donor-teacher-output":
+                assigned = teacher_output_targets(
+                    model,
+                    selected_real_donor,
+                    training_target,
+                    seed=base.SEED + TOTAL_UPDATES + row_index,
+                    torch=torch,
+                    device=device,
+                )
+                teacher_output_name = (
+                    "teacher-output-"
+                    f"{teacher_pairs[teacher_pool_index].pair_id}-16k.wav"
+                )
+                target_source_digest = base._write_float_wav(
+                    pair_root / teacher_output_name,
+                    assigned["target_wav"],
+                    sample_rate,
                 )
             frame_condition_index = frame_condition_target_index(
                 arguments.training_policy, target_index, len(target_tensors)
@@ -1587,8 +1816,8 @@ def run(
                     "semantic_token_condition": token_condition,
                     "authentic_anchor": authentic_row,
                     "real_teacher_id": (
-                        teacher_pairs[teacher_pool_indices[row_index]].pair_id
-                        if teacher_pool_indices[row_index] is not None
+                        teacher_pairs[teacher_pool_index].pair_id
+                        if teacher_pool_index is not None
                         else None
                     ),
                     "source_sha256": base.sha256_file(training_source_path),
@@ -1752,16 +1981,20 @@ def run(
                 else "zeros"
             ),
             "semantic_supervision": (
-                "frozen_base_semantic_prediction_on_real_donor_rows"
-                if arguments.training_policy
-                in {"real-teacher-semantic20", REAL_TEACHER_BREADTH_POLICY}
+                "frozen_base_full_converted_output_on_real_donor_rows"
+                if arguments.training_policy == REAL_TEACHER_OUTPUT_POLICY
                 else (
+                    "frozen_base_semantic_prediction_on_real_donor_rows"
+                    if arguments.training_policy
+                    in {"real-teacher-semantic20", REAL_TEACHER_BREADTH_POLICY}
+                    else (
                     "clean_source_whisper_hidden_states_50hz"
                     if arguments.training_policy == "denoise-semantic"
                     else (
                         "source_whisper_hidden_states_50hz"
                         if arguments.training_policy == "source-semantic"
                         else "target_whisper_hidden_states_50hz"
+                    )
                     )
                 )
             ),
@@ -1856,6 +2089,7 @@ def run(
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--smoke-teacher-output", action="store_true")
     parser.add_argument(
         "--training-policy",
         choices=(
@@ -1872,6 +2106,7 @@ def _parser() -> argparse.ArgumentParser:
             "semantic-token-hold",
             "real-teacher-semantic20",
             REAL_TEACHER_BREADTH_POLICY,
+            REAL_TEACHER_OUTPUT_POLICY,
             "real-reconstruction20",
         ),
         default="role-mix",
@@ -1918,6 +2153,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         donors, evaluation, targets, predecessor, teacher_pool = validate_inputs(
             arguments
         )
+        if arguments.smoke_teacher_output:
+            return run_teacher_output_smoke(arguments, teacher_pool, targets)
         if arguments.check:
             modes = training_modes(arguments.training_policy)
             print(
@@ -1967,19 +2204,24 @@ def main(argv: Sequence[str] | None = None) -> int:
                             arguments.training_policy
                         ),
                         "semantic_supervision": (
-                            "frozen_base_semantic_prediction_on_real_donor_rows"
+                            "frozen_base_full_converted_output_on_real_donor_rows"
                             if arguments.training_policy
-                            in {
-                                "real-teacher-semantic20",
-                                REAL_TEACHER_BREADTH_POLICY,
-                            }
+                            == REAL_TEACHER_OUTPUT_POLICY
                             else (
+                                "frozen_base_semantic_prediction_on_real_donor_rows"
+                                if arguments.training_policy
+                                in {
+                                    "real-teacher-semantic20",
+                                    REAL_TEACHER_BREADTH_POLICY,
+                                }
+                                else (
                                 "clean_source_whisper_hidden_states_50hz"
                                 if arguments.training_policy == "denoise-semantic"
                                 else (
                                     "source_whisper_hidden_states_50hz"
                                     if arguments.training_policy == "source-semantic"
                                     else "target_whisper_hidden_states_50hz"
+                                )
                                 )
                             )
                         ),

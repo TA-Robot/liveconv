@@ -240,9 +240,9 @@ complete converted waveform on the same train48 pool; fresh48 remains frozen.
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Audit whether complete frozen-base output distillation on train48 is the shortest distinct response to semantic-only drift | grok/parent | no | CONTINUE/SIMPLIFY/REDIRECT recorded before next gpu0 investment |
-| 2 | If admitted, keep train48, fresh48, 835/209 positions, scope, LR, and seed fixed; change only teacher rows from semantic-only to full converted-output targets | parent | no | implementation/runtime smoke committed before one gpu0 lane |
-| 3 | Render frozen fresh48 first after training and stop on added loop or broad common-non-loop regression | parent | no human dependency for machine reject | technical disposition recorded before any stress expansion |
+| 1 | Commit and run one-row backward smoke for full converted-output teacher targets on train48 | parent | no | finite waveform, full composite loss, and LoRA gradient, or fail closed |
+| 2 | Keep train48, fresh48, 835/209 positions, scope, LR, and seed fixed; train one EXP-116 full-output teacher lane | parent | no | 1,044 updates and built-in external render, or technical failure |
+| 3 | Render frozen fresh48 first and stop on added loop or broad common-non-loop regression; reuse existing stress60 only on survival | parent | no human dependency for machine reject | technical disposition recorded before any stress expansion |
 | 4 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

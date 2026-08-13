@@ -183,6 +183,7 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-113 adversarial checkpoint / fresh48 (added loop; rejected)
         -> EXP-114 48 training-only real semantic-teacher speakers / same 209 slots
         -> EXP-115 fresh48 (two added failures; teacher breadth rejected)
+        -> EXP-116 same train48/209 slots / frozen-base complete output targets
         -> operator hearing when available
 ```
 

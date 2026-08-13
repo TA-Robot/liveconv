@@ -239,6 +239,46 @@ def test_real_teacher_breadth48_cycles_only_teacher_positions() -> None:
     assert policy_name in choices
 
 
+def test_real_teacher_output48_changes_only_teacher_objective() -> None:
+    policy_name = ROLE_MIX.REAL_TEACHER_OUTPUT_POLICY
+    modes = ROLE_MIX.training_modes(policy_name)
+    schedule = ROLE_MIX.real_teacher_pool_schedule(policy_name, 48)
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(training_policy=policy_name, lora_scope="control69")
+    )
+    real = {
+        "source_wav": "real-wave",
+        "semantic_tokens": "real-token",
+        "target_wav": "unused-real-target",
+        "ssl_feat": "unused-real-hidden",
+    }
+    target = {
+        "source_wav": "target-source",
+        "semantic_tokens": "target-token",
+        "target_wav": "amitaro-wave",
+        "ssl_feat": "amitaro-hidden",
+    }
+
+    assert Counter(modes) == {
+        "standard": 835,
+        "real-donor-teacher-output": 209,
+    }
+    assert sum(index is not None for index in schedule) == 209
+    assert ROLE_MIX.assigned_tensors(
+        target,
+        target,
+        "real-donor-teacher-output",
+        real_donor=real,
+    ) == {
+        "source_wav": "real-wave",
+        "semantic_tokens": "real-token",
+        "target_wav": "amitaro-wave",
+        "ssl_feat": "amitaro-hidden",
+    }
+    assert policy["experiment_id"] == "EXP-116"
+    assert policy["candidate_id"] == "cv12-real-teacher-output48"
+
+
 def test_source_augmentation_is_exact_and_keeps_standard_roles() -> None:
     conditions = ROLE_MIX.source_condition_schedule("source-augmentation")
     policy = ROLE_MIX.experiment_policy(

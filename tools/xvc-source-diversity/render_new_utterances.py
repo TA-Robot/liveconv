@@ -474,6 +474,19 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "avoid corruption and improve content on frozen fresh48?"
             ),
         }
+    if kind == "real-teacher-output48-fresh48":
+        return {
+            "experiment_id": "EXP-117",
+            "variant_id": "cv12-real-teacher-output48",
+            "display_name": (
+                "EXP-116 / frozen-base full-output teacher / 48 speakers"
+            ),
+            "result_kind": "liveconv-exp117-xvc-real-teacher-output48-fresh48/v1",
+            "question": (
+                "Does full converted-output distillation prevent corruption "
+                "and preserve content on frozen fresh48?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -961,6 +974,7 @@ def _parser() -> argparse.ArgumentParser:
             "real-teacher-semantic20-stress",
             "real-teacher-semantic20-fresh48",
             "real-teacher-breadth48-fresh48",
+            "real-teacher-output48-fresh48",
         ),
         default="speaker7",
     )
