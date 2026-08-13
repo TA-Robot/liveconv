@@ -264,7 +264,11 @@ stable RVC/X-VC cancellation-recovery comparisons are also published: both
 families produced zero stale frames after cancel acknowledgment and fully
 drained the next generation. Additional cancel variants and RVC state
 decomposition are closed; the RVC post-cancel waveform difference remains an
-operator hearing question rather than a new machine-selection axis.
+operator hearing question rather than a new machine-selection axis. With no
+second retained actual source or active browser capture, the next distinct
+system slice published the current exclusive hard native-fallback transition
+at 2.0 seconds for both stable families. Further fallback variants now wait for
+hearing; sample discontinuity and auxiliary ASR cannot select an alternative.
 
 ## MS-2 through MS-6 joins
 

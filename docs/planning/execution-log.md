@@ -1692,3 +1692,41 @@ job queue.
   reopen state decomposition or add cancel variants; keep the RVC A/B audible
   for later hearing and ask the next scheduled audit whether a distinct
   system slice now has more value than another GPU render.
+
+## 2026-08-13T10:43:55Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, no tools or delegation).
+- Result: `REDIRECT`. Grok accepted both cancel-recovery collections, the
+  listener-cache unblock, and their commits as direct progress, then closed
+  further cancel/state, human87 horizon/LR, losing adapted-system paths, and
+  premature binding. It requested one additional actual ChatGPT input through
+  the two stable profiles as the next distinct quality lane.
+- Adopted: partially. The closure and single committed-lane rule were adopted.
+  The exact proposed input cannot run: all retained actual inputs have the same
+  hash and no Chrome capture process is active. The parent therefore selected
+  a distinct audible system behavior from the prior audit's allowed fallback:
+  current exclusive native fallback on the retained exact actual input.
+- Expected time saved: one immediately reproducible fallback collection instead
+  of waiting indefinitely for a browser capture or rerunning a closed axis.
+
+## 2026-08-13T10:49:00Z - stable VC native-fallback audio published
+
+- Agent: `primary-integrator`.
+- Task: Reuse the exact 8.17-second actual source and frozen stable outputs;
+  change only continuous remote playout versus the current Extension semantics
+  of muting remote and enabling aligned native audio at exactly 2.0 seconds.
+- Dependencies: commit `0605c56`; source SHA-256 `78b15cd...`; frozen RVC/X-VC
+  remote hashes `e00b7f6...` / `bbcc638...`; listener `8878`.
+- Result: two runs / four candidates published as
+  `ms3-stable-vc-native-fallback-v1`, raising the listener to 501 runs / 842
+  candidates. RVC/X-VC fallback hashes are `7fc83a6...` / `b70c968...`.
+  Both transitions are exclusive with zero route overlap.
+- Machine screen: the single-sample discontinuity at the switch was 0.0488 for
+  RVC and 0.1122 for X-VC. Pinned faster-whisper-small CER for continuous versus
+  fallback was 0.917/0.778 for RVC and 1.000/1.000 for X-VC, with no new gross
+  loop. These measurements do not determine click audibility, naturalness, or
+  route acceptability.
+- Changed action: retain both switch points for later hearing. Do not add a
+  crossfade, gap length, alternate switch time, or profile binding until the
+  operator reports whether the current hard switch is actually disruptive.

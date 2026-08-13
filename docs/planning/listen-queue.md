@@ -32,6 +32,7 @@ each result. Accumulated candidates remain unselected until human hearing.
 | MS-3 stable VC heldout shortlist | The same three public utterances through stable seed-0 RVC Sasayaki clean-bright and stable X-VC Yofukashi Q034 | per row prefer one arm, or reject both; judge clarity, naturalness, and target-voice fit by ear | a consistent preference admits one next listen-now route; it is not promotion or product selection |
 | MS-3 stable VC exact actual-input shortlist | The exact 8.17 s raw PCM previously consumed by X-VC, through stable seed-0 RVC and stable X-VC Yofukashi Q034 | prefer one arm, or reject both; judge clarity, naturalness, and target-voice fit by ear | a preference corroborates the heldout set; it is not promotion or product selection |
 | MS-3 stable VC interrupt recovery | Fresh-session output versus the same short utterance immediately after canceling an older generation, once for RVC and X-VC | listen only for a post-cancel clarity/voice change; record `continue` or `rejected` per family | stale-frame safety is machine-closed; hearing may identify a quality issue but does not promote a route |
+| MS-3 stable VC native fallback | Continuous remote output versus an exclusive hard switch to aligned native audio at 2.0 s, once for RVC and X-VC | listen at the switch for a click, missing syllable, or disruptive voice jump | identifies a fallback-quality issue only; it does not bind either profile |
 | RVC turn-consistency diagnostic | `ms3-rvc-repeat-turn-v1` versus the explicit seed-0/seed-34 repeat collections | compare whether the seeded output removes audible turn-to-turn voice changes; do not choose by auxiliary CER alone | seed 0 is the system integration candidate only; a later audible preference may change it |
 
 Historical X-VC synthetic blinds (EXP-010–019) stay on the listener as
@@ -262,6 +263,19 @@ at CER 0. RVC fresh/recovery retained the same transcript and CER 0.111 but had
 waveform correlation 0.892, so its perceptual significance remains unheard.
 This closes additional cancel variants and RVC state decomposition; do not use
 the waveform difference as an automatic quality decision.
+
+The next audit returned `REDIRECT` and requested another actual ChatGPT source,
+but no second retained source hash or active Chrome capture existed. Its closure
+of cancel/training/state work was adopted; the unavailable source request was
+replaced with the distinct audible system slice
+`ms3-stable-vc-native-fallback-v1`. It reuses the exact 8.17-second actual
+source and stable outputs, then changes only continuous remote playout versus
+the current exclusive hard fallback at 2.0 seconds. Remote is muted before
+native becomes audible, so there is no overlap. The boundary sample jump is
+0.0488 for RVC and 0.1122 for X-VC. A pinned auxiliary ASR found no new gross
+loop, but neither that metric nor the sample jump decides whether the
+transition is perceptually acceptable. Stop further fallback variants until an
+operator hears the switch.
 
 ## Keepers
 
