@@ -76,6 +76,15 @@ for further machine-only work. One final base/future-120 system control now
 separates an adaptation interaction from a base streaming failure; it changes
 no geometry or worker behavior.
 
+The base future-120 control also completed with zero stale frames and contiguous
+`409/409` output. It did not grossly repeat. Its source-relative ASR distance
+was `0.512`, modestly better than expanded79 epoch-8 system output at `0.561`
+but worse than offline base at `0.317`. This isolates the control69 repetition
+to the adaptation/stream interaction while confirming that the streaming
+window still loses content without LoRA. The already-established 200-ms
+lookahead endpoint is reused once with base; no new intermediate point is
+opened. Failure to improve closes this X-VC machine-screened stream search.
+
 ## Goal and stop condition
 
 Use the otherwise-idle GPU to answer one audible question: with the exact
@@ -258,5 +267,22 @@ HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
   --actual-source artifacts/ms3/listening/exp020-human-rvc-smoke-8s-plain-20260812/00-native-source.wav \
   --work-dir artifacts/xvc-human-paired/listen-now/exp026-base-system-path-v1 \
   --listener-dir artifacts/ms3/listening/exp026-base-system-path-v1 \
+  --confirm-gpu-lease gpu0 --device cuda:0
+```
+
+## Base future-200 content control command
+
+```bash
+HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
+  artifacts/exp007/peft-resolve-20260811/runtime-1e52ef9ab8f1/bin/python \
+  tools/xvc-human-paired/system_path_smoke.py \
+  --candidate base-future200 \
+  --xvc-source-root artifacts/x-vc/source \
+  --xvc-config artifacts/x-vc/xvc-local.yaml \
+  --checkpoint artifacts/x-vc/checkpoint/xvc.pt \
+  --target-reference artifacts/xvc-human-paired/listen-now/exp026-human87-control69-v1/train-pairs/EMOTION100_003/target-48k.wav \
+  --actual-source artifacts/ms3/listening/exp020-human-rvc-smoke-8s-plain-20260812/00-native-source.wav \
+  --work-dir artifacts/xvc-human-paired/listen-now/exp026-base-future200-system-path-v1 \
+  --listener-dir artifacts/ms3/listening/exp026-base-future200-system-path-v1 \
   --confirm-gpu-lease gpu0 --device cuda:0
 ```

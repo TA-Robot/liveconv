@@ -855,3 +855,23 @@ job queue.
 - Changed action: close control69 from further machine-only tuning. Run the
   unadapted base through exactly the same future-120 worker path once to
   distinguish an adapter/stream interaction from base streaming failure.
+
+## 2026-08-13T05:05:00Z - base future-120 system control completed
+
+- Agent: `primary-integrator`.
+- Task: Remove LoRA entirely while holding actual input, target reference,
+  future-120 geometry, worker queue, cancellation, and pacing fixed.
+- Dependencies: commit `e60a071`, exact base checkpoint, and exclusive `gpu0`.
+- Result: cancel acknowledgement was 0.015 ms with zero stale frames. The
+  retained generation completed contiguous 409/409 frames in 9.489 seconds,
+  max in-flight 25, with 70 calls and zero failures. Compute P50/P95 was
+  35.36/37.54 ms; peak allocation was 2,697,716,736 bytes. The WAV was
+  published as `exp026-base-system-path-v1`.
+- Machine screen: no gross repetition. Source-relative ASR distance was 0.512,
+  better than the old expanded79 epoch-8 system output at 0.561, but worse than
+  offline base at 0.317.
+- Changed action: the long control69 repetition is an adapter/stream
+  interaction, while base streaming still loses content. Reuse the previously
+  established 200-ms lookahead endpoint once with base. Do not add a new
+  intermediate point; improvement admits hearing only, and failure closes the
+  X-VC machine-screened streaming search.

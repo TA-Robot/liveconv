@@ -105,6 +105,7 @@ class CandidateProfile:
     display_name: str
     output_file: str
     profile_id: str
+    future_ms: int
 
 
 CANDIDATE_PROFILES = {
@@ -116,6 +117,17 @@ CANDIDATE_PROFILES = {
         display_name="X-VC base / future 120 ms / worker state machine",
         output_file="10-xvc-base-future-120-system.wav",
         profile_id="xvc.base.future-120.system-path.listen-now",
+        future_ms=120,
+    ),
+    "base-future200": CandidateProfile(
+        candidate_id="base-future200",
+        adapter_sha256=None,
+        adapter_config_sha256=None,
+        adapter_name=None,
+        display_name="X-VC base / future 200 ms / worker state machine",
+        output_file="10-xvc-base-future-200-system.wav",
+        profile_id="xvc.base.future-200.system-path.listen-now",
+        future_ms=200,
     ),
     "expanded79-e08": CandidateProfile(
         candidate_id="expanded79-e08",
@@ -125,6 +137,7 @@ CANDIDATE_PROFILES = {
         display_name="X-VC human87 expanded79 epoch 8 / future 120 ms / worker",
         output_file="10-xvc-e08-future-120-system.wav",
         profile_id="xvc.exp032.e08.future-120.system-path.listen-now",
+        future_ms=120,
     ),
     "control69-e12": CandidateProfile(
         candidate_id="control69-e12",
@@ -134,6 +147,7 @@ CANDIDATE_PROFILES = {
         display_name="X-VC human87 control69 epoch 12 / future 120 ms / worker",
         output_file="10-xvc-control69-e12-future-120-system.wav",
         profile_id="xvc.exp026.control69.e12.future-120.system-path.listen-now",
+        future_ms=120,
     ),
 }
 
@@ -320,7 +334,7 @@ class CandidateBackend(backend_module.OfficialXvcBackend):
                     {
                         "adapter_sha256": profile.adapter_sha256,
                         "current_ms": CURRENT_MS,
-                        "future_ms": FUTURE_MS,
+                        "future_ms": profile.future_ms,
                         "smooth_ms": SMOOTH_MS,
                         "target_sha256": EXPECTED_TARGET_SHA256,
                         "window_ms": WINDOW_MS,
@@ -547,7 +561,7 @@ def run(args: argparse.Namespace) -> int:
     torch.cuda.reset_peak_memory_stats(device)
     deny_non_unix_sockets()
 
-    with candidate_geometry(FUTURE_MS):
+    with candidate_geometry(profile.future_ms):
         backend = CandidateBackend(
             xvc_source_root=args.xvc_source_root,
             xvc_config=args.xvc_config,
@@ -626,7 +640,7 @@ def run(args: argparse.Namespace) -> int:
                 "output_sha256": output_sha256,
                 "parameters": {
                     "current_ms": CURRENT_MS,
-                    "future_ms": FUTURE_MS,
+                    "future_ms": profile.future_ms,
                     "smooth_ms": SMOOTH_MS,
                     "window_ms": WINDOW_MS,
                 },
@@ -657,7 +671,7 @@ def run(args: argparse.Namespace) -> int:
             "window_ms": WINDOW_MS,
             "current_ms": CURRENT_MS,
             "smooth_ms": SMOOTH_MS,
-            "future_ms": FUTURE_MS,
+            "future_ms": profile.future_ms,
         },
         "cancel_probe": {
             "generation_id": 1,

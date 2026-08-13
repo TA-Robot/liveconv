@@ -80,11 +80,15 @@ def test_future_geometry_rejects_subframe_values() -> None:
 
 def test_candidate_profiles_bind_distinct_exact_adapters() -> None:
     base = MODULE.CANDIDATE_PROFILES["base"]
+    base_200 = MODULE.CANDIDATE_PROFILES["base-future200"]
     expanded = MODULE.CANDIDATE_PROFILES["expanded79-e08"]
     control = MODULE.CANDIDATE_PROFILES["control69-e12"]
 
     assert base.adapter_sha256 is None
     assert base.output_file == "10-xvc-base-future-120-system.wav"
+    assert base.future_ms == 120
+    assert base_200.future_ms == 200
+    assert base_200.adapter_sha256 is None
     assert expanded.adapter_sha256 == MODULE.EXPECTED_ADAPTER_SHA256
     assert control.adapter_sha256 == MODULE.CONTROL69_E12_ADAPTER_SHA256
     assert expanded.adapter_sha256 != control.adapter_sha256

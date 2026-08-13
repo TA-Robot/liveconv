@@ -45,7 +45,7 @@ authorize promote claims or several speculative sweeps in parallel.
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
 | 1 | Help the operator finish the six rows above; EXP-027--031 are superseded diagnostics and do not need separate draining | parent | n/a | decisions recorded |
-| 2 | Run unadapted X-VC base through the same future-120 worker/cancellation path | parent | no: isolates the gross control69 system repetition without another training axis | one base system WAV and coarse repetition screen, or a technical stop |
+| 2 | Reuse the established future-200 endpoint with unadapted base to test whether more context restores actual-input content | parent | no: base future-120 isolated LoRA repetition but still lost content | one future-200 base system WAV and coarse content screen, then close this stream search |
 | 3 | If EXP-032 receives a `keep`, bind that exact candidate to the formal Gateway profile and exercise native fallback/Extension playout | parent | yes: EXP-032 `keep` | one route-qualified system listen or a recorded integration blocker |
 | 4 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
 
@@ -77,6 +77,12 @@ audio stop: auxiliary ASR ended with a long repeated `な`. Close control69 for
 additional machine-only work. Admit one unadapted-base system control with the
 same actual input, target, future-120 geometry, and worker; this is fault
 isolation, not another tuning sweep.
+
+The base future-120 control completed without gross repetition and improved
+source-relative ASR distance over the old expanded79 system output from 0.561
+to 0.512, but remained worse than offline base at 0.317. Reuse only the
+already-established future-200 endpoint with base to test whether additional
+context recovers content. Do not add intermediate points after the result.
 
 ## Keepers
 
