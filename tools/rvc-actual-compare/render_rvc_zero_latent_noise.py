@@ -272,7 +272,9 @@ def execute(
     )
     if not isinstance(worker_endpoint, str):
         raise ZeroLatentNoiseError("stable RVC worker endpoint is unavailable")
-    worker_python = Path(worker_endpoint).resolve(strict=True)
+    worker_python = Path(worker_endpoint).absolute()
+    if not worker_python.is_file():
+        raise ZeroLatentNoiseError("stable RVC worker Python is unavailable")
     arguments.work_dir.mkdir(parents=True)
     standard_raw = arguments.work_dir / "standard.f32le"
     zero_raw = arguments.work_dir / "zero-latent-noise.f32le"
