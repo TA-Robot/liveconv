@@ -794,7 +794,10 @@ def make_handler(roots: list[Path], capture_root: Path = SOURCE_CAPTURE_ROOT):
             ):
                 directories = discover_listening_directories(roots)
                 library_cache = listening_library(directories, roots)
-                library_fingerprint = library_roots_fingerprint(roots)
+                # Bind the cache to the state that authorized this scan. If a
+                # collection is atomically published during discovery, the
+                # next browser refresh must observe a mismatch and rescan.
+                library_fingerprint = observed
             return library_cache
 
     class ListeningHandler(BaseHTTPRequestHandler):

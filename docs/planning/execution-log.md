@@ -1831,3 +1831,38 @@ job queue.
 - Next: commit EXP-035 runner and manifests, run the single GPU lane, then
   screen seven disjoint Common Voice rows. Re-render the original ten
   conditions only if the external screen avoids a clear regression.
+
+## 2026-08-13T12:20:35Z - EXP-035 donor-breadth audio published
+
+- Agent: `primary-integrator`.
+- Task: Replace three donors repeated four times with twelve disjoint admitted
+  Common Voice donor speakers in one pass at fixed target exposure and update
+  count.
+- Dependencies: commit `01b2b24`; exclusive `gpu0`; twelve training donors and
+  seven disjoint evaluation speakers from the exact Common Voice revision.
+- Result: 1,044 pseudo-source pairs, 1,044 updates, and 21 external evaluation
+  candidates completed in 255.30 seconds. Loss moved from 144.2214 to 126.6413;
+  peak GPU allocation was 5.13 GB.
+- Machine screen: no gross repetition in any arm. Mean source-relative distance
+  was 0.296 base, 0.384 JVS3, and 0.360 CV12. Known-text distance was 0.414,
+  0.441, and 0.399 respectively. CV12 reduced the adapted maximum from 1.0 to
+  0.571 and rescued one row that base/JVS3 rendered as empty, but worsened two
+  other rows. This supports better external stability than JVS3, not a quality
+  winner or a claim that adaptation beats base.
+- Changed action: retain CV12 for hearing and render it once on the already
+  frozen ten condition rows. Do not add another donor-count point.
+
+## 2026-08-13T12:22:23Z - Grok progress audit continued the method path
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, no tools or delegation).
+- Result: `CONTINUE`. Grok accepted the disjoint evaluation, donor-overfit
+  explanation, and fixed-exposure single-variable EXP-035 hypothesis. It said
+  to run EXP-035, screen seven rows, avoid another donor point, and move next
+  to conditioning or upstream role assignment if corruption remained.
+- Adopted: yes. The audit snapshot landed immediately after EXP-035 released
+  the GPU and before its new collection was visible, so its `GPU idle/job not
+  started` inference was stale; the requested run and screen had completed.
+- Changed action: fix the listener refresh race, publish the completed seven
+  rows, then finish the frozen tempo/F0/noise/silence check before choosing the
+  next training method.

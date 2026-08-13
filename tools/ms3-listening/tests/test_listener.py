@@ -464,6 +464,62 @@ class ListenerServerTest(unittest.TestCase):
             self.assertEqual(json.loads(refreshed_body)["run_count"], 2)
             self.assertEqual(discover.call_count, 2)
 
+    def test_publication_during_scan_forces_the_next_refresh_to_rescan(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+
+            def publish(name: str) -> None:
+                collection = root / name
+                collection.mkdir()
+                (collection / "tone.wav").write_bytes(b"wav")
+                (collection / "index.json").write_text(
+                    json.dumps(
+                        {
+                            "variants": [
+                                {
+                                    "variant_id": name,
+                                    "output_file": "tone.wav",
+                                    "status": "passed",
+                                }
+                            ]
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+
+            publish("first")
+            original_discover = serve.discover_listening_directories
+
+            def discover_then_publish(roots: list[Path]) -> list[Path]:
+                discovered = original_discover(roots)
+                if not (root / "second").exists():
+                    publish("second")
+                return discovered
+
+            with mock.patch.object(
+                serve,
+                "discover_listening_directories",
+                side_effect=discover_then_publish,
+            ) as discover:
+                with listening_server(root) as port:
+                    first_status, first_body, _ = request(
+                        port,
+                        "GET",
+                        "/library/index.json",
+                        [f"localhost:{port}"],
+                    )
+                    second_status, second_body, _ = request(
+                        port,
+                        "GET",
+                        "/library/index.json",
+                        [f"localhost:{port}"],
+                    )
+
+            self.assertEqual((first_status, second_status), (200, 200))
+            self.assertEqual(json.loads(first_body)["run_count"], 1)
+            self.assertEqual(json.loads(second_body)["run_count"], 2)
+            self.assertEqual(discover.call_count, 2)
+
     def test_host_guard_rejects_malformed_and_head_requests(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
