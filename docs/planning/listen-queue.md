@@ -45,7 +45,7 @@ authorize promote claims or several speculative sweeps in parallel.
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
 | 1 | Help the operator finish the six rows above; EXP-027--031 are superseded diagnostics and do not need separate draining | parent | n/a | decisions recorded |
-| 2 | Halve learning rate for human87 control69 and compare epochs 12/18/24 after both 1e-4 scopes degraded beyond epoch 12 | parent | no: directly follows two reproduced horizon failures | one completed comparison collection or technical stop |
+| 2 | Compare base / expanded79 epoch 12 / control69 epoch 12 on the actual 8.17 s ChatGPT input | parent | no: reuses completed exact adapters and tests heldout generalization | one completed offline collection and coarse content screen |
 | 3 | If EXP-032 receives a `keep`, bind that exact candidate to the formal Gateway profile and exercise native fallback/Extension playout | parent | yes: EXP-032 `keep` | one route-qualified system listen or a recorded integration blocker |
 | 4 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
 
@@ -57,8 +57,13 @@ work returns to bounded quality-candidate generation. Expanded79 degraded at
 epochs 18/24. Narrowing LoRA scope to control69 improved epoch-12 auxiliary
 content error from 0.568 to 0.198, but control69 also degraded at epochs 18/24.
 Longer 1e-4 training is closed; the next one-axis run halves learning rate while
-holding control69 fixed. A recorded `keep` is still required before formal
-Gateway/Extension binding.
+holding control69 fixed. That run also closed: half-LR content error worsened
+from 0.255 to 0.348/0.441 and did not beat standard-LR control69 epoch 12 at
+0.198. Do not add another human87 horizon or learning-rate point. Compare the
+existing exact epoch-12 adapters on the actual input next; only a candidate
+that passes coarse content/repetition screening may enter one bounded worker
+system-path run. A recorded `keep` is still required before formal
+Gateway/Extension binding or any quality claim.
 
 ## Keepers
 

@@ -48,6 +48,15 @@ put the useful horizon at or before epoch 12. The next bounded run keeps
 control69 and halves only AdamW learning rate from `1e-4` to `5e-5`, rendering
 epochs 12/18/24 to test whether slower adaptation preserves content longer.
 
+The half-LR run completed 2,088 updates in 247.54 seconds. Loss at epochs
+12/18/24 was `420.1410 / 403.3412 / 390.5418`, while auxiliary mean content
+error was `0.255 / 0.348 / 0.441`. It therefore shifted the degradation later
+but did not beat the standard-LR control69 epoch-12 error of `0.198`. Further
+human87 horizon and learning-rate refinement is closed. The next comparison
+reuses the existing exact adapters on the 8.17-second actual ChatGPT input,
+with no new training, to check whether control69's heldout content advantage
+generalizes before spending a system-path run on it.
+
 ## Goal and stop condition
 
 Use the otherwise-idle GPU to answer one audible question: with the exact
@@ -175,5 +184,25 @@ HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
   --lora-scope control69 --learning-rate 5e-5 --checkpoint-epochs 12,18,24 \
   --work-dir artifacts/xvc-human-paired/listen-now/exp026-human87-control69-half-lr-v1 \
   --listener-dir artifacts/ms3/listening/exp026-human87-control69-half-lr-v1 \
+  --confirm-gpu-lease gpu0 --device cuda:0
+```
+
+## Actual-input scope comparison command
+
+```bash
+HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
+  artifacts/exp007/peft-resolve-20260811/runtime-1e52ef9ab8f1/bin/python \
+  tools/xvc-human-paired/compare_actual_scopes.py \
+  --manifest artifacts/xvc-human-paired/runrun-human-paired.manifest.json \
+  --source-root artifacts/xvc-human-paired/source-audio/hadou-ita \
+  --target-archive /tmp/liveconv-ms3-intake/amitaro-full-data/downloads/ITAcorpus_amitaro_runrun.zip \
+  --xvc-source-root artifacts/x-vc/source \
+  --xvc-config artifacts/x-vc/xvc-local.yaml \
+  --checkpoint artifacts/x-vc/checkpoint/xvc.pt \
+  --expanded-work-dir artifacts/xvc-human-paired/listen-now/exp026-human87-horizon-v1 \
+  --control69-work-dir artifacts/xvc-human-paired/listen-now/exp026-human87-control69-v1 \
+  --actual-source artifacts/ms3/listening/exp020-human-rvc-smoke-8s-plain-20260812/00-native-source.wav \
+  --work-dir artifacts/xvc-human-paired/listen-now/exp026-actual-scope-offline-v1 \
+  --listener-dir artifacts/ms3/listening/exp026-actual-scope-offline-v1 \
   --confirm-gpu-lease gpu0 --device cuda:0
 ```

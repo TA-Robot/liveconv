@@ -778,3 +778,39 @@ job queue.
   Instead, keep control69 and halve only LR to 5e-5 at epochs 12/18/24.
 - GPU: peak allocation 3,552,147,968 bytes; returned idle after publication and
   auxiliary ASR.
+
+## 2026-08-13T04:45:09Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, no tools or delegation).
+- Result: `CONTINUE`. The preceding 30 minutes produced two committed,
+  single-variable control69 audio collections and the active half-LR job was
+  using `gpu0`; Grok found that this followed the temporary machine-screened
+  quality-search path without claiming a winner.
+- Adopted: yes. Finish and screen the one active job before admitting another;
+  keep a single GPU lane, skip ceremony and premature Gateway/Extension work,
+  and do not convert auxiliary ASR into a naturalness or speaker-quality win.
+- Changed action: because Grok also identified repeated use of the same three
+  heldout rows as the main risk, the next gate is the existing 8.17-second
+  actual ChatGPT input, not another horizon point.
+- Cadence: the corrected tmux loop remains on an exact 1,800-second schedule;
+  raw output is `/tmp/liveconv-grok-progress-auditor-v3.log`.
+
+## 2026-08-13T04:50:00Z - human87 control69 half-LR closed
+
+- Agent: `primary-integrator`.
+- Task: Hold human87 data and control69 scope fixed, halve only AdamW learning
+  rate to `5e-5`, and compare epochs 12/18/24.
+- Dependencies: commit `06c164e`, the same 87-pair order, seed, rank, clip,
+  reference, conditioning, and exclusive `gpu0`.
+- Result: 2,088 updates completed in 247.54 seconds; loss at 12/18/24 was
+  420.1410/403.3412/390.5418; heldout-target access remained zero; 12
+  candidates were published on 8878.
+- Machine screen: mean normalized content error was 0.255/0.348/0.441. The
+  half-LR epoch 12 did not beat standard-LR control69 epoch 12 at 0.198, and
+  longer training again degraded content. This is not an audible verdict.
+- Changed action: close further human87 horizon/LR points. Reuse the exact base,
+  expanded79 epoch-12, and control69 epoch-12 states on the actual 8.17-second
+  input. Admit a system-path run only if that coarse screen generalizes.
+- GPU: peak allocation 3,552,147,968 bytes; returned idle after publication and
+  auxiliary ASR.
