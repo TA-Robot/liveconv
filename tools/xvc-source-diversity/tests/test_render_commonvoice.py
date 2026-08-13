@@ -5,6 +5,7 @@ import json
 import sys
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "render_commonvoice.py"
@@ -72,3 +73,17 @@ def test_listener_index_is_unselected_and_has_three_arms() -> None:
 
     assert index["status"] == "completed-listen-now-unselected"
     assert len(index["variants"]) == 3
+
+
+def test_short_real_utterance_is_right_padded_to_model_window() -> None:
+    source = np.linspace(-0.1, 0.1, 32_000, dtype=np.float32)
+
+    result = RENDER.padded_model_audio(
+        Path("short.mp3"),
+        lambda _path, _config, _hop: source,
+        {"latent_hop_length": 320},
+    )
+
+    assert result.shape == (RENDER.base.MODEL_SAMPLES,)
+    np.testing.assert_array_equal(result[:32_000], source)
+    assert np.count_nonzero(result[32_000:]) == 0

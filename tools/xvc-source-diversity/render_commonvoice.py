@@ -13,6 +13,8 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 TOOL_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = TOOL_ROOT.parents[1]
 HUMAN_TOOL_ROOT = REPO_ROOT / "tools" / "xvc-human-paired"
@@ -33,6 +35,19 @@ TARGET_REFERENCE_SHA256 = (
 
 class ExternalEvaluationError(RuntimeError):
     """The external generalization render cannot safely continue."""
+
+
+def padded_model_audio(
+    path: Path, process_audio: Any, config: Mapping[str, object]
+) -> np.ndarray:
+    """Load one real utterance and right-pad short turns to X-VC's 2.4 s window."""
+    values = process_audio(str(path), config, int(config["latent_hop_length"]))
+    array = np.asarray(values, dtype=np.float32).reshape(-1)
+    if array.size == 0 or not np.isfinite(array).all():
+        raise ExternalEvaluationError(f"X-VC preprocessing failed for {path.name}")
+    if array.size < base.MODEL_SAMPLES:
+        array = np.pad(array, (0, base.MODEL_SAMPLES - array.size))
+    return np.ascontiguousarray(array[: base.MODEL_SAMPLES])
 
 
 def load_inputs(path: Path) -> dict[str, Any]:
@@ -233,7 +248,7 @@ def run(arguments: argparse.Namespace, inputs: Mapping[str, Any]) -> int:
     )
     sources: list[base.RenderSource] = []
     for item in inputs["items"]:
-        values = base._model_audio(
+        values = padded_model_audio(
             arguments.source_root / item["filename"], process_audio, config
         )
         path = source_output / f"{item['id']}.wav"
@@ -327,6 +342,7 @@ def run(arguments: argparse.Namespace, inputs: Mapping[str, Any]) -> int:
         "input_manifest_sha256": base.sha256_file(arguments.inputs),
         "speaker_count": len(sources),
         "training_update_count": 0,
+        "source_window_policy": "right-pad-short-utterances-then-truncate-at-2.4s",
         "listener_rows": listener_rows,
         "elapsed_seconds": time.monotonic() - started,
         "peak_gpu_bytes": int(torch.cuda.max_memory_allocated(device)),

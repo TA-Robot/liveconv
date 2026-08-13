@@ -24,6 +24,8 @@ Git; only hashes are recorded to prove the six rows are distinct speakers.
   `http://127.0.0.1:8878/`.
 - The pinned auxiliary ASR reports both known-text and source-relative content
   distance plus gross repetition.
+- Real utterances shorter than X-VC's fixed 2.4-second model window are
+  right-padded with silence; longer utterances are truncated at 2.4 seconds.
 - Stop after one render. This screen cannot choose naturalness, target-voice
   fit, or a product winner.
 
@@ -41,7 +43,7 @@ HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
   --xvc-source-root artifacts/x-vc/source \
   --xvc-config artifacts/x-vc/xvc-local.yaml \
   --checkpoint artifacts/x-vc/checkpoint/xvc.pt \
-  --work-dir artifacts/xvc-source-diversity/exp034-commonvoice-v1 \
-  --listener-dir artifacts/ms3/listening/exp034-xvc-commonvoice-v1 \
+  --work-dir artifacts/xvc-source-diversity/exp034-commonvoice-v2 \
+  --listener-dir artifacts/ms3/listening/exp034-xvc-commonvoice-v2 \
   --confirm-gpu-lease gpu0 --device cuda:0
 ```
