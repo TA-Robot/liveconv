@@ -461,6 +461,19 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "content and avoid corruption on this frozen evaluation set?"
             ),
         }
+    if kind == "real-teacher-breadth48-fresh48":
+        return {
+            "experiment_id": "EXP-115",
+            "variant_id": "cv12-real-teacher-breadth48",
+            "display_name": (
+                "EXP-114 / semantic teacher / 48 training-only speakers"
+            ),
+            "result_kind": "liveconv-exp115-xvc-real-teacher-breadth48-fresh48/v1",
+            "question": (
+                "Does expanding only real semantic-teacher source diversity "
+                "avoid corruption and improve content on frozen fresh48?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -947,6 +960,7 @@ def _parser() -> argparse.ArgumentParser:
             "real-teacher-semantic20-expanded",
             "real-teacher-semantic20-stress",
             "real-teacher-semantic20-fresh48",
+            "real-teacher-breadth48-fresh48",
         ),
         default="speaker7",
     )

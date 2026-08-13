@@ -180,6 +180,8 @@ claims from that artifact are superseded. The active join is now:
         -> one final waveform-decoder stage at fixed data/loss/updates
         -> EXP-106 real-source frozen-teacher semantics (strongest unheard signal)
         -> EXP-112 unchanged checkpoint / 48 fresh disjoint speakers (generic gain rejected)
+        -> EXP-113 adversarial checkpoint / fresh48 (added loop; rejected)
+        -> EXP-114 48 training-only real semantic-teacher speakers / same 209 slots
         -> operator hearing when available
 ```
 

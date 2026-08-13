@@ -43,6 +43,12 @@ REAL_TEACHER_SEMANTIC_COUNTS = {
     "standard": 835,
     "real-donor-teacher-semantic": 209,
 }
+REAL_TEACHER_BREADTH_POLICY = "real-teacher-breadth48"
+REAL_TEACHER_POOL_KIND = "liveconv-exp114-commonvoice-teacher48/v1"
+REAL_TEACHER_POOL_GROUP = "commonvoice-teacher-train-disjoint"
+REAL_TEACHER_POOL_COUNT = 48
+FRESH48_KIND = "liveconv-exp112-commonvoice-fresh48/v1"
+FRESH48_GROUP = "commonvoice-fresh-disjoint"
 RECONSTRUCTION_CYCLE = (
     "standard",
     "standard",
@@ -166,7 +172,7 @@ def training_modes(policy: str) -> list[str]:
         if Counter(schedule) != REAL_RECONSTRUCTION_COUNTS:
             raise RoleMixError("real-reconstruction schedule proportions drifted")
         return schedule
-    if policy == "real-teacher-semantic20":
+    if policy in {"real-teacher-semantic20", REAL_TEACHER_BREADTH_POLICY}:
         repeats, remainder = divmod(TOTAL_UPDATES, len(RECONSTRUCTION_CYCLE))
         tail = (
             "standard",
@@ -188,6 +194,33 @@ def training_modes(policy: str) -> list[str]:
             raise RoleMixError("real-teacher-semantic proportions drifted")
         return schedule
     raise RoleMixError(f"unknown training policy: {policy}")
+
+
+def real_teacher_pool_schedule(
+    policy: str, pool_size: int
+) -> list[int | None]:
+    if policy != REAL_TEACHER_BREADTH_POLICY:
+        return [None] * TOTAL_UPDATES
+    if pool_size != REAL_TEACHER_POOL_COUNT:
+        raise RoleMixError("real-teacher pool size drifted")
+    schedule: list[int | None] = []
+    teacher_index = 0
+    for role in training_modes(policy):
+        if role == "real-donor-teacher-semantic":
+            schedule.append(teacher_index % pool_size)
+            teacher_index += 1
+        else:
+            schedule.append(None)
+    counts = Counter(index for index in schedule if index is not None)
+    if (
+        len(schedule) != TOTAL_UPDATES
+        or teacher_index != REAL_TEACHER_SEMANTIC_COUNTS[
+            "real-donor-teacher-semantic"
+        ]
+        or sorted(counts.values()) != [4] * 31 + [5] * 17
+    ):
+        raise RoleMixError("real-teacher pool schedule drifted")
+    return schedule
 
 
 def source_condition_schedule(policy: str) -> list[dict[str, object]]:
@@ -351,6 +384,31 @@ def training_scope(inventory: Path, name: str) -> dict[str, object]:
 
 
 def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
+    if (
+        arguments.training_policy == REAL_TEACHER_BREADTH_POLICY
+        and arguments.lora_scope == "control69"
+    ):
+        return {
+            "experiment_id": "EXP-114",
+            "slug": "exp114",
+            "candidate_id": "cv12-real-teacher-breadth48",
+            "candidate_name": (
+                "EXP-114 / 20% semantic teacher / 48 real source speakers"
+            ),
+            "run_kind": "EXP-114 X-VC real-teacher breadth evaluation",
+            "result_kind": "liveconv-exp114-xvc-real-teacher-breadth48/v1",
+            "question": (
+                "Does increasing only the real semantic-teacher source pool "
+                "from 12 to 48 speakers improve fresh-speaker generalization?"
+            ),
+            "independent_variable": (
+                "real semantic-teacher source diversity: 12 EXP-035 donors "
+                "versus 48 training-only Common Voice speakers across the same "
+                "209 teacher positions; the 835 standard rows, total updates, "
+                "teacher objective, target voice, control69, LR, seed, zero "
+                "frame condition, and loss weights stay fixed"
+            ),
+        }
     if (
         arguments.training_policy == "real-teacher-semantic20"
         and arguments.lora_scope == "control69"
@@ -896,9 +954,64 @@ def _pseudo_path(root: Path, target_id: str, donor_id: str) -> Path:
     return root / target_id / f"source-{donor_id}-16k.wav"
 
 
+def _load_fixed_commonvoice_pool(
+    path: Path, *, kind: str, group: str, count: int
+) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise RoleMixError("fixed Common Voice pool is not valid JSON") from error
+    items = value.get("items") if isinstance(value, dict) else None
+    source = value.get("source") if isinstance(value, dict) else None
+    if (
+        not isinstance(value, dict)
+        or value.get("kind") != kind
+        or not isinstance(source, dict)
+        or source.get("license") != "CC0-1.0"
+        or not isinstance(items, list)
+        or len(items) != count
+    ):
+        raise RoleMixError("fixed Common Voice pool schema drifted")
+    ids: set[str] = set()
+    files: set[str] = set()
+    clients: set[str] = set()
+    for item in items:
+        identifier = item.get("id") if isinstance(item, dict) else None
+        filename = item.get("filename") if isinstance(item, dict) else None
+        client = item.get("client_id_sha256") if isinstance(item, dict) else None
+        if (
+            not isinstance(identifier, str)
+            or not identifier
+            or identifier in ids
+            or not isinstance(filename, str)
+            or Path(filename).name != filename
+            or filename in files
+            or not base._is_sha256(item.get("sha256"))
+            or not base._is_sha256(client)
+            or client in clients
+            or item.get("group") != group
+            or not isinstance(item.get("source_transcript"), str)
+            or not item["source_transcript"]
+            or item.get("down_votes") != 0
+            or not isinstance(item.get("up_votes"), int)
+            or int(item["up_votes"]) < 2
+        ):
+            raise RoleMixError("fixed Common Voice pool row drifted")
+        ids.add(identifier)
+        files.add(filename)
+        clients.add(client)
+    return value
+
+
 def validate_inputs(
     arguments: argparse.Namespace,
-) -> tuple[dict[str, Any], dict[str, Any], list[tuple[str, Path, str]], dict[str, Any]]:
+) -> tuple[
+    dict[str, Any],
+    dict[str, Any],
+    list[tuple[str, Path, str]],
+    dict[str, Any],
+    dict[str, Any] | None,
+]:
     donors = breadth._load_manifest(
         arguments.donors, kind=breadth.DONOR_KIND, count=breadth.DONOR_COUNT
     )
@@ -919,6 +1032,43 @@ def validate_inputs(
             or base.sha256_file(path) != item["sha256"]
         ):
             raise RoleMixError(f"Common Voice input drifted: {item['filename']}")
+
+    teacher_pool: dict[str, Any] | None = None
+    if arguments.training_policy == REAL_TEACHER_BREADTH_POLICY:
+        if (
+            arguments.real_teacher_manifest is None
+            or arguments.real_teacher_root is None
+            or arguments.frozen_fresh_evaluation is None
+        ):
+            raise RoleMixError("real-teacher breadth inputs are required")
+        teacher_pool = _load_fixed_commonvoice_pool(
+            arguments.real_teacher_manifest,
+            kind=REAL_TEACHER_POOL_KIND,
+            group=REAL_TEACHER_POOL_GROUP,
+            count=REAL_TEACHER_POOL_COUNT,
+        )
+        fresh = _load_fixed_commonvoice_pool(
+            arguments.frozen_fresh_evaluation,
+            kind=FRESH48_KIND,
+            group=FRESH48_GROUP,
+            count=REAL_TEACHER_POOL_COUNT,
+        )
+        teacher_clients = {
+            item["client_id_sha256"] for item in teacher_pool["items"]
+        }
+        frozen_clients = {item["client_id_sha256"] for item in fresh["items"]}
+        if teacher_clients & (donor_clients | evaluation_clients | frozen_clients):
+            raise RoleMixError("real-teacher pool overlaps frozen speakers")
+        for item in teacher_pool["items"]:
+            path = arguments.real_teacher_root / item["filename"]
+            if (
+                path.is_symlink()
+                or not path.is_file()
+                or base.sha256_file(path) != item["sha256"]
+            ):
+                raise RoleMixError(
+                    f"real-teacher Common Voice input drifted: {item['filename']}"
+                )
 
     targets = method.target_inventory(arguments.pair_root)
     breadth.training_schedule(
@@ -976,7 +1126,11 @@ def validate_inputs(
         REPO_ROOT / "artifacts" / "ms3" / "listening",
         "EXP-036 listener directory",
     )
-    return donors, evaluation, targets, predecessor
+    real_teacher_pool_schedule(
+        arguments.training_policy,
+        len(teacher_pool["items"]) if teacher_pool is not None else 0,
+    )
+    return donors, evaluation, targets, predecessor, teacher_pool
 
 
 def listening_index(
@@ -1045,6 +1199,7 @@ def run(
     evaluation: Mapping[str, Any],
     target_rows: list[tuple[str, Path, str]],
     predecessor: Mapping[str, Any],
+    teacher_pool: Mapping[str, Any] | None,
 ) -> int:
     policy = experiment_policy(arguments)
     for name in ("HF_DATASETS_OFFLINE", "HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"):
@@ -1057,9 +1212,13 @@ def run(
     started = time.monotonic()
     arguments.work_dir.mkdir()
     donor_root = arguments.work_dir / "donor-references"
+    teacher_root = arguments.work_dir / "teacher-references"
     evaluation_root = arguments.work_dir / "evaluation-sources"
     regenerated_root = arguments.work_dir / "verified-generated-source-pairs"
-    for path in (donor_root, evaluation_root, regenerated_root):
+    roots = [donor_root, evaluation_root, regenerated_root]
+    if teacher_pool is not None:
+        roots.append(teacher_root)
+    for path in roots:
         path.mkdir()
 
     import torch
@@ -1138,6 +1297,24 @@ def run(
         )
         donor_pairs.append(pair)
         donor_tensors.append(tensors)
+    teacher_pairs: list[base.MaterializedPair] = []
+    teacher_tensors: list[dict[str, Any]] = []
+    if teacher_pool is not None:
+        if arguments.real_teacher_root is None:
+            raise RoleMixError("real-teacher source root is unavailable")
+        for item in teacher_pool["items"]:
+            pair, tensors = breadth._reference_tensor(
+                model,
+                item,
+                source_root=arguments.real_teacher_root,
+                output_root=teacher_root,
+                process_audio=process_audio,
+                config=config,
+                torch=torch,
+                device=device,
+            )
+            teacher_pairs.append(pair)
+            teacher_tensors.append(tensors)
     evaluation_pairs: list[base.MaterializedPair] = []
     evaluation_tensors: list[dict[str, Any]] = []
     for item in evaluation["items"]:
@@ -1189,6 +1366,9 @@ def run(
     torch.cuda.empty_cache()
 
     modes = training_modes(arguments.training_policy)
+    teacher_pool_indices = real_teacher_pool_schedule(
+        arguments.training_policy, len(teacher_tensors)
+    )
     source_conditions = source_condition_schedule(arguments.training_policy)
     token_conditions = semantic_token_schedule(arguments.training_policy)
     training_rows: list[dict[str, Any]] = []
@@ -1363,7 +1543,11 @@ def run(
                 training_target,
                 generated,
                 modes[row_index],
-                real_donor=donor_tensor,
+                real_donor=(
+                    teacher_tensors[teacher_pool_indices[row_index]]
+                    if teacher_pool_indices[row_index] is not None
+                    else donor_tensor
+                ),
                 semantic_target=(
                     "source"
                     if arguments.training_policy
@@ -1402,6 +1586,11 @@ def run(
                     "condition": condition,
                     "semantic_token_condition": token_condition,
                     "authentic_anchor": authentic_row,
+                    "real_teacher_id": (
+                        teacher_pairs[teacher_pool_indices[row_index]].pair_id
+                        if teacher_pool_indices[row_index] is not None
+                        else None
+                    ),
                     "source_sha256": base.sha256_file(training_source_path),
                 }
             )
@@ -1564,7 +1753,8 @@ def run(
             ),
             "semantic_supervision": (
                 "frozen_base_semantic_prediction_on_real_donor_rows"
-                if arguments.training_policy == "real-teacher-semantic20"
+                if arguments.training_policy
+                in {"real-teacher-semantic20", REAL_TEACHER_BREADTH_POLICY}
                 else (
                     "clean_source_whisper_hidden_states_50hz"
                     if arguments.training_policy == "denoise-semantic"
@@ -1576,6 +1766,13 @@ def run(
                 )
             ),
             "loss_weights": loss_weights,
+            "real_teacher_pool_count": len(teacher_tensors),
+            "real_teacher_manifest_sha256": (
+                base.sha256_file(arguments.real_teacher_manifest)
+                if teacher_pool is not None
+                and arguments.real_teacher_manifest is not None
+                else None
+            ),
         },
         "role_counts": observed_role_counts,
         "role_schedule_sha256": method._canonical_sha256(modes),
@@ -1674,6 +1871,7 @@ def _parser() -> argparse.ArgumentParser:
             "cross-target-condition",
             "semantic-token-hold",
             "real-teacher-semantic20",
+            REAL_TEACHER_BREADTH_POLICY,
             "real-reconstruction20",
         ),
         default="role-mix",
@@ -1686,6 +1884,9 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--donors", type=Path, required=True)
     parser.add_argument("--evaluation-set", type=Path, required=True)
     parser.add_argument("--source-root", type=Path, required=True)
+    parser.add_argument("--real-teacher-manifest", type=Path)
+    parser.add_argument("--real-teacher-root", type=Path)
+    parser.add_argument("--frozen-fresh-evaluation", type=Path)
     parser.add_argument("--pair-root", type=Path, required=True)
     parser.add_argument("--predecessor-result", type=Path, required=True)
     parser.add_argument("--predecessor-pseudo-root", type=Path, required=True)
@@ -1714,7 +1915,9 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     arguments = _parser().parse_args(argv)
     try:
-        donors, evaluation, targets, predecessor = validate_inputs(arguments)
+        donors, evaluation, targets, predecessor, teacher_pool = validate_inputs(
+            arguments
+        )
         if arguments.check:
             modes = training_modes(arguments.training_policy)
             print(
@@ -1725,6 +1928,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "evaluation_rows": len(evaluation["items"]),
                         "training_targets": len(targets),
                         "generated_pairs": TOTAL_UPDATES,
+                        "real_teacher_pool_rows": (
+                            len(teacher_pool["items"])
+                            if teacher_pool is not None
+                            else 0
+                        ),
                         "updates": TOTAL_UPDATES,
                         "role_counts": dict(Counter(modes)),
                         "source_condition_counts": dict(
@@ -1761,7 +1969,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "semantic_supervision": (
                             "frozen_base_semantic_prediction_on_real_donor_rows"
                             if arguments.training_policy
-                            == "real-teacher-semantic20"
+                            in {
+                                "real-teacher-semantic20",
+                                REAL_TEACHER_BREADTH_POLICY,
+                            }
                             else (
                                 "clean_source_whisper_hidden_states_50hz"
                                 if arguments.training_policy == "denoise-semantic"
@@ -1786,7 +1997,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
             )
             return 0
-        return run(arguments, donors, evaluation, targets, predecessor)
+        return run(
+            arguments, donors, evaluation, targets, predecessor, teacher_pool
+        )
     except (
         base.ListenNowError,
         breadth.BreadthError,

@@ -58,8 +58,10 @@ def select_rows(
     rows: Sequence[Mapping[str, Any]],
     *,
     existing_filenames: set[str],
+    excluded_client_hashes: set[str] | None = None,
     count: int = ROW_COUNT,
 ) -> list[dict[str, Any]]:
+    excluded_client_hashes = excluded_client_hashes or set()
     by_filename = {
         str(row.get("file_name")): row
         for row in rows
@@ -85,6 +87,8 @@ def select_rows(
             or not isinstance(client, str)
             or not client
             or client in excluded_clients
+            or hashlib.sha256(client.encode("utf-8")).hexdigest()
+            in excluded_client_hashes
             or client in selected_clients
             or row.get("locale") != "ja"
             or not isinstance(row.get("up_votes"), int)
@@ -149,7 +153,12 @@ def download(row: Mapping[str, Any], output_root: Path) -> Path:
 
 
 def build_manifest(
-    selected: Sequence[Mapping[str, Any]], output_root: Path
+    selected: Sequence[Mapping[str, Any]],
+    output_root: Path,
+    *,
+    kind: str = KIND,
+    group: str = "commonvoice-fresh-disjoint",
+    selection: str | None = None,
 ) -> dict[str, Any]:
     items: list[dict[str, Any]] = []
     for row in selected:
@@ -158,7 +167,7 @@ def build_manifest(
         items.append(
             {
                 "id": f"cv{stem}f",
-                "group": "commonvoice-fresh-disjoint",
+                "group": group,
                 "filename": path.name,
                 "sha256": sha256_file(path),
                 "duration_seconds": duration_seconds(path),
@@ -179,14 +188,15 @@ def build_manifest(
         )
     return {
         "schema_version": 1,
-        "kind": KIND,
+        "kind": kind,
         "source": {
             "corpus": "Mozilla Common Voice Corpus 25.0 / ja / test-ja00",
             "license": "CC0-1.0",
             "mirror": "FluidInference/cv-corpus-25.0-ja",
             "mirror_revision": REVISION,
             "metadata_sha256": METADATA_SHA256,
-            "selection": (
+            "selection": selection
+            or (
                 "first 48 metadata-order rows with unique clients, excluding "
                 "all locally materialized clients; up_votes>=2, down_votes=0, "
                 "10--80 normalized characters"

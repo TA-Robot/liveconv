@@ -220,14 +220,21 @@ mean `0.326 -> 0.357`, median `0.250 -> 0.308`, and had W/T/L `10/19/16`.
 Close the generic teacher method without share or weight tuning. Its earlier
 stress signal remains unheard audio, not a machine-selected keeper; fresh48 is
 evaluation-only and may not be fitted or moved into training.
+EXP-113 then tested the previously retained waveform-adversarial adapter on the
+same fresh48 set. It was a `6/33/6` tie against control69 on the common 45
+non-loop rows but added a separate catastrophic repetition. Reject it as a
+generic keeper and close adversarial-weight tuning. The next training point
+keeps EXP-106's exact 209 semantic-teacher slots but cycles them across 48 new
+training-only speakers disjoint from fresh48; this tests real-source diversity,
+not another teacher share or weight.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Render the unchanged EXP-064 waveform-adversarial checkpoint on frozen fresh48 while the next training method is prepared | parent | no | 144 outputs and coarse loop/content screen published once |
-| 2 | Prepare one new X-VC retraining method using a training-only real-speech pool disjoint from fresh48; keep fresh48 frozen | parent | no | one-variable method and CPU admission committed before gpu0 |
-| 3 | Render fresh48 first after new training, then only expand the gate if it avoids adapter-added loops and broad regression | parent | no human dependency for machine reject | technical stop or retained unheard audio recorded |
+| 1 | Materialize 48 training-only Common Voice speakers disjoint from original64 and frozen fresh48 | parent | no | hashes, unique speakers, and zero overlap fixed from the committed selector |
+| 2 | Train EXP-114 once with the same 835/209 schedule and optimization, changing only real teacher pool 12 -> 48 | parent | no | 1,044 updates and built-in external render, or technical failure |
+| 3 | Render frozen fresh48 first, then only expand the gate if it avoids adapter-added loops and broad regression | parent | no human dependency for machine reject | technical stop or retained unheard audio recorded |
 | 4 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

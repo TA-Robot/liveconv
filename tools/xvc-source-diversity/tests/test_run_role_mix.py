@@ -214,6 +214,31 @@ def test_real_teacher_semantic_rehearsal_is_exact_and_keeps_target_voice() -> No
     assert "real-teacher-semantic20" in choices
 
 
+def test_real_teacher_breadth48_cycles_only_teacher_positions() -> None:
+    policy_name = ROLE_MIX.REAL_TEACHER_BREADTH_POLICY
+    modes = ROLE_MIX.training_modes(policy_name)
+    schedule = ROLE_MIX.real_teacher_pool_schedule(policy_name, 48)
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(training_policy=policy_name, lora_scope="control69")
+    )
+
+    observed = Counter(index for index in schedule if index is not None)
+    assert Counter(modes) == ROLE_MIX.REAL_TEACHER_SEMANTIC_COUNTS
+    assert all(
+        (index is not None) == (role == "real-donor-teacher-semantic")
+        for role, index in zip(modes, schedule, strict=True)
+    )
+    assert sorted(observed.values()) == [4] * 31 + [5] * 17
+    assert policy["experiment_id"] == "EXP-114"
+    assert policy["candidate_id"] == "cv12-real-teacher-breadth48"
+    choices = next(
+        action.choices
+        for action in ROLE_MIX._parser()._actions
+        if action.dest == "training_policy"
+    )
+    assert policy_name in choices
+
+
 def test_source_augmentation_is_exact_and_keeps_standard_roles() -> None:
     conditions = ROLE_MIX.source_condition_schedule("source-augmentation")
     policy = ROLE_MIX.experiment_policy(

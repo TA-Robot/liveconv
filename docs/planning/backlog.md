@@ -102,13 +102,14 @@ name one owner and ownership zone below.
 | LV-091 | Done | P0 | MS-3 | Train X-VC to tolerate collapsed semantic tokens | EXP-100--105 regressed external, changed-content, and balanced-stress means and added eight gross loops, including seven of 33 expanded-speaker rows; reject the method and prohibit block-size/ratio sweeps |
 | LV-092 | Done | P0 | MS-3 | Rehearse frozen-base semantic behavior on real Japanese source inputs without teaching donor identity | EXP-106--111 improved changed utterances and all five balanced-stress means without stress/expanded loops, but added one pathological Hadou number loop and had outlier-driven expanded mean; retain unheard and validate the same checkpoint on fresh speakers without ratio/weight sweeps |
 | LV-093 | Done | P0 | MS-3 | Test the retained EXP-106 checkpoint on genuinely fresh Japanese speakers and sentences | EXP-112 rendered 48 new speakers; excluding any source where an arm looped, EXP-106 regressed control69 in mean, median, and 10/19/16 W/T/L, so close the generic method and keep fresh48 evaluation-only |
-| LV-094 | In progress | P0 | MS-3 | Test the retained waveform-adversarial retraining method on fresh48 | EXP-113 reuses the frozen evaluation-only set and unchanged EXP-064 checkpoint once; stop after coarse content/corruption comparison without objective tuning |
+| LV-094 | Done | P0 | MS-3 | Test the retained waveform-adversarial retraining method on fresh48 | EXP-113 tied control69 on common non-loop rows at 6/33/6 but added a separate catastrophic repetition, so reject it as a generic keeper without adversarial-weight tuning |
+| LV-095 | In progress | P0 | MS-3 | Expand real semantic-teacher training-source diversity without contaminating fresh48 | EXP-114 holds the 209 teacher positions and every optimization setting fixed while replacing twelve repeated real sources with 48 training-only disjoint speakers; one point, no count/share sweep |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| LV-094 / EXP-113 | primary-integrator | `tools/xvc-source-diversity/render_new_utterances.py`, its test, `experiments/EXP-113-*`, and planning records | 144 fixed-checkpoint outputs published or admission fails closed |
+| LV-095 / EXP-114 | primary-integrator | `prepare_*commonvoice.py`, `run_role_mix.py`, their focused tests, `experiments/EXP-114-*`, and planning records | committed method, materialized train48, one admitted gpu0 lane, and fresh48 technical stop |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.

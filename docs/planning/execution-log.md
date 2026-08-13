@@ -3084,3 +3084,35 @@ job queue.
 - Changed action: run one 48-row comparison without retraining or objective
   tuning. This fills the otherwise idle GPU and supplies cross-method evidence
   from new data; it does not reuse fresh48 for fitting.
+
+## 2026-08-13T20:04:00Z - EXP-113 adversarial fresh48 rejected
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-13T20:00:00Z.
+- End: 2026-08-13T20:04:00Z.
+- Dependencies: commit `bf45dd3`; unchanged EXP-064 adapter; frozen fresh48;
+  gpu0; listener 8878.
+- Result: 144 model outputs completed in 115.65 seconds at 4.77 GiB peak. Raw
+  candidate mean was `1.306`. On the common 45 non-loop rows it nearly tied
+  control69 (`0.321` versus `0.326`, median `0.200` versus `0.250`, W/T/L
+  `6/33/6`) but inherited one control loop and added another catastrophic loop.
+- Problems: the old smaller gates had not exposed these source-dependent
+  failures. The fresh split changed the technical disposition without being
+  tuned.
+- Rework: none. Reject waveform adversarial as a generic keeper and close its
+  weight sweep. Keep the new audio unheard and unselected.
+
+## 2026-08-13T20:05:00Z - EXP-114 teacher breadth48 method prepared
+
+- Agent: `primary-integrator`.
+- Task: replace EXP-106's twelve repeatedly used real teacher sources with 48
+  training-only speakers while holding all 209 teacher positions and every
+  optimization setting fixed.
+- Dependencies: EXP-112 rejection; pinned Common Voice metadata; frozen
+  fresh48 exclusion; EXP-035 pseudo sources/control69; one gpu0 lane.
+- Result: deterministic selection, disjoint-pool admission, balanced 209-slot
+  cycling, training policy, and focused tests prepared. Seventeen training
+  speakers receive five teacher exposures and 31 receive four.
+- Problems: none so far.
+- Changed action: commit before acquisition, materialize the training pool,
+  then train one point. Do not add 24/96-source or teacher-share variants.

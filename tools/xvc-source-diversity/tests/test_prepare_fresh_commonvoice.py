@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import sys
 from pathlib import Path
@@ -52,3 +53,16 @@ def test_select_rows_excludes_existing_clients_and_keeps_unique_speakers() -> No
 def test_select_rows_fails_when_fresh_count_is_short() -> None:
     with pytest.raises(PREPARE.FreshEvaluationError, match="not enough"):
         PREPARE.select_rows([row(1, "only")], existing_filenames=set(), count=2)
+
+
+def test_select_rows_excludes_hashed_client_from_frozen_evaluation() -> None:
+    excluded = hashlib.sha256(b"evaluation-speaker").hexdigest()
+
+    selected = PREPARE.select_rows(
+        [row(1, "evaluation-speaker"), row(2, "training-speaker")],
+        existing_filenames=set(),
+        excluded_client_hashes={excluded},
+        count=1,
+    )
+
+    assert selected[0]["client_id"] == "training-speaker"
