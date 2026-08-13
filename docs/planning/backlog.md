@@ -99,13 +99,12 @@ name one owner and ownership zone below.
 | LV-088 | Done | P0 | MS-3 | Train X-VC with denoising semantic consistency | EXP-087--092 improved noise20 and tempo in the balanced stress matrix, but regressed changed utterances and pitch and gross-looped one ASR-empty expanded input; retain unheard audio and close ratio/SNR/blend sweeps |
 | LV-089 | Done | P0 | MS-3 | Isolate X-VC loop-prone source representations | EXP-093 found no useful universal rule: the best all-loop rule flagged 8/30 non-loop rows; low token diversity captured the two adapter-added loops but also three non-loop rows, so retain it only as a disjoint-validation hypothesis |
 | LV-090 | Done | P0 | MS-3 | Train X-VC with cross-utterance target-frame conditioning | EXP-094--099 improved noise20 and slightly improved Hadou, but regressed changed utterances, the balanced stress macro, and expanded33 while adding one loop; close reference/strength/ratio sweeps |
-| LV-091 | In progress | P0 | MS-3 | Train X-VC to tolerate collapsed semantic tokens | EXP-100 alternates clean tokens with deterministic five-frame token holds while leaving the clean waveform and all target objectives fixed; EXP-101--105 reuse the full varied gate |
+| LV-091 | Done | P0 | MS-3 | Train X-VC to tolerate collapsed semantic tokens | EXP-100--105 regressed external, changed-content, and balanced-stress means and added eight gross loops, including seven of 33 expanded-speaker rows; reject the method and prohibit block-size/ratio sweeps |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| LV-091 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-100--105 notes, and ignored artifacts | Commit exact 522/522 token corruption and all frozen render policies before one GPU lane |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.

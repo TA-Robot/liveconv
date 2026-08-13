@@ -198,14 +198,18 @@ utterances regressed `0.184` to `0.306`, expanded33 regressed `1.084` to
 `1.247` and added a loop, and the balanced stress macro regressed `0.320` to
 `0.329`. Noise20 improved `0.397` to `0.275`, but silence and pitch worsened.
 No fixed-condition text copy was detected. Close condition reference, strength,
-and ratio sweeps. The next learning input hypothesis should make the redundant
-acoustic path tolerate semantic-token collapse without fitting a runtime gate.
+and ratio sweeps. EXP-100--105 then tried to make the redundant acoustic path
+tolerate semantic-token collapse by holding each five-frame token block on half
+the training rows. The broad gate rejected it: external and changed-utterance
+means regressed, stress60 moved `0.320` to `0.362`, and expanded33 produced
+seven candidate gross loops. Noise and tempo improved only locally. Close block
+size and corruption-ratio sweeps; all audio remains unheard and unselected.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Train one semantic-token-hold adapter that alternates clean tokens with deterministic collapsed-token blocks while preserving clean waveform and target objectives | parent | no | exact token corruption and fixed 1,044-update schedule committed before GPU |
+| 1 | After audit, train one real-source frozen-teacher semantic adapter: 835 normal target-conversion updates plus 209 semantic-only real Common Voice rows under Amitaro target-speaker context | parent | no | exact method and full frozen gate committed before GPU |
 | 2 | Publish the candidate on the existing 7 + 12 + 10 + 31 + 33 + 60 screens | parent | no human dependency for machine reject | adapter-added loop and broad regression decision recorded |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 

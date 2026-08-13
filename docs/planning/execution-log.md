@@ -2945,3 +2945,20 @@ job queue.
   block size or corruption ratio. EXP-104 contains known low-token failure rows
   and is therefore a failure-recurrence screen, not independent robustness
   proof; other frozen sets still govern broad regression.
+
+## 2026-08-13T19:17:22Z - semantic-token hold X-VC bundle rejected
+
+- Agent: `primary-integrator`.
+- Task: Train EXP-100 with 522 clean and 522 deterministic five-frame-held
+  semantic-token rows, then render the frozen 7 + 12 + 10 + 31 + 33 + 60 gate.
+- Start: 2026-08-13T19:01:50Z.
+- End: 2026-08-13T19:17:22Z.
+- Dependencies: commit `a1494f0`; gpu0; EXP-035 control69; listener 8878.
+- Result: 1,044 updates completed in 272.03 seconds at 4.77 GiB peak, but loss
+  rose `144.22 -> 371.95`. External was 1/3/3 and `0.360 -> 0.462`; changed
+  utterances 1/4/7 and `0.184 -> 0.323`; Hadou added one number loop; expanded33
+  added seven loops and regressed `1.084 -> 3.612`; stress60 was 14/21/25 and
+  `0.320 -> 0.362`.
+- Problems: the corruption objective destabilized training. The broader gate
+  prevented the superficially improved Hadou mean from becoming a false pass.
+- Rework: none. Close block-size and corruption-ratio sweeps.
