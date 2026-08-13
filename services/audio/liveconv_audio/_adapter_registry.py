@@ -43,22 +43,29 @@ _RVC_ARTIFACT_KEYS = {
     "requirements_lock_sha256",
 }
 
-_RVC_SETTING_KEYS = {
-    "speaker_id",
-    "pitch_shift",
-    "f0_method",
-    "index_rate",
-    "rms_mix_rate",
-    "sample_rate",
-    "block_ms",
-    "crossfade_ms",
-    "context_ms",
-    "frame_ms",
-    "inference_batch_frames",
-    "queue_capacity_frames",
-    "resident_capacity_frames",
-    "formant_shift",
-    "threshold_dbfs",
+_RVC_RETAINED_SETTING_KEYS = frozenset(
+    {
+        "speaker_id",
+        "pitch_shift",
+        "f0_method",
+        "index_rate",
+        "rms_mix_rate",
+        "sample_rate",
+        "block_ms",
+        "crossfade_ms",
+        "context_ms",
+        "frame_ms",
+        "inference_batch_frames",
+        "queue_capacity_frames",
+        "resident_capacity_frames",
+        "formant_shift",
+        "threshold_dbfs",
+    }
+)
+_RVC_QUALITY_SETTING_KEYS = _RVC_RETAINED_SETTING_KEYS | {"input_gain_db"}
+_RVC_SEEDED_SETTING_KEYS = _RVC_RETAINED_SETTING_KEYS | {"inference_seed"}
+_RVC_SEEDED_QUALITY_SETTING_KEYS = _RVC_QUALITY_SETTING_KEYS | {
+    "inference_seed"
 }
 
 _RVC_REQUIRED_ENVIRONMENT = (
@@ -328,7 +335,7 @@ def _validate_rvc(profile: ModelProfile) -> None:
     settings = configuration["settings"]
     if not isinstance(artifacts, dict) or set(artifacts) != _RVC_ARTIFACT_KEYS:
         raise ValueError(f"{profile.profile_id}: RVC artifacts are incomplete")
-    if not isinstance(settings, dict) or set(settings) != _RVC_SETTING_KEYS:
+    if not _has_approved_rvc_settings(settings):
         raise ValueError(f"{profile.profile_id}: RVC settings are incomplete")
     if settings["frame_ms"] != profile.frame_ms:
         raise ValueError(f"{profile.profile_id}: RVC frame duration differs")
@@ -462,7 +469,12 @@ def _rvc_environment(
         "block_ms": "LIVECONV_RVC_V2_BLOCK_MS",
         "crossfade_ms": "LIVECONV_RVC_V2_CROSSFADE_MS",
         "context_ms": "LIVECONV_RVC_V2_CONTEXT_MS",
+        "threshold_dbfs": "LIVECONV_RVC_V2_THRESHOLD_DBFS",
     }
+    if "input_gain_db" in settings:
+        mapping["input_gain_db"] = "LIVECONV_RVC_V2_INPUT_GAIN_DB"
+    if "inference_seed" in settings:
+        mapping["inference_seed"] = "LIVECONV_RVC_V2_INFERENCE_SEED"
     for key, name in mapping.items():
         value = settings[key]
         if isinstance(value, bool) or not isinstance(value, (int, float, str)):
@@ -535,8 +547,19 @@ def _validate_rvc_configuration(
     settings = configuration.get("settings")
     if not isinstance(artifacts, dict) or set(artifacts) != _RVC_ARTIFACT_KEYS:
         raise ValueError(f"{profile.profile_id}: RVC artifacts are incomplete")
-    if not isinstance(settings, dict) or set(settings) != _RVC_SETTING_KEYS:
+    if not _has_approved_rvc_settings(settings):
         raise ValueError(f"{profile.profile_id}: RVC settings are incomplete")
+
+
+def _has_approved_rvc_settings(value: object) -> bool:
+    if not isinstance(value, dict):
+        return False
+    return frozenset(value) in {
+        _RVC_RETAINED_SETTING_KEYS,
+        _RVC_QUALITY_SETTING_KEYS,
+        _RVC_SEEDED_SETTING_KEYS,
+        _RVC_SEEDED_QUALITY_SETTING_KEYS,
+    }
 
 
 def _rvc_configuration_keys(profile: ModelProfile) -> set[str]:

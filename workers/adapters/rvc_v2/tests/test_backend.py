@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+import io
 import subprocess
 import sys
+import threading
 from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
-from workers.adapters.rvc_v2.backend import AdapterRuntimeBinding, RvcConfiguration
+from workers.adapters.rvc_v2.backend import (
+    AdapterRuntimeBinding,
+    RvcConfiguration,
+    UpstreamRvcBackend,
+)
 
 ADAPTER_ROOT = Path(__file__).resolve().parents[1]
 
@@ -114,6 +120,108 @@ def test_configuration_identity_binds_settings_and_materials(tmp_path: Path) -> 
     assert (
         value.configuration_hash != configuration(tmp_path / "other").configuration_hash
     )
+
+
+def test_explicit_quality_controls_have_a_distinct_identity_and_environment(
+    tmp_path: Path,
+) -> None:
+    retained = configuration(tmp_path)
+    quality = replace(retained, input_gain_db=9.0, threshold_dbfs=-50.0)
+
+    retained_settings = retained.identity_material()["settings"]
+    quality_settings = quality.identity_material()["settings"]
+    assert isinstance(retained_settings, dict)
+    assert isinstance(quality_settings, dict)
+    assert "input_gain_db" not in retained_settings
+    assert quality_settings["input_gain_db"] == 9.0
+    assert quality_settings["threshold_dbfs"] == -50.0
+    assert quality.configuration_hash != retained.configuration_hash
+
+    environment = quality.worker_environment()
+    assert environment["LIVECONV_RVC_V2_INPUT_GAIN_DB"] == "9.0"
+    assert environment["LIVECONV_RVC_V2_THRESHOLD_DBFS"] == "-50.0"
+
+
+def test_explicit_inference_seed_is_bound_and_reapplied_on_reset(
+    tmp_path: Path,
+) -> None:
+    class FakeTensor:
+        def zero_(self) -> None:
+            return None
+
+    class FakeRvc:
+        cache_pitch = FakeTensor()
+        cache_pitchf = FakeTensor()
+
+    class FakeTorch:
+        def __init__(self) -> None:
+            self.seeds: list[int] = []
+
+        def manual_seed(self, seed: int) -> None:
+            self.seeds.append(seed)
+
+    class FakeRms:
+        def fill(self, value: float) -> None:
+            assert value == 0.0
+
+    seeded = replace(configuration(tmp_path), inference_seed=34)
+    engine = type(
+        "FakeEngine",
+        (),
+        {
+            "torch": FakeTorch(),
+            "input_wav": FakeTensor(),
+            "input_wav_res": FakeTensor(),
+            "rms_buffer": FakeRms(),
+            "sola_buffer": FakeTensor(),
+            "rvc": FakeRvc(),
+        },
+    )()
+    backend = object.__new__(UpstreamRvcBackend)
+    backend.configuration = seeded
+    backend._engine = engine
+
+    backend._reset_state()
+    backend._reset_state()
+
+    settings = seeded.identity_material()["settings"]
+    assert isinstance(settings, dict)
+    assert settings["inference_seed"] == 34
+    assert seeded.worker_environment()["LIVECONV_RVC_V2_INFERENCE_SEED"] == "34"
+    assert engine.torch.seeds == [34, 34]
+
+
+def test_convert_applies_reviewed_input_gain_and_gate_threshold(
+    tmp_path: Path,
+) -> None:
+    class FakeEngine:
+        block_frame = 4
+
+        def __init__(self) -> None:
+            self.calls: list[tuple[object, ...]] = []
+
+        def process(self, *arguments: object) -> list[float]:
+            self.calls.append(arguments)
+            return list(arguments[0])
+
+    configuration_value = replace(
+        configuration(tmp_path), input_gain_db=6.0, threshold_dbfs=-50.0
+    )
+    engine = FakeEngine()
+    backend = object.__new__(UpstreamRvcBackend)
+    backend._closed = False
+    backend.configuration = configuration_value
+    backend._lock = threading.Lock()
+    backend._reset_requested = threading.Event()
+    backend._engine = engine
+    backend._upstream_output = io.StringIO()
+
+    converted = backend.convert([0.1, 0.1, 0.1, 0.1], 48_000)
+
+    assert converted == pytest.approx(
+        [0.199526, 0.199526, 0.199526, 0.199526], abs=1e-6
+    )
+    assert engine.calls[0][5] == -50.0
 
 
 def test_unsupported_protect_environment_is_rejected(

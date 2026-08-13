@@ -6,6 +6,7 @@ import hashlib
 import importlib.metadata
 import io
 import json
+import math
 import os
 import re
 import subprocess
@@ -263,6 +264,15 @@ class RvcConfiguration:
     block_ms: int = 500
     crossfade_ms: int = 50
     context_ms: int = 2_500
+    # `None` preserves the retained v1.4 identity shape.  New reviewed
+    # quality profiles set an explicit value, including 0.0, and therefore
+    # receive a distinct configuration identity.
+    input_gain_db: float | None = None
+    threshold_dbfs: float = -60.0
+    # RVC samples its latent representation during inference.  An explicit
+    # seed makes separate conversation generations reproducible; `None` keeps
+    # the retained stochastic profile identity unchanged.
+    inference_seed: int | None = None
 
     @classmethod
     def from_environment(cls) -> RvcConfiguration:
@@ -296,6 +306,8 @@ class RvcConfiguration:
             else None
         )
         index_sha256 = os.environ.get("LIVECONV_RVC_V2_INDEX_SHA256") or None
+        input_gain = os.environ.get("LIVECONV_RVC_V2_INPUT_GAIN_DB")
+        inference_seed = os.environ.get("LIVECONV_RVC_V2_INFERENCE_SEED")
         configuration = cls(
             source_root=source_root,
             checkpoint_path=checkpoint_path,
@@ -313,6 +325,13 @@ class RvcConfiguration:
             block_ms=int(os.environ.get("LIVECONV_RVC_V2_BLOCK_MS", "500")),
             crossfade_ms=int(os.environ.get("LIVECONV_RVC_V2_CROSSFADE_MS", "50")),
             context_ms=int(os.environ.get("LIVECONV_RVC_V2_CONTEXT_MS", "2500")),
+            input_gain_db=float(input_gain) if input_gain is not None else None,
+            threshold_dbfs=float(
+                os.environ.get("LIVECONV_RVC_V2_THRESHOLD_DBFS", "-60")
+            ),
+            inference_seed=(
+                int(inference_seed) if inference_seed is not None else None
+            ),
         )
         configuration.validate()
         return configuration
@@ -348,6 +367,21 @@ class RvcConfiguration:
             raise ValueError("index_rate must be between zero and one")
         if not 0 <= self.rms_mix_rate <= 1:
             raise ValueError("rms_mix_rate must be between zero and one")
+        if self.input_gain_db is not None and (
+            not math.isfinite(self.input_gain_db)
+            or not -24.0 <= self.input_gain_db <= 24.0
+        ):
+            raise ValueError("input_gain_db must be finite and between -24 and 24")
+        if (
+            not math.isfinite(self.threshold_dbfs)
+            or not -120.0 <= self.threshold_dbfs <= 0.0
+        ):
+            raise ValueError("threshold_dbfs must be finite and between -120 and 0")
+        if self.inference_seed is not None and (
+            isinstance(self.inference_seed, bool)
+            or not 0 <= self.inference_seed < 2**63
+        ):
+            raise ValueError("inference_seed must be an integer from 0 to 2^63-1")
         if self.sample_rate < 16_000 or self.sample_rate > 192_000:
             raise ValueError("sample_rate is outside the supported range")
         if self.block_ms != 500:
@@ -370,7 +404,7 @@ class RvcConfiguration:
 
     def identity_material(self) -> dict[str, object]:
         hubert_root = self.source_root / "assets/hubert_base"
-        return {
+        material: dict[str, object] = {
             "worker_module": "workers.adapters.rvc_v2.worker",
             "adapter_revision": ADAPTER_REVISION,
             "source_revision": self.source_revision,
@@ -411,9 +445,17 @@ class RvcConfiguration:
                 "queue_capacity_frames": INFERENCE_BATCH_FRAMES,
                 "resident_capacity_frames": RESIDENT_CAPACITY_FRAMES,
                 "formant_shift": 0.0,
-                "threshold_dbfs": -60.0,
+                # The upstream realtime engine treats -60 dBFS as its disabled
+                # gate sentinel.  Keep that retained value byte-for-byte for
+                # legacy profiles while binding every quality-profile override.
+                "threshold_dbfs": self.threshold_dbfs,
             },
         }
+        if self.input_gain_db is not None:
+            material["settings"]["input_gain_db"] = self.input_gain_db
+        if self.inference_seed is not None:
+            material["settings"]["inference_seed"] = self.inference_seed
+        return material
 
     @property
     def configuration_hash(self) -> str:
@@ -446,7 +488,14 @@ class RvcConfiguration:
             "LIVECONV_RVC_V2_BLOCK_MS": str(self.block_ms),
             "LIVECONV_RVC_V2_CROSSFADE_MS": str(self.crossfade_ms),
             "LIVECONV_RVC_V2_CONTEXT_MS": str(self.context_ms),
+            "LIVECONV_RVC_V2_THRESHOLD_DBFS": str(self.threshold_dbfs),
         }
+        if self.input_gain_db is not None:
+            environment["LIVECONV_RVC_V2_INPUT_GAIN_DB"] = str(self.input_gain_db)
+        if self.inference_seed is not None:
+            environment["LIVECONV_RVC_V2_INFERENCE_SEED"] = str(
+                self.inference_seed
+            )
         if self.index_path is not None:
             assert self.index_sha256 is not None
             environment.update(
@@ -557,6 +606,9 @@ class UpstreamRvcBackend:
         audio = np.asarray(samples, dtype=np.float32)
         if audio.ndim != 1 or audio.size == 0 or not np.isfinite(audio).all():
             raise ValueError("RVC input must contain finite mono samples")
+        if self.configuration.input_gain_db not in (None, 0.0):
+            gain = np.float32(10.0 ** (self.configuration.input_gain_db / 20.0))
+            audio = audio * gain
         maximum = float(np.max(np.abs(audio))) / 0.95
         if maximum > 1:
             audio = audio / maximum
@@ -580,7 +632,7 @@ class UpstreamRvcBackend:
                         0.0,
                         self.configuration.index_rate,
                         self.configuration.rms_mix_rate,
-                        -60.0,
+                        self.configuration.threshold_dbfs,
                         method,
                     )
                 converted_chunks.append(np.asarray(converted, dtype=np.float32)[:valid])
@@ -593,6 +645,11 @@ class UpstreamRvcBackend:
         self._reset_requested.set()
 
     def _reset_state(self) -> None:
+        if self.configuration.inference_seed is not None:
+            # The upstream synthesizer calls torch.randn_like() for every
+            # realtime block. Reset its generator at the generation boundary,
+            # before any buffered audio reaches the model.
+            self._engine.torch.manual_seed(self.configuration.inference_seed)
         self._engine.input_wav.zero_()
         self._engine.input_wav_res.zero_()
         self._engine.rms_buffer.fill(0.0)

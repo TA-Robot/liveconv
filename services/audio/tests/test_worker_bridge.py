@@ -158,6 +158,7 @@ def test_rvc_environment_binds_every_model_artifact_without_protect(
     )
 
     assert "LIVECONV_RVC_V2_PROTECT" not in environment
+    assert environment["LIVECONV_RVC_V2_THRESHOLD_DBFS"] == "-60.0"
     assert len(artifacts) == 7
     artifact_configuration = RETAINED_CONFIGURATION["artifacts"]
     assert isinstance(artifact_configuration, dict)
@@ -230,6 +231,42 @@ def test_rvc_variants_resolve_distinct_checkpoint_and_index_bindings(
     }
 
 
+def test_quality_rvc_profile_binds_explicit_gain_gate_and_seed(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    install_environment(monkeypatch, tmp_path)
+    profile = retained_profile()
+    profile.profile_id = "vc.rvc-v2.amitaro-sasayaki-low-index.v1"
+    configuration = deepcopy(RETAINED_CONFIGURATION)
+    artifacts = configuration["artifacts"]
+    settings = configuration["settings"]
+    assert isinstance(artifacts, dict)
+    assert isinstance(settings, dict)
+    checkpoint_sha = "a" * 64
+    index_sha = "b" * 64
+    artifacts["checkpoint_sha256"] = checkpoint_sha
+    artifacts["index_sha256"] = index_sha
+    settings["input_gain_db"] = 9.0
+    settings["threshold_dbfs"] = -50.0
+    settings["inference_seed"] = 34
+    profile.runtime.configuration = configuration
+    profile.weight_revision = f"sha256:{checkpoint_sha}"
+    names = _rvc_model_environment_names(profile.profile_id)
+    variant_checkpoint = tmp_path / "sasayaki.pth"
+    variant_index = tmp_path / "sasayaki.index"
+    monkeypatch.setenv(names["checkpoint_path"], str(variant_checkpoint))
+    monkeypatch.setenv(names["checkpoint_sha256"], checkpoint_sha)
+    monkeypatch.setenv(names["index_path"], str(variant_index))
+    monkeypatch.setenv(names["index_sha256"], index_sha)
+
+    environment, _ = _rvc_environment(profile, configuration)
+
+    assert environment["LIVECONV_RVC_V2_INPUT_GAIN_DB"] == "9.0"
+    assert environment["LIVECONV_RVC_V2_THRESHOLD_DBFS"] == "-50.0"
+    assert environment["LIVECONV_RVC_V2_INFERENCE_SEED"] == "34"
+
+
 @pytest.mark.parametrize(
     ("field", "value", "message"),
     (
@@ -290,6 +327,7 @@ def test_rvc_registration_owns_the_trusted_command_cwd_and_environment(
         "LIVECONV_RVC_V2_BLOCK_MS",
         "LIVECONV_RVC_V2_CROSSFADE_MS",
         "LIVECONV_RVC_V2_CONTEXT_MS",
+        "LIVECONV_RVC_V2_THRESHOLD_DBFS",
         "LIVECONV_RVC_VERIFIED_ARTIFACT_1",
         "LIVECONV_RVC_VERIFIED_ARTIFACT_2",
         "LIVECONV_RVC_VERIFIED_ARTIFACT_3",
