@@ -179,7 +179,7 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-076 adversarial 33-speaker expansion (one gross loop found)
         -> one final waveform-decoder stage at fixed data/loss/updates
         -> EXP-106 real-source frozen-teacher semantics (strongest unheard signal)
-        -> EXP-112 unchanged checkpoint / 48 fresh disjoint Common Voice speakers
+        -> EXP-112 unchanged checkpoint / 48 fresh disjoint speakers (generic gain rejected)
         -> operator hearing when available
 ```
 

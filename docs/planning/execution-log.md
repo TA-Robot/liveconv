@@ -3038,3 +3038,35 @@ job queue.
   acquisition, then render exactly base, control69, and EXP-106 once. Do not
   tune from individual fresh rows and do not infer naturalness from auxiliary
   ASR.
+
+## 2026-08-13T19:50:25Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux `liveconv-grok-auditor`; independent, read-only,
+  no tools or delegation.
+- Verdict: `CONTINUE`.
+- Adopted: Grok classified EXP-112 as the shortest way to test EXP-106 without
+  another training cycle, explicitly closed teacher share/weight, old human87,
+  DTW, and tongue-twister work, and directed one base/control/candidate render
+  on fresh48 with only coarse content/corruption screening.
+- Not adopted: none. Acquisition had already completed and the render began in
+  parallel with the audit; its verdict required no interruption.
+
+## 2026-08-13T19:55:02Z - EXP-112 fresh48 screen completed
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-13T19:52:00Z.
+- End: 2026-08-13T19:55:02Z.
+- Dependencies: commits `e450d8f` and `6c1caa8`; gpu0; frozen fresh48 manifest;
+  EXP-035 control69 and unchanged EXP-106 adapter; listener 8878.
+- Result: 48 fresh speakers produced 144 model outputs in 116.26 seconds at
+  4.77 GiB peak. Raw source-relative means were base `0.414`, control `1.001`,
+  and EXP-106 `0.666`, but control and candidate each added a different severe
+  loop. On the common 45 non-loop rows, EXP-106 regressed control mean `0.326 ->
+  0.357`, median `0.250 -> 0.308`, and W/T/L was `10/19/16`.
+- Problems: one naturally repetitive source tripped the gross-repetition rule
+  in all three arms; it was not counted as an adapter-added failure. Auxiliary
+  source ASR was unreliable on some crowd recordings, so both known-text and
+  source-relative results were retained and no perceptual claim was made.
+- Rework: none after admission. Close EXP-106 as a generic method without
+  teacher-share, loss-weight, or fresh48 row tuning. Keep all audio unheard and
+  unselected on 8878.

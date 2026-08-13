@@ -213,13 +213,20 @@ Hadou input `RECITATION324_138`, and expanded33's raw mean gain was driven by
 three known failure sources. Retain it as the strongest unheard technical
 candidate, not a winner. Do not sweep share or loss weight; validate this exact
 checkpoint on genuinely fresh speakers and sentences.
+EXP-112 completed that check on 48 previously unmaterialized speakers. The raw
+mean favored EXP-106 over control69 only because the two arms catastrophically
+looped on different rows. On the 45 rows where no arm looped, EXP-106 regressed
+mean `0.326 -> 0.357`, median `0.250 -> 0.308`, and had W/T/L `10/19/16`.
+Close the generic teacher method without share or weight tuning. Its earlier
+stress signal remains unheard audio, not a machine-selected keeper; fresh48 is
+evaluation-only and may not be fitted or moved into training.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Render unchanged EXP-106 on 48 fresh, unique, previously unmaterialized Common Voice speakers and sentences | parent | no | 144 base/control/candidate outputs and coarse loop/content screen published, or input admission fails closed |
-| 2 | Close or retain EXP-106 from fresh48 without a share, weight, LR, or row-selection sweep | parent | no human dependency for machine reject | technical disposition recorded; perceptual quality remains unselected |
+| 1 | Prepare one new X-VC retraining method using a training-only real-speech pool disjoint from fresh48; keep fresh48 frozen | parent | no | one-variable method and CPU admission committed before gpu0 |
+| 2 | Render fresh48 first after training, then only expand the gate if it avoids adapter-added loops and broad regression | parent | no human dependency for machine reject | technical stop or retained unheard audio recorded |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.
