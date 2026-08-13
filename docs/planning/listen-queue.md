@@ -48,8 +48,9 @@ authorize promote claims or several speculative sweeps in parallel.
 |---|---|---|---|---|
 | 1 | Help the operator finish the six rows above; EXP-027--031 are superseded diagnostics and do not need separate draining | parent | n/a | decisions recorded |
 | 2 | Keep `ms3-stable-vc-heldout-shortlist-v1` as the only active cross-family hearing surface; the unseeded predecessor is historical | parent | no: the exact six candidates are already published | one operator preference set or both arms rejected |
-| 3 | If EXP-032 receives a `keep`, bind that exact candidate to the formal Gateway profile and exercise native fallback/Extension playout | parent | yes: EXP-032 `keep` | one route-qualified system listen or a recorded integration blocker |
-| 4 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
+| 3 | Render stable seed-0 RVC once from recovered exact raw actual-input PCM `b114ae...`, then reuse the existing exact-input X-VC Q034 output for a causal actual shortlist | parent | no: both raw copies and the X-VC output already exist by exact hash | one new RVC WAV plus an exact-input two-arm collection, or a technical stop |
+| 4 | If EXP-032 receives a `keep`, bind that exact candidate to the formal Gateway profile and exercise native fallback/Extension playout | parent | yes: EXP-032 `keep` | one route-qualified system listen or a recorded integration blocker |
+| 5 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.
 EXP-032 closes the lookahead sweep at a 120-ms auxiliary-ASR floor; do not open
@@ -152,6 +153,17 @@ was 0.636 without RNNoise and 0.682 with RNNoise; neither arm gross-looped.
 Keep the A/B for optional hearing, but close RNNoise expansion because it did
 not improve coarse content retention. It does not displace the stable
 cross-family shortlist.
+
+The same bounded comparison on stable X-VC Yofukashi Q034 moved auxiliary CER
+from 0.773 raw to 0.659 with RNNoise, with no gross loop. This family-dependent
+improvement does not beat stable RVC raw at 0.636 and cannot select perceptual
+quality, so retain the A/B for optional hearing and close further denoise
+points. During this check, the exact original decoded actual-input float PCM
+(`b114ae...`) was recovered in two retained listener collections and matched
+byte-for-byte. It differs from the later PCM24 re-decode mainly by amplitude,
+despite near-unit correlation. One stable seed-0 RVC render from that recovered
+raw is therefore Ready; it replaces the earlier assumption that the raw input
+was unavailable and will permit an exact-input RVC/X-VC actual shortlist.
 
 ## Keepers
 

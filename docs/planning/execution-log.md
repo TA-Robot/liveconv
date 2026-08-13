@@ -1317,3 +1317,35 @@ job queue.
   GPU inference.
 - Changed action: keep the stable cross-family shortlist at highest hearing
   priority and do not add another RVC denoise point.
+
+## 2026-08-13T08:34:00Z - stable X-VC RNNoise comparison closed
+
+- Agent: `primary-integrator`.
+- Task: Reuse the same single-variable raw-versus-RNNoise plan on stable X-VC
+  Yofukashi Q034, whose persistent-session output was already numerically
+  stable; do not infer the RVC preprocessing result across model families.
+- Dependencies: commit `0f6eeb9`; sealed deployment revision `9b7e209...`;
+  evaluation Gateway `8882` with 10,000 ms ingress credit; exact source and
+  RNNoise identities; listener `8878`; exclusive `gpu0`.
+- Result: both arms completed 409 contiguous finite frames in 8.272/8.238
+  seconds in one loaded session and published as `ms3-stable-xvc-rnnoise-v1`.
+  Raw/RNNoise output SHA-256 values are `dafd2f84f170ef9c5f1557b43d13aff4be7ee64e75126c969ea3fbef4c3c33d1`
+  and `645e7f1fe0a6bfc39d0ddc9166200e7bd9daa7531421a463e0be5a6794f8cb7a`.
+- Machine screen: source-relative CER improved from 0.773 raw to 0.659 with
+  RNNoise; neither gross-looped. The effect is opposite to RVC, but the X-VC
+  denoised arm did not beat stable RVC raw at 0.636. This is coarse content
+  evidence only, not a perceptual or cross-family winner.
+- Problems/rework: the first isolated-Gateway activation stopped before model
+  execution because the historical deployment lacked the now-required empty
+  route-parity registry. A private `/tmp` deployment copy filled only that
+  derived empty registry; bundle, profiles, manifest, authorization, runtime
+  identities, and settings remained unchanged. Gateway preflight passed.
+- Discovery: two retained listener collections contain byte-identical original
+  decoded actual-input PCM at SHA-256 `b114aed49c79291b10caf30f9828e6efb0e191773aa2fe8ab77d786f7a83b5f2`.
+  This corrects the earlier working assumption that the raw float input was
+  unavailable. It correlates almost exactly with the later PCM24 re-decode but
+  differs in amplitude (maximum sample difference 0.0672), enough to confound
+  a VC comparison.
+- Changed action: close RNNoise expansion. Render stable seed-0 RVC once from
+  the recovered exact raw PCM, then compose an exact-input actual RVC/X-VC
+  shortlist without regenerating the existing X-VC control.

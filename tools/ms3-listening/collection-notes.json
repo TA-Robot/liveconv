@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "top_status": {
-    "updated_at": "2026-08-13T08:22:00Z",
+    "updated_at": "2026-08-13T08:34:00Z",
     "current": "MS-3の最優先は、会話ターン安定化済みRVC seed 0と数値安定なX-VC Yofukashi Q034を同じ3発話で比べる『stable VC heldout shortlist』です。両腕ともlive Gateway経路を通り、後から実システムへ持ち込める候補だけに絞っています。",
     "hold": "履歴のX-VC比較、EXP-027〜031、370本の発音確認は今回の判定を止めません。EXP-024のDTW pilotやlookahead sweepは再開せず、RVC再学習、TTSの人間VC corpusへの混入、keep前のpromote作業も行いません。",
     "next": "stable VC heldout shortlistの各3行でRVCかX-VCを選ぶ、または両方rejectedにしてください。補助CERはstable RVC 0.277、X-VC 0.166ですが、これは内容崩壊の粗いscreenで音質順位ではありません。明瞭さ、自然さ、目標声への近さを耳で判断します。固定ポート: 8878。"
@@ -21,6 +21,15 @@
       "display_title": "RVC stable seed 0: raw入力 vs RNNoise",
       "purpose": "同じ8.17秒実入力、同じstable seed-0 RVC、同じGateway sessionで入力前処理だけを比較",
       "data": "raw/RNNoiseとも409/409 frames完走。source-relative補助CERはraw 0.636、RNNoise 0.682。gross repetitionなし。RNNoiseは機械screen上の内容保持を改善しませんでした。",
+      "status": "音質上の差を確認したい場合だけraw/RNNoiseを比較してください。追加のRNNoise GPU探索は終了しています。",
+      "review_priority": "low",
+      "review_mode": "gross_reject_only"
+    },
+    {
+      "match_all": ["ms3-stable-xvc-rnnoise-v1"],
+      "display_title": "X-VC Yofukashi Q034: raw入力 vs RNNoise",
+      "purpose": "同じ8.17秒実入力、同じstable X-VC Q034、同じGateway sessionで入力前処理だけを比較",
+      "data": "raw/RNNoiseとも409/409 frames完走。source-relative補助CERはraw 0.773、RNNoise 0.659。gross repetitionなし。X-VCではRNNoiseが粗い内容保持を改善しましたが、stable RVC raw 0.636は上回りません。",
       "status": "音質上の差を確認したい場合だけraw/RNNoiseを比較してください。追加のRNNoise GPU探索は終了しています。",
       "review_priority": "low",
       "review_mode": "gross_reject_only"
