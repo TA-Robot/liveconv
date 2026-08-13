@@ -739,3 +739,23 @@ job queue.
   projections damage content preservation on human pairs.
 - GPU: peak allocation 3,568,677,888 bytes; returned idle after publication and
   the auxiliary ASR batch.
+
+## 2026-08-13T04:31:26Z - human87 control69 scope comparison published
+
+- Agent: `primary-integrator`.
+- Task: Change only human87 LoRA scope from expanded79 to the established
+  attention/FFN control69 modules at epochs 4/8/12.
+- Dependencies: commit `af022dc`, the same 87-pair order and three public
+  source rows, the same seed/rank/LR/clip/reference/conditioning, and `gpu0`.
+- Result: 1,044 updates completed in 172.95 seconds and 12 candidates published
+  on 8878. Loss at 4/8/12 was 441.6620/410.2230/396.1591. Base controls
+  reproduced and heldout-target access remained zero.
+- Machine screen: mean normalized transcript distance at control69 epochs
+  4/8/12 was 0.329/0.346/0.198, versus 0.568 at expanded79 epoch 12. The short
+  third sentence recovered from `あ、ありがとう。` to `あっ、ヘルが鳴ってる`.
+- Changed action: control69 epoch 12 is a stronger content-preserving listening
+  candidate, not an audible winner. Admit one 12/18/24 control69 horizon run;
+  require exact control69 epoch-12 WAV reproduction and stop if longer training
+  repeats the expanded79 degeneration.
+- GPU: peak allocation 3,552,147,968 bytes; returned idle after publication and
+  the auxiliary ASR batch.

@@ -45,7 +45,7 @@ authorize promote claims or several speculative sweeps in parallel.
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
 | 1 | Help the operator finish the six rows above; EXP-027--031 are superseded diagnostics and do not need separate draining | parent | n/a | decisions recorded |
-| 2 | Compare human87 expanded79 against control69 at the same 4/8/12 epochs after the extended curve degraded content despite lower loss | parent | no: directly follows the machine screen | one completed comparison collection or technical stop |
+| 2 | Extend the content-preserving human87 control69 trajectory to epochs 12/18/24; require its epoch-12 WAV controls before publication | parent | no: control69 epoch 12 reduced auxiliary content error from 0.568 to 0.198 versus expanded79 | one completed comparison collection or technical stop |
 | 3 | If EXP-032 receives a `keep`, bind that exact candidate to the formal Gateway profile and exercise native fallback/Extension playout | parent | yes: EXP-032 `keep` | one route-qualified system listen or a recorded integration blocker |
 | 4 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
 
@@ -57,7 +57,9 @@ work returns to bounded quality-candidate generation, starting with the one-axis
 EXP-026 horizon extension. That extension reproduced its controls but degraded
 content at epochs 18/24, so no longer horizon is admitted. The next one-axis
 job narrows LoRA scope from expanded79 to control69. A recorded `keep` is still
-required before formal Gateway/Extension binding.
+required before formal Gateway/Extension binding. Control69 epoch 12 preserved
+content substantially better in the auxiliary screen, so exactly one
+control69-only horizon extension is now admitted.
 
 ## Keepers
 

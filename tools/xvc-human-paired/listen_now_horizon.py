@@ -66,6 +66,17 @@ EXPECTED_EPOCH12_HASHES = {
         "968d43157cff15c316252d229394f9a6528412018e9c7996297b78da9b1fd9ed"
     ),
 }
+EXPECTED_CONTROL69_EPOCH12_HASHES = {
+    "EMOTION100_002": (
+        "38d5b591285c6e06d68dccdeb072ab029c7a8045f1327e706a6f1078b0dfe4b8"
+    ),
+    "EMOTION100_004": (
+        "c6e31037343459940e039b52eadb6f0ab433df7ddbc022c59e1ccd081f129470"
+    ),
+    "EMOTION100_017": (
+        "b5adda2ff8b4cb2d170e550aa3b847e8c612341d705cbd1c74ff4515772e0af1"
+    ),
+}
 
 
 def listening_index(
@@ -166,6 +177,16 @@ def assert_extended_control(
 def assert_base_control(source_id: str, *, base_sha256: str) -> None:
     if EXPECTED_BASE_HASHES.get(source_id) != base_sha256:
         raise base.ListenNowError(f"EXP-026 base control drifted for {source_id}")
+
+
+def assert_control69_extended_control(
+    source_id: str, *, base_sha256: str, epoch12_sha256: str
+) -> None:
+    assert_base_control(source_id, base_sha256=base_sha256)
+    if EXPECTED_CONTROL69_EPOCH12_HASHES.get(source_id) != epoch12_sha256:
+        raise base.ListenNowError(
+            f"EXP-026 control69 epoch-12 control drifted for {source_id}"
+        )
 
 
 def parse_checkpoint_epochs(value: str) -> tuple[int, ...]:
@@ -392,8 +413,14 @@ def run(
                 base_sha256=hashes[0],
                 epoch12_sha256=hashes[12],
             )
-        else:
+        elif checkpoint_epochs == CHECKPOINT_EPOCHS:
             assert_base_control(source.pair_id, base_sha256=hashes[0])
+        else:
+            assert_control69_extended_control(
+                source.pair_id,
+                base_sha256=hashes[0],
+                epoch12_sha256=hashes[12],
+            )
         base._write_json(
             row_dir / "index.json",
             listening_index(
@@ -439,9 +466,15 @@ def run(
         "target_reference_id": target_reference_pair.pair_id,
         "heldout_target_access_count": 0,
         "control_epoch": (
-            checkpoint_epochs[0] if arguments.lora_scope == "expanded79" else None
+            checkpoint_epochs[0]
+            if arguments.lora_scope == "expanded79"
+            or checkpoint_epochs == EXTENDED_CHECKPOINT_EPOCHS
+            else None
         ),
-        "control_epoch_reproduced": arguments.lora_scope == "expanded79",
+        "control_epoch_reproduced": (
+            arguments.lora_scope == "expanded79"
+            or checkpoint_epochs == EXTENDED_CHECKPOINT_EPOCHS
+        ),
         "epoch4_control_reproduced": (
             arguments.lora_scope == "expanded79"
             and checkpoint_epochs == CHECKPOINT_EPOCHS

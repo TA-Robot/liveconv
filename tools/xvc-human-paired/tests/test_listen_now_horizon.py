@@ -128,6 +128,19 @@ def test_control69_scope_is_exact_subset() -> None:
         "EMOTION100_002",
         base_sha256=HORIZON.EXPECTED_BASE_HASHES["EMOTION100_002"],
     )
+    HORIZON.assert_control69_extended_control(
+        "EMOTION100_002",
+        base_sha256=HORIZON.EXPECTED_BASE_HASHES["EMOTION100_002"],
+        epoch12_sha256=HORIZON.EXPECTED_CONTROL69_EPOCH12_HASHES[
+            "EMOTION100_002"
+        ],
+    )
+    with pytest.raises(HORIZON.base.ListenNowError, match="control69 epoch-12"):
+        HORIZON.assert_control69_extended_control(
+            "EMOTION100_002",
+            base_sha256=HORIZON.EXPECTED_BASE_HASHES["EMOTION100_002"],
+            epoch12_sha256="0" * 64,
+        )
 
 
 def test_runner_uses_atomic_listener_publication_and_no_heldout_target() -> None:
