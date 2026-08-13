@@ -1,6 +1,6 @@
 # EXP-122: X-VC full-output teacher with temporal-difference loss
 
-Status: prepared; one bounded gpu0 lane
+Status: admitted; one bounded gpu0 lane
 
 ## Question
 
@@ -25,3 +25,12 @@ Commit method and focused tests before gpu0. Pass one real-model backward smoke,
 then train once. Render external7 and frozen fresh48. Stop before stress60 on
 any added gross loop or broad common-non-loop regression. Machine metrics cannot
 select naturalness, target voice, or a winner.
+
+## Runtime admission
+
+Commit `bbca644` passed 57 focused tests and exact CPU admission. Its committed
+real-model smoke produced a 38,400-sample teacher target, total loss `169.1617`
+versus the `161.0455` standard composite baseline, finite pre-clip gradient norm
+`24.8603`, and 3.30 GiB peak GPU allocation with exit status zero. The temporal
+term contributes about 8.12 loss units at initialization; no weight neighbor is
+admitted.

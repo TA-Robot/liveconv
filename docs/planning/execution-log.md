@@ -3294,3 +3294,30 @@ job queue.
 - Rework: reject and stop before stress60. Close PEFT neighbors. Keep the
   non-loop content signal as evidence and change the learning objective next:
   add direct temporal first-difference matching to aligned teacher outputs.
+
+## 2026-08-13T21:20:25Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux `liveconv-grok-auditor`; independent, read-only,
+  no tools or delegation.
+- Verdict: `CONTINUE`.
+- Adopted: recent new audio, frozen external7/fresh48, one-variable jobs, and
+  result-driven sequential replanning remain the shortest path. After DoRA's
+  later failure, close all neighboring PEFT variants as the audit warned.
+- Not adopted: the snapshot inferred gpu0 might be idle because it sampled a
+  model transition at 0% utilization. Direct process and result evidence show
+  EXP-120 training, rendering, and screening were active across the window.
+- Changed action: proceed to a different learning-objective point, not another
+  PEFT point. Continue excluding stress60 until fresh48 survival.
+
+## 2026-08-13T21:31:37Z - EXP-122 temporal-loss smoke passed
+
+- Agent: `primary-integrator`.
+- Dependencies: commit `bbca644`; exact train48/fresh48 bindings; gpu0.
+- Result: 57 focused tests passed. One real-model teacher row produced a
+  38,400-sample target, total loss `169.1617` versus standard composite
+  `161.0455`, finite pre-clip gradient norm `24.8603`, 835,584 trainable
+  parameters, and 3.30 GiB peak allocation; exit status zero. The weight-1000
+  temporal term contributed about 8.12 loss units at initialization.
+- Problems: none.
+- Rework: runtime evidence only. Admit exactly one 1,044-update EXP-122 lane,
+  external7, and frozen fresh48. Do not run a temporal-weight neighbor.
