@@ -3015,3 +3015,22 @@ job queue.
 - Rework: none. Keep the audio unheard and unselected. Do not tune the 20%
   teacher share or semantic weight; acquire a genuinely fresh disjoint source
   set from the already-pinned Common Voice revision for the next check.
+
+## 2026-08-13T19:44:00Z - EXP-112 fresh48 generalization gate prepared
+
+- Agent: `primary-integrator`.
+- Task: evaluate the unchanged EXP-106 checkpoint on 48 new Japanese speakers
+  and sentences instead of reshuffling the 64 repeatedly used local clips.
+- Dependencies: pinned Common Voice metadata revision and SHA; EXP-035 control69;
+  EXP-106 checkpoint; one gpu0 lease after input materialization.
+- Result: deterministic selection excludes every client represented by the 64
+  local MP3s, requires one row per fresh client, two up-votes, zero down-votes,
+  and 10--80 normalized characters. The renderer additionally rejects overlap
+  with frozen donor, external, and expanded manifests. Focused tests passed 26
+  cases and Ruff passed.
+- Problems: none. Raw Common Voice client IDs are hashed in the generated
+  manifest and source audio remains ignored.
+- Changed action: commit the selection and evaluation contract before network
+  acquisition, then render exactly base, control69, and EXP-106 once. Do not
+  tune from individual fresh rows and do not infer naturalness from auxiliary
+  ASR.

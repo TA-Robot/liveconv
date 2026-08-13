@@ -218,8 +218,8 @@ checkpoint on genuinely fresh speakers and sentences.
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | After audit, train one real-source frozen-teacher semantic adapter: 835 normal target-conversion updates plus 209 semantic-only real Common Voice rows under Amitaro target-speaker context | parent | no | exact method and full frozen gate committed before GPU |
-| 2 | Publish the candidate on the existing 7 + 12 + 10 + 31 + 33 + 60 screens | parent | no human dependency for machine reject | adapter-added loop and broad regression decision recorded |
+| 1 | Render unchanged EXP-106 on 48 fresh, unique, previously unmaterialized Common Voice speakers and sentences | parent | no | 144 base/control/candidate outputs and coarse loop/content screen published, or input admission fails closed |
+| 2 | Close or retain EXP-106 from fresh48 without a share, weight, LR, or row-selection sweep | parent | no human dependency for machine reject | technical disposition recorded; perceptual quality remains unselected |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

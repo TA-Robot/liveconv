@@ -30,6 +30,7 @@ KIND = "liveconv-exp039-commonvoice-same-speaker-new-utterances/v1"
 EXPANDED_KIND = "liveconv-exp055-commonvoice-local-unused/v1"
 HADOU_KIND = "liveconv-exp060-hadou-clean-heldout/v1"
 STRESS_KIND = "liveconv-exp086-commonvoice-condition-matrix/v1"
+FRESH48_KIND = "liveconv-exp112-commonvoice-fresh48/v1"
 EXPECTED_ROWS = 12
 EXPECTED_SPEAKERS = 6
 EXPANDED_ROWS = 33
@@ -38,6 +39,8 @@ HADOU_ROWS = 31
 HADOU_SPEAKERS = 1
 STRESS_ROWS = 60
 STRESS_SPEAKERS = 6
+FRESH48_ROWS = 48
+FRESH48_SPEAKERS = 48
 STRESS_GROUPS = {
     "stress-clean",
     "stress-noise20",
@@ -428,6 +431,10 @@ def candidate_policy(kind: str) -> dict[str, str]:
             "EXP-111",
             "liveconv-exp111-xvc-real-teacher-semantic-stress/v1",
         ),
+        "real-teacher-semantic20-fresh48": (
+            "EXP-112",
+            "liveconv-exp112-xvc-real-teacher-semantic-fresh48/v1",
+        ),
     }
     if kind in real_teacher_policies:
         experiment_id, result_kind = real_teacher_policies[kind]
@@ -458,15 +465,18 @@ def load_evaluation(path: Path) -> dict[str, Any]:
         EXPANDED_KIND: EXPANDED_ROWS,
         HADOU_KIND: HADOU_ROWS,
         STRESS_KIND: STRESS_ROWS,
+        FRESH48_KIND: FRESH48_ROWS,
     }.get(kind, EXPECTED_ROWS)
     expected_speakers = {
         EXPANDED_KIND: EXPANDED_SPEAKERS,
         HADOU_KIND: HADOU_SPEAKERS,
         STRESS_KIND: STRESS_SPEAKERS,
+        FRESH48_KIND: FRESH48_SPEAKERS,
     }.get(kind, EXPECTED_SPEAKERS)
     if (
         not isinstance(value, dict)
-        or kind not in {KIND, EXPANDED_KIND, HADOU_KIND, STRESS_KIND}
+        or kind
+        not in {KIND, EXPANDED_KIND, HADOU_KIND, STRESS_KIND, FRESH48_KIND}
         or not isinstance(source, dict)
         or source.get("license")
         != ("CC-BY-4.0" if kind == HADOU_KIND else "CC0-1.0")
@@ -529,6 +539,16 @@ def load_evaluation(path: Path) -> dict[str, Any]:
             or item.get("duration_seconds") != base.MODEL_SAMPLES / 16_000
         ):
             raise NewUtteranceError("stress evaluation row identity drifted")
+        if kind == FRESH48_KIND and (
+            len(normalized) < 10
+            or item.get("source_normalized_characters") != len(normalized)
+            or item.get("window_policy") != "first-2.4s-right-pad-if-short"
+            or item.get("group") != "commonvoice-fresh-disjoint"
+            or item.get("down_votes") != 0
+            or not isinstance(item.get("up_votes"), int)
+            or int(item["up_votes"]) < 2
+        ):
+            raise NewUtteranceError("fresh48 evaluation row identity drifted")
         identifiers.add(identifier)
         filenames.add(filename)
         clients.add(client)
@@ -554,7 +574,23 @@ def validate_inputs(
     clients = {item["client_id_sha256"] for item in evaluation["items"]}
     original_files = {item["filename"] for item in original["items"]}
     donor_files = {item["filename"] for item in donors["items"]}
-    if evaluation["kind"] in {KIND, STRESS_KIND}:
+    if evaluation["kind"] == FRESH48_KIND:
+        expanded = breadth._load_manifest(
+            arguments.expanded_evaluation,
+            kind=EXPANDED_KIND,
+            count=EXPANDED_ROWS,
+        )
+        prior_clients = original_clients | donor_clients | {
+            item["client_id_sha256"] for item in expanded["items"]
+        }
+        prior_files = original_files | donor_files | {
+            item["filename"] for item in expanded["items"]
+        }
+        if clients & prior_clients or any(
+            item["filename"] in prior_files for item in evaluation["items"]
+        ):
+            raise NewUtteranceError("fresh48 evaluation binding drifted")
+    elif evaluation["kind"] in {KIND, STRESS_KIND}:
         if not clients < original_clients or clients & donor_clients:
             raise NewUtteranceError("evaluation speaker binding drifted")
     elif evaluation["kind"] == EXPANDED_KIND and any(
@@ -902,6 +938,7 @@ def _parser() -> argparse.ArgumentParser:
             "real-teacher-semantic20-hadou",
             "real-teacher-semantic20-expanded",
             "real-teacher-semantic20-stress",
+            "real-teacher-semantic20-fresh48",
         ),
         default="speaker7",
     )
@@ -926,6 +963,16 @@ def _parser() -> argparse.ArgumentParser:
             / "experiments"
             / "EXP-035-xvc-donor-breadth"
             / "external-evaluation.json"
+        ),
+    )
+    parser.add_argument(
+        "--expanded-evaluation",
+        type=Path,
+        default=(
+            REPO_ROOT
+            / "experiments"
+            / "EXP-055-xvc-target-text-breadth"
+            / "expanded-evaluation.json"
         ),
     )
     parser.add_argument(
