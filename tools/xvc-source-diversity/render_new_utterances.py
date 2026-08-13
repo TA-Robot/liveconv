@@ -25,12 +25,20 @@ import run as method  # noqa: E402
 import run_breadth as breadth  # noqa: E402
 import run_role_mix as role_mix  # noqa: E402
 import screen  # noqa: E402
+from prepare_jsut_evaluation import (  # noqa: E402
+    CATEGORY_COUNTS as JSUT_CATEGORY_COUNTS,
+)
+from prepare_jsut_evaluation import OUTPUT_KIND as JSUT_KIND  # noqa: E402
+from prepare_jsut_evaluation import (  # noqa: E402
+    WINDOW_POLICY as JSUT_WINDOW_POLICY,
+)
 
 KIND = "liveconv-exp039-commonvoice-same-speaker-new-utterances/v1"
 EXPANDED_KIND = "liveconv-exp055-commonvoice-local-unused/v1"
 HADOU_KIND = "liveconv-exp060-hadou-clean-heldout/v1"
 STRESS_KIND = "liveconv-exp086-commonvoice-condition-matrix/v1"
 FRESH48_KIND = "liveconv-exp112-commonvoice-fresh48/v1"
+JSUT_ROWS = sum(JSUT_CATEGORY_COUNTS.values())
 EXPECTED_ROWS = 12
 EXPECTED_SPEAKERS = 6
 EXPANDED_ROWS = 33
@@ -41,6 +49,7 @@ STRESS_ROWS = 60
 STRESS_SPEAKERS = 6
 FRESH48_ROWS = 48
 FRESH48_SPEAKERS = 48
+JSUT_SPEAKERS = 1
 STRESS_GROUPS = {
     "stress-clean",
     "stress-noise20",
@@ -672,6 +681,22 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "generalize on frozen fresh48?"
             ),
         }
+    if kind == "clean-post-rehearsal-jsut":
+        return {
+            "experiment_id": "EXP-144",
+            "variant_id": "cv12-clean-post-rehearsal170",
+            "display_name": (
+                "EXP-141 / control69 + clean unique teacher rehearsal pass"
+            ),
+            "result_kind": (
+                "liveconv-exp144-xvc-clean-post-rehearsal-jsut24/v1"
+            ),
+            "question": (
+                "Does clean post-adaptation rehearsal avoid corruption across "
+                "untouched JSUT normal, onomatopoeia, counter-suffix, loanword, "
+                "and travel categories?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -688,20 +713,37 @@ def load_evaluation(path: Path) -> dict[str, Any]:
         HADOU_KIND: HADOU_ROWS,
         STRESS_KIND: STRESS_ROWS,
         FRESH48_KIND: FRESH48_ROWS,
+        JSUT_KIND: JSUT_ROWS,
     }.get(kind, EXPECTED_ROWS)
     expected_speakers = {
         EXPANDED_KIND: EXPANDED_SPEAKERS,
         HADOU_KIND: HADOU_SPEAKERS,
         STRESS_KIND: STRESS_SPEAKERS,
         FRESH48_KIND: FRESH48_SPEAKERS,
+        JSUT_KIND: JSUT_SPEAKERS,
     }.get(kind, EXPECTED_SPEAKERS)
     if (
         not isinstance(value, dict)
         or kind
-        not in {KIND, EXPANDED_KIND, HADOU_KIND, STRESS_KIND, FRESH48_KIND}
+        not in {
+            KIND,
+            EXPANDED_KIND,
+            HADOU_KIND,
+            STRESS_KIND,
+            FRESH48_KIND,
+            JSUT_KIND,
+        }
         or not isinstance(source, dict)
         or source.get("license")
-        != ("CC-BY-4.0" if kind == HADOU_KIND else "CC0-1.0")
+        != (
+            "CC-BY-4.0"
+            if kind == HADOU_KIND
+            else (
+                "JSUT-LICENCE.txt (category-specific CC BY/CC BY-SA)"
+                if kind == JSUT_KIND
+                else "CC0-1.0"
+            )
+        )
         or not isinstance(items, list)
         or len(items) != expected_rows
     ):
@@ -771,6 +813,19 @@ def load_evaluation(path: Path) -> dict[str, Any]:
             or int(item["up_votes"]) < 2
         ):
             raise NewUtteranceError("fresh48 evaluation row identity drifted")
+        if kind == JSUT_KIND and (
+            item.get("jsut_category") not in JSUT_CATEGORY_COUNTS
+            or item.get("group")
+            != f"jsut-heldout-{item.get('jsut_category')}"
+            or item.get("selection_policy")
+            != "transcript-order-equal-bin-center"
+            or item.get("window_policy") != JSUT_WINDOW_POLICY
+            or item.get("sample_rate") != 48_000
+            or not isinstance(item.get("transcript_position"), int)
+            or not isinstance(transcript, str)
+            or len(normalized) < 2
+        ):
+            raise NewUtteranceError("JSUT evaluation row identity drifted")
         identifiers.add(identifier)
         filenames.add(filename)
         clients.add(client)
@@ -859,7 +914,11 @@ def listening_index(
     source_name = (
         "Hadou ITA"
         if item["group"] == "hadou-clean-heldout"
-        else "Common Voice 25.0"
+        else (
+            "JSUT 1.1"
+            if str(item["group"]).startswith("jsut-heldout-")
+            else "Common Voice 25.0"
+        )
     )
     variants = (
         ("base", "X-VC base", "10-xvc-base.wav", 1),
@@ -1174,6 +1233,7 @@ def _parser() -> argparse.ArgumentParser:
             "real-teacher-output-window201-hadou",
             "clean-post-rehearsal-fresh48",
             "clean-post-rehearsal-hadou",
+            "clean-post-rehearsal-jsut",
         ),
         default="speaker7",
     )

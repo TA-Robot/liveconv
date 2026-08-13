@@ -501,6 +501,19 @@ def test_real_teacher_window201_policies_are_exp139_and_exp140() -> None:
     assert "real-teacher-output-window201-hadou" in choices
 
 
+def test_clean_post_rehearsal_jsut_policy_is_exp144() -> None:
+    policy = NEW.candidate_policy("clean-post-rehearsal-jsut")
+
+    assert policy["experiment_id"] == "EXP-144"
+    assert policy["variant_id"] == "cv12-clean-post-rehearsal170"
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert "clean-post-rehearsal-jsut" in choices
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"
