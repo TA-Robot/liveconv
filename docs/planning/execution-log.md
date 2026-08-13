@@ -2093,3 +2093,30 @@ job queue.
 - Rework: one path correction, under one minute; no artifact was changed.
 - Changed action: commit the evaluation slice, then publish 36 candidates and
   run the source-window-relative corruption screen as the sole GPU lane.
+
+## 2026-08-13T13:34:08Z - EXP-041 new-utterance audio published
+
+- Agent: `primary-integrator`.
+- Task: Test reconstruction20 on twelve changed utterances from six heldout
+  Common Voice speakers, without retraining.
+- Dependencies: commit `7a5e419`; exclusive `gpu0`; EXP-039 frozen input set;
+  listener `8878`.
+- Result: 36 converted candidates completed in 92.35 seconds and were
+  published. No arm gross-looped. Reconstruction20 retained control69's 0.571
+  maximum source-relative distance. Its primary source-relative mean moved
+  slightly from 0.184 to 0.198, while the secondary full-text reference moved
+  from 0.576 to 0.565. The listener exposed 586 runs after publication.
+- Changed action: this mixed small result cannot select a winner or justify
+  another training sweep. Admit one final render-only EXP-042 on the frozen ten
+  clean/tempo/F0/noise/silence conditions; the existing 0.375 noise regression
+  is the condition the reconstruction hypothesis could plausibly change.
+
+## 2026-08-13T13:36:02Z - EXP-042 condition render prepared
+
+- Agent: `primary-integrator`.
+- Task: Generalize the existing frozen-condition renderer for an explicit
+  control69/reconstruction20 policy without changing the ten source rows.
+- Result: Ruff, 29 focused tests, exact CPU admission for ten rows and both
+  adapters, and `git diff --check` passed. No training update is scheduled.
+- Changed action: commit before execution, then use the sole GPU lane for 30
+  converted candidates and one condition-stratified corruption screen.

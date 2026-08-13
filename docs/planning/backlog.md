@@ -82,13 +82,13 @@ name one owner and ownership zone below.
 | LV-071 | Done | P0 | MS-3 | Restore X-VC's upstream training-role mixture at fixed EXP-035 exposure | EXP-036 completed 1,044 updates and 21 external candidates; it restored one empty output and worsened aggregate auxiliary content versus all-standard, so no fixed-condition expansion is admitted |
 | LV-072 | Done | P0 | MS-3 | Test content-safe target frame context before context-aware X-VC retraining | EXP-037 published 14 candidates; context did not loop but worsened external known-text distance from 0.399 to 0.505, so retraining was skipped |
 | LV-073 | Done | P0 | MS-3 | Restrict X-VC adaptation to global-speaker modulation at fixed EXP-035 exposure | EXP-038 improved the first seven-row mean, but EXP-039's twelve new utterances regressed from control69 0.184 to speaker7 0.345 source-relative distance; speaker7 is closed |
-| LV-074 | In progress | P0 | MS-3 | Add target-preserving reconstruction without reversed donor-target dilution | EXP-040 passed a mixed seven-row screen without loops; EXP-041 now replaces speaker7 with reconstruction20 on the twelve new utterances before any fixed-condition expansion |
+| LV-074 | In progress | P0 | MS-3 | Add target-preserving reconstruction without reversed donor-target dilution | EXP-041 found no loops or maximum-error regression on twelve new utterances but a small mixed mean tradeoff; EXP-042 now tests the frozen ten audio conditions before the method decision |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| LV-074 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-040/041 notes, and their ignored artifacts | Publish twelve new-utterance control69/reconstruction20 comparisons, screen corruption, then replan |
+| LV-074 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-040--042 notes, and their ignored artifacts | Publish ten fixed-condition control69/reconstruction20 comparisons, screen corruption and the noise row, then replan |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.
@@ -125,7 +125,7 @@ The live board is [`listen-queue.md`](listen-queue.md). Process is
 
 | Ready item | Intended ownership zone | Stop condition |
 |---|---|---|
-| LV-074 EXP-041 | `tools/xvc-source-diversity/` and fixed-port 8878 | twelve new-utterance control69/reconstruction20 rows plus corruption screen, then replan |
+| LV-074 EXP-042 | `tools/xvc-source-diversity/` and fixed-port 8878 | ten fixed-condition control69/reconstruction20 rows plus corruption screen, then replan |
 | Unheard drain | Fixed-port 8878: EXP-033/034/035, stable public sets, EXP-023 | Operator `continue`/`rejected` when hearing returns |
 
 LV-032, LV-055, LV-056, LV-057, LV-058, and LV-068 are complete. LV-059,

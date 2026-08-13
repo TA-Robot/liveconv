@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render EXP-035 on EXP-033's frozen ten audio-condition rows."""
+"""Render one X-VC method candidate on EXP-033's frozen ten conditions."""
 
 from __future__ import annotations
 
@@ -28,9 +28,46 @@ class ConditionRenderError(RuntimeError):
     """The fixed EXP-035 condition render cannot safely continue."""
 
 
+def candidate_policy(kind: str) -> dict[str, Any]:
+    if kind == "donor-breadth":
+        return {
+            "experiment_id": "EXP-035",
+            "result_kind": "liveconv-exp035-xvc-condition-render-result/v1",
+            "run_kind": "EXP-035 X-VC frozen condition evaluation",
+            "control": (
+                "jvs3-generated-pairs",
+                "EXP-033 / JVS 3 donor x 4 epochs / 1,044 updates",
+                "20-xvc-jvs3-generated-pairs.wav",
+            ),
+            "candidate": (
+                "cv12-generated-pairs",
+                "EXP-035 / Common Voice 12 donor x 1 epoch / 1,044 updates",
+                "30-xvc-cv12-generated-pairs.wav",
+            ),
+        }
+    if kind == "reconstruction20":
+        return {
+            "experiment_id": "EXP-042",
+            "result_kind": "liveconv-exp042-xvc-reconstruction20-condition-result/v1",
+            "run_kind": "EXP-042 X-VC reconstruction20 frozen condition evaluation",
+            "control": (
+                "cv12-control69",
+                "EXP-035 / CV12 / all-standard control69",
+                "20-xvc-cv12-control69.wav",
+            ),
+            "candidate": (
+                "cv12-reconstruction20",
+                "EXP-040 / CV12 / 80% standard + 20% Amitaro reconstruction",
+                "30-xvc-cv12-reconstruction20.wav",
+            ),
+        }
+    raise ConditionRenderError(f"unknown candidate kind: {kind}")
+
+
 def validate_inputs(
     arguments: argparse.Namespace,
 ) -> tuple[dict[str, Any], list[tuple[str, Path, str]]]:
+    policy = candidate_policy(arguments.candidate_kind)
     evaluation = method.load_evaluation_set(arguments.evaluation_set)
     for item in evaluation["items"]:
         method._source_path(
@@ -38,8 +75,8 @@ def validate_inputs(
         )
     targets = method.target_inventory(arguments.pair_root)
     for label, adapter in (
-        ("EXP-033 control", arguments.control_adapter),
-        ("EXP-035 candidate", arguments.candidate_adapter),
+        (f"{policy['experiment_id']} control", arguments.control_adapter),
+        (f"{policy['experiment_id']} candidate", arguments.candidate_adapter),
     ):
         if adapter.is_symlink() or not (
             adapter / "adapter_model.safetensors"
@@ -49,12 +86,12 @@ def validate_inputs(
     base._require_new_output(
         arguments.work_dir,
         REPO_ROOT / "artifacts" / "xvc-source-diversity",
-        "EXP-035 condition work directory",
+        f"{policy['experiment_id']} condition work directory",
     )
     base._require_new_output(
         arguments.listener_dir,
         REPO_ROOT / "artifacts" / "ms3" / "listening",
-        "EXP-035 condition listener directory",
+        f"{policy['experiment_id']} condition listener directory",
     )
     return evaluation, targets
 
@@ -64,25 +101,19 @@ def listening_index(
     *,
     target_reference_id: str,
     hashes: Mapping[str, str],
+    policy: Mapping[str, Any] | None = None,
 ) -> dict[str, object]:
+    policy = candidate_policy("donor-breadth") if policy is None else policy
+    control_id, control_name, control_filename = policy["control"]
+    candidate_id, candidate_name, candidate_filename = policy["candidate"]
     variants = (
         ("base", "X-VC base", "10-xvc-base.wav", 1),
-        (
-            "jvs3-generated-pairs",
-            "EXP-033 / JVS 3 donor x 4 epochs / 1,044 updates",
-            "20-xvc-jvs3-generated-pairs.wav",
-            2,
-        ),
-        (
-            "cv12-generated-pairs",
-            "EXP-035 / Common Voice 12 donor x 1 epoch / 1,044 updates",
-            "30-xvc-cv12-generated-pairs.wav",
-            3,
-        ),
+        (control_id, control_name, control_filename, 2),
+        (candidate_id, candidate_name, candidate_filename, 3),
     )
     return {
         "schema_version": 1,
-        "run_kind": "EXP-035 X-VC frozen condition evaluation",
+        "run_kind": policy["run_kind"],
         "status": "completed-listen-now-unselected",
         "source_file": source.display_text,
         "source_output_file": "00-source-reference.wav",
@@ -108,7 +139,10 @@ def listening_index(
                 "display_order": order,
                 "output_file": filename,
                 "status": "passed",
-                "profile_id": f"xvc.exp035.conditions.{variant_id}.listen-now",
+                "profile_id": (
+                    f"xvc.{policy['experiment_id'].lower()}.conditions."
+                    f"{variant_id}.listen-now"
+                ),
                 "family_id": "x-vc",
                 "output_sha256": hashes[variant_id],
             }
@@ -122,6 +156,7 @@ def run(
     evaluation: Mapping[str, Any],
     target_rows: list[tuple[str, Path, str]],
 ) -> int:
+    policy = candidate_policy(arguments.candidate_kind)
     for name in ("HF_DATASETS_OFFLINE", "HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"):
         if os.environ.get(name) != "1":
             raise ConditionRenderError(f"{name}=1 is required before model import")
@@ -197,10 +232,12 @@ def run(
             for index, source in enumerate(source_tensors)
         ]
 
+    control_id, _, control_filename = policy["control"]
+    candidate_id, _, candidate_filename = policy["candidate"]
     outputs = {"base": render(model)}
     for label, adapter in (
-        ("jvs3-generated-pairs", arguments.control_adapter),
-        ("cv12-generated-pairs", arguments.candidate_adapter),
+        (control_id, arguments.control_adapter),
+        (candidate_id, arguments.candidate_adapter),
     ):
         adapted_base = method._load_xvc(arguments, XVC, device)
         adapted = PeftModel.from_pretrained(
@@ -222,21 +259,24 @@ def run(
             "base": base._write_float_wav(
                 row_root / "10-xvc-base.wav", outputs["base"][index], sample_rate
             ),
-            "jvs3-generated-pairs": base._write_float_wav(
-                row_root / "20-xvc-jvs3-generated-pairs.wav",
-                outputs["jvs3-generated-pairs"][index],
+            control_id: base._write_float_wav(
+                row_root / control_filename,
+                outputs[control_id][index],
                 sample_rate,
             ),
-            "cv12-generated-pairs": base._write_float_wav(
-                row_root / "30-xvc-cv12-generated-pairs.wav",
-                outputs["cv12-generated-pairs"][index],
+            candidate_id: base._write_float_wav(
+                row_root / candidate_filename,
+                outputs[candidate_id][index],
                 sample_rate,
             ),
         }
         method._write_json(
             row_root / "index.json",
             listening_index(
-                source, target_reference_id=target_pair.pair_id, hashes=hashes
+                source,
+                target_reference_id=target_pair.pair_id,
+                hashes=hashes,
+                policy=policy,
             ),
         )
         listener_rows.append(
@@ -249,7 +289,7 @@ def run(
 
     result = {
         "schema_version": 1,
-        "kind": "liveconv-exp035-xvc-condition-render-result/v1",
+        "kind": policy["result_kind"],
         "status": "completed-listen-now-unselected",
         "git_commit": base._git_output(
             ["git", "rev-parse", "HEAD"], "repository commit"
@@ -284,6 +324,11 @@ def run(
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument(
+        "--candidate-kind",
+        choices=("donor-breadth", "reconstruction20"),
+        default="donor-breadth",
+    )
     parser.add_argument("--evaluation-set", type=Path, required=True)
     parser.add_argument("--pair-root", type=Path, required=True)
     parser.add_argument("--jvs-root", type=Path, required=True)
@@ -312,6 +357,7 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     arguments = _parser().parse_args(argv)
     try:
+        candidate_policy(arguments.candidate_kind)
         evaluation, targets = validate_inputs(arguments)
         if arguments.check:
             print(

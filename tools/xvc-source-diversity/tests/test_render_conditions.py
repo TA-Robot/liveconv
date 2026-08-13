@@ -34,3 +34,11 @@ def test_condition_index_is_unselected_and_compares_fixed_three_arms() -> None:
         "cv12-generated-pairs",
     ]
     assert "winner" not in str(index).lower()
+
+
+def test_reconstruction_candidate_uses_exp042_condition_policy() -> None:
+    policy = RENDER.candidate_policy("reconstruction20")
+
+    assert policy["experiment_id"] == "EXP-042"
+    assert policy["control"][0] == "cv12-control69"
+    assert policy["candidate"][0] == "cv12-reconstruction20"

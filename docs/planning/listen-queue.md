@@ -84,16 +84,21 @@ It did not: speaker7 worsened mean source-relative distance from control69's
 scope, LR, loss, condition, and 1,044 updates, but replaces 209 standard
 updates with same-Amitaro reconstruction. It excludes the reversed donor-target
 updates implicated in EXP-036, so every target remains the authorized voice.
-The seven-row screen had no loops and only mixed small changes. EXP-041 is the
-current render-only lane, replacing speaker7 with reconstruction20 on the
-twelve new utterances before any condition-set expansion.
+The seven-row screen had no loops and only mixed small changes. EXP-041 then
+replaced speaker7 with reconstruction20 on twelve new utterances. It also had
+no loops and retained the same 0.571 maximum source-relative distance as
+control69, but its mean moved slightly from 0.184 to 0.198 while the secondary
+full-text reference moved from 0.576 to 0.565. This is neither a clear reject
+nor a machine-selected win. EXP-042 is the final render-only robustness check
+on the frozen clean/tempo/F0/noise/silence rows, with the existing noise
+regression as the decision-relevant condition.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Render EXP-041 control69/reconstruction20 on EXP-039's twelve new utterances | parent | no | 36 candidates and source-window-relative corruption screen published |
-| 2 | If reconstruction20 survives EXP-041, render it once on the frozen ten clean/tempo/F0/noise/silence rows | parent | no human dependency for machine reject | fixed-condition comparison published; no automated winner |
+| 1 | Render EXP-042 control69/reconstruction20 on the frozen ten clean/tempo/F0/noise/silence rows | parent | no human dependency for machine reject | fixed-condition comparison published; no automated winner |
+| 2 | Replan one X-VC method axis from the combined 7 + 12 + 10 screens | parent | no | one bounded train-or-stop decision recorded |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.
