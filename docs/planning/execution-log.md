@@ -1010,3 +1010,88 @@ job queue.
   corruption, and do not convert auxiliary ASR into a perceptual winner.
 - Status: in progress; profiles are ordered outermost so all three rows for one
   worker identity run consecutively before the second profile is loaded.
+
+## 2026-08-13T06:03:00Z - Sasayaki heldout generalization completed
+
+- Agent: `primary-integrator`.
+- Result: Sasayaki standard and clean-bright both completed all three public
+  rows through live Gateway `8877` with realtime 20 ms pacing. Six new WAVs
+  were published as `exp020-sasayaki-heldout-generalization-v1`; every
+  generation was finite, contiguous, changed from input, and invalidated on
+  session close.
+- Machine screen: known-text macro CER was 0.477 for standard and 0.184 for
+  clean-bright. Clean-bright was lower on all three rows, so its coarse content
+  advantage generalized beyond the single actual input. This does not rank
+  naturalness, voice identity, or perceptual quality.
+- Problems: the evidence wrapper rejected the PCM24 outputs. The same pinned
+  local faster-whisper model screened the unchanged WAVs directly; no audio
+  was regenerated.
+- Changed action: close Sasayaki standard for further machine-only preset work
+  and retain clean-bright for hearing. Do not add another RVC preset point.
+
+## 2026-08-13T06:07:00Z - full-utterance and F0 boundaries screened
+
+- Agent: `primary-integrator`.
+- Task: Separate the live block boundary and pitch extractor from the retained
+  Sasayaki clean-bright profile without opening a broad sweep.
+- Existing full-utterance result: source-relative CER was 0.682 for the live
+  Gateway anchor and 0.636 for the already-rendered upstream full-utterance
+  control. The small 0.046 change left both poor, so frame batching is not the
+  sole content failure and block-size search is closed.
+- New F0 result: six full-utterance WAVs were published as
+  `exp020-sasayaki-f0-offline-v1`. Known-text macro CER was 0.327 for RMVPE and
+  0.292 for PM; PM changed only one row materially and both trailed the live
+  clean-bright result at 0.184. F0 extractor expansion is closed pending human
+  hearing.
+- Problems/rework: the first F0 attempt used relative input paths while the
+  upstream runtime changes working directory. It stopped before GPU inference;
+  the exact failed directory was moved to
+  `/tmp/liveconv-exp020-sasayaki-f0-offline-v1-failed-relative-path`. Commit
+  `0212cd4` resolved all paths before the successful rerun.
+
+## 2026-08-13T06:15:56Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, no tools or delegation).
+- Result: `SIMPLIFY`. Grok correctly required the six heldout WAVs to be
+  content-screened, warned against more RVC knobs, and redirected the next
+  useful work toward a surviving real system route.
+- Adopted: yes for closing parameter expansion and returning to a system-path
+  comparison. The literal recommendation to render clean-bright on the actual
+  ChatGPT input was not repeated because that exact profile/input output
+  already exists in the 32-variant collection and was screened at 0.488.
+- Snapshot lag: by audit completion the heldout screen was already available
+  and the bounded F0 run had already completed. Its result was screened and
+  closed rather than used to justify another F0 point.
+- Changed action: compare the two surviving VC families on the same three
+  texts, then publish only a compact cross-family hearing shortlist.
+
+## 2026-08-13T06:40:00Z - two-family live-route shortlist published
+
+- Agent: `primary-integrator`.
+- Task: Put the surviving RVC and X-VC families on the same three source texts
+  and the same live Gateway/realtime frame boundary before shortening the
+  hearing queue.
+- Dependencies: commits `d28cc9c`, `2082a31`, and `f3af234`; sealed deployment;
+  fixed public source hashes; live Gateway `8877`; listener `8878`; one GPU
+  lane.
+- Baseline screen: the existing offline X-VC base files had macro CER 0.163,
+  versus 0.184 for live RVC clean-bright. Because route conditions differed,
+  those files were not used as the final comparison.
+- New audio: deployed X-VC Yofukashi Q034 completed all three sources through
+  the live Gateway. Three new PCM24 WAVs were finite, contiguous, changed from
+  input, and published as `exp026-xvc-yofukashi-q34-heldout-route-v1`.
+  Direct pinned faster-whisper macro CER was 0.166, with no gross loop.
+- Problems/rework: the first route attempt stopped before audio with
+  `MODEL_UNAVAILABLE`. X-VC's source-identity gate treated 11 ignored
+  `__pycache__` directories as a dirty checkout. They were moved recoverably to
+  `/tmp/liveconv-xvc-source-pycache-recovery.MmtxBr`; the failed work directory
+  was retained at
+  `/tmp/liveconv-exp026-xvc-yofukashi-q34-heldout-route-v1-failed-model-unavailable`.
+  An isolated backend warmup then passed before the exact route rerun.
+- Decision: 0.166 versus 0.184 is too small and row-dependent for machine
+  selection. Both arms remain unselected. The exact three rows by two live
+  routes were copied into `ms3-vc-heldout-shortlist-v1` so later hearing does
+  not require navigating the full archive.
+- GPU: X-VC route generation and both fixed STT screens completed; `gpu0` is
+  idle pending the next audited system-path job.

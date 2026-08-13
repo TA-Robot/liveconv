@@ -29,6 +29,7 @@ each result. Accumulated candidates remain unselected until human hearing.
 | EXP-025 whole-short 87 | Frozen base vs human-paired adapted X-VC on three public heldout source-only utterances | `keep` only if adapted is clearly preferable on the set; otherwise `rejected` | `keep` admits a separate promote pass; `rejected` closes this exact 87-pair schedule |
 | EXP-026 horizon | The same three X-VC rows at base / epoch 4 / epoch 8 / epoch 12 | nominate one horizon only if it is clearly preferable across the set; otherwise `rejected` | a nomination chooses the next listen-now model state only; it is not a route or product decision |
 | EXP-032 stream floor + system path | Actual 8.17 s input at epoch 8 with future 100 / 110 / 120 / 125 ms, followed by the future-120 candidate through the bounded worker/cancellation path | hear 120 and 125 ms, then compare the source/system pair; record the lowest acceptable arm, or `rejected` | 100/110 have auxiliary-ASR repetition; the worker probe completed with zero stale frames but is not Gateway-, Extension-, or route-qualified |
+| MS-3 VC heldout shortlist | The same three public utterances through live RVC Sasayaki clean-bright and live X-VC Yofukashi Q034 | per row prefer one arm, or reject both; judge clarity, naturalness, and target-voice fit by ear | a consistent preference admits one next listen-now route; it is not promotion or product selection |
 
 Historical X-VC synthetic blinds (EXP-010–019) stay on the listener as
 archives. They do not gate the current queue.
@@ -45,7 +46,7 @@ authorize promote claims or several speculative sweeps in parallel.
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
 | 1 | Help the operator finish the six rows above; EXP-027--031 are superseded diagnostics and do not need separate draining | parent | n/a | decisions recorded |
-| 2 | Complete the active Sasayaki standard vs clean-bright comparison on three public heldout utterances | parent | no: Runrun/Gateway screen is complete and clean-bright led historical RVC content triage | six new Gateway WAVs and one coarse cross-row content stop |
+| 2 | Keep `ms3-vc-heldout-shortlist-v1` as the only cross-family hearing surface; do not add another model knob while it is unheard | parent | no: the exact six candidates are already published | one operator preference set or both arms rejected |
 | 3 | If EXP-032 receives a `keep`, bind that exact candidate to the formal Gateway profile and exercise native fallback/Extension playout | parent | yes: EXP-032 `keep` | one route-qualified system listen or a recorded integration blocker |
 | 4 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
 
@@ -105,6 +106,15 @@ The separate Qwen natural-conversation instruction probe also completed. Its
 known-text macro CER worsened from 0.0876 for default to 0.1175 and exact rows
 fell from 6/12 to 5/12. Keep the new audio for hearing, but close further TTS
 style/profile expansion during this machine-only window.
+
+The Sasayaki heldout run is complete. Standard versus clean-bright known-text
+macro CER was 0.477 versus 0.184, and clean-bright was lower on all three rows.
+The bounded RMVPE/PM check did not improve on that live result, so preset, block
+size, and F0 expansion are closed. A same-source live-Gateway X-VC Yofukashi
+Q034 control also completed at 0.166 without gross repetition. Machine evidence
+cannot distinguish perceptual quality between 0.166 and 0.184. Both surviving
+routes are therefore collected, still unselected, in
+`ms3-vc-heldout-shortlist-v1`; do not widen this comparison before hearing.
 
 ## Keepers
 
