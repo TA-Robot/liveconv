@@ -105,6 +105,7 @@ FFN22_TARGET_NAME_LIST_SHA256 = (
     "ee61c441a91e0570562f87d8a8d5b20a238c66f7caff4c09068a3f41804c92f1"
 )
 FFN22_TRAINABLE_PARAMETERS = 450_560
+DORA_CONTROL69_TRAINABLE_PARAMETERS = 887_808
 OUTPUT2_TARGETS = (
     "acoustic_converter.norm_out.linear",
     "acoustic_converter.proj_out",
@@ -432,9 +433,36 @@ def training_scope(inventory: Path, name: str) -> dict[str, object]:
 
 
 def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
+    peft_variant = getattr(arguments, "peft_variant", "standard")
+    if (
+        arguments.training_policy == REAL_TEACHER_OUTPUT_POLICY
+        and arguments.lora_scope == "control69"
+        and peft_variant == "dora"
+    ):
+        return {
+            "experiment_id": "EXP-120",
+            "slug": "exp120",
+            "candidate_id": "cv12-real-teacher-output48-dora",
+            "candidate_name": "EXP-120 / full-output teacher / control69 DoRA",
+            "run_kind": "EXP-120 X-VC DoRA full-output teacher evaluation",
+            "result_kind": "liveconv-exp120-xvc-real-teacher-output48-dora/v1",
+            "question": (
+                "Does direction/magnitude-decoupled adaptation retain the broad "
+                "full-output teacher signal without adding local repetition?"
+            ),
+            "independent_variable": (
+                "PEFT parameterization: EXP-116 standard LoRA versus DoRA on "
+                "the same control69 targets; train48, full-output teacher "
+                "objective, 835/209 positions, total updates, LR, rank, alpha, "
+                "seed, target voice, and zero frame condition stay fixed"
+            ),
+        }
+    if peft_variant != "standard":
+        raise RoleMixError("DoRA is admitted only for EXP-120 control69")
     if (
         arguments.training_policy == REAL_TEACHER_OUTPUT_POLICY
         and arguments.lora_scope == "ffn22"
+        and peft_variant == "standard"
     ):
         return {
             "experiment_id": "EXP-118",
@@ -459,6 +487,7 @@ def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
     if (
         arguments.training_policy == REAL_TEACHER_OUTPUT_POLICY
         and arguments.lora_scope == "control69"
+        and peft_variant == "standard"
     ):
         return {
             "experiment_id": "EXP-116",
@@ -1052,10 +1081,51 @@ def conditioned_inference(
     return rendered
 
 
-def _set_scope_training_only(model: Any, scope: Mapping[str, object]) -> list[Any]:
+def expected_trainable_parameter_count(
+    scope: Mapping[str, object], peft_variant: str
+) -> int:
+    if peft_variant == "standard":
+        return int(scope["trainable_parameter_count"])
+    if peft_variant == "dora" and int(scope["trainable_parameter_count"]) == int(
+        horizon.CONTROL69_TRAINABLE_PARAMETERS
+    ):
+        return DORA_CONTROL69_TRAINABLE_PARAMETERS
+    raise RoleMixError("DoRA is admitted only on the control69 scope")
+
+
+def _set_scope_training_only(
+    model: Any, scope: Mapping[str, object], peft_variant: str = "standard"
+) -> list[Any]:
     modules = tuple(str(item) for item in scope.get("modules_to_save", []))
     if not modules:
-        return base._set_adapter_training_only(model)
+        if peft_variant == "standard":
+            return base._set_adapter_training_only(model)
+        if peft_variant != "dora":
+            raise RoleMixError(f"unknown PEFT variant: {peft_variant}")
+        model.eval()
+        active = 0
+        for name, module in model.named_modules():
+            if ".lora_A" in name or ".lora_B" in name:
+                module.train(True)
+                active += 1
+        trainable: list[Any] = []
+        magnitude_count = 0
+        for name, parameter in model.named_parameters():
+            selected = (
+                ".lora_A." in name
+                or ".lora_B." in name
+                or ".lora_magnitude_vector." in name
+            )
+            parameter.requires_grad_(selected)
+            if selected:
+                trainable.append(parameter)
+            if ".lora_magnitude_vector." in name:
+                magnitude_count += 1
+        if active == 0 or magnitude_count != 69 or not trainable:
+            raise RoleMixError("PEFT did not expose the expected DoRA tensors")
+        return trainable
+    if peft_variant != "standard":
+        raise RoleMixError("DoRA is incompatible with modules-to-save scope")
     model.eval()
     trainable: list[Any] = []
     for name, parameter in model.named_parameters():
@@ -1414,12 +1484,17 @@ def run_teacher_output_smoke(
             lora_alpha=8,
             lora_dropout=0.0,
             bias="none",
-            use_dora=False,
+            use_dora=arguments.peft_variant == "dora",
             use_rslora=False,
             target_modules=list(scope["target_modules"]),
         ),
     )
-    trainable = _set_scope_training_only(trained, scope)
+    trainable = _set_scope_training_only(trained, scope, arguments.peft_variant)
+    expected_trainable = expected_trainable_parameter_count(
+        scope, arguments.peft_variant
+    )
+    if sum(parameter.numel() for parameter in trainable) != expected_trainable:
+        raise RoleMixError("smoke trainable parameter count drifted")
     batch = base._gpu_batch(tensors, torch=torch, device=device)
     with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
         loss, numeric = training_loss(
@@ -1439,6 +1514,8 @@ def run_teacher_output_smoke(
                 "gradient_norm": float(gradient_norm.detach().cpu()),
                 "target_samples": int(tensors["target_wav"].numel()),
                 "peak_gpu_bytes": int(torch.cuda.max_memory_allocated(device)),
+                "peft_variant": arguments.peft_variant,
+                "trainable_parameters": expected_trainable,
             },
             sort_keys=True,
         )
@@ -1902,7 +1979,7 @@ def run(
             lora_alpha=8,
             lora_dropout=0.0,
             bias="none",
-            use_dora=False,
+            use_dora=arguments.peft_variant == "dora",
             use_rslora=False,
             target_modules=target_modules,
             **lora_options,
@@ -1911,10 +1988,11 @@ def run(
     observed = getattr(trained, "targeted_module_names", None)
     if not isinstance(observed, (list, tuple)) or set(observed) != set(target_modules):
         raise RoleMixError(f"{arguments.lora_scope} target set drifted")
-    trainable = _set_scope_training_only(trained, scope)
-    if sum(parameter.numel() for parameter in trainable) != int(
-        scope["trainable_parameter_count"]
-    ):
+    trainable = _set_scope_training_only(trained, scope, arguments.peft_variant)
+    expected_trainable = expected_trainable_parameter_count(
+        scope, arguments.peft_variant
+    )
+    if sum(parameter.numel() for parameter in trainable) != expected_trainable:
         raise RoleMixError(
             f"{arguments.lora_scope} trainable parameter count drifted"
         )
@@ -1925,7 +2003,7 @@ def run(
         role: [] for role in observed_role_counts
     }
     for role, tensors in zip(modes, training_rows, strict=True):
-        _set_scope_training_only(trained, scope)
+        _set_scope_training_only(trained, scope, arguments.peft_variant)
         optimizer.zero_grad(set_to_none=True)
         batch = base._gpu_batch(tensors, torch=torch, device=device)
         if "target_wav_cond" in tensors:
@@ -2016,6 +2094,8 @@ def run(
             "target_exposures_per_text": breadth.DONOR_COUNT,
             "optimizer_updates": TOTAL_UPDATES,
             "lora_scope": arguments.lora_scope,
+            "peft_variant": arguments.peft_variant,
+            "trainable_parameters": expected_trainable,
             "learning_rate": base.LEARNING_RATE,
             "gradient_clip_norm": base.GRADIENT_CLIP_NORM,
             "target_wav_cond": (
@@ -2166,6 +2246,9 @@ def _parser() -> argparse.ArgumentParser:
             "decoder-final",
         ),
         default="control69",
+    )
+    parser.add_argument(
+        "--peft-variant", choices=("standard", "dora"), default="standard"
     )
     parser.add_argument("--donors", type=Path, required=True)
     parser.add_argument("--evaluation-set", type=Path, required=True)

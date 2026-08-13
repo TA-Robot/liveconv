@@ -503,6 +503,19 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "frozen fresh48?"
             ),
         }
+    if kind == "real-teacher-output48-dora-fresh48":
+        return {
+            "experiment_id": "EXP-121",
+            "variant_id": "cv12-real-teacher-output48-dora",
+            "display_name": "EXP-120 / full-output teacher / control69 DoRA",
+            "result_kind": (
+                "liveconv-exp121-xvc-real-teacher-output48-dora-fresh48/v1"
+            ),
+            "question": (
+                "Does DoRA retain the broad full-output teacher signal without "
+                "adding corruption on frozen fresh48?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -992,6 +1005,7 @@ def _parser() -> argparse.ArgumentParser:
             "real-teacher-breadth48-fresh48",
             "real-teacher-output48-fresh48",
             "real-teacher-output48-ffn22-fresh48",
+            "real-teacher-output48-dora-fresh48",
         ),
         default="speaker7",
     )

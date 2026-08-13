@@ -305,6 +305,30 @@ def test_real_teacher_output48_ffn22_freezes_attention() -> None:
     assert "ffn22" in choices
 
 
+def test_real_teacher_output48_dora_changes_only_peft_parameterization() -> None:
+    inventory = Path("artifacts/exp007/phase0-inputs-v1/inventory.json")
+    scope = ROLE_MIX.training_scope(inventory, "control69")
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(
+            training_policy=ROLE_MIX.REAL_TEACHER_OUTPUT_POLICY,
+            lora_scope="control69",
+            peft_variant="dora",
+        )
+    )
+
+    assert len(scope["target_modules"]) == 69
+    assert ROLE_MIX.expected_trainable_parameter_count(scope, "standard") == 835_584
+    assert ROLE_MIX.expected_trainable_parameter_count(scope, "dora") == 887_808
+    assert policy["experiment_id"] == "EXP-120"
+    assert policy["candidate_id"] == "cv12-real-teacher-output48-dora"
+    choices = next(
+        action.choices
+        for action in ROLE_MIX._parser()._actions
+        if action.dest == "peft_variant"
+    )
+    assert choices == ("standard", "dora")
+
+
 def test_source_augmentation_is_exact_and_keeps_standard_roles() -> None:
     conditions = ROLE_MIX.source_condition_schedule("source-augmentation")
     policy = ROLE_MIX.experiment_policy(
