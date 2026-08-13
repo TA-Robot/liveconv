@@ -1,6 +1,6 @@
 # EXP-138: X-VC near-one-pass real-window teacher breadth
 
-Status: prepared; awaiting bound manifest and one gpu0 lane
+Status: admitted; one bounded gpu0 lane
 
 ## Goal
 
@@ -19,6 +19,15 @@ therefore expose all 201 sources once and only eight a second time.
 
 No EXP-135/136 evaluation row or output participates in selection. This is a
 data-breadth point, not a threshold fit, teacher-share sweep, or longer horizon.
+
+## Bound input
+
+- Manifest: `artifacts/xvc-source-diversity/exp138-window-breadth201-inputs-v1/training.json`
+- SHA-256: `a8ac653b59fa3566bd9d5a0e51bb0e20f5a7de79ad4ee4ce2ac7d14324f18dda`
+- Composition: Common Voice 48, Hadou 150, JVS 3
+- Hadou windows: 150 unique utterances; start 50, middle 50, end 50
+- EXP-133 audit SHA-256: `641521ba94c9a7ee788e906c1bbfeeaaa97ea0525616b59d54ba411269687dd2`
+- Method commit: `cced615`
 
 ## Definition of done and stop
 
