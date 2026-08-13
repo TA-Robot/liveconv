@@ -92,3 +92,27 @@ def test_source36_candidate_is_exp053() -> None:
 
     assert policy["experiment_id"] == "EXP-053"
     assert policy["variant_id"] == "cv12-source36"
+
+
+def test_target275_candidate_policies_cover_changed_and_expanded_sets() -> None:
+    changed = NEW.candidate_policy("target275")
+    expanded = NEW.candidate_policy("target275-expanded")
+
+    assert changed["experiment_id"] == "EXP-056"
+    assert expanded["experiment_id"] == "EXP-058"
+    assert changed["variant_id"] == expanded["variant_id"] == "cv12-target275"
+
+
+def test_expanded_manifest_uses_all_33_unique_local_files() -> None:
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiments"
+        / "EXP-055-xvc-target-text-breadth"
+        / "expanded-evaluation.json"
+    )
+
+    value = NEW.load_evaluation(path)
+
+    assert value["kind"] == NEW.EXPANDED_KIND
+    assert len(value["items"]) == 33
+    assert len({item["client_id_sha256"] for item in value["items"]}) == 33

@@ -26,8 +26,11 @@ import run_breadth as breadth  # noqa: E402
 import screen  # noqa: E402
 
 KIND = "liveconv-exp039-commonvoice-same-speaker-new-utterances/v1"
+EXPANDED_KIND = "liveconv-exp055-commonvoice-local-unused/v1"
 EXPECTED_ROWS = 12
 EXPECTED_SPEAKERS = 6
+EXPANDED_ROWS = 33
+EXPANDED_SPEAKERS = 33
 TARGET_ID = "EMOTION100_003"
 TARGET_SHA256 = "76f5a4a9b989ed692a55343a7681623fa4f18e354ca04026f022e3e449195ca2"
 
@@ -108,6 +111,28 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "speakers?"
             ),
         }
+    if kind == "target275":
+        return {
+            "experiment_id": "EXP-056",
+            "variant_id": "cv12-target275",
+            "display_name": "EXP-055 / 275 target texts / fixed 1,044 updates",
+            "result_kind": "liveconv-exp056-xvc-target275-new-utterance/v1",
+            "question": (
+                "Does target275 preserve content on changed utterances from "
+                "heldout speakers?"
+            ),
+        }
+    if kind == "target275-expanded":
+        return {
+            "experiment_id": "EXP-058",
+            "variant_id": "cv12-target275",
+            "display_name": "EXP-055 / 275 target texts / fixed 1,044 updates",
+            "result_kind": "liveconv-exp058-xvc-target275-expanded-sentences/v1",
+            "question": (
+                "Does target275 preserve content on all 33 locally unused "
+                "Common Voice utterances?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -118,13 +143,18 @@ def load_evaluation(path: Path) -> dict[str, Any]:
         raise NewUtteranceError("evaluation set is not valid JSON") from error
     items = value.get("items") if isinstance(value, dict) else None
     source = value.get("source") if isinstance(value, dict) else None
+    kind = value.get("kind") if isinstance(value, dict) else None
+    expected_rows = EXPANDED_ROWS if kind == EXPANDED_KIND else EXPECTED_ROWS
+    expected_speakers = (
+        EXPANDED_SPEAKERS if kind == EXPANDED_KIND else EXPECTED_SPEAKERS
+    )
     if (
         not isinstance(value, dict)
-        or value.get("kind") != KIND
+        or kind not in {KIND, EXPANDED_KIND}
         or not isinstance(source, dict)
         or source.get("license") != "CC0-1.0"
         or not isinstance(items, list)
-        or len(items) != EXPECTED_ROWS
+        or len(items) != expected_rows
     ):
         raise NewUtteranceError("evaluation schema drifted")
     identifiers: set[str] = set()
@@ -151,18 +181,26 @@ def load_evaluation(path: Path) -> dict[str, Any]:
             or not base._is_sha256(client)
             or not isinstance(item.get("text"), str)
             or not item["text"]
-            or len(normalized) < 7
-            or item.get("source_normalized_characters") != len(normalized)
             or not isinstance(item.get("duration_seconds"), (int, float))
             or float(item["duration_seconds"]) <= 0.0
+        ):
+            raise NewUtteranceError("evaluation row identity drifted")
+        if kind == KIND and (
+            len(normalized) < 7
+            or item.get("source_normalized_characters") != len(normalized)
             or item.get("window_policy") != "first-2.4s-right-pad-if-short"
             or item.get("group") != "same-speaker-second-utterance"
         ):
-            raise NewUtteranceError("evaluation row identity drifted")
+            raise NewUtteranceError("changed-utterance row identity drifted")
+        if kind == EXPANDED_KIND and (
+            item.get("group") != "commonvoice-local-unused"
+            or item.get("down_votes") != 0
+        ):
+            raise NewUtteranceError("expanded-evaluation row identity drifted")
         identifiers.add(identifier)
         filenames.add(filename)
         clients.add(client)
-    if len(clients) != EXPECTED_SPEAKERS:
+    if len(clients) != expected_speakers:
         raise NewUtteranceError("evaluation speaker count drifted")
     return value
 
@@ -182,9 +220,16 @@ def validate_inputs(
     original_clients = {item["client_id_sha256"] for item in original["items"]}
     donor_clients = {item["client_id_sha256"] for item in donors["items"]}
     clients = {item["client_id_sha256"] for item in evaluation["items"]}
-    if not clients < original_clients or clients & donor_clients:
-        raise NewUtteranceError("evaluation speaker binding drifted")
     original_files = {item["filename"] for item in original["items"]}
+    donor_files = {item["filename"] for item in donors["items"]}
+    if evaluation["kind"] == KIND:
+        if not clients < original_clients or clients & donor_clients:
+            raise NewUtteranceError("evaluation speaker binding drifted")
+    elif any(
+        item["filename"] in original_files | donor_files
+        for item in evaluation["items"]
+    ):
+        raise NewUtteranceError("expanded evaluation filename binding drifted")
     for item in evaluation["items"]:
         path = arguments.source_root / item["filename"]
         if (
@@ -242,9 +287,7 @@ def listening_index(
     )
     return {
         "schema_version": 1,
-        "run_kind": (
-            f"{policy['experiment_id']} X-VC same-speaker new-utterance evaluation"
-        ),
+        "run_kind": f"{policy['experiment_id']} X-VC Common Voice evaluation",
         "status": "completed-listen-now-unselected",
         "source_file": (
             f"Common Voice 25.0 / {item['duration_seconds']} s / {item['text']}"
@@ -254,7 +297,10 @@ def listening_index(
         "reference_audio": [
             {
                 "kind": "source",
-                "label": f"first 2.4 s / source ASR: {item['source_transcript']}",
+                "label": (
+                    "first 2.4 s / source ASR: "
+                    f"{item.get('source_transcript', 'computed in machine screen')}"
+                ),
                 "output_file": "00-source-reference.wav",
                 "excluded_from_preference": True,
             },
@@ -454,6 +500,8 @@ def _parser() -> argparse.ArgumentParser:
             "authentic-anchor",
             "semantic2x",
             "source36",
+            "target275",
+            "target275-expanded",
         ),
         default="speaker7",
     )
