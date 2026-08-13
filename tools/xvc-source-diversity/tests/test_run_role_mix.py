@@ -175,3 +175,27 @@ def test_semantic2x_changes_only_ssl_reconstruction_weight() -> None:
         "sim_mse_loss": 10.0,
     }
     assert policy["experiment_id"] == "EXP-049"
+
+
+def test_source36_excludes_frame_condition_and_speaker_modulators() -> None:
+    inventory = (
+        ROLE_MIX.REPO_ROOT
+        / "artifacts"
+        / "exp007"
+        / "phase0-inputs-v1"
+        / "inventory.json"
+    )
+    scope = ROLE_MIX.training_scope(inventory, "source36")
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(training_policy="all-standard", lora_scope="source36")
+    )
+
+    assert len(scope["target_modules"]) == 36
+    assert scope["trainable_parameter_count"] == 442_368
+    assert all(".to_q_c" not in name for name in scope["target_modules"])
+    assert all(".to_k_c" not in name for name in scope["target_modules"])
+    assert all(".to_v_c" not in name for name in scope["target_modules"])
+    assert all(".to_out_c" not in name for name in scope["target_modules"])
+    assert all(".ff_c." not in name for name in scope["target_modules"])
+    assert all("norm" not in name for name in scope["target_modules"])
+    assert policy["experiment_id"] == "EXP-052"

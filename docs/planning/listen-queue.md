@@ -113,14 +113,19 @@ They confirmed closure: the twelve-row mean was 0.266 versus control69 0.184,
 while all ten condition summaries were exactly unchanged, including noise
 0.375. EXP-049 is the next loss-method lane. It restores EXP-035's clean
 synthetic data and changes only semantic SSL reconstruction weight from 1000
-to 2000; waveform, speaker, and VQ losses stay fixed.
+to 2000; waveform, speaker, and VQ losses stay fixed. The combined result
+improved the ten-condition macro 0.153 to 0.126, but regressed twelve changed
+utterances 0.184 to 0.238 and changed none of the noise/tempo/F0/silence rows.
+Loss reweighting is closed. EXP-052 changes learning targets instead: adapt the
+36 source/acoustic attention+FFN linears but exclude the 33 frame-condition
+linears that see target mel during training while inference uses zero context.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Train EXP-049 with semantic SSL loss 1000→2000 and every other EXP-035 control fixed | parent | no | seven external rows published; no decision yet |
-| 2 | Render EXP-049 on the twelve changed utterances and ten frozen conditions regardless of seven-row result | parent | no human dependency for machine reject | combined 7 + 12 + 10 corruption gate complete |
+| 1 | Train EXP-052 source-path-only 36-linears at fixed EXP-035 data/loss/updates | parent | no | seven external rows published; no decision yet |
+| 2 | Render EXP-052 on the mandatory twelve changed utterances and ten frozen conditions | parent | no human dependency for machine reject | combined 7 + 12 + 10 corruption gate complete |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

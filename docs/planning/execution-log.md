@@ -2347,3 +2347,34 @@ job queue.
   216.30. No method decision is made from this result alone.
 - Changed action: commit the already-tested EXP-050/051 render policies, then
   run seven, twelve, and ten-row screens before selecting another method.
+
+## 2026-08-13T14:44:36Z - EXP-049/050/051 combined gate closed semantic2x
+
+- Agent: `primary-integrator`.
+- Task: Screen semantic2x on seven external rows, twelve changed utterances,
+  and ten frozen audio conditions.
+- Result: the seven-row result was mixed: source-relative mean improved 0.360
+  to 0.338, known-text distance regressed 0.399 to 0.409, and maximum remained
+  0.571. EXP-050 published 36 candidates in 102.53 seconds and regressed the
+  twelve-row source-relative mean 0.184 to 0.238 and maximum 0.571 to 1.0.
+  EXP-051 published 30 candidates in 95.66 seconds; macro improved 0.153 to
+  0.126 entirely from the six clean rows, while noise 0.375, silence 0.400,
+  tempo 0.250, and pitch 0.000 were unchanged. No arm gross-looped.
+- Problems: the first EXP-050 screen raced the atomic listener publication and
+  stopped before model load; the same committed screen succeeded after the
+  directory appeared. Audio was not rerendered.
+- Changed action: close semantic-loss reweighting without another multiplier.
+  It fits the fixed clean subset but harms changed utterances and does not
+  improve the named limitations.
+
+## 2026-08-13T14:47:02Z - EXP-052 source-path scope prepared
+
+- Agent: `primary-integrator`.
+- Task: Exclude frame-condition `c` modules that train on target mel but receive
+  zero context at listen-now inference; retain the 36 source `x` attention and
+  FFN linears. This differs from the rejected seven speaker modulators.
+- Result: exact topology has 36 targets and 442,368 trainable parameters. Ruff,
+  40 focused tests, exact 1,044-artifact CPU admission, standard loss-weight
+  validation, and `git diff --check` passed.
+- Changed action: commit before the sole GPU run. The mandatory evaluation is
+  again the complete 7 + 12 + 10 bundle; no adjacent scope point is admitted.

@@ -76,6 +76,7 @@ SPEAKER7_TARGETS = tuple(
     + ["acoustic_converter.norm_out.linear"]
 )
 SPEAKER7_TRAINABLE_PARAMETERS = 166_400
+SOURCE36_TRAINABLE_PARAMETERS = 442_368
 
 
 class RoleMixError(RuntimeError):
@@ -176,6 +177,25 @@ def authentic_pairs(
 def training_scope(inventory: Path, name: str) -> dict[str, object]:
     if name == "control69":
         return horizon.lora_scope(inventory, name)
+    if name == "source36":
+        expanded = horizon.lora_scope(inventory, "expanded79")
+        observed = tuple(
+            item
+            for item in expanded["target_modules"]
+            if (
+                (
+                    ".attn." in item
+                    and item.endswith((".to_q", ".to_k", ".to_v", ".to_out.0"))
+                )
+                or ".ff_x." in item
+            )
+        )
+        if len(observed) != 36:
+            raise RoleMixError("source36 target topology drifted")
+        return {
+            "target_modules": list(observed),
+            "trainable_parameter_count": SOURCE36_TRAINABLE_PARAMETERS,
+        }
     if name != "speaker7":
         raise RoleMixError(f"unknown LoRA scope: {name}")
     expanded = horizon.lora_scope(inventory, "expanded79")
@@ -339,6 +359,27 @@ def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
             "independent_variable": (
                 "loss weight: mse_loss 1000 to 2000; mel 15, speaker 10, VQ 1, "
                 "data, target, roles, scope, LR, seed, and updates stay fixed"
+            ),
+        }
+    if (
+        arguments.training_policy == "all-standard"
+        and arguments.lora_scope == "source36"
+    ):
+        return {
+            "experiment_id": "EXP-052",
+            "slug": "exp052",
+            "candidate_id": "cv12-source36",
+            "candidate_name": "EXP-052 / CV12 / source-path-only LoRA",
+            "run_kind": "EXP-052 X-VC source-path scope evaluation",
+            "result_kind": "liveconv-exp052-xvc-source36-result/v1",
+            "question": (
+                "Does excluding train-only frame-condition modules improve "
+                "content generalization while retaining source-path adaptation?"
+            ),
+            "independent_variable": (
+                "LoRA target: control69 joint source/frame attention+FFN versus "
+                "36 source x-branch attention+FFN linears; data, loss, LR, roles, "
+                "seed, target, condition, and updates stay fixed"
             ),
         }
     raise RoleMixError("unsupported training-policy and LoRA-scope combination")
@@ -1060,7 +1101,9 @@ def _parser() -> argparse.ArgumentParser:
         default="role-mix",
     )
     parser.add_argument(
-        "--lora-scope", choices=("control69", "speaker7"), default="control69"
+        "--lora-scope",
+        choices=("control69", "speaker7", "source36"),
+        default="control69",
     )
     parser.add_argument("--donors", type=Path, required=True)
     parser.add_argument("--evaluation-set", type=Path, required=True)
