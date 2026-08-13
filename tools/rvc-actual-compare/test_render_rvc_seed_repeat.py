@@ -29,3 +29,19 @@ def test_signal_comparison_reports_exact_and_changed_pcm() -> None:
     assert exact["max_abs_difference"] == 0.0
     assert different["exact"] is False
     assert different["max_abs_difference"] > 0.0
+
+
+def test_identity_environment_reads_only_literal_liveconv_values(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "identity.env"
+    path.write_text(
+        "export LIVECONV_FIRST='one two'\n"
+        "export LIVECONV_SECOND=three\n"
+        "unset PYTHONPATH PYTHONHOME\n"
+    )
+
+    assert RUN.read_identity_environment(path) == {
+        "LIVECONV_FIRST": "one two",
+        "LIVECONV_SECOND": "three",
+    }

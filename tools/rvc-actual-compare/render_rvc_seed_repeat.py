@@ -8,6 +8,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -58,6 +59,28 @@ def read_process_environment(pid: int) -> dict[str, str]:
             continue
         name, value = item.split(b"=", 1)
         result[name.decode("utf-8")] = value.decode("utf-8")
+    return result
+
+
+def read_identity_environment(path: Path) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for line_number, raw in enumerate(path.read_text().splitlines(), start=1):
+        line = raw.strip()
+        if not line or line.startswith("#") or line.startswith("unset "):
+            continue
+        assignment = line.removeprefix("export ")
+        name, separator, encoded = assignment.partition("=")
+        decoded = shlex.split(encoded, posix=True) if separator else []
+        if (
+            not name.startswith("LIVECONV_")
+            or len(decoded) != 1
+            or "$" in encoded
+            or "`" in encoded
+        ):
+            raise SeedRepeatError(
+                f"identity environment line {line_number} is invalid"
+            )
+        result[name] = decoded[0]
     return result
 
 
@@ -137,7 +160,11 @@ def execute(arguments: argparse.Namespace, heldout: ModuleType) -> dict[str, Any
     if not samples.size or not np.isfinite(samples).all():
         raise SeedRepeatError("source PCM is invalid")
 
-    parent_environment = read_process_environment(arguments.gateway_pid)
+    parent_environment = (
+        read_process_environment(arguments.gateway_pid)
+        if arguments.gateway_pid is not None
+        else read_identity_environment(arguments.identity_env)
+    )
     environment = profile_environment(profile, parent_environment, arguments.seed)
     for name in (
         "LIVECONV_RVC_V2_INPUT_GAIN_DB",
@@ -261,7 +288,9 @@ def parser() -> argparse.ArgumentParser:
     mode.add_argument("--check", action="store_true")
     mode.add_argument("--execute", action="store_true")
     value.add_argument("--deployment", type=Path, required=True)
-    value.add_argument("--gateway-pid", type=int, required=True)
+    environment = value.add_mutually_exclusive_group(required=True)
+    environment.add_argument("--gateway-pid", type=int)
+    environment.add_argument("--identity-env", type=Path)
     value.add_argument("--seed", type=int, default=34)
     value.add_argument(
         "--cuda-graph", action=argparse.BooleanOptionalAction, default=True
