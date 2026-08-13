@@ -255,6 +255,22 @@ def candidate_policy(kind: str) -> dict[str, Any]:
             ),
             "conditioned_inference": True,
         }
+    if kind == "semantic-token-hold":
+        return {
+            "experiment_id": "EXP-102",
+            "result_kind": "liveconv-exp102-xvc-semantic-token-hold/v1",
+            "run_kind": "EXP-102 X-VC semantic-token hold condition evaluation",
+            "control": (
+                "cv12-control69",
+                "EXP-035 / clean semantic tokens",
+                "20-xvc-cv12-control69.wav",
+            ),
+            "candidate": (
+                "cv12-semantic-token-hold",
+                "EXP-100 / alternating clean and 5-frame-held tokens",
+                "30-xvc-cv12-semantic-token-hold.wav",
+            ),
+        }
     raise ConditionRenderError(f"unknown candidate kind: {kind}")
 
 
@@ -571,6 +587,7 @@ def _parser() -> argparse.ArgumentParser:
             "source-semantic",
             "denoise-semantic",
             "cross-target-condition",
+            "semantic-token-hold",
         ),
         default="donor-breadth",
     )

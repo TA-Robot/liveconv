@@ -261,6 +261,26 @@ def test_cross_target_condition_policies_cover_all_followup_sets() -> None:
     assert all(policy["conditioned_inference"] for policy in policies)
 
 
+def test_semantic_token_hold_policies_cover_all_followup_sets() -> None:
+    kinds = (
+        "semantic-token-hold",
+        "semantic-token-hold-hadou",
+        "semantic-token-hold-expanded",
+        "semantic-token-hold-stress",
+    )
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-101",
+        "EXP-103",
+        "EXP-104",
+        "EXP-105",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "cv12-semantic-token-hold"
+    }
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"

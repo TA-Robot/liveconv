@@ -150,3 +150,10 @@ def test_cross_target_condition_uses_exp096_policy() -> None:
     assert policy["experiment_id"] == "EXP-096"
     assert policy["candidate"][0] == "cv12-cross-target-condition"
     assert policy["conditioned_inference"] is True
+
+
+def test_semantic_token_hold_uses_exp102_policy() -> None:
+    policy = RENDER.candidate_policy("semantic-token-hold")
+
+    assert policy["experiment_id"] == "EXP-102"
+    assert policy["candidate"][0] == "cv12-semantic-token-hold"

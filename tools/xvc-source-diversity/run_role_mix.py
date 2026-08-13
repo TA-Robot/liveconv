@@ -70,6 +70,9 @@ DENOISE_CONDITION_CYCLE = (
     {"kind": "noise", "snr_db": 20.0},
 )
 DENOISE_CONDITION_COUNTS = {"clean": 522, "noise": 522}
+TOKEN_HOLD_CYCLE = ("clean", "hold5")
+TOKEN_HOLD_COUNTS = {"clean": 522, "hold5": 522}
+TOKEN_HOLD_BLOCK_SIZE = 5
 FRAME_CONDITION_REFERENCE_ID = "EMOTION100_009"
 STANDARD_LOSS_WEIGHTS = {
     "mse_loss": 1000.0,
@@ -131,6 +134,7 @@ def training_modes(policy: str) -> list[str]:
         "source-semantic",
         "denoise-semantic",
         "cross-target-condition",
+        "semantic-token-hold",
     }:
         return ["standard"] * TOTAL_UPDATES
     if policy == "standard-reconstruction":
@@ -179,6 +183,39 @@ def source_condition_schedule(policy: str) -> list[dict[str, object]]:
     if len(schedule) != TOTAL_UPDATES or observed != SOURCE_CONDITION_COUNTS:
         raise RoleMixError("source-condition schedule proportions drifted")
     return schedule
+
+
+def semantic_token_schedule(policy: str) -> list[str]:
+    if policy != "semantic-token-hold":
+        return ["clean"] * TOTAL_UPDATES
+    repeats, remainder = divmod(TOTAL_UPDATES, len(TOKEN_HOLD_CYCLE))
+    schedule = list(TOKEN_HOLD_CYCLE) * repeats + list(
+        TOKEN_HOLD_CYCLE[:remainder]
+    )
+    if Counter(schedule) != TOKEN_HOLD_COUNTS:
+        raise RoleMixError("semantic-token hold schedule drifted")
+    return schedule
+
+
+def held_token_values(
+    values: Sequence[int], block_size: int = TOKEN_HOLD_BLOCK_SIZE
+) -> list[int]:
+    if len(values) != base.SEMANTIC_FRAMES:
+        raise RoleMixError("semantic-token hold input length drifted")
+    if block_size <= 1 or base.SEMANTIC_FRAMES % block_size:
+        raise RoleMixError("semantic-token hold block size drifted")
+    return [
+        int(values[start])
+        for start in range(0, base.SEMANTIC_FRAMES, block_size)
+        for _ in range(block_size)
+    ]
+
+
+def hold_semantic_tokens(tokens: Any, block_size: int = TOKEN_HOLD_BLOCK_SIZE) -> Any:
+    if tuple(tokens.shape) != (1, base.SEMANTIC_FRAMES):
+        raise RoleMixError("semantic-token hold input shape drifted")
+    values = held_token_values(tokens.reshape(-1).tolist(), block_size)
+    return tokens.new_tensor(values).reshape(1, base.SEMANTIC_FRAMES)
 
 
 def target_condition_kind(policy: str, source_kind: str) -> str:
@@ -289,6 +326,30 @@ def training_scope(inventory: Path, name: str) -> dict[str, object]:
 
 
 def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
+    if (
+        arguments.training_policy == "semantic-token-hold"
+        and arguments.lora_scope == "control69"
+    ):
+        return {
+            "experiment_id": "EXP-100",
+            "slug": "exp100",
+            "candidate_id": "cv12-semantic-token-hold",
+            "candidate_name": (
+                "EXP-100 / CV12 / alternating clean and 5-frame-held tokens"
+            ),
+            "run_kind": "EXP-100 X-VC semantic-token hold evaluation",
+            "result_kind": "liveconv-exp100-xvc-semantic-token-hold-result/v1",
+            "question": (
+                "Does deterministic semantic-token collapse during retraining "
+                "make X-VC use its acoustic path without harming clean content?"
+            ),
+            "independent_variable": (
+                "semantic token input: 522 clean versus 522 rows where each "
+                "five-frame block repeats its first token; source waveform, "
+                "target waveform/speaker/semantic objectives, data identities, "
+                "control69, LR, seed, zero condition, and 1,044 updates stay fixed"
+            ),
+        }
     if (
         arguments.training_policy == "cross-target-condition"
         and arguments.lora_scope == "control69"
@@ -1024,6 +1085,7 @@ def run(
 
     modes = training_modes(arguments.training_policy)
     source_conditions = source_condition_schedule(arguments.training_policy)
+    token_conditions = semantic_token_schedule(arguments.training_policy)
     training_rows: list[dict[str, Any]] = []
     generated_inventory: list[dict[str, str]] = []
     training_source_inventory: list[dict[str, object]] = []
@@ -1167,16 +1229,24 @@ def run(
                 != base.TARGET_HIDDEN_FRAMES
             ):
                 raise RoleMixError("generated semantic feature shape drifted")
+            semantic_tokens = (
+                tokens[:, : base.SEMANTIC_FRAMES]
+                .detach()
+                .cpu()
+                .to(torch.int64)
+                .contiguous()
+            )
+            token_condition = token_conditions[row_index]
+            if token_condition == "hold5":
+                semantic_tokens = hold_semantic_tokens(semantic_tokens)
+            elif token_condition != "clean":
+                raise RoleMixError("semantic-token condition drifted")
             generated = {
                 "source_wav": training_source.detach()
                 .cpu()
                 .to(torch.float32)
                 .contiguous(),
-                "semantic_tokens": tokens[:, : base.SEMANTIC_FRAMES]
-                .detach()
-                .cpu()
-                .to(torch.int64)
-                .contiguous(),
+                "semantic_tokens": semantic_tokens,
                 "target_wav": output.detach().cpu().to(torch.float32).contiguous(),
                 "ssl_feat": hidden[..., : base.TARGET_HIDDEN_FRAMES]
                 .detach()
@@ -1218,6 +1288,7 @@ def run(
                     "target_id": target_pair.pair_id,
                     "donor_id": donor_pair.pair_id,
                     "condition": condition,
+                    "semantic_token_condition": token_condition,
                     "authentic_anchor": authentic_row,
                     "source_sha256": base.sha256_file(training_source_path),
                 }
@@ -1398,6 +1469,10 @@ def run(
         "source_condition_schedule_sha256": method._canonical_sha256(
             source_conditions
         ),
+        "semantic_token_condition_counts": dict(Counter(token_conditions)),
+        "semantic_token_condition_schedule_sha256": method._canonical_sha256(
+            token_conditions
+        ),
         "training_source_inventory_sha256": method._canonical_sha256(
             training_source_inventory
         ),
@@ -1481,6 +1556,7 @@ def _parser() -> argparse.ArgumentParser:
             "source-semantic",
             "denoise-semantic",
             "cross-target-condition",
+            "semantic-token-hold",
             "real-reconstruction20",
         ),
         default="role-mix",
@@ -1550,6 +1626,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 for item in source_condition_schedule(
                                     arguments.training_policy
                                 )
+                            )
+                        ),
+                        "semantic_token_condition_counts": dict(
+                            Counter(
+                                semantic_token_schedule(arguments.training_policy)
                             )
                         ),
                         "authentic_anchor_count": (

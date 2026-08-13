@@ -379,6 +379,38 @@ def candidate_policy(kind: str) -> dict[str, str]:
             ),
             "conditioned_inference": True,
         }
+    token_hold_policies = {
+        "semantic-token-hold": (
+            "EXP-101",
+            "liveconv-exp101-xvc-semantic-token-hold-new/v1",
+        ),
+        "semantic-token-hold-hadou": (
+            "EXP-103",
+            "liveconv-exp103-xvc-semantic-token-hold-hadou/v1",
+        ),
+        "semantic-token-hold-expanded": (
+            "EXP-104",
+            "liveconv-exp104-xvc-semantic-token-hold-expanded/v1",
+        ),
+        "semantic-token-hold-stress": (
+            "EXP-105",
+            "liveconv-exp105-xvc-semantic-token-hold-stress/v1",
+        ),
+    }
+    if kind in token_hold_policies:
+        experiment_id, result_kind = token_hold_policies[kind]
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "cv12-semantic-token-hold",
+            "display_name": (
+                "EXP-100 / alternating clean and 5-frame-held semantic tokens"
+            ),
+            "result_kind": result_kind,
+            "question": (
+                "Does semantic-token hold training preserve content and avoid "
+                "corruption on this frozen evaluation set?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -830,6 +862,10 @@ def _parser() -> argparse.ArgumentParser:
             "cross-target-condition-hadou",
             "cross-target-condition-expanded",
             "cross-target-condition-stress",
+            "semantic-token-hold",
+            "semantic-token-hold-hadou",
+            "semantic-token-hold-expanded",
+            "semantic-token-hold-stress",
         ),
         default="speaker7",
     )

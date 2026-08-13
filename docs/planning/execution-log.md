@@ -2928,3 +2928,20 @@ job queue.
   against blindly launching EXP-095--099. Those were not new training points
   but precommitted frozen screens of the same checkpoint, and all had completed
   by audit return. No job was stopped or repeated.
+
+## 2026-08-13T19:00:00Z - EXP-100--105 semantic-token hold prepared
+
+- Agent: `primary-integrator`.
+- Task: make the redundant acoustic path preserve content when source semantic
+  tokens collapse locally.
+- Dependencies: exact EXP-035 generated inventory; fixed target waveform,
+  target speaker and target-hidden semantic objectives; control69, LR, seed,
+  zero frame condition, clean waveforms, and 1,044 updates.
+- Result: the fixed schedule alternates 522 clean rows with 522 rows whose six
+  contiguous five-frame token blocks each repeat their first token. EXP-101--
+  105 reuse the 12 + 10 + 31 + 33 + 60 screens in addition to the seven-row
+  pilot. Focused tests cover exact block values and counts.
+- Changed action: commit after CPU admission and run one lane. Do not sweep
+  block size or corruption ratio. EXP-104 contains known low-token failure rows
+  and is therefore a failure-recurrence screen, not independent robustness
+  proof; other frozen sets still govern broad regression.

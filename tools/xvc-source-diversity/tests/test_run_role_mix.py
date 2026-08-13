@@ -322,6 +322,25 @@ def test_cross_target_condition_rotates_without_self_conditioning() -> None:
     assert "cross-target-condition" in choices
 
 
+def test_semantic_token_hold_alternates_fixed_five_frame_blocks() -> None:
+    schedule = ROLE_MIX.semantic_token_schedule("semantic-token-hold")
+    held = ROLE_MIX.held_token_values(list(range(ROLE_MIX.base.SEMANTIC_FRAMES)))
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(training_policy="semantic-token-hold", lora_scope="control69")
+    )
+
+    assert schedule[:4] == ["clean", "hold5", "clean", "hold5"]
+    assert Counter(schedule) == {"clean": 522, "hold5": 522}
+    assert held == [value for start in range(0, 30, 5) for value in [start] * 5]
+    assert Counter(ROLE_MIX.training_modes("semantic-token-hold")) == {
+        "standard": 1_044
+    }
+    assert ROLE_MIX.source_condition_schedule("semantic-token-hold") == [
+        {"kind": "clean"}
+    ] * 1_044
+    assert policy["experiment_id"] == "EXP-100"
+
+
 def test_source36_excludes_frame_condition_and_speaker_modulators() -> None:
     inventory = (
         ROLE_MIX.REPO_ROOT
