@@ -186,6 +186,17 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "heldout sentences?"
             ),
         }
+    if kind == "wave-adversarial-expanded":
+        return {
+            "experiment_id": "EXP-076",
+            "variant_id": "cv12-wave-adversarial",
+            "display_name": "EXP-064 / CV12 / pretrained waveform adversarial",
+            "result_kind": "liveconv-exp076-xvc-wave-adversarial-expanded/v1",
+            "question": (
+                "Does waveform-adversarial adaptation remain content-viable on "
+                "33 locally unused Common Voice speakers and utterances?"
+            ),
+        }
     if kind == "output2":
         return {
             "experiment_id": "EXP-069",
@@ -619,6 +630,7 @@ def _parser() -> argparse.ArgumentParser:
             "content-filtered6x2-hadou",
             "wave-adversarial",
             "wave-adversarial-hadou",
+            "wave-adversarial-expanded",
             "output2",
             "output2-hadou",
             "real-reconstruction20",

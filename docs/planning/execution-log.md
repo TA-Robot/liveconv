@@ -2642,3 +2642,15 @@ job queue.
 - Changed action: commit and admit exactly one run plus the frozen
   7 + 12 + 10 + 31 screen. Do not sweep the rehearsal ratio or train on any
   heldout evaluation row.
+
+## 2026-08-13T16:50:25Z - Grok progress audit
+
+- Agent: `grok` in tmux `liveconv-grok-auditor`; read-only, no delegation.
+- Verdict: `CONTINUE`.
+- Adopted: EXP-072 is a valid single-variable data hypothesis for recurrent
+  changed-utterance forgetting; run only this point, retain the frozen varied
+  gate, reject rehearsal-ratio and adjacent method sweeps, and make no machine
+  naturalness or voice-quality claim.
+- Not adopted: the audit snapshot reported gpu0 idle and EXP-072 unlaunched.
+  The committed job started at 16:52 while the audit was generating its answer.
+  No running work was stopped or redirected.
