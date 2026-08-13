@@ -8,6 +8,7 @@ import copy
 import hashlib
 import importlib.util
 import json
+import math
 import os
 import re
 import shlex
@@ -21,12 +22,22 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INTAKE = REPOSITORY_ROOT / "config" / "ms3-rvc-amitaro-intake.json"
 VALIDATOR_PATH = REPOSITORY_ROOT / "scripts" / "validate-deployment-bundle.py"
 ZERO_SHA256 = "sha256:" + "0" * 64
-RVC_PARAMETER_KEYS = {
-    "context_ms",
-    "crossfade_ms",
-    "index_rate",
-    "pitch_shift",
-    "rms_mix_rate",
+RVC_PARAMETER_KEYS = frozenset(
+    {
+        "context_ms",
+        "crossfade_ms",
+        "index_rate",
+        "pitch_shift",
+        "rms_mix_rate",
+    }
+)
+RVC_QUALITY_PARAMETER_KEYS = RVC_PARAMETER_KEYS | {
+    "input_gain_db",
+    "threshold_dbfs",
+}
+RVC_SEEDED_PARAMETER_KEYS = RVC_PARAMETER_KEYS | {"inference_seed"}
+RVC_SEEDED_QUALITY_PARAMETER_KEYS = RVC_QUALITY_PARAMETER_KEYS | {
+    "inference_seed"
 }
 
 
@@ -64,8 +75,15 @@ def _text(value: object, label: str) -> str:
 
 def _parameter_settings(value: object, label: str) -> dict[str, int | float]:
     settings = _object(value, label)
-    if set(settings) != RVC_PARAMETER_KEYS:
+    keys = frozenset(settings)
+    if keys not in {
+        RVC_PARAMETER_KEYS,
+        RVC_QUALITY_PARAMETER_KEYS,
+        RVC_SEEDED_PARAMETER_KEYS,
+        RVC_SEEDED_QUALITY_PARAMETER_KEYS,
+    }:
         raise ValueError(f"{label} must define the approved RVC parameter set")
+    quality_controls = "input_gain_db" in keys
     pitch_shift = settings["pitch_shift"]
     context_ms = settings["context_ms"]
     crossfade_ms = settings["crossfade_ms"]
@@ -83,13 +101,42 @@ def _parameter_settings(value: object, label: str) -> dict[str, int | float]:
     ):
         if type(candidate) not in {int, float} or not 0.0 <= candidate <= 1.0:
             raise ValueError(f"{label} {key} must be a number from 0 to 1")
-    return {
+    result: dict[str, int | float] = {
         "context_ms": context_ms,
         "crossfade_ms": crossfade_ms,
         "index_rate": float(index_rate),
         "pitch_shift": pitch_shift,
         "rms_mix_rate": float(rms_mix_rate),
     }
+    if quality_controls:
+        input_gain_db = settings["input_gain_db"]
+        threshold_dbfs = settings["threshold_dbfs"]
+        for key, candidate, lower, upper in (
+            ("input_gain_db", input_gain_db, -24.0, 24.0),
+            ("threshold_dbfs", threshold_dbfs, -120.0, 0.0),
+        ):
+            if (
+                type(candidate) not in {int, float}
+                or not math.isfinite(float(candidate))
+                or not lower <= float(candidate) <= upper
+            ):
+                raise ValueError(f"{label} {key} is outside the supported range")
+        result["input_gain_db"] = float(input_gain_db)
+        result["threshold_dbfs"] = float(threshold_dbfs)
+    if "inference_seed" in settings:
+        inference_seed = settings["inference_seed"]
+        if type(inference_seed) is not int or not 0 <= inference_seed < 2**63:
+            raise ValueError(
+                f"{label} inference_seed must be an integer from 0 to 2^63-1"
+            )
+        result["inference_seed"] = inference_seed
+    return result
+
+
+def _effective_sola_crossfade_ms(crossfade_ms: int) -> int:
+    """Return the overlap the pinned upstream engine can actually apply."""
+
+    return min(crossfade_ms, 40)
 
 
 def _expanded_candidates(intake_document: dict[str, Any]) -> list[dict[str, Any]]:
@@ -119,6 +166,7 @@ def _expanded_candidates(intake_document: dict[str, Any]) -> list[dict[str, Any]
         )
 
     expanded: list[dict[str, Any]] = []
+    quality_signatures: set[tuple[str, str]] = set()
     for voice in voices:
         base_variant_id = _text(voice.get("variant_id"), "variant_id")
         base_profile_id = _text(voice.get("profile_id"), "profile_id")
@@ -143,6 +191,25 @@ def _expanded_candidates(intake_document: dict[str, Any]) -> list[dict[str, Any]
             candidate["display_name"] = f"{base_display_name} ・ {display_suffix}"
             candidate["parameter_preset_id"] = preset_id
             candidate["parameter_settings"] = settings
+            if "input_gain_db" in settings:
+                comparable = dict(settings)
+                comparable["crossfade_ms"] = _effective_sola_crossfade_ms(
+                    int(comparable["crossfade_ms"])
+                )
+                signature = (
+                    base_variant_id,
+                    json.dumps(
+                        comparable,
+                        ensure_ascii=True,
+                        separators=(",", ":"),
+                        sort_keys=True,
+                    ),
+                )
+                if signature in quality_signatures:
+                    raise ValueError(
+                        "quality presets cannot differ only by effective SOLA crossfade"
+                    )
+                quality_signatures.add(signature)
             expanded.append(candidate)
     return expanded
 

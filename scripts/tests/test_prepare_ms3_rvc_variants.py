@@ -255,3 +255,134 @@ def test_preparation_expands_each_voice_into_distinct_parameter_profiles(
         "vc.rvc-v2.provider-bright-girl-bright.v1",
     ]
     assert profiles[1]["runtime"]["configuration"]["settings"]["pitch_shift"] == 4
+
+
+def test_quality_preparation_binds_gain_and_gate_as_new_profile_identity(
+    tmp_path: Path,
+) -> None:
+    candidate_root, intake = _candidate_fixture(tmp_path)
+    intake["parameter_presets"] = [
+        {
+            "preset_id": "quality-low-index",
+            "display_suffix": "quality low index",
+            "settings": {
+                "pitch_shift": 4,
+                "index_rate": 0.2,
+                "rms_mix_rate": 0.25,
+                "context_ms": 3500,
+                "crossfade_ms": 40,
+                "input_gain_db": 9.0,
+                "threshold_dbfs": -50.0,
+            },
+        }
+    ]
+
+    draft, *_ = PREPARE.prepare_documents(
+        _base_registry(), intake, candidate_root, reviewed_at=REVIEWED_AT
+    )
+
+    profile = draft["gateway_profile_registry"]["profiles"][0]
+    settings = profile["runtime"]["configuration"]["settings"]
+    assert profile["profile_id"] == "vc.rvc-v2.provider-bright-quality-low-index.v1"
+    assert settings["input_gain_db"] == 9.0
+    assert settings["threshold_dbfs"] == -50.0
+    assert settings["crossfade_ms"] == 40
+
+
+def test_quality_preparation_rejects_candidates_that_only_differ_by_sola_crossfade(
+    tmp_path: Path,
+) -> None:
+    candidate_root, intake = _candidate_fixture(tmp_path)
+    intake["parameter_presets"] = [
+        {
+            "preset_id": "quality-crossfade-40",
+            "display_suffix": "quality crossfade 40",
+            "settings": {
+                "pitch_shift": 4,
+                "index_rate": 0.2,
+                "rms_mix_rate": 0.25,
+                "context_ms": 3500,
+                "crossfade_ms": 40,
+                "input_gain_db": 9.0,
+                "threshold_dbfs": -50.0,
+            },
+        },
+        {
+            "preset_id": "quality-crossfade-90",
+            "display_suffix": "quality crossfade 90",
+            "settings": {
+                "pitch_shift": 4,
+                "index_rate": 0.2,
+                "rms_mix_rate": 0.25,
+                "context_ms": 3500,
+                "crossfade_ms": 90,
+                "input_gain_db": 9.0,
+                "threshold_dbfs": -50.0,
+            },
+        },
+    ]
+
+    with pytest.raises(
+        ValueError, match="cannot differ only by effective SOLA crossfade"
+    ):
+        PREPARE.prepare_documents(
+            _base_registry(), intake, candidate_root, reviewed_at=REVIEWED_AT
+        )
+
+
+def test_seeded_preparation_binds_generation_seed_without_quality_gain(
+    tmp_path: Path,
+) -> None:
+    candidate_root, intake = _candidate_fixture(tmp_path)
+    intake["parameter_presets"] = [
+        {
+            "preset_id": "clean-bright-seed0",
+            "display_suffix": "clean bright seed 0",
+            "settings": {
+                "pitch_shift": 4,
+                "index_rate": 0.3,
+                "rms_mix_rate": 0.5,
+                "context_ms": 3500,
+                "crossfade_ms": 90,
+                "inference_seed": 0,
+            },
+        }
+    ]
+
+    draft, *_ = PREPARE.prepare_documents(
+        _base_registry(), intake, candidate_root, reviewed_at=REVIEWED_AT
+    )
+
+    profile = draft["gateway_profile_registry"]["profiles"][0]
+    settings = profile["runtime"]["configuration"]["settings"]
+    assert profile["profile_id"] == (
+        "vc.rvc-v2.provider-bright-clean-bright-seed0.v1"
+    )
+    assert settings["inference_seed"] == 0
+    assert "input_gain_db" not in settings
+
+
+@pytest.mark.parametrize("seed", [-1, 2**63, 1.5, True])
+def test_seeded_preparation_rejects_invalid_generation_seed(
+    tmp_path: Path, seed: object
+) -> None:
+    candidate_root, intake = _candidate_fixture(tmp_path)
+    intake["parameter_presets"] = [
+        {
+            "preset_id": "seeded",
+            "display_suffix": "seeded",
+            "settings": {
+                "pitch_shift": 4,
+                "index_rate": 0.3,
+                "rms_mix_rate": 0.5,
+                "context_ms": 3500,
+                "crossfade_ms": 90,
+                "inference_seed": seed,
+            },
+        }
+    ]
+
+    with pytest.raises(ValueError, match="inference_seed"):
+        PREPARE.prepare_documents(
+            _base_registry(), intake, candidate_root, reviewed_at=REVIEWED_AT
+        )

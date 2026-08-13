@@ -88,6 +88,18 @@ sort_keys=True).encode("ascii")`; `configuration_hash` is `sha256:` followed
 by that byte string's lowercase digest. Use the concrete post-build artifact
 digests, never the placeholder strings, to calculate `configuration_hash`.
 
+The retained v1.4 profile intentionally has no `input_gain_db` field, so its
+existing configuration identity remains reproducible. A reviewed quality
+profile must state both of the following settings explicitly; their values are
+part of that new profile's distinct configuration identity:
+
+```json
+{
+  "input_gain_db": 9.0,
+  "threshold_dbfs": -50.0
+}
+```
+
 The Gateway must use that digest in `WorkerProfile.configuration_hash`, verify
 checkpoint and index paths with `ArtifactSpec`, and set:
 
@@ -137,7 +149,27 @@ LIVECONV_RVC_V2_SAMPLE_RATE=48000
 LIVECONV_RVC_V2_BLOCK_MS=500
 LIVECONV_RVC_V2_CROSSFADE_MS=50
 LIVECONV_RVC_V2_CONTEXT_MS=2500
+LIVECONV_RVC_V2_THRESHOLD_DBFS=-60
 ```
+
+`LIVECONV_RVC_V2_INPUT_GAIN_DB` is optional only for retained profiles and is
+required as an explicit reviewed setting for a quality profile. It is bounded
+to `-24` through `24` dB. Gain is applied before the adapter's existing 0.95
+peak safety limit, so a high request is attenuated rather than clipped.
+
+The pinned upstream engine treats `threshold_dbfs=-60` as a disabled-gate
+sentinel; only values greater than `-60` activate its RMS gate. It requests a
+SOLA crossfade but caps its effective overlap at 40 ms. Legacy profiles retain
+their requested crossfade for identity reproduction. Quality candidates may
+retain an anchor's requested value, but the compiler rejects two candidates
+whose only difference is a requested crossfade above that effective overlap.
+
+`LIVECONV_RVC_V2_INFERENCE_SEED` is optional for retained stochastic profiles.
+When present, it is a non-negative 63-bit integer bound into the configuration
+identity. The worker reapplies it at every generation boundary before the first
+audio block reaches upstream RVC. This makes the model's latent sampling stable
+across conversation turns; small CUDA numeric differences can remain, so the
+contract is perceptual/signal stability rather than byte-identical PCM.
 
 `LIVECONV_RVC_V2_INDEX_PATH` and `LIVECONV_RVC_V2_INDEX_SHA256` are an
 all-or-nothing pair and are required when index rate is nonzero. Do not set
