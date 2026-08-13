@@ -36,3 +36,9 @@ def test_style_instruction_is_one_fixed_japanese_value() -> None:
         "自然な日常会話として、明るく親しみやすく、"
         "過剰に演技せずに話してください。"
     )
+
+
+def test_child_home_cleanup_is_recursive() -> None:
+    source = RUNNER.read_text(encoding="utf-8")
+    assert "shutil.rmtree(child_home)" in source
+    assert "child_home.rmdir()" not in source

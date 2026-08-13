@@ -218,7 +218,7 @@ def execute(base: ModuleType, admission: dict[str, object]) -> dict[str, object]
         ):
             raise StyleProbeError("style child result inventory drifted")
         child_result_path.unlink()
-        child_home.rmdir()
+        shutil.rmtree(child_home)
         fixture = admission["fixture"]
         outputs: list[dict[str, str]] = []
         for row in fixture["utterances"]:
