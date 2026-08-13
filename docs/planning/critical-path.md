@@ -187,6 +187,8 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-117 fresh48 (broad signal retained; one short added loop)
         -> EXP-118 full-output teacher / 22 FFN-only LoRA targets
         -> EXP-119 frozen fresh48 gate
+        -> EXP-120 full-output teacher / control69 DoRA
+        -> EXP-121 frozen fresh48 gate
         -> operator hearing when available
 ```
 

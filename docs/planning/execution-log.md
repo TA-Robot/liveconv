@@ -3239,3 +3239,25 @@ job queue.
   itself completed normally.
 - Rework: runtime evidence only. Admit exactly one 1,044-update EXP-118 lane,
   followed by external7 and frozen fresh48. Do not run adjacent scopes.
+
+## 2026-08-13T21:04:26Z - EXP-118/119 FFN-only teacher rejected
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-13T20:55:13Z.
+- End: 2026-08-13T21:04:26Z.
+- Dependencies: commits `481efb9` and `b01793e`; train48; frozen fresh48;
+  gpu0; listener 8878.
+- Result: 1,044 updates completed in 310.78 seconds at 4.77 GiB peak.
+  Standard loss moved `144.22 -> 135.37`; teacher loss moved `161.05 ->
+  72.51`. External7 improved control source-relative `0.360 -> 0.290` and
+  known-text `0.399 -> 0.383`, with no loop. EXP-119 produced 144 outputs.
+  On the 45 common non-loop rows candidate versus control was 14/21/10,
+  source-relative mean `0.329` versus `0.326`, median `0.273` versus `0.250`,
+  and known-text mean `0.606` versus `0.610`.
+- Problems: the candidate retained control69's catastrophic repeated-family
+  row and added a new 110-character repeated-`ぃ` run. Together with the
+  naturally repetitive source it had three flagged rows versus control's two.
+- Rework: reject FFN-only, stop before stress60, and do not run adjacent scope
+  points. Return to EXP-116's stronger control69 signal and test one materially
+  different PEFT parameterization, DoRA, before considering conditioning or
+  data-construction changes.

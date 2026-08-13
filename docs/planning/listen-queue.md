@@ -244,14 +244,23 @@ technical signal, but honor the no-added-loop stop and do not run stress60 yet.
 The next one-axis method keeps the successful full-output objective and freezes
 all 47 attention LoRA targets, adapting only the 22 converter feed-forward
 linears. Do not open adjacent scope points.
+EXP-118/119 rejected that hypothesis. FFN-only retained control69's catastrophic
+repeated-family failure and added a separate 110-character repeated-`ぃ` run.
+Its common 45 non-loop rows nearly tied control, so the failure is not a broad
+content collapse; it is specifically unsafe output stability. Attention updates
+were necessary for EXP-116 to remove the control failure, but not sufficient to
+avoid its own short loop. Close the scope branch. The next one-axis point returns
+to EXP-116's control69 topology and changes only PEFT parameterization from
+standard LoRA to DoRA. Do not open LoRA+, rsLoRA, rank, or DoRA-parameter sweeps
+beside it.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Keep EXP-116's full-output objective, train48/fresh48, 835/209 positions, LR, seed, and target fixed; freeze attention and adapt only 22 FFN linears in EXP-118 | parent | no | one committed smoke and one 1,044-update lane, or technical failure |
-| 2 | Render EXP-119 on frozen fresh48 and stop on an added loop or broad common-non-loop regression; reuse existing stress60 only on survival | parent | no human dependency for machine reject | technical disposition recorded before any stress expansion |
-| 3 | Do not sweep adjacent scope/count/share/weight points; select the next materially different conditioning or data-construction method from the fresh48 failure evidence | parent | no | one recorded method decision |
+| 1 | Keep EXP-116's data/objective/control69 fixed and change only standard LoRA to DoRA in EXP-120 | parent | no | one committed backward smoke and one 1,044-update lane, or technical failure |
+| 2 | Render EXP-121 on frozen fresh48 and stop on an added loop or broad common-non-loop regression | parent | no human dependency for machine reject | technical disposition recorded before any downstream matrix |
+| 3 | On survival only, cross recording domains rather than adding more Common Voice: frozen stress60 plus existing JVS/Hadou sources | parent | no | separate speaker/content/condition/domain summaries; no combined automatic winner |
 | 4 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.
