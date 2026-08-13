@@ -1,6 +1,6 @@
 # EXP-115: X-VC teacher breadth48 on frozen fresh48
 
-Status: blocked on one EXP-114 checkpoint; no separate training
+Status: completed; technical reject
 
 ## Question
 
@@ -15,3 +15,11 @@ EXP-112 manifest. Stop the method on an adapter-added gross loop or broad
 regression across common non-loop rows. If it survives, admit the already-fixed
 balanced stress matrix next. Do not move fresh48 into training, select rows,
 tune teacher share/weight, or claim naturalness from auxiliary ASR.
+
+## Result
+
+Commit `23f9d6b` produced 144 model outputs in 124.01 seconds at 4.77 GiB
+peak. EXP-114 had four gross-repetition rows total and added two failures not
+present in control69. Across the common 44 non-loop rows it was 10/22/12 and
+regressed both source-relative mean and median. Stop; do not render stress60.
+All audio remains unheard and unselected on port 8878.

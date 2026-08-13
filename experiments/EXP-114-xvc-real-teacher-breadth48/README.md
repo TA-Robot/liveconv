@@ -1,6 +1,6 @@
 # EXP-114: X-VC real-teacher breadth48
 
-Status: admitted for one gpu0 run
+Status: completed; rejected by frozen fresh48
 
 ## Question
 
@@ -34,3 +34,23 @@ ignored manifest SHA-256 is
 Focused tests passed 53 cases. Exact CPU admission confirmed 835 standard plus
 209 teacher-semantic roles, 48 teacher sources, 87 target texts, and 1,044
 updates without CUDA.
+
+## Result
+
+Commit `23f9d6b` completed 1,044 updates in 304.05 seconds at 4.77 GiB
+peak. Standard-role loss moved `144.22 -> 134.83`; teacher-semantic loss moved
+`0.0079 -> 1.3302`. The built-in external seven-row mean regressed control69
+from `0.360` to `0.430` without gross repetition.
+
+EXP-115 then rendered frozen fresh48. The candidate added two failures beyond
+the naturally repetitive source and control69's existing loop, for four gross
+repetition rows total. Its raw mean was `1.463`. On the 44 rows where no arm
+looped, candidate versus control69 was mean `0.324` versus `0.319`, median
+`0.304` versus `0.225`, and W/T/L `10/22/12`.
+
+## Decision
+
+Reject breadth48 as a generic method and stop before the stress screen. The
+teacher-source count, share, and weight are closed. The larger source pool did
+not solve output instability; the next method must change what is held stable,
+not add another count point.

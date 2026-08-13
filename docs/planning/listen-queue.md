@@ -227,14 +227,22 @@ generic keeper and close adversarial-weight tuning. The next training point
 keeps EXP-106's exact 209 semantic-teacher slots but cycles them across 48 new
 training-only speakers disjoint from fresh48; this tests real-source diversity,
 not another teacher share or weight.
+EXP-114/115 completed that point. Increasing the real teacher pool from 12 to
+48 did not solve instability: the candidate added two fresh48 gross failures,
+and on the common 44 non-loop rows it regressed median `0.225 -> 0.304` with
+W/T/L `10/22/12`. Close source count, teacher share, and semantic weight.
+The increasing teacher-semantic loss (`0.0079 -> 1.3302`) indicates that
+semantic-only rehearsal is not holding the waveform decoder near frozen-base
+behavior. A materially different next method may distill the frozen base's
+complete converted waveform on the same train48 pool; fresh48 remains frozen.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Materialize 48 training-only Common Voice speakers disjoint from original64 and frozen fresh48 | parent | no | hashes, unique speakers, and zero overlap fixed from the committed selector |
-| 2 | Train EXP-114 once with the same 835/209 schedule and optimization, changing only real teacher pool 12 -> 48 | parent | no | 1,044 updates and built-in external render, or technical failure |
-| 3 | Render frozen fresh48 first, then only expand the gate if it avoids adapter-added loops and broad regression | parent | no human dependency for machine reject | technical stop or retained unheard audio recorded |
+| 1 | Audit whether complete frozen-base output distillation on train48 is the shortest distinct response to semantic-only drift | grok/parent | no | CONTINUE/SIMPLIFY/REDIRECT recorded before next gpu0 investment |
+| 2 | If admitted, keep train48, fresh48, 835/209 positions, scope, LR, and seed fixed; change only teacher rows from semantic-only to full converted-output targets | parent | no | implementation/runtime smoke committed before one gpu0 lane |
+| 3 | Render frozen fresh48 first after training and stop on added loop or broad common-non-loop regression | parent | no human dependency for machine reject | technical disposition recorded before any stress expansion |
 | 4 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

@@ -3120,3 +3120,24 @@ job queue.
 - Problems: none so far.
 - Changed action: commit before acquisition, materialize the training pool,
   then train one point. Do not add 24/96-source or teacher-share variants.
+
+## 2026-08-13T20:18:14Z - EXP-114/115 teacher breadth48 rejected
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-13T20:09:00Z.
+- End: 2026-08-13T20:18:14Z.
+- Dependencies: commits `07d7a0d` and `23f9d6b`; train48 manifest
+  `cd093f43...`; frozen fresh48; gpu0; listener 8878.
+- Result: training completed 1,044 updates in 304.05 seconds at 4.77 GiB peak.
+  Standard loss moved `144.22 -> 134.83`, while teacher-semantic loss moved
+  `0.0079 -> 1.3302`. External7 regressed `0.360 -> 0.430` without a loop.
+  EXP-115 then produced 144 fresh48 outputs in 124.01 seconds. The candidate
+  had four gross-repetition rows total, adding two failures beyond the natural
+  repeated source and control's existing failure. On the common 44 non-loop
+  rows it was 10/22/12, mean `0.319 -> 0.324`, median `0.225 -> 0.304`.
+- Problems: more real teacher speakers did not constrain waveform-level output
+  stability. The broad fresh gate prevented a near-tied non-loop mean from
+  hiding two catastrophic added failures.
+- Rework: none. Stop before stress60. Close teacher-source count, share, and
+  semantic-weight sweeps. Preserve train48 as training-only and fresh48 as
+  evaluation-only for a genuinely different objective.
