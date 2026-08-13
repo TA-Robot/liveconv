@@ -322,6 +322,28 @@ class Capture:
             ]
 
 
+def wait_for_credit(
+    capture: Capture,
+    *,
+    generation_id: int,
+    sent_frames: int,
+    capacity_frames: int,
+    timeout: float,
+) -> float:
+    """Apply the output-backed worker credit used by the Gateway bridge."""
+
+    started = time.perf_counter()
+    deadline = started + timeout
+    while (
+        sent_frames - len(capture.messages("audio.output", generation_id))
+        >= capacity_frames
+    ):
+        if time.perf_counter() >= deadline:
+            raise SystemPathError("worker credit did not recover")
+        time.sleep(0.002)
+    return (time.perf_counter() - started) * 1_000.0
+
+
 def run_retained_generation(
     worker: worker_module.XvcWorker,
     capture: Capture,
@@ -336,10 +358,24 @@ def run_retained_generation(
     )
     started = time.perf_counter()
     deadline = started
+    credit_wait_ms = 0.0
+    max_in_flight_frames = 0
     for sequence, frame in enumerate(frames):
+        waited_ms = wait_for_credit(
+            capture,
+            generation_id=generation_id,
+            sent_frames=sequence,
+            capacity_frames=worker_module.CAPACITY_FRAMES,
+            timeout=timeout,
+        )
+        credit_wait_ms += waited_ms
+        if waited_ms >= 1.0:
+            deadline = max(deadline, time.perf_counter())
         worker.handle(
             audio_message(frame, generation_id=generation_id, sequence=sequence)
         )
+        output_count = len(capture.messages("audio.output", generation_id))
+        max_in_flight_frames = max(max_in_flight_frames, sequence + 1 - output_count)
         deadline += FRAME_MS / 1_000
         remaining = deadline - time.perf_counter()
         if remaining > 0:
@@ -371,6 +407,8 @@ def run_retained_generation(
         "input_frames": len(frames),
         "output_frames": len(outputs),
         "wall_seconds": time.perf_counter() - started,
+        "credit_wait_ms": credit_wait_ms,
+        "max_in_flight_frames": max_in_flight_frames,
         "sequence_contiguous": True,
         "generation_completed": True,
     }

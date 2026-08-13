@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -75,3 +76,24 @@ def test_future_geometry_rejects_subframe_values() -> None:
         assert "multiple of 20" in str(error)
     else:
         raise AssertionError("125 ms must not enter the 20 ms worker contract")
+
+
+def test_gateway_credit_waits_for_output_before_accepting_frame_26() -> None:
+    capture = MODULE.Capture()
+
+    def release() -> None:
+        time.sleep(0.02)
+        capture.emit({"type": "audio.output", "generation_id": 2})
+
+    thread = threading.Thread(target=release)
+    thread.start()
+    waited_ms = MODULE.wait_for_credit(
+        capture,
+        generation_id=2,
+        sent_frames=25,
+        capacity_frames=25,
+        timeout=1,
+    )
+    thread.join()
+
+    assert waited_ms >= 10

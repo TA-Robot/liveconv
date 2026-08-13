@@ -44,8 +44,8 @@ HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
   --adapter-dir artifacts/xvc-human-paired/listen-now/exp026-human87-horizon-v1/adapter-0696 \
   --target-reference artifacts/xvc-human-paired/listen-now/exp026-human87-horizon-v1/train-pairs/EMOTION100_003/target-48k.wav \
   --actual-source artifacts/ms3/listening/exp020-human-rvc-smoke-8s-plain-20260812/00-native-source.wav \
-  --work-dir artifacts/xvc-human-paired/listen-now/exp032-system-path-v3 \
-  --listener-dir artifacts/ms3/listening/exp032-system-path-v3 \
+  --work-dir artifacts/xvc-human-paired/listen-now/exp032-system-path-v4 \
+  --listener-dir artifacts/ms3/listening/exp032-system-path-v4 \
   --confirm-gpu-lease gpu0 --device cuda:0
 ```
 
@@ -60,3 +60,10 @@ window inference, or publication: deterministic Torch requires
 `CUBLAS_WORKSPACE_CONFIG=:4096:8` before its first cuBLAS operation. `v3` sets
 that standard deterministic-runtime value before importing Torch. No candidate
 input or worker behavior changes.
+
+`v3` reached the real canceled inference, then its next generation overflowed
+the direct worker queue because the probe paced input but did not reproduce the
+Gateway bridge's output-backed 25-frame credit. It published nothing, and the
+stuck exception-exit process was terminated and released its GPU memory. `v4`
+waits for output whenever credit is full and records both credit wait and
+maximum in-flight frames; model and audio conditions remain unchanged.
