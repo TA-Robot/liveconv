@@ -2739,6 +2739,13 @@ job queue.
   EXP-035 control69 and EXP-081 source-semantic adapters; evaluation only.
 - Result: the plan contains exactly sixty balanced rows, twelve per condition.
   Forty-nine focused tests, Ruff, CPU admission, and `git diff --check` passed.
+- Problems: first materialization stopped before a manifest because the shared
+  condition transform assumed every source was already 2.4 seconds; one real
+  input is 2.184 seconds. The partial ignored directory was moved to
+  `/tmp/liveconv-exp086-stress-inputs-failed-20260813T1758Z`.
+- Rework: normalize every source to the renderer's existing first-2.4-second,
+  right-pad-if-short policy before applying conditions. A short-source
+  regression and 21 focused tests passed; no model render was started or lost.
 - Changed action: commit, materialize and freeze source WAV identities, then
   render base/control/candidate in one bounded GPU run. Do not tune condition
   levels or start another training method before this result.

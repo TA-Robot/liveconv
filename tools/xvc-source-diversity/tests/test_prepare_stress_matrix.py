@@ -41,3 +41,22 @@ def test_planned_rows_cross_twelve_sources_with_five_conditions() -> None:
     }
     assert [row["base_id"] for row in rows[:5]] == ["row00"] * 5
     assert rows[1]["stress_condition"] == {"kind": "noise", "snr_db": 20.0}
+
+
+def test_source_plan_preserves_short_utterance_for_padded_materialization() -> None:
+    source = {
+        "items": [
+            {
+                "id": f"row{index:02d}",
+                "filename": f"row{index:02d}.mp3",
+                "duration_seconds": 2.184 if index == 0 else 3.0,
+            }
+            for index in range(12)
+        ]
+    }
+
+    rows = MATRIX.planned_rows(source)
+
+    assert rows[0]["base_id"] == "row00"
+    assert rows[0]["duration_seconds"] == 2.4
+    assert rows[0]["window_policy"].startswith("first-2.4s-clean")

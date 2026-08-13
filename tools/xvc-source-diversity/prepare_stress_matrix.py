@@ -19,6 +19,7 @@ for import_root in (TOOL_ROOT, HUMAN_TOOL_ROOT):
         sys.path.insert(0, str(import_root))
 
 import listen_now as base  # noqa: E402
+import render_commonvoice as external  # noqa: E402
 import render_new_utterances as render_new  # noqa: E402
 import run as method  # noqa: E402
 
@@ -118,11 +119,16 @@ def run(arguments: argparse.Namespace, source: Mapping[str, Any]) -> int:
     if "config" in config:
         config = config["config"]
     arguments.output_root.mkdir()
-    by_id = {item["id"]: item for item in source["items"]}
+    normalized_sources: dict[str, Path] = {}
+    for item in source["items"]:
+        source_path = arguments.source_root / item["filename"]
+        normalized_path = arguments.output_root / f".{item['id']}-source-window.wav"
+        values = external.padded_model_audio(source_path, process_audio, config)
+        method._write_model_window(normalized_path, values)
+        normalized_sources[str(item["id"])] = normalized_path
     materialized: list[dict[str, Any]] = []
     for index, row in enumerate(planned):
-        original = by_id[row["base_id"]]
-        source_path = arguments.source_root / original["filename"]
+        source_path = normalized_sources[str(row["base_id"])]
         destination = arguments.output_root / row["filename"]
         method.transform_window(
             source_path,
@@ -133,6 +139,8 @@ def run(arguments: argparse.Namespace, source: Mapping[str, Any]) -> int:
             seed=base.SEED + index,
         )
         materialized.append({**row, "sha256": base.sha256_file(destination)})
+    for path in normalized_sources.values():
+        path.unlink()
     manifest = {
         "kind": KIND,
         "source": {
@@ -200,6 +208,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         OSError,
         ValueError,
         method.SourceDiversityError,
+        base.ListenNowError,
+        external.ExternalEvaluationError,
         StressMatrixError,
     ) as error:
         print(f"exp086-stress-matrix-error: {error}", file=sys.stderr)
