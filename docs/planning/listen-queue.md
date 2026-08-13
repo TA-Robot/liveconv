@@ -31,6 +31,7 @@ each result. Accumulated candidates remain unselected until human hearing.
 | EXP-032 stream floor + system path | Actual 8.17 s input at epoch 8 with future 100 / 110 / 120 / 125 ms, followed by the future-120 candidate through the bounded worker/cancellation path | hear 120 and 125 ms, then compare the source/system pair; record the lowest acceptable arm, or `rejected` | 100/110 have auxiliary-ASR repetition; the worker probe completed with zero stale frames but is not Gateway-, Extension-, or route-qualified |
 | MS-3 stable VC heldout shortlist | The same three public utterances through stable seed-0 RVC Sasayaki clean-bright and stable X-VC Yofukashi Q034 | per row prefer one arm, or reject both; judge clarity, naturalness, and target-voice fit by ear | a consistent preference admits one next listen-now route; it is not promotion or product selection |
 | MS-3 stable VC exact actual-input shortlist | The exact 8.17 s raw PCM previously consumed by X-VC, through stable seed-0 RVC and stable X-VC Yofukashi Q034 | prefer one arm, or reject both; judge clarity, naturalness, and target-voice fit by ear | a preference corroborates the heldout set; it is not promotion or product selection |
+| MS-3 stable VC interrupt recovery | Fresh-session output versus the same short utterance immediately after canceling an older generation, once for RVC and X-VC | listen only for a post-cancel clarity/voice change; record `continue` or `rejected` per family | stale-frame safety is machine-closed; hearing may identify a quality issue but does not promote a route |
 | RVC turn-consistency diagnostic | `ms3-rvc-repeat-turn-v1` versus the explicit seed-0/seed-34 repeat collections | compare whether the seeded output removes audible turn-to-turn voice changes; do not choose by auxiliary CER alone | seed 0 is the system integration candidate only; a later audible preference may change it |
 
 Historical X-VC synthetic blinds (EXP-010–019) stay on the listener as
@@ -249,6 +250,18 @@ fresh Gateway session. Stable RVC CER was 0.111/0.000/0.032 and stable X-VC was
 content-intact generalization only, not naturalness or voice identity. Retain
 the three RVC/X-VC pairs for hearing and stop adding public rows before an
 operator decision.
+
+The bounded realtime fallback requested by the 10:13 progress audit is also
+complete. `ms3-stable-xvc-cancel-recovery-v1` and
+`ms3-stable-rvc-cancel-recovery-v1` each cancel an older two-second generation,
+close the local output gate before cancel, and render the same short recovery
+utterance in the next generation. Both families returned zero stale output
+frames after the cancel acknowledgment and completed all 151 recovery frames.
+X-VC fresh/recovery audio was numerically near-identical and both transcribed
+at CER 0. RVC fresh/recovery retained the same transcript and CER 0.111 but had
+waveform correlation 0.892, so its perceptual significance remains unheard.
+This closes additional cancel variants and RVC state decomposition; do not use
+the waveform difference as an automatic quality decision.
 
 ## Keepers
 

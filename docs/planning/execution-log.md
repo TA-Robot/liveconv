@@ -1615,3 +1615,80 @@ job queue.
   after the original stable heldout shortlist and before the exact actual-input
   pair; ask the next scheduled progress audit for the shortest system-side or
   quality-candidate slice that does not reopen closed training or diagnostics.
+
+## 2026-08-13T10:13:55Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, no tools or delegation).
+- Result: `CONTINUE`. Grok accepted the new generalization audio and kept
+  public-row expansion, human87/horizon/LR, RVC state/training, EXP-024,
+  promote ceremony, and machine quality selection closed.
+- Adopted: yes, with the audit's explicit fallback. A second distinct retained
+  actual pre-VC source hash does not exist, so the parent selected one audible
+  realtime interrupt/cancel recovery slice using the already-stable profiles.
+- Expected time saved: about 20--30 minutes versus reopening a closed model or
+  training axis while operator hearing is unavailable.
+
+## 2026-08-13T10:24:19Z - stable X-VC cancel recovery published
+
+- Agent: `primary-integrator`.
+- Task: Send two seconds of an older X-VC generation, close the local output
+  gate, cancel it, then render a known short utterance as the next generation
+  on the same Gateway connection.
+- Dependencies: commits `5dfdea6` and `b3c14c6`; stable X-VC Q034 Gateway
+  `8882`; listener `8878`; exclusive `gpu0`.
+- Result: 84 old-generation output frames already in the socket before the
+  1.482 ms cancel acknowledgment were excluded; zero stale frames arrived
+  after acknowledgment. The new generation completed 151/151 frames and was
+  published as `ms3-stable-xvc-cancel-recovery-v1` with SHA-256
+  `e460626...` beside fresh control `a9e98fa...`.
+- Machine screen: both arms transcribed the exact reference at CER 0. Waveform
+  correlation was 0.9999999998, MAE `1.74e-7`, and maximum difference
+  `2.48e-5`; this is corruption evidence, not a perceptual winner.
+- Problems/rework: the first execution stopped after sending the old audio but
+  before cancel because the reused renderer helper did not export protocol
+  cancel classes. No listener collection was published; the partial output was
+  isolated under `/tmp`, explicit protocol imports were committed, and the
+  clean retry completed.
+- Changed action: close further X-VC cancel variants. Apply the same system
+  slice once to stable RVC because that family has known generation-state
+  sensitivity.
+
+## 2026-08-13T10:28:05Z - listener refresh latency unblocked
+
+- Agent: `primary-integrator`.
+- Task: Make newly published collections visible on port 8878 without forcing
+  every library API request to rebuild the full 498-run index.
+- Dependencies: listener cache commit `687d922`; listener `8878`.
+- Result: the server now keys its cached library by a cheap artifact-root
+  fingerprint. The first changed-root scan remains about 14 seconds, while a
+  cached request fell to 21--39 ms. A focused test proves reuse and invalidation
+  when a new top-level collection appears; 25 Python listener tests and Ruff
+  passed. After the RVC publish, the API reported 499 runs / 838 candidates and
+  both cancel-recovery collections with two candidates each.
+- Problems/rework: the first five-second probe after publishing hit the
+  expected changed-root rebuild and timed out; the ongoing server scan warmed
+  the cache, and subsequent calls completed in tens of milliseconds.
+- Changed action: keep the listener cache; do not optimize the full cold scan
+  unless it again blocks the hearing loop.
+
+## 2026-08-13T10:33:46Z - stable RVC cancel recovery published
+
+- Agent: `primary-integrator`.
+- Task: Reuse the exact X-VC cancellation sequence on stable seed-0 RVC, with
+  profile family as the only changed system variable.
+- Dependencies: commit `ece00d6`; stable seed-0 RVC Gateway `8881`; listener
+  `8878`; exclusive `gpu0`.
+- Result: 75 old-generation output frames already in the socket before the
+  1.610 ms cancel acknowledgment were excluded; zero stale frames arrived
+  after acknowledgment. The recovery generation completed 151/151 frames and
+  published as `ms3-stable-rvc-cancel-recovery-v1` with SHA-256 `aff86ec...`
+  beside frozen fresh control `fe59f8e...`.
+- Machine screen: both arms retained the same transcript, “社長カルの指示です”,
+  at CER 0.111 without gross repetition. Unlike X-VC, their waveform
+  correlation was 0.892 (MAE 0.00418, maximum difference 0.14769); that
+  difference remains a human-listening question and is not an automatic fail.
+- Changed action: stale-frame safety is closed for both stable families. Do not
+  reopen state decomposition or add cancel variants; keep the RVC A/B audible
+  for later hearing and ask the next scheduled audit whether a distinct
+  system slice now has more value than another GPU render.

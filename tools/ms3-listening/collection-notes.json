@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "top_status": {
-    "updated_at": "2026-08-13T10:10:00Z",
-    "current": "MS-3の最優先は、会話ターン安定化済みRVC seed 0と数値安定なX-VC Yofukashi Q034のstable shortlistです。既存heldout、未使用validation 3発話のgeneralization、完全一致する実ChatGPT入力の3面で比較音声を公開しました。",
+    "updated_at": "2026-08-13T10:35:00Z",
+    "current": "MS-3の最優先は、会話ターン安定化済みRVC seed 0と数値安定なX-VC Yofukashi Q034のstable shortlistです。既存heldout、未使用validation 3発話、完全一致する実ChatGPT入力に加え、両familyの割り込み復帰比較も公開しました。EXP-020、EXP-021、EXP-023は未聴の副次queueとして残ります。",
     "hold": "履歴のX-VC比較、EXP-027〜031、370本の発音確認は今回の判定を止めません。EXP-024のDTW pilotやlookahead sweepは再開せず、RVC再学習、TTSの人間VC corpusへの混入、keep前のpromote作業も行いません。",
-    "next": "人間が戻ったら、まずstable VC heldout shortlist、次に未使用validation generalization、最後にexact actual-inputを聴いてください。新しい6候補は補助CER 0.000〜0.111、gross repetitionなしですが、これは内容screenで音質順位ではありません。明瞭さ、自然さ、目標声への近さを耳で判断します。固定ポート: 8878。"
+    "next": "人間が戻ったら、まずstable VC heldout shortlist、次に未使用validation generalization、最後にexact actual-inputを聴いてください。割り込み復帰はfresh/after-cancelの明瞭さも確認し、continueまたはrejectedを記録します。補助CERは内容screenで音質順位ではありません。固定ポート: 8878。"
   },
   "collections": [
     {
@@ -32,6 +32,24 @@
       "data": "3.0/4.8/7.3秒の3発話×2候補。RVC補助CERは0.111/0.000/0.032、X-VCは0.000/0.100/0.000。全6候補gross repetitionなし。",
       "status": "両familyとも別入力で内容崩壊しないことだけ確認済み。明瞭さ・自然さ・目標声への近さを耳で比較し、機械値でwinnerを選ばないでください。",
       "review_priority": "priority",
+      "review_mode": "gross_reject_only"
+    },
+    {
+      "match_all": ["ms3-stable-rvc-cancel-recovery-v1"],
+      "display_title": "RVC stable seed 0: fresh session vs 割り込み直後",
+      "purpose": "旧generationを2秒でcancelし、同じGateway接続で次の短いgenerationを完走したとき、古い音声や状態が次出力へ混ざらないか確認",
+      "data": "cancel ackは1.610 ms、ack後の旧generation frameは0、次generationは151/151 frames完走。fresh/after-cancelの補助転写はともに『社長カルの指示です』でCER 0.111。波形相関0.892、MAE 0.00418の差は聴覚未判定です。",
+      "status": "安全上のstale frame混入はありません。波形差が聞こえる品質差かだけ耳で確認してください。追加のRVC state分解や自動winner選定は行いません。",
+      "review_priority": "normal",
+      "review_mode": "gross_reject_only"
+    },
+    {
+      "match_all": ["ms3-stable-xvc-cancel-recovery-v1"],
+      "display_title": "X-VC stable Q034: fresh session vs 割り込み直後",
+      "purpose": "旧generationを2秒でcancelし、同じGateway接続で次の短いgenerationを完走したとき、古い音声や状態が次出力へ混ざらないか確認",
+      "data": "cancel ackは1.482 ms、ack後の旧generation frameは0、次generationは151/151 frames完走。両腕の補助転写は正解文と一致してCER 0。波形相関は0.9999999998、MAE 0.000000174。",
+      "status": "機械screenでは実質同一で、安全上のstale frame混入もありません。任意の聴覚確認用で、追加のcancel variantは不要です。",
+      "review_priority": "low",
       "review_mode": "gross_reject_only"
     },
     {
