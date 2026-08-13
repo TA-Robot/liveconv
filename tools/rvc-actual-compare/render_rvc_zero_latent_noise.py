@@ -266,7 +266,13 @@ def execute(
     profile: dict[str, Any],
     environment: dict[str, str],
 ) -> dict[str, Any]:
-    del profile
+    runtime = profile.get("runtime")
+    worker_endpoint = (
+        runtime.get("worker_endpoint") if isinstance(runtime, dict) else None
+    )
+    if not isinstance(worker_endpoint, str):
+        raise ZeroLatentNoiseError("stable RVC worker endpoint is unavailable")
+    worker_python = Path(worker_endpoint).resolve(strict=True)
     arguments.work_dir.mkdir(parents=True)
     standard_raw = arguments.work_dir / "standard.f32le"
     zero_raw = arguments.work_dir / "zero-latent-noise.f32le"
@@ -288,7 +294,7 @@ def execute(
         started = time.perf_counter()
         subprocess.run(
             [
-                sys.executable,
+                str(worker_python),
                 str(Path(__file__).resolve()),
                 "--internal-render",
                 "--internal-source-f32",
