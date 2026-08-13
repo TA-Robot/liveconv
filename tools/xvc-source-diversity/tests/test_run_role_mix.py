@@ -279,6 +279,32 @@ def test_real_teacher_output48_changes_only_teacher_objective() -> None:
     assert policy["candidate_id"] == "cv12-real-teacher-output48"
 
 
+def test_real_teacher_output48_ffn22_freezes_attention() -> None:
+    inventory = Path("artifacts/exp007/phase0-inputs-v1/inventory.json")
+    scope = ROLE_MIX.training_scope(inventory, "ffn22")
+    targets = scope["target_modules"]
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(
+            training_policy=ROLE_MIX.REAL_TEACHER_OUTPUT_POLICY,
+            lora_scope="ffn22",
+        )
+    )
+
+    assert len(targets) == 22
+    assert sum(".ff_c." in item for item in targets) == 10
+    assert sum(".ff_x." in item for item in targets) == 12
+    assert not any(".attn." in item for item in targets)
+    assert scope["trainable_parameter_count"] == 450_560
+    assert policy["experiment_id"] == "EXP-118"
+    assert policy["candidate_id"] == "cv12-real-teacher-output48-ffn22"
+    choices = next(
+        action.choices
+        for action in ROLE_MIX._parser()._actions
+        if action.dest == "lora_scope"
+    )
+    assert "ffn22" in choices
+
+
 def test_source_augmentation_is_exact_and_keeps_standard_roles() -> None:
     conditions = ROLE_MIX.source_condition_schedule("source-augmentation")
     policy = ROLE_MIX.experiment_policy(

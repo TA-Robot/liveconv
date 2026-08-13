@@ -487,6 +487,22 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "and preserve content on frozen fresh48?"
             ),
         }
+    if kind == "real-teacher-output48-ffn22-fresh48":
+        return {
+            "experiment_id": "EXP-119",
+            "variant_id": "cv12-real-teacher-output48-ffn22",
+            "display_name": (
+                "EXP-118 / full-output teacher / FFN-only LoRA"
+            ),
+            "result_kind": (
+                "liveconv-exp119-xvc-real-teacher-output48-ffn22-fresh48/v1"
+            ),
+            "question": (
+                "Does freezing attention adaptation retain the broad "
+                "full-output teacher signal without adding corruption on "
+                "frozen fresh48?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -975,6 +991,7 @@ def _parser() -> argparse.ArgumentParser:
             "real-teacher-semantic20-fresh48",
             "real-teacher-breadth48-fresh48",
             "real-teacher-output48-fresh48",
+            "real-teacher-output48-ffn22-fresh48",
         ),
         default="speaker7",
     )

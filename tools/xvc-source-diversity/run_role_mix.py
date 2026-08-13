@@ -101,6 +101,10 @@ SPEAKER7_TARGETS = tuple(
 )
 SPEAKER7_TRAINABLE_PARAMETERS = 166_400
 SOURCE36_TRAINABLE_PARAMETERS = 442_368
+FFN22_TARGET_NAME_LIST_SHA256 = (
+    "ee61c441a91e0570562f87d8a8d5b20a238c66f7caff4c09068a3f41804c92f1"
+)
+FFN22_TRAINABLE_PARAMETERS = 450_560
 OUTPUT2_TARGETS = (
     "acoustic_converter.norm_out.linear",
     "acoustic_converter.proj_out",
@@ -358,6 +362,22 @@ def authentic_pairs(
 def training_scope(inventory: Path, name: str) -> dict[str, object]:
     if name == "control69":
         return horizon.lora_scope(inventory, name)
+    if name == "ffn22":
+        control = horizon.lora_scope(inventory, "control69")
+        observed = tuple(
+            item
+            for item in control["target_modules"]
+            if ".ff_c." in item or ".ff_x." in item
+        )
+        if (
+            len(observed) != 22
+            or method._canonical_sha256(observed) != FFN22_TARGET_NAME_LIST_SHA256
+        ):
+            raise RoleMixError("ffn22 target topology drifted")
+        return {
+            "target_modules": list(observed),
+            "trainable_parameter_count": FFN22_TRAINABLE_PARAMETERS,
+        }
     if name == "source36":
         expanded = horizon.lora_scope(inventory, "expanded79")
         observed = tuple(
@@ -412,6 +432,30 @@ def training_scope(inventory: Path, name: str) -> dict[str, object]:
 
 
 def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
+    if (
+        arguments.training_policy == REAL_TEACHER_OUTPUT_POLICY
+        and arguments.lora_scope == "ffn22"
+    ):
+        return {
+            "experiment_id": "EXP-118",
+            "slug": "exp118",
+            "candidate_id": "cv12-real-teacher-output48-ffn22",
+            "candidate_name": (
+                "EXP-118 / full-output teacher / FFN-only LoRA"
+            ),
+            "run_kind": "EXP-118 X-VC FFN-only full-output teacher evaluation",
+            "result_kind": "liveconv-exp118-xvc-real-teacher-output48-ffn22/v1",
+            "question": (
+                "Does freezing attention adaptation retain the broad full-output "
+                "teacher gain without adding local repetition failures?"
+            ),
+            "independent_variable": (
+                "LoRA target scope: EXP-116 control69 versus the contained 22 "
+                "converter feed-forward linears; train48, full-output teacher "
+                "objective, 835/209 positions, total updates, LR, rank, seed, "
+                "target voice, and zero frame condition stay fixed"
+            ),
+        }
     if (
         arguments.training_policy == REAL_TEACHER_OUTPUT_POLICY
         and arguments.lora_scope == "control69"
@@ -2113,7 +2157,14 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--lora-scope",
-        choices=("control69", "speaker7", "source36", "output2", "decoder-final"),
+        choices=(
+            "control69",
+            "ffn22",
+            "speaker7",
+            "source36",
+            "output2",
+            "decoder-final",
+        ),
         default="control69",
     )
     parser.add_argument("--donors", type=Path, required=True)
