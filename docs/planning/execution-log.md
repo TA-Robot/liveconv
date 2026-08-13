@@ -1914,3 +1914,33 @@ job queue.
   `make control-check`, and `git diff --check` pass.
 - Changed action: commit the runner before execution, then start the sole GPU
   lane and publish the same seven-speaker base/CV12-standard/role-mix screen.
+
+## 2026-08-13T12:46:25Z - EXP-036 role mix technically rejected
+
+- Agent: `primary-integrator`.
+- Task: Reproduce all EXP-035 generated pairs, train the official 40/20/40 role
+  mixture for 1,044 updates, and screen the same seven external speakers.
+- Dependencies: commit `2c0f14e`; exclusive `gpu0`; EXP-035 generated inventory
+  `e909e465...`; listener `8878`.
+- Result: all 1,044 regenerated PCM hashes matched. Training completed in
+  255.62 seconds with 5.13 GB peak allocation and published 21 candidates.
+  No arm gross-looped. Role mix worsened mean source-relative distance from
+  0.360 to 0.400 and known-text distance from 0.399 to 0.423 versus EXP-035
+  all-standard. Its maximum returned from 0.571 to 1.0 by producing an empty
+  transcript on the row EXP-035 had rescued.
+- Changed action: technical reject; do not spend a fixed-condition render on
+  role mix. Test target frame context cheaply at inference before admitting
+  one matching context-aware retrain. No naturalness or voice winner is claimed.
+
+## 2026-08-13T12:51:40Z - EXP-037 target-context admission prepared
+
+- Agent: `primary-integrator`.
+- Task: Exercise X-VC's upstream masked target-context geometry without leaking
+  the current text or paying for training before corruption is known.
+- Result: the render holds the EXP-035 adapter, seven external speakers,
+  target reference, and seeds fixed. Its only change replaces all-zero frame
+  conditioning with separate Amitaro utterance `EMOTION100_009` followed by a
+  zeroed 2.4-second current window. Twenty-two focused tests, Ruff, CPU
+  admission, and `git diff --check` pass.
+- Changed action: commit and render the two arms on `gpu0`. Admit one matching
+  1,044-update retrain only if the contextual arm avoids gross corruption.

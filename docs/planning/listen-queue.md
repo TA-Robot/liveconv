@@ -65,17 +65,21 @@ target voice, and zero target conditioning fixed. It avoided gross repetition
 on seven disjoint speakers and reduced the adapted worst case, but did not
 beat base overall. On the frozen ten-condition set it tied EXP-033's auxiliary
 content score and retained the same noise regression. Donor-count expansion is
-therefore closed. EXP-036 is the current single GPU lane: keep EXP-035 data,
-updates, scope, LR, loss, and conditioning fixed and change only the upstream
+therefore closed. EXP-036 kept those controls and changed only the upstream
 training-role assignment to X-VC's official standard/reconstruction/reversed
-mix.
+mix. It restored an empty external output that EXP-035 had rescued and was
+worse on both aggregate content diagnostics, so the role mix is technically
+rejected without a fixed-condition expansion. EXP-037 is the current lane: a
+cheap external render first tests content-safe target context versus the
+all-zero frame condition; only a non-corrupt result admits context-aware
+retraining on the same pairs.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Commit and run EXP-036: official standard/reconstruction/reversed role mix on EXP-035's fixed 1,044 pairs | parent | no | seven-row CV12-standard/role-mix comparison published and coarse screen recorded |
-| 2 | If role mix avoids a gross external regression, render it once on the frozen ten clean/tempo/F0/noise/silence conditions | parent | no human dependency for machine reject | fixed-condition comparison published; no automated winner |
+| 1 | Render a content-safe Amitaro context plus a masked 2.4-second current window on the seven external speakers | parent | no | zero-condition/context-condition comparison and corruption screen published |
+| 2 | If contextual inference avoids gross regression, retrain the fixed EXP-035 1,044 pairs with the same context policy | parent | no human dependency for machine reject | trained-context external comparison published; no automated winner |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

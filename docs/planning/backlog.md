@@ -79,13 +79,14 @@ name one owner and ownership zone below.
 | LV-068 | Done | P0 | MS-3 | Listen-now train the 87 whole-short human pairs through X-VC | EXP-025/026 stretch+pad training and heldout renders completed; scope, horizon, and learning-rate follow-ups are closed, with stable comparisons published on 8878 and no quality winner claimed |
 | LV-069 | Done | P0 | MS-3 | Retrain X-VC with generated same-content source-speaker diversity and a fixed diverse evaluation | EXP-033 published 30 candidates; JVS-clean content improved, but external Common Voice exposed one gross loop and no generalization claim survives |
 | LV-070 | Done | P0 | MS-3 | Expand generated-source donor breadth at fixed exposure and evaluate on disjoint external speakers | EXP-035 published 21 disjoint-speaker and 30 fixed-condition candidates; CV12 removed the JVS3 gross external failure but did not beat base overall and retained the noise weakness, so donor-count expansion is closed |
-| LV-071 | In progress | P0 | MS-3 | Restore X-VC's upstream training-role mixture at fixed EXP-035 exposure | EXP-036 changes only the 1,044-update role schedule from 100% standard to the official 40% standard / 20% reconstruction / 40% reversed mixture, then screens the same seven disjoint speakers |
+| LV-071 | Done | P0 | MS-3 | Restore X-VC's upstream training-role mixture at fixed EXP-035 exposure | EXP-036 completed 1,044 updates and 21 external candidates; it restored one empty output and worsened aggregate auxiliary content versus all-standard, so no fixed-condition expansion is admitted |
+| LV-072 | In progress | P0 | MS-3 | Test content-safe target frame context before context-aware X-VC retraining | First render the same seven external speakers with a separate Amitaro context plus masked current window; only a non-corrupt result admits one fixed-pair retrain |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| LV-071 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-036 note, and its ignored artifacts | Publish seven CV12-standard/role-mix comparisons, record the corruption screen, then replan |
+| LV-072 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-037 note, and its ignored artifacts | Publish the seven-row zero/context admission render and either start one context-aware train or record a technical stop |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.
@@ -108,8 +109,9 @@ prepared audio. Human hearing is temporarily unavailable. MS-3 therefore runs
 one committed method-level GPU pilot at a time, publishes its audio on 8878,
 and uses machine metrics only to reject corruption. EXP-035 closed donor-count
 expansion after improving external stability without repairing the shared
-noise weakness. EXP-036 now tests X-VC's official upstream role mixture at
-fixed exposure; exact human87 epoch/LR/scope and EXP-024 DTW retries remain
+noise weakness. EXP-036 role mixing then regressed the external screen.
+EXP-037 now tests content-safe target frame context before spending on its
+matching retrain; exact human87 epoch/LR/scope and EXP-024 DTW retries remain
 closed. Do not spend this batch on hashes or receipts.
 
 ## MS-3 dispatch plan
@@ -119,7 +121,7 @@ The live board is [`listen-queue.md`](listen-queue.md). Process is
 
 | Ready item | Intended ownership zone | Stop condition |
 |---|---|---|
-| LV-071 EXP-036 | `tools/xvc-source-diversity/` and fixed-port 8878 | seven-row CV12-standard/role-mix audio plus external corruption screen, then replan |
+| LV-072 EXP-037 | `tools/xvc-source-diversity/` and fixed-port 8878 | seven-row zero/context audio plus corruption screen; retrain only if admitted |
 | Unheard drain | Fixed-port 8878: EXP-033/034/035, stable public sets, EXP-023 | Operator `continue`/`rejected` when hearing returns |
 
 LV-032, LV-055, LV-056, LV-057, LV-058, and LV-068 are complete. LV-059,

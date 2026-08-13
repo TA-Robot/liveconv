@@ -154,9 +154,10 @@ claims from that artifact are superseded. The active join is now:
         -> 52-speaker Common Voice source admission
         -> EXP-035 12-donor breadth at fixed 1,044 updates (complete)
         -> seven disjoint speakers + frozen ten conditions (complete)
-        -> EXP-036 official 40/20/40 training-role mix (gpu0)
+        -> EXP-036 official 40/20/40 training-role mix (external regression; stop)
+        -> EXP-037 content-safe target-context render admission (gpu0)
+        -> context-aware fixed-pair retrain only if non-corrupt
         -> seven disjoint-speaker content/corruption screen
-        -> publish CV12 standard / role-mix audio on 8878
         -> operator hearing when available
 ```
 
@@ -164,11 +165,13 @@ EXP-035 held target text exposure and 1,044 updates fixed while replacing
 EXP-033's three donor speakers repeated four times with twelve distinct donor
 speakers in one pass. Its external worst case improved, but base remained
 competitive and the fixed noise regression survived; no more donor-count point
-is admitted. EXP-036 reuses those exact generated pairs and changes only role
-assignment from all-standard to X-VC's official standard/reconstruction/
-reversed proportions. Training donors and external evaluation speakers remain
-disjoint. This stays on the method path without retrying the closed human87
-epoch/LR/scope or EXP-024 DTW axes.
+is admitted. EXP-036 reused those exact generated pairs and changed only role
+assignment; the all-standard adapter remained safer on the external screen, so
+role mixing is closed. EXP-037 next tests X-VC's otherwise-unused frame
+condition with a different Amitaro utterance followed by a zeroed current
+window, preventing same-text leakage. Training donors and external evaluation
+speakers remain disjoint. This stays on the method path without retrying the
+closed human87 epoch/LR/scope or EXP-024 DTW axes.
 
 ```text
  Unheard on 8878: EXP-033/034/035 / stable public RVC-XVC / EXP-023 Qwen
