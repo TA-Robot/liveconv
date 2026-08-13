@@ -85,3 +85,10 @@ def test_semantic2x_candidate_is_exp050() -> None:
 
     assert policy["experiment_id"] == "EXP-050"
     assert policy["variant_id"] == "cv12-semantic2x"
+
+
+def test_source36_candidate_is_exp053() -> None:
+    policy = NEW.candidate_policy("source36")
+
+    assert policy["experiment_id"] == "EXP-053"
+    assert policy["variant_id"] == "cv12-source36"

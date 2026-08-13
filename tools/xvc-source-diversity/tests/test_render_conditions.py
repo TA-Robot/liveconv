@@ -57,3 +57,11 @@ def test_semantic2x_uses_exp051_condition_policy() -> None:
 
     assert policy["experiment_id"] == "EXP-051"
     assert policy["candidate"][0] == "cv12-semantic2x"
+
+
+def test_source36_uses_exp054_condition_policy() -> None:
+    policy = RENDER.candidate_policy("source36")
+
+    assert policy["experiment_id"] == "EXP-054"
+    assert policy["control"][0] == "cv12-control69"
+    assert policy["candidate"][0] == "cv12-source36"

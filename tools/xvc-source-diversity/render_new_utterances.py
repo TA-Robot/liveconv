@@ -97,6 +97,17 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "heldout speakers?"
             ),
         }
+    if kind == "source36":
+        return {
+            "experiment_id": "EXP-053",
+            "variant_id": "cv12-source36",
+            "display_name": "EXP-052 / CV12 / source-path-only LoRA",
+            "result_kind": "liveconv-exp053-xvc-source36-new-utterance/v1",
+            "question": (
+                "Does source36 preserve content on new utterances from heldout "
+                "speakers?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -442,6 +453,7 @@ def _parser() -> argparse.ArgumentParser:
             "aligned-conditions",
             "authentic-anchor",
             "semantic2x",
+            "source36",
         ),
         default="speaker7",
     )

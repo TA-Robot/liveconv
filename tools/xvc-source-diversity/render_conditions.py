@@ -93,6 +93,22 @@ def candidate_policy(kind: str) -> dict[str, Any]:
                 "30-xvc-cv12-semantic2x.wav",
             ),
         }
+    if kind == "source36":
+        return {
+            "experiment_id": "EXP-054",
+            "result_kind": "liveconv-exp054-xvc-source36-condition-result/v1",
+            "run_kind": "EXP-054 X-VC source36 condition evaluation",
+            "control": (
+                "cv12-control69",
+                "EXP-035 / CV12 / joint source-condition control69",
+                "20-xvc-cv12-control69.wav",
+            ),
+            "candidate": (
+                "cv12-source36",
+                "EXP-052 / CV12 / source-path-only LoRA",
+                "30-xvc-cv12-source36.wav",
+            ),
+        }
     raise ConditionRenderError(f"unknown candidate kind: {kind}")
 
 
@@ -363,6 +379,7 @@ def _parser() -> argparse.ArgumentParser:
             "reconstruction20",
             "authentic-anchor",
             "semantic2x",
+            "source36",
         ),
         default="donor-breadth",
     )
