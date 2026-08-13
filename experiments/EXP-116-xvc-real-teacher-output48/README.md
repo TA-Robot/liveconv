@@ -1,6 +1,6 @@
 # EXP-116: X-VC full-output teacher on train48
 
-Status: admitted for one gpu0 training run
+Status: completed; strongest technical signal, not a clean pass
 
 ## Question
 
@@ -35,3 +35,23 @@ Commit `2fe309a` passed a one-row real-model LoRA backward smoke: the frozen
 teacher target contained 38,400 samples, full composite loss was `161.0455`,
 gradient norm was `24.3294`, and peak GPU allocation was 3.30 GiB. Exit status
 was zero. No smoke adapter was retained.
+
+## Result
+
+Commit `28ddbd0` completed 1,044 updates in 329.15 seconds at 4.77 GiB peak.
+Standard loss moved `144.22 -> 131.10`; full-output teacher loss moved
+`161.02 -> 72.94`. External7 had no gross loop and improved control69 from
+`0.360` to `0.320` source-relative and `0.399` to `0.359` known-text distance.
+
+EXP-117 then rendered frozen fresh48. Raw mean improved to `0.334`, versus base
+`0.414` and control69 `1.001`; maximum distance was `1.25`, versus control's
+catastrophic `32.4`. On the 45 rows where no arm tripped repetition, candidate
+versus control69 was 10/25/10, mean `0.329` versus `0.319`, median `0.154`
+versus `0.250`, and known-text mean `0.586` versus `0.610`. Versus base it was
+17/18/10.
+
+One low-quality source added a 12-character repeated-`ぷ` output, so the exact
+method does not pass the precommitted no-added-loop stop and stress60 was not
+run. Retain it as the strongest unheard technical candidate. The next bounded
+method freezes all 47 attention LoRA targets and retains only the 22 converter
+feed-forward targets under the same full-output training.

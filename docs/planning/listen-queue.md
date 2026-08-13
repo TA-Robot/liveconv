@@ -235,14 +235,23 @@ The increasing teacher-semantic loss (`0.0079 -> 1.3302`) indicates that
 semantic-only rehearsal is not holding the waveform decoder near frozen-base
 behavior. A materially different next method may distill the frozen base's
 complete converted waveform on the same train48 pool; fresh48 remains frozen.
+EXP-116/117 completed that full-output point. It removed control69's catastrophic
+fresh48 loop, reduced raw mean `1.001 -> 0.334`, reduced maximum distance
+`32.4 -> 1.25`, and improved common-non-loop median `0.250 -> 0.154` and
+known-text mean `0.610 -> 0.586`. It also added one shorter repeated-`ぷ`
+failure on a different low-quality source. Retain this as the strongest unheard
+technical signal, but honor the no-added-loop stop and do not run stress60 yet.
+The next one-axis method keeps the successful full-output objective and freezes
+all 47 attention LoRA targets, adapting only the 22 converter feed-forward
+linears. Do not open adjacent scope points.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Commit and run one-row backward smoke for full converted-output teacher targets on train48 | parent | no | finite waveform, full composite loss, and LoRA gradient, or fail closed |
-| 2 | Keep train48, fresh48, 835/209 positions, scope, LR, and seed fixed; train one EXP-116 full-output teacher lane | parent | no | 1,044 updates and built-in external render, or technical failure |
-| 3 | Render frozen fresh48 first and stop on added loop or broad common-non-loop regression; reuse existing stress60 only on survival | parent | no human dependency for machine reject | technical disposition recorded before any stress expansion |
+| 1 | Keep EXP-116's full-output objective, train48/fresh48, 835/209 positions, LR, seed, and target fixed; freeze attention and adapt only 22 FFN linears in EXP-118 | parent | no | one committed smoke and one 1,044-update lane, or technical failure |
+| 2 | Render EXP-119 on frozen fresh48 and stop on an added loop or broad common-non-loop regression; reuse existing stress60 only on survival | parent | no human dependency for machine reject | technical disposition recorded before any stress expansion |
+| 3 | Do not sweep adjacent scope/count/share/weight points; select the next materially different conditioning or data-construction method from the fresh48 failure evidence | parent | no | one recorded method decision |
 | 4 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

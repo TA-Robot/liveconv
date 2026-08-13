@@ -3187,3 +3187,26 @@ job queue.
   same one-row smoke was rerun with explicit log and status capture; no adapter
   or comparison output from either smoke was retained.
 - Rework: runtime evidence only. Admit one 1,044-update EXP-116 lane now.
+
+## 2026-08-13T20:43:00Z - EXP-116/117 full-output teacher retained with stop
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-13T20:33:00Z.
+- End: 2026-08-13T20:43:00Z.
+- Dependencies: commits `2fe309a` and `28ddbd0`; train48 manifest; frozen
+  fresh48; gpu0; listener 8878.
+- Result: training completed 1,044 updates in 329.15 seconds at 4.77 GiB peak.
+  Standard loss moved `144.221 -> 131.102`; full-output teacher loss moved
+  `161.018 -> 72.944`. External7 improved source-relative `0.360 -> 0.320`
+  and known-text `0.399 -> 0.359` without a gross loop. EXP-117 produced 144
+  fresh48 outputs. Candidate raw mean was `0.334`, versus base `0.414` and
+  control69 `1.001`; maximum was `1.25`, versus control69 `32.4`. On the 45
+  common non-loop rows, candidate versus control was 10/25/10, mean `0.329`
+  versus `0.319`, median `0.154` versus `0.250`, and known-text mean `0.586`
+  versus `0.610`.
+- Problems: one low-quality source produced a new 12-character repeated-`ぷ`
+  output. The exact method therefore fails the precommitted no-added-loop stop
+  even though it is the strongest broad technical signal so far.
+- Rework: stop before stress60 and do not tune the failed row. Retain the audio
+  unheard and unselected. Next change only freeze scope: remove all 47 attention
+  targets and keep the 22 converter FFN linears under the same objective/data.
