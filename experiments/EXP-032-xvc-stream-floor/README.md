@@ -23,3 +23,28 @@ operator hearing; it is not automatically selected or route-qualified.
 Stop on any inherited identity or control mismatch, malformed audio, CUDA
 failure, or partial publication. Do not open another lookahead experiment after
 this result.
+
+## Candidate system-path probe
+
+The next bounded step reuses this EXP rather than opening another quality
+sweep. `tools/xvc-human-paired/system_path_smoke.py` supplies the measured
+epoch-8/future-120-ms geometry to the existing `XvcWorker` queue and generation
+state machine without changing or activating the retained Gateway identity. It
+cancels generation 1 during real inference and requires zero stale output, then
+paces the actual input at 20 ms into generation 2 and publishes one WAV on
+`8878`. This is the implementation bridge before a keep, not route binding.
+
+```bash
+HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
+  artifacts/exp007/peft-resolve-20260811/runtime-1e52ef9ab8f1/bin/python \
+  tools/xvc-human-paired/system_path_smoke.py \
+  --xvc-source-root artifacts/x-vc/source \
+  --xvc-config artifacts/x-vc/xvc-local.yaml \
+  --checkpoint artifacts/x-vc/checkpoint/xvc.pt \
+  --adapter-dir artifacts/xvc-human-paired/listen-now/exp026-human87-horizon-v1/adapter-0696 \
+  --target-reference artifacts/xvc-human-paired/listen-now/exp026-human87-horizon-v1/train-pairs/EMOTION100_003/target-48k.wav \
+  --actual-source artifacts/ms3/listening/exp020-human-rvc-smoke-8s-plain-20260812/00-native-source.wav \
+  --work-dir artifacts/xvc-human-paired/listen-now/exp032-system-path-v1 \
+  --listener-dir artifacts/ms3/listening/exp032-system-path-v1 \
+  --confirm-gpu-lease gpu0 --device cuda:0
+```
