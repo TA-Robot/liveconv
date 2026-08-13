@@ -1407,3 +1407,24 @@ job queue.
   the recovered original level on this input; no perceptual winner is claimed.
 - Changed action: close finer gain search and retain the A/B for optional
   hearing. Do not infer a production normalizer from one actual input.
+
+## 2026-08-13T09:01:00Z - stable RVC natural turn-boundary defect reproduced
+
+- Agent: `primary-integrator`.
+- Task: Hold exact input bytes, order, total frames, stable seed-0 RVC profile,
+  and Gateway fixed; split only the generation at 4.24 seconds, the center of
+  an existing 560 ms sub--50 dBFS silence.
+- Dependencies: commit `5587fc8`; exact raw source and one-generation output;
+  evaluation Gateway `8881`; listener `8878`; exclusive `gpu0`.
+- Result: both generations completed in one Gateway session and concatenated
+  to the same 409-frame length as the one-generation control. The new output
+  published as `ms3-stable-rvc-turn-split-v1` with SHA-256
+  `e79cc12e00f9a2fa95a8c32bdab8f649aea9d7dbd1e7268a9e876c928c000598`.
+- Machine screen: full-input CER worsened from 0.417 to 0.556 without gross
+  repetition. Per-turn decoding localized the change: turn 1 was identical at
+  0.577, while the reset turn 2 worsened from 0.167 to 0.500.
+- Interpretation limit: this identifies a generation-boundary quality defect,
+  not whether naturalness or voice identity is worse. It does not by itself
+  distinguish latent-noise restart, cold context, or overlap state.
+- Changed action: prioritize one root-cause control at the RVC generation
+  boundary before another voice, gain, denoise, input, or training lane.

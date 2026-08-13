@@ -181,6 +181,15 @@ This brackets the useful level near the recovered original on this input.
 Retain `ms3-stable-rvc-input-gain-v1` for optional hearing and close finer gain
 search; do not turn a single-input ASR minimum into an automatic normalizer.
 
+One conversation-boundary probe split the same exact input at the center of
+its 560 ms silence while preserving byte order and the total 409 frames. Stable
+RVC coarse CER worsened from 0.417 for one generation to 0.556 for two. The
+first turn was unchanged at 0.577; only the reset second turn worsened from
+0.167 to 0.500. No arm gross-looped. This is a generation-boundary quality
+defect relevant to realtime conversation, not a model winner. Investigate one
+root-cause control before widening voices or inputs; do not rerender the same
+split unchanged.
+
 ## Keepers
 
 None yet. A `keep` here is the only ticket into a promote pass.
