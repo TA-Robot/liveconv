@@ -61,6 +61,22 @@ def candidate_policy(kind: str) -> dict[str, Any]:
                 "30-xvc-cv12-reconstruction20.wav",
             ),
         }
+    if kind == "authentic-anchor":
+        return {
+            "experiment_id": "EXP-048",
+            "result_kind": "liveconv-exp048-xvc-authentic-condition-result/v1",
+            "run_kind": "EXP-048 X-VC authentic-anchor condition evaluation",
+            "control": (
+                "cv12-control69",
+                "EXP-035 / CV12 / all-synthetic control69",
+                "20-xvc-cv12-control69.wav",
+            ),
+            "candidate": (
+                "cv11-authentic1",
+                "EXP-046 / eleven synthetic donors + one authentic source",
+                "30-xvc-cv11-authentic1.wav",
+            ),
+        }
     raise ConditionRenderError(f"unknown candidate kind: {kind}")
 
 
@@ -326,7 +342,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--check", action="store_true")
     parser.add_argument(
         "--candidate-kind",
-        choices=("donor-breadth", "reconstruction20"),
+        choices=("donor-breadth", "reconstruction20", "authentic-anchor"),
         default="donor-breadth",
     )
     parser.add_argument("--evaluation-set", type=Path, required=True)

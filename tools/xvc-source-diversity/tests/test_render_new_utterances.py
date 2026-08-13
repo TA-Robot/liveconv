@@ -71,3 +71,10 @@ def test_aligned_condition_candidate_is_exp045() -> None:
 
     assert policy["experiment_id"] == "EXP-045"
     assert policy["variant_id"] == "cv12-aligned-conditions"
+
+
+def test_authentic_anchor_candidate_is_exp047() -> None:
+    policy = NEW.candidate_policy("authentic-anchor")
+
+    assert policy["experiment_id"] == "EXP-047"
+    assert policy["variant_id"] == "cv11-authentic1"

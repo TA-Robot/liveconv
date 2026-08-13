@@ -2267,3 +2267,42 @@ job queue.
   target voice, control69 scope, LR, loss, seed, and zero condition stay fixed.
 - Changed action: commit the mixed-data method before execution and start it as
   the sole GPU lane. Screen seven external speakers before other renders.
+
+## 2026-08-13T14:19:53Z - EXP-046 audio published; seven-row screen regressed
+
+- Agent: `primary-integrator`.
+- Task: Train eleven synthetic plus one authentic source per target and publish
+  seven external comparisons.
+- Dependencies: commit `97466dd`; exclusive `gpu0`; listener `8878`.
+- Result: all 1,044 updates completed in 305.35 seconds with 4.77 GB peak
+  allocation and 21 published candidates. There were no gross loops, but the
+  authentic anchor regressed control69's source-relative mean 0.360 to 0.430,
+  known-text distance 0.399 to 0.505, and maximum distance 0.571 to 1.0.
+- Initial action: mark the seven-row screen as a clear technical regression,
+  pending the scheduled progress audit's challenge to that evaluation gate.
+
+## 2026-08-13T14:22:46Z - Grok audit broadened the method decision gate
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, exact 1,800-second cadence).
+- Result: `CONTINUE`. Grok accepted the one-variable authentic-source method
+  and GPU use, but found the seven-row-first gate too weak because it had
+  produced EXP-044's false positive. It required judging EXP-046 on the frozen
+  twelve changed utterances plus ten audio conditions before selecting another
+  method.
+- Adopted: yes. This overturns the initial seven-row-only closure, not its
+  recorded regression. No new training or mixture point is admitted.
+- Expected time saved: remove the recurring seven-row false-positive stage from
+  future method decisions and avoid choosing a loss axis from an incomplete
+  evaluation.
+
+## 2026-08-13T14:24:09Z - EXP-047/048 combined renders prepared
+
+- Agent: `primary-integrator`.
+- Task: Reuse the EXP-046 adapter on twelve changed utterances and ten frozen
+  clean/tempo/F0/noise/silence rows with base/control69 fixed.
+- Result: Ruff, 36 focused tests, exact CPU admission for both frozen sets, and
+  `git diff --check` passed. Both runs have zero training updates.
+- Changed action: commit both render-only slices, execute sequentially on the
+  sole GPU, screen each, then choose one loss/conditioning/learning-target
+  method only from the combined 7 + 12 + 10 evidence.

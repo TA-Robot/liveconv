@@ -73,6 +73,19 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "from heldout speakers?"
             ),
         }
+    if kind == "authentic-anchor":
+        return {
+            "experiment_id": "EXP-047",
+            "variant_id": "cv11-authentic1",
+            "display_name": (
+                "EXP-046 / eleven synthetic donors + one authentic source"
+            ),
+            "result_kind": "liveconv-exp047-xvc-authentic-new-utterance/v1",
+            "question": (
+                "Does authentic-anchor training generalize to new utterances "
+                "from heldout speakers?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -412,7 +425,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--check", action="store_true")
     parser.add_argument(
         "--candidate-kind",
-        choices=("speaker7", "reconstruction20", "aligned-conditions"),
+        choices=(
+            "speaker7",
+            "reconstruction20",
+            "aligned-conditions",
+            "authentic-anchor",
+        ),
         default="speaker7",
     )
     parser.add_argument("--evaluation-set", type=Path, required=True)

@@ -166,8 +166,8 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-043 source-only varied conditions (external regression; closed)
         -> EXP-044 alignment-preserving varied conditions (seven-row improvement)
         -> EXP-045 twelve changed utterances (regressed; augmentation closed)
-        -> EXP-046 eleven synthetic + one authentic source per target (gpu0)
-        -> seven external speakers, then only if safe 12 new + 10 conditions
+        -> EXP-046 eleven synthetic + one authentic source per target (seven-row regression)
+        -> EXP-047 twelve changed utterances + EXP-048 ten conditions (gpu0, combined gate)
         -> operator hearing when available
 ```
 

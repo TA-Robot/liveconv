@@ -104,14 +104,18 @@ that it did not generalize: on twelve changed utterances the mean regressed
 from control69 0.184 to 0.289 and maximum distance rose from 0.571 to 1.0.
 Aligned augmentation is closed. EXP-046 now replaces exactly one of twelve
 synthetic donor exposures per target with its already-authorized aligned human
-source, retaining eleven synthetic donors and every optimizer control.
+source, retaining eleven synthetic donors and every optimizer control. Its
+seven-row screen regressed from control69 0.360 to 0.430, but the same seven
+rows produced EXP-044's false positive. The 14:20 Grok audit therefore changed
+the decision gate: EXP-047's twelve changed utterances and EXP-048's ten frozen
+conditions must both be screened before another training method is selected.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Train EXP-046 with eleven synthetic donors plus one authentic aligned source per target | parent | no | seven-row external comparison and corruption screen published |
-| 2 | If EXP-046 survives, render the twelve changed utterances and ten frozen conditions | parent | no human dependency for machine reject | generalization and stress screens published; no automated winner |
+| 1 | Render EXP-047 authentic-anchor on twelve changed utterances | parent | no | 36 candidates and source-relative screen published |
+| 2 | Render EXP-048 authentic-anchor on the frozen ten conditions, regardless of the unreliable seven-row set | parent | no human dependency for machine reject | condition screen published; combined 7 + 12 + 10 gate complete |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

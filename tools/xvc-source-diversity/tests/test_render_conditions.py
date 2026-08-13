@@ -42,3 +42,11 @@ def test_reconstruction_candidate_uses_exp042_condition_policy() -> None:
     assert policy["experiment_id"] == "EXP-042"
     assert policy["control"][0] == "cv12-control69"
     assert policy["candidate"][0] == "cv12-reconstruction20"
+
+
+def test_authentic_anchor_uses_exp048_condition_policy() -> None:
+    policy = RENDER.candidate_policy("authentic-anchor")
+
+    assert policy["experiment_id"] == "EXP-048"
+    assert policy["control"][0] == "cv12-control69"
+    assert policy["candidate"][0] == "cv11-authentic1"

@@ -85,13 +85,13 @@ name one owner and ownership zone below.
 | LV-074 | Done | P0 | MS-3 | Add target-preserving reconstruction without reversed donor-target dilution | EXP-042 matched control69 exactly across all ten frozen conditions and did not repair noise; reconstruction20 is retained as unheard audio only and the training method is closed |
 | LV-075 | Done | P0 | MS-3 | Train X-VC against varied source-side audio limitations | EXP-043 completed but source-only temporal changes caused incoherent target supervision and regressed the seven-speaker screen; the method is closed without more renders |
 | LV-076 | Done | P0 | MS-3 | Preserve target alignment while training X-VC on varied audio limitations | EXP-044 improved seven external rows, but EXP-045 regressed on twelve changed utterances; aligned augmentation is closed without a fixed-condition render |
-| LV-077 | In progress | P0 | MS-3 | Anchor synthetic X-VC diversity with authentic aligned sources | EXP-046 replaces one of twelve synthetic donor exposures per target with its existing authorized Hadou source while retaining 1,044 updates and all optimizer controls |
+| LV-077 | In progress | P0 | MS-3 | Anchor synthetic X-VC diversity with authentic aligned sources | EXP-046 regressed on the unreliable seven-row set; Grok requires EXP-047's twelve changed utterances plus EXP-048's ten frozen conditions before the method decision |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| LV-077 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-046 note, and its ignored artifacts | Publish seven external control69/authentic-anchor comparisons, screen corruption, then replan |
+| LV-077 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-046--048 notes, and their ignored artifacts | Publish and screen the twelve changed-utterance and ten-condition comparisons, then replan one method |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.
@@ -128,7 +128,7 @@ The live board is [`listen-queue.md`](listen-queue.md). Process is
 
 | Ready item | Intended ownership zone | Stop condition |
 |---|---|---|
-| LV-077 EXP-046 | `tools/xvc-source-diversity/` and fixed-port 8878 | one 1,044-update authentic-anchor training plus seven external rows and corruption screen, then replan |
+| LV-077 EXP-047/048 | `tools/xvc-source-diversity/` and fixed-port 8878 | twelve changed-utterance plus ten-condition authentic-anchor screens, then replan |
 | Unheard drain | Fixed-port 8878: EXP-033/034/035, stable public sets, EXP-023 | Operator `continue`/`rejected` when hearing returns |
 
 LV-032, LV-055, LV-056, LV-057, LV-058, and LV-068 are complete. LV-059,
