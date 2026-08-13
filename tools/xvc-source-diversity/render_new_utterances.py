@@ -575,11 +575,7 @@ def validate_inputs(
     original_files = {item["filename"] for item in original["items"]}
     donor_files = {item["filename"] for item in donors["items"]}
     if evaluation["kind"] == FRESH48_KIND:
-        expanded = breadth._load_manifest(
-            arguments.expanded_evaluation,
-            kind=EXPANDED_KIND,
-            count=EXPANDED_ROWS,
-        )
+        expanded = load_evaluation(arguments.expanded_evaluation)
         prior_clients = original_clients | donor_clients | {
             item["client_id_sha256"] for item in expanded["items"]
         }

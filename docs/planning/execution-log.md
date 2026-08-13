@@ -3030,6 +3030,10 @@ job queue.
   cases and Ruff passed.
 - Problems: none. Raw Common Voice client IDs are hashed in the generated
   manifest and source audio remains ignored.
+- Rework: the first fresh48 CPU admission exposed that the donor-breadth loader
+  cannot read the older expanded33 schema because it requires an ASR-distance
+  field. The dedicated heldout-evaluation loader replaced that reuse; no CUDA
+  job or rendered output had started.
 - Changed action: commit the selection and evaluation contract before network
   acquisition, then render exactly base, control69, and EXP-106 once. Do not
   tune from individual fresh rows and do not infer naturalness from auxiliary
