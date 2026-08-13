@@ -37,6 +37,6 @@ def test_future_sweep_moves_only_current_position() -> None:
 def test_future100_is_an_exact_fail_closed_control() -> None:
     source = MODULE_PATH.read_text(encoding="utf-8")
 
-    assert "output_hashes[100] != EXPECTED_FUTURE100_SHA256" in source
+    assert "EXPECTED_CONTROL_HASHES.items()" in source
     assert "stream._measured_stream(" in source
     assert '"position_hypothesis_confirmed": False' in source

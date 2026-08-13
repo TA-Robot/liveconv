@@ -18,9 +18,10 @@ import numpy as np
 import stream_actual_horizons as stream
 
 FUTURE_VALUES_MS = (0, 100, 300, 500)
-EXPECTED_FUTURE100_SHA256 = (
-    "cedff001ee6254ea91efdc9f1b41ad42e7367ddab98ec5944f5e26d59261ab9e"
-)
+EXPERIMENT_NUMBER = 29
+EXPECTED_CONTROL_HASHES = {
+    100: "cedff001ee6254ea91efdc9f1b41ad42e7367ddab98ec5944f5e26d59261ab9e"
+}
 
 
 def listening_index(output_hashes: Mapping[int, str]) -> dict[str, object]:
@@ -42,7 +43,9 @@ def listening_index(output_hashes: Mapping[int, str]) -> dict[str, object]:
                 "display_order": order,
                 "output_file": f"{order}0-xvc-e08-future-{future_ms:03d}.wav",
                 "status": "passed",
-                "profile_id": f"xvc.exp029.e08.future-{future_ms:03d}",
+                "profile_id": (
+                    f"xvc.exp{EXPERIMENT_NUMBER:03d}.e08.future-{future_ms:03d}"
+                ),
                 "family_id": "x-vc",
                 "output_sha256": output_hashes[future_ms],
                 "parameters": {
@@ -56,7 +59,9 @@ def listening_index(output_hashes: Mapping[int, str]) -> dict[str, object]:
         )
     return {
         "schema_version": 1,
-        "run_kind": "EXP-029 e8 X-VC stream-position diagnostic",
+        "run_kind": (
+            f"EXP-{EXPERIMENT_NUMBER:03d} e8 X-VC stream-position diagnostic"
+        ),
         "status": "completed-listen-now-unselected",
         "source_file": "Native / 変換前のChatGPTタブ音声（2026-08-11収録）",
         "source_duration_seconds": stream.ORIGINAL_SOURCE_SECONDS,
@@ -182,13 +187,18 @@ def run(arguments: argparse.Namespace) -> int:
             rendered_by_future[future_ms],
             sample_rate,
         )
-    if output_hashes[100] != EXPECTED_FUTURE100_SHA256:
-        raise base.ListenNowError("EXP-029 future-100 control drifted from EXP-027")
+    for future_ms, expected in EXPECTED_CONTROL_HASHES.items():
+        if output_hashes.get(future_ms) != expected:
+            raise base.ListenNowError(
+                f"EXP-{EXPERIMENT_NUMBER:03d} future-{future_ms} control drifted"
+            )
     base._write_json(staging / "index.json", listening_index(output_hashes))
 
     result = {
         "schema_version": 1,
-        "kind": "liveconv-exp029-e8-stream-position-result",
+        "kind": (
+            f"liveconv-exp{EXPERIMENT_NUMBER:03d}-e8-stream-position-result"
+        ),
         "status": "completed-listen-now-unselected",
         "git_commit": base._git_output(
             ["git", "rev-parse", "HEAD"], "repository commit"
@@ -196,7 +206,7 @@ def run(arguments: argparse.Namespace) -> int:
         "source_sha256": stream.ACTUAL_SOURCE_SHA256,
         "adapter_epoch": 8,
         "future_values_ms": list(FUTURE_VALUES_MS),
-        "future100_control_reproduced": True,
+        "control_futures_reproduced": sorted(EXPECTED_CONTROL_HASHES),
         "timings_by_future_ms": {
             str(value): timings[value] for value in FUTURE_VALUES_MS
         },
