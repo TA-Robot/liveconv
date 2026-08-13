@@ -1507,3 +1507,20 @@ job queue.
   one prior-input-context carryover control while clearing RNG, pitch, RMS, and
   SOLA; preserve-on-clean-completion is diagnostic and must still clear on
   interruption.
+
+## 2026-08-13T09:35:00Z - RVC prior-input context carry rejected
+
+- Agent: `primary-integrator`.
+- Task: After processing turn 1, fully reset generation state, restore only the
+  48 kHz input and 16 kHz HuBERT context buffers, and process exact turn 2.
+- Dependencies: commit `6ea8723`; exact direct-reset baseline; sealed seed-0
+  runtime; listener `8878`; exclusive `gpu0`.
+- Result: the input-context arm completed in 93.538 seconds and published as
+  `ms3-rvc-input-context-v1` with SHA-256
+  `420b1c14c5a9ae0fa2d6696b53f7251bd36b9975189efc03735dbe3bc0923add`.
+- Machine screen: turn-2 CER remained 0.500 and full CER worsened from 0.556 to
+  0.667, without gross repetition. Input context alone is not the recovery
+  state observed in the full preserve-state control.
+- Changed action: close input-context carry. Isolate RMVPE pitch/pitchf cache
+  once while resetting RNG, input context, RMS, and SOLA; do not combine more
+  state classes or bind a diagnostic route.

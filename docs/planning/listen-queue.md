@@ -212,6 +212,12 @@ on prior-generation state, not merely a warmed zero context. Isolate the prior
 input-context buffers once while still clearing RNG, pitch, RMS, and SOLA; any
 shipping design must clear all carryover on interruption.
 
+Prior input-context buffers alone also failed: turn 2 stayed at 0.500 and full
+CER worsened from 0.556 to 0.667. Close input-context carry. Because the profile
+uses RMVPE and pitch cache is the remaining state directly tied to short speech,
+isolate pitch/pitchf cache once while resetting input context, RNG, RMS, and
+SOLA. Do not test an arbitrary combination or ship state carryover.
+
 ## Keepers
 
 None yet. A `keep` here is the only ticket into a promote pass.
