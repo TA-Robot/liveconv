@@ -1349,3 +1349,26 @@ job queue.
 - Changed action: close RNNoise expansion. Render stable seed-0 RVC once from
   the recovered exact raw PCM, then compose an exact-input actual RVC/X-VC
   shortlist without regenerating the existing X-VC control.
+
+## 2026-08-13T08:42:00Z - exact-input stable VC actual shortlist published
+
+- Agent: `primary-integrator`.
+- Task: Hold the exact original decoded actual-input float PCM fixed, render
+  stable seed-0 RVC once, and compare it with the retained X-VC Yofukashi Q034
+  output that consumed byte-identical input.
+- Dependencies: commit `cf693d9`; raw source SHA-256 `b114aed...`; evaluation
+  Gateway `8881`; retained X-VC output SHA-256 `bbcc638...`; listener `8878`;
+  exclusive `gpu0`.
+- Result: one new RVC output completed 409 contiguous finite frames in 8.196
+  seconds with echoed timestamps. It was atomically published with the reused
+  X-VC control as `ms3-stable-vc-actual-shortlist-v1`. RVC output SHA-256 is
+  `e00b7f6ec53e838ee3b7cd77d1c6af3035ff3a8e49b724c674631f53cc56e13f`.
+- Machine screen: source-relative faster-whisper CER was 0.417 for stable RVC
+  and 0.833 for stable X-VC. Neither gross-looped. This admits both for hearing
+  but does not rank naturalness, voice identity, or perceptual quality.
+- Rework: the first screen invocation completed all three transcriptions but
+  used the wrong metrics attribute name while formatting the report. The
+  corrected invocation reused the cached model and changed no audio.
+- Changed action: the earlier actual-input comparison confound is removed.
+  Keep the public heldout shortlist first and this exact actual-input shortlist
+  second for operator hearing; do not rerender either arm.
