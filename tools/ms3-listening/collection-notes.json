@@ -8,6 +8,15 @@
   },
   "collections": [
     {
+      "match_all": ["ms3-rvc-seed0-actual-input-v5"],
+      "display_title": "RVC stable seed 0: 実ChatGPT入力",
+      "purpose": "ターン安定化済みの凍結RVC候補を8.17秒の実入力へ1回だけ通し、過去の未seed clean-bright出力と比較",
+      "data": "source-relative補助CERは旧unseed 0.727、stable seed0 0.636。gross repetitionなし。両腕は同じPCM24 listening sourceですが、旧raw float32は未保持なので厳密なseed-only因果比較ではありません。",
+      "status": "明瞭さ・自然さ・声色を旧unseedと比較してください。機械screenは内容崩壊除外のみで、stable seed0を音質選定したものではありません。",
+      "review_priority": "normal",
+      "review_mode": "gross_reject_only"
+    },
+    {
       "match_all": ["ms3-rvc-seed0-gateway-repeat-v2"],
       "display_title": "RVC会話ターン安定化: seed 0（実Gateway確認）",
       "purpose": "seed 0をsealed workerとlive Gatewayへ通し、同じ公開発話の3ターンで実システム経路の安定化を確認",

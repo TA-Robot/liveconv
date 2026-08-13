@@ -295,10 +295,17 @@ async def execute(
         "source_id": source["source_id"],
         "source_output_file": "00-source.wav",
         "comparison_scope": {
-            "single_changed_variable": (
+            "comparison": (
                 "historical unseeded versus frozen explicit seed 0"
                 if is_actual
                 else "generation position in one session"
+            ),
+            "source_identity_note": (
+                "Both arms use the same frozen PCM24 listening source; the new arm "
+                "uses its deterministic ffmpeg float32 decode, while the historical "
+                "control predates retention of that raw float32 input."
+                if is_actual
+                else None
             ),
             "machine_selection_allowed": False,
             "question": (

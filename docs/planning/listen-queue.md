@@ -129,6 +129,14 @@ correlation was 0.9999967/0.9999976 and all three auxiliary-ASR transcripts
 were identical. Keep the three new WAVs for hearing and close further seed,
 bit-exactness, runtime-identity, and route-receipt work.
 
+The same frozen seed-0 profile also completed one bounded render on the
+existing 8.17-second actual ChatGPT input. It is published beside the
+historical unseeded clean-bright control as `ms3-rvc-seed0-actual-input-v5`.
+Auxiliary source-relative CER was 0.636 for seed 0 and 0.727 for the historical
+control, with no gross repetition in either. The historical raw float input is
+no longer retained, so use this as a hearing comparison rather than a strict
+seed-only causal estimate. Do not rerender this input or add another seed.
+
 ## Keepers
 
 None yet. A `keep` here is the only ticket into a promote pass.

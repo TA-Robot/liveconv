@@ -1215,3 +1215,44 @@ job queue.
 - Changed action: the RVC generation-boundary fix is verified through the
   actual Gateway/worker path. Close seed and bit-exactness work; retain seed 0
   as the sole stable integration candidate pending hearing.
+
+## 2026-08-13T07:45:56Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, no tools or delegation).
+- Result: `REDIRECT`. Grok accepted the turn-stability fix as relevant to
+  realtime conversation, required the closed seed/bit-exact axis to stay
+  closed, and redirected the idle GPU to one frozen-converter actual-input
+  quality render.
+- Adopted: yes. No further seed, CUDA Graph, receipt, formal bind, training,
+  F0, lookahead, or model-family point was opened. The next lane used the
+  frozen seed-0 profile once on the existing 8.17-second actual input.
+- Expected time saved: Grok estimated 20--40 minutes by stopping stability
+  confirmation work and moving directly to new listening audio.
+
+## 2026-08-13T07:54:00Z - stable RVC actual-input comparison published
+
+- Agent: `primary-integrator`.
+- Task: Render the frozen seed-0 RVC clean-bright profile once on the existing
+  8.17-second ChatGPT-tab input and publish it beside the historical unseeded
+  clean-bright output.
+- Dependencies: commits `93adf7e`, `20e2842`, and `689dd14`; evaluation-only
+  Gateway `8881`; fixed PCM24 source and historical-control hashes; listener
+  `8878`.
+- Result: `ms3-rvc-seed0-actual-input-v5` contains the exact listening source,
+  the historical unseeded control, and one new stable seed-0 Gateway output.
+  The new route completed 409 contiguous frames in 8.193 seconds with finite,
+  changed PCM and no timestamp drift. Output SHA-256 is `244733423790ef297348c0acb1c45b89770c2d4d35248d8f19448ba7d84509a0`.
+- Machine screen: fixed faster-whisper source-relative CER was 0.727 for the
+  historical control and 0.636 for seed 0; neither transcript gross-looped.
+  This does not rank naturalness, voice identity, or perceptual quality.
+- Evidence limit: both arms use the same frozen PCM24 listening source. The
+  historical arm predates retention of its raw float32 input, while the new
+  arm deterministically decodes that PCM24 source. Treat this as a hearing
+  comparison, not a strict seed-only causal estimate.
+- Problems/rework: four attempts stopped before GPU inference on PCM16-only
+  ingestion, a stale historical raw-float hash, and an 8,000 ms ingress budget
+  that advertised 400 frames for a 409-frame source. The successful isolated
+  Gateway used a 10,000 ms evaluation budget; no model setting changed.
+- Changed action: close this actual-input job after publication and gross
+  screen. The stable converter remains unselected pending hearing.
