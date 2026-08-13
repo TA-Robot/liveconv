@@ -39,4 +39,5 @@ def test_future100_is_an_exact_fail_closed_control() -> None:
 
     assert "EXPECTED_CONTROL_HASHES.items()" in source
     assert "stream._measured_stream(" in source
+    assert '"discarded_warmup_count": 1' in source
     assert '"position_hypothesis_confirmed": False' in source

@@ -155,6 +155,20 @@ def run(arguments: argparse.Namespace) -> int:
     )
     model.set_adapter("e08")
     model.eval()
+    # The first converter call initializes CUDA kernels and produced a distinct
+    # cold-path waveform in EXP-030 v1. Keep one fixed discarded warmup so every
+    # compared arm uses the same steady-state path.
+    stream._measured_stream(
+        infer_utils,
+        model,
+        source_wav,
+        target_wav,
+        target_wav_cond,
+        sample_rate=sample_rate,
+        torch=torch,
+        device=device,
+        future_ms=100,
+    )
     rendered_by_future: dict[int, Any] = {}
     timings: dict[int, dict[str, float | int]] = {}
     for future_ms in FUTURE_VALUES_MS:
@@ -206,6 +220,8 @@ def run(arguments: argparse.Namespace) -> int:
         "source_sha256": stream.ACTUAL_SOURCE_SHA256,
         "adapter_epoch": 8,
         "future_values_ms": list(FUTURE_VALUES_MS),
+        "discarded_warmup_count": 1,
+        "discarded_warmup_future_ms": 100,
         "control_futures_reproduced": sorted(EXPECTED_CONTROL_HASHES),
         "timings_by_future_ms": {
             str(value): timings[value] for value in FUTURE_VALUES_MS

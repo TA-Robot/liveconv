@@ -1,6 +1,6 @@
 # EXP-030: X-VC minimum-lookahead threshold
 
-Status: **runner prepared; GPU listen-now not yet run**.
+Status: **v1 technical stop; corrected v2 runner prepared**.
 
 EXP-029 removed the epoch-8 actual-input repetition when future context moved
 from 100 ms to 300 or 500 ms. This follow-up brackets the smallest useful
@@ -21,3 +21,9 @@ excess lookahead. Whisper remains diagnostic, not a quality verdict.
 Stop on inherited identity failure, mismatch of either control output,
 malformed audio, CUDA failure, or partial publication. Do not add another
 lookahead value after seeing output.
+
+Repair note: `v1` stopped before listener publication because its first arm was
+future 100 ms and therefore took the model's one-time cold CUDA path, while the
+EXP-029 future-100 control was the second inference. The later future-300 arm
+still reproduced EXP-029 exactly. `v2` adds one fixed, discarded future-100
+warmup before every measured arm; it changes no published comparison value.
