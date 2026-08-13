@@ -107,13 +107,14 @@ name one owner and ownership zone below.
 | LV-096 | Done | P0 | MS-3 | Distill frozen X-VC's complete converted output on varied real sources | EXP-116/117 improved external7 and fresh48 raw mean/max substantially, but added one short repeated-ぷ failure; retain as strongest unheard signal, stop before stress60, and test attention freeze once |
 | LV-097 | Done | P0 | MS-3 | Freeze attention adaptation under full-output teacher training | EXP-118/119 retained control's catastrophic loop and added a 110-character repeated-ぃ failure; reject FFN-only, stop the scope branch, and keep EXP-116 as the stronger unheard signal |
 | LV-098 | Done | P0 | MS-3 | Test direction/magnitude-decoupled DoRA under the retained full-output objective | EXP-120/121 improved common non-loop content but retained control's catastrophic loop and added EXP-116's repeated-ぷ failure; reject and close PEFT neighbors |
-| LV-099 | In progress | P0 | MS-3 | Add aligned temporal-difference loss to full-output teacher rows | EXP-122 changes only the 209 full-output teacher-row objective by adding fixed-weight waveform first-difference matching; EXP-116 data/control69/standard LoRA/updates remain fixed; one point, no weight sweep |
+| LV-099 | Done | P0 | MS-3 | Add aligned temporal-difference loss to full-output teacher rows | EXP-122/123 retained control's catastrophic loop and added the repeated-ぷ failure despite small-set content gains; reject and close temporal-weight neighbors |
+| LV-100 | In progress | P0 | MS-3 | Replace Common Voice-only teacher sources with a fixed cross-corpus pool | EXP-124 keeps 48 sources/209 slots/objective/control69/settings fixed but uses 24 Common Voice, 21 training-only Hadou, and three official JVS samples; fresh48 and heldout Hadou stay evaluation-only |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| LV-099 / EXP-122--123 | primary-integrator | `run_role_mix.py`, `render_new_utterances.py`, focused tests, `experiments/EXP-122-*`/`EXP-123-*`, and planning records | one temporal-loss lane and frozen fresh48 disposition; stop without weight neighbors |
+| LV-100 / EXP-124--125 | primary-integrator | multi-domain preparer, `run_role_mix.py`, `render_new_utterances.py`, focused tests, `experiments/EXP-124-*`/`EXP-125-*`, and planning records | one cross-corpus lane and frozen fresh48 disposition; stop without corpus-ratio neighbors |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.

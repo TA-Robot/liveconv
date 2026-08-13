@@ -3321,3 +3321,23 @@ job queue.
 - Problems: none.
 - Rework: runtime evidence only. Admit exactly one 1,044-update EXP-122 lane,
   external7, and frozen fresh48. Do not run a temporal-weight neighbor.
+
+## 2026-08-13T21:41:33Z - EXP-122/123 temporal teacher rejected
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-13T21:32:11Z.
+- End: 2026-08-13T21:41:33Z.
+- Dependencies: commits `bbca644` and `d3b774a`; train48; frozen fresh48;
+  gpu0; listener 8878.
+- Result: 1,044 updates completed in 335.44 seconds at 4.77 GiB peak.
+  External7 improved control source-relative `0.360 -> 0.279` and known-text
+  `0.399 -> 0.383` with no loop. EXP-123 produced 144 outputs. On the 45
+  common non-loop rows candidate versus control was 11/23/11, mean `0.316`
+  versus `0.319`, median `0.267` versus `0.250`, and known-text mean `0.585`
+  versus `0.610`.
+- Problems: the candidate retained control69's catastrophic `32.4`
+  repeated-family row and added the same 12-character repeated-`ぷ` failure
+  seen in EXP-116 and EXP-120.
+- Rework: reject and stop before stress60. Close temporal-weight neighbors.
+  Change data construction next by holding count/share fixed while crossing
+  Common Voice, Hadou, and JVS training-source domains.

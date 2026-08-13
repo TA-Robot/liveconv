@@ -1,6 +1,6 @@
 # EXP-122: X-VC full-output teacher with temporal-difference loss
 
-Status: admitted; one bounded gpu0 lane
+Status: completed; rejected on frozen fresh48
 
 ## Question
 
@@ -34,3 +34,17 @@ versus the `161.0455` standard composite baseline, finite pre-clip gradient norm
 `24.8603`, and 3.30 GiB peak GPU allocation with exit status zero. The temporal
 term contributes about 8.12 loss units at initialization; no weight neighbor is
 admitted.
+
+## Result
+
+Commit `d3b774a` completed 1,044 updates in 335.44 seconds at 4.77 GiB peak.
+Standard loss moved `144.22 -> 131.22`; temporal-plus-composite teacher loss
+moved `169.12 -> 82.12`. External7 had no loop and improved control69
+source-relative `0.360 -> 0.279` and known-text `0.399 -> 0.383`.
+
+EXP-123 rejected the method on frozen fresh48. It retained control69's
+catastrophic repeated-family row and reproduced the separate 12-character
+repeated-`ぷ` failure. On 45 common non-loop rows it essentially tied control
+at 11/23/11, mean `0.316` versus `0.319`, median `0.267` versus `0.250`, while
+known-text mean improved `0.610 -> 0.585`. Stop temporal weights and move to
+training-source domain composition rather than another nearby loss.

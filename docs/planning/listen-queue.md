@@ -261,13 +261,21 @@ to EXP-116 standard LoRA and adds aligned waveform first-difference matching on
 only the existing 209 full-output teacher rows. Unlike the earlier pretrained
 waveform discriminator, this directly penalizes local temporal collapse against
 the exact frozen teacher output. Use one preregistered weight; do not sweep it.
+EXP-122/123 rejected that loss too. It retained control69's catastrophic row
+and reproduced the same short repeated-`ぷ` failure, while common non-loop rows
+were essentially tied. Close temporal-loss weights. The next method responds
+directly to the operator's broader-data request: keep 48 teacher sources and
+209 slots fixed, but replace the Common Voice-only pool with 24 disjoint Common
+Voice speakers, 21 training-only Hadou utterances excluded from target/evaluation
+IDs, and three official JVS speaker samples. This changes corpus/domain
+composition, not count or share. Do not sweep the 24/21/3 ratio.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Keep EXP-116's data/control69/standard LoRA fixed and add one temporal first-difference loss to teacher rows in EXP-122 | parent | no | one committed backward smoke and one 1,044-update lane, or technical failure |
-| 2 | Render EXP-123 on frozen fresh48 and stop on an added loop or broad common-non-loop regression | parent | no human dependency for machine reject | technical disposition recorded before any downstream matrix |
+| 1 | Materialize and commit-admit one 48-source cross-corpus teacher pool: CV24 + Hadou21 + JVS3 | parent | no | exact domain counts, target/evaluation exclusions, and 209-slot balance |
+| 2 | Train EXP-124 with EXP-116's objective/control69/settings and render EXP-125 on frozen fresh48 | parent | no | one lane; stop on added loop or broad common-non-loop regression |
 | 3 | On survival only, cross recording domains rather than adding more Common Voice: frozen stress60 plus existing JVS/Hadou sources | parent | no | separate speaker/content/condition/domain summaries; no combined automatic winner |
 | 4 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 

@@ -191,6 +191,8 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-121 frozen fresh48 gate
         -> EXP-122 full-output teacher / temporal-difference loss
         -> EXP-123 frozen fresh48 gate
+        -> EXP-124 full-output teacher / CV24 + Hadou21 + JVS3 sources
+        -> EXP-125 frozen fresh48 gate
         -> operator hearing when available
 ```
 
