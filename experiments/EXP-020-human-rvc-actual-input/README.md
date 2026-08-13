@@ -33,6 +33,20 @@ uv run --frozen --all-packages python \
   --gateway-url http://127.0.0.1:8877
 ```
 
+The Runrun comparison already used the live Gateway and realtime 20 ms pacing;
+do not rerender its standard arm merely to call it a system-path probe. The
+coarse machine screen found no new Runrun preset better than the cross-style
+Sasayaki reference and gross repetition in girl-bright.
+
+One follow-up compares the exact deployed Sasayaki standard and clean-bright
+presets on three public Hadou heldout utterances already used as source-only
+X-VC controls: `EMOTION100_002`, `EMOTION100_004`, and `EMOTION100_017`.
+The single actual-input screen had favored clean-bright among RVC candidates,
+so this bounded run tests whether that content behavior generalizes instead of
+adding another preset or rerendering the same 8.17-second source. The fixed
+Japanese STT screen may close a profile for gross corruption, but cannot select
+sound quality. The six outputs remain unselected until human hearing.
+
 ## The quantity split
 
 Target-data quantity and source/evaluation-data quantity are separate facts:
