@@ -1866,3 +1866,51 @@ job queue.
 - Changed action: fix the listener refresh race, publish the completed seven
   rows, then finish the frozen tempo/F0/noise/silence check before choosing the
   next training method.
+
+## 2026-08-13T12:25:10Z - listener atomic-publication race fixed
+
+- Agent: `primary-integrator`.
+- Task: Make an atomically renamed collection visible when publication lands
+  during the listener's root scan.
+- Result: the cache now stores the root fingerprint observed before scanning,
+  rather than a post-scan fingerprint that could describe files absent from
+  the cached index. A publication-during-scan regression test and all 26
+  listener tests pass; EXP-035 became visible after the server restart.
+- Changed action: retain atomic publication and the cheap cache. New collections
+  should appear on the request after a concurrent scan instead of requiring a
+  listener restart.
+
+## 2026-08-13T12:29:00Z - EXP-035 fixed-condition comparison published
+
+- Agent: `primary-integrator`.
+- Task: Render CV12 once on EXP-033's frozen six clean, tempo, pitch, noise,
+  and leading-silence rows without another training run.
+- Dependencies: commit `1f0ecdd`; EXP-033 and EXP-035 adapters; exclusive
+  `gpu0`; listener `8878`.
+- Result: 30 candidates across ten rows completed in 90.16 seconds with 5.13
+  GB peak GPU allocation. No arm gross-looped. Mean source-relative distance
+  was 0.170 base and 0.153 for both JVS3 and CV12. Both adapted arms improved
+  clean, tempo, and silence content retention, tied pitch, and regressed the
+  single noise row from 0.0 to 0.375.
+- Interpretation: JVS3 and CV12 had identical auxiliary transcripts on these
+  ten rows, but their WAVs were not identical and had only low-to-moderate
+  waveform correlation. The metric therefore cannot select perceptual quality.
+  Combined with the disjoint-speaker result, CV12 supports external stability
+  over JVS3 but not superiority to base.
+- Changed action: close donor-count expansion. Reuse the exact EXP-035 pairs for
+  one official training-role mixture; do not add donor speakers or another
+  horizon/LR/scope point.
+
+## 2026-08-13T12:39:43Z - EXP-036 role-mix pilot prepared
+
+- Agent: `primary-integrator`.
+- Task: Restore the pinned X-VC 40% standard / 20% reconstruction / 40%
+  reversed training roles while fixing EXP-035 data, update count, scope, LR,
+  loss, target voice, and zero target conditioning.
+- Result: the exact 1,044-update allocation is frozen as 418/208/418. The
+  runner regenerates all pseudo sources with the original seeds and requires
+  every PCM hash plus the aggregate inventory to match EXP-035 before
+  training. Twenty focused tests, Ruff, CPU admission over all 1,044 artifacts,
+  `make control-check`, and `git diff --check` pass.
+- Changed action: commit the runner before execution, then start the sole GPU
+  lane and publish the same seven-speaker base/CV12-standard/role-mix screen.

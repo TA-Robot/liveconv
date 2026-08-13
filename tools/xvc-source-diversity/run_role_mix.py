@@ -1,0 +1,638 @@
+#!/usr/bin/env python3
+"""Train EXP-036 with X-VC's official standard/reconstruction/reversed mix."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import os
+import shutil
+import sys
+import time
+from collections import Counter
+from collections.abc import Mapping, Sequence
+from pathlib import Path
+from typing import Any
+
+TOOL_ROOT = Path(__file__).resolve().parent
+REPO_ROOT = TOOL_ROOT.parents[1]
+HUMAN_TOOL_ROOT = REPO_ROOT / "tools" / "xvc-human-paired"
+for import_root in (TOOL_ROOT, HUMAN_TOOL_ROOT):
+    if str(import_root) not in sys.path:
+        sys.path.insert(0, str(import_root))
+
+import listen_now as base  # noqa: E402
+import listen_now_horizon as horizon  # noqa: E402
+import render_commonvoice as external  # noqa: E402
+import run as method  # noqa: E402
+import run_breadth as breadth  # noqa: E402
+
+PREDECESSOR_COMMIT = "01b2b247be79a534f567701caf4777dfa5476c10"
+PREDECESSOR_INVENTORY_SHA256 = (
+    "e909e465ae5b49fb2be67dded797acf13895acd7f2ddd77c570cea8acdba9cd0"
+)
+ROLE_COUNTS = {"standard": 418, "reconstruction": 208, "reversed": 418}
+ROLE_CYCLE = ("standard", "reversed", "reconstruction", "standard", "reversed")
+TOTAL_UPDATES = breadth.TOTAL_UPDATES
+
+
+class RoleMixError(RuntimeError):
+    """The bounded EXP-036 role-mix pilot cannot safely continue."""
+
+
+def role_schedule(count: int = TOTAL_UPDATES) -> list[str]:
+    """Return an interleaved exact 40/20/40 schedule for 1,044 updates."""
+    if count != TOTAL_UPDATES:
+        raise RoleMixError("role schedule update count drifted")
+    repeats, remainder = divmod(count, len(ROLE_CYCLE))
+    tail = ("standard", "reversed", "standard", "reversed")
+    if remainder != len(tail):
+        raise RoleMixError("role schedule tail drifted")
+    schedule = list(ROLE_CYCLE) * repeats + list(tail)
+    if Counter(schedule) != ROLE_COUNTS:
+        raise RoleMixError("role schedule proportions drifted")
+    return schedule
+
+
+def assigned_tensors(
+    target: Mapping[str, Any], generated: Mapping[str, Any], role: str
+) -> dict[str, Any]:
+    """Assign waveform and feature roles using the upstream role semantics."""
+    if role == "standard":
+        source, reference = generated, target
+    elif role == "reconstruction":
+        source = reference = target
+    elif role == "reversed":
+        source, reference = target, generated
+    else:
+        raise RoleMixError(f"unknown role assignment: {role}")
+    return {
+        "source_wav": source["source_wav"],
+        "semantic_tokens": source["semantic_tokens"],
+        "target_wav": reference["target_wav"],
+        "ssl_feat": reference["ssl_feat"],
+    }
+
+
+def _load_predecessor(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise RoleMixError("EXP-035 result is not valid JSON") from error
+    expected = {
+        "kind": "liveconv-exp035-xvc-donor-breadth-result/v1",
+        "status": "completed-listen-now-unselected",
+        "git_commit": PREDECESSOR_COMMIT,
+        "generated_pair_count": TOTAL_UPDATES,
+        "generated_inventory_sha256": PREDECESSOR_INVENTORY_SHA256,
+    }
+    if not isinstance(value, dict) or any(
+        value.get(key) != item for key, item in expected.items()
+    ):
+        raise RoleMixError("EXP-035 result identity drifted")
+    return value
+
+
+def _pseudo_path(root: Path, target_id: str, donor_id: str) -> Path:
+    return root / target_id / f"source-{donor_id}-16k.wav"
+
+
+def validate_inputs(
+    arguments: argparse.Namespace,
+) -> tuple[dict[str, Any], dict[str, Any], list[tuple[str, Path, str]], dict[str, Any]]:
+    donors = breadth._load_manifest(
+        arguments.donors, kind=breadth.DONOR_KIND, count=breadth.DONOR_COUNT
+    )
+    evaluation = breadth._load_manifest(
+        arguments.evaluation_set,
+        kind=breadth.EVALUATION_KIND,
+        count=breadth.EVALUATION_COUNT,
+    )
+    donor_clients = {item["client_id_sha256"] for item in donors["items"]}
+    evaluation_clients = {item["client_id_sha256"] for item in evaluation["items"]}
+    if donor_clients & evaluation_clients:
+        raise RoleMixError("training donors overlap external evaluation speakers")
+    for item in [*donors["items"], *evaluation["items"]]:
+        path = arguments.source_root / item["filename"]
+        if (
+            path.is_symlink()
+            or not path.is_file()
+            or base.sha256_file(path) != item["sha256"]
+        ):
+            raise RoleMixError(f"Common Voice input drifted: {item['filename']}")
+
+    targets = method.target_inventory(arguments.pair_root)
+    breadth.training_schedule(
+        [row[0] for row in targets], [item["id"] for item in donors["items"]]
+    )
+    predecessor = _load_predecessor(arguments.predecessor_result)
+    if (
+        predecessor.get("donor_manifest_sha256") != base.sha256_file(arguments.donors)
+        or predecessor.get("evaluation_set_sha256")
+        != base.sha256_file(arguments.evaluation_set)
+    ):
+        raise RoleMixError("EXP-035 manifest binding drifted")
+    if (
+        arguments.predecessor_pseudo_root.is_symlink()
+        or not arguments.predecessor_pseudo_root.is_dir()
+    ):
+        raise RoleMixError("EXP-035 pseudo-source root is unavailable")
+    inventory: list[dict[str, str]] = []
+    for target_id, _target, _digest in targets:
+        for donor in donors["items"]:
+            path = _pseudo_path(
+                arguments.predecessor_pseudo_root, target_id, donor["id"]
+            )
+            if path.is_symlink() or not path.is_file():
+                raise RoleMixError(f"EXP-035 pseudo source is unavailable: {path.name}")
+            inventory.append(
+                {
+                    "target_id": target_id,
+                    "donor_id": donor["id"],
+                    "source_sha256": base.sha256_file(path),
+                }
+            )
+    if (
+        len(inventory) != TOTAL_UPDATES
+        or method._canonical_sha256(inventory) != PREDECESSOR_INVENTORY_SHA256
+    ):
+        raise RoleMixError("EXP-035 pseudo-source inventory drifted")
+    if arguments.control_adapter.is_symlink() or not (
+        arguments.control_adapter / "adapter_model.safetensors"
+    ).is_file():
+        raise RoleMixError("EXP-035 all-standard adapter is unavailable")
+    role_schedule()
+    method._validate_xvc(arguments)
+    base._require_new_output(
+        arguments.work_dir,
+        REPO_ROOT / "artifacts" / "xvc-source-diversity",
+        "EXP-036 work directory",
+    )
+    base._require_new_output(
+        arguments.listener_dir,
+        REPO_ROOT / "artifacts" / "ms3" / "listening",
+        "EXP-036 listener directory",
+    )
+    return donors, evaluation, targets, predecessor
+
+
+def listening_index(
+    item: Mapping[str, Any], *, hashes: Mapping[str, str]
+) -> dict[str, object]:
+    variants = (
+        ("base", "X-VC base", "10-xvc-base.wav", 1),
+        (
+            "cv12-standard",
+            "EXP-035 / CV12 / all-standard / 1,044 updates",
+            "20-xvc-cv12-standard.wav",
+            2,
+        ),
+        (
+            "cv12-role-mix",
+            "EXP-036 / CV12 / standard-reconstruction-reversed / 1,044 updates",
+            "30-xvc-cv12-role-mix.wav",
+            3,
+        ),
+    )
+    return {
+        "schema_version": 1,
+        "run_kind": "EXP-036 X-VC role-mix external evaluation",
+        "status": "completed-listen-now-unselected",
+        "source_file": (
+            f"Common Voice 25.0 / {item['age']} / {item['gender']} / {item['text']}"
+        ),
+        "source_output_file": "00-source-reference.wav",
+        "target_reference_output_file": "01-target-reference.wav",
+        "reference_audio": [
+            {
+                "kind": "source",
+                "label": f"Common Voice heldout / {item['text']}",
+                "output_file": "00-source-reference.wav",
+                "excluded_from_preference": True,
+            },
+            {
+                "kind": "target",
+                "label": "Amitaro runrun / fixed target reference",
+                "output_file": "01-target-reference.wav",
+                "excluded_from_preference": True,
+            },
+        ],
+        "variants": [
+            {
+                "variant_id": variant_id,
+                "display_name": display_name,
+                "display_order": order,
+                "output_file": filename,
+                "status": "passed",
+                "profile_id": f"xvc.exp036.{variant_id}.listen-now",
+                "family_id": "x-vc",
+                "output_sha256": hashes[variant_id],
+            }
+            for variant_id, display_name, filename, order in variants
+        ],
+    }
+
+
+def run(
+    arguments: argparse.Namespace,
+    donors: Mapping[str, Any],
+    evaluation: Mapping[str, Any],
+    target_rows: list[tuple[str, Path, str]],
+    predecessor: Mapping[str, Any],
+) -> int:
+    for name in ("HF_DATASETS_OFFLINE", "HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"):
+        if os.environ.get(name) != "1":
+            raise RoleMixError(f"{name}=1 is required before model import")
+    if arguments.confirm_gpu_lease != "gpu0" or arguments.device != "cuda:0":
+        raise RoleMixError("EXP-036 requires the explicit gpu0 lease")
+    started = time.monotonic()
+    arguments.work_dir.mkdir()
+    donor_root = arguments.work_dir / "donor-references"
+    evaluation_root = arguments.work_dir / "evaluation-sources"
+    regenerated_root = arguments.work_dir / "verified-generated-source-pairs"
+    for path in (donor_root, evaluation_root, regenerated_root):
+        path.mkdir()
+
+    import torch
+    from peft import LoraConfig, PeftModel, get_peft_model
+
+    if not torch.cuda.is_available():
+        raise RoleMixError("CUDA is unavailable")
+    device = torch.device(arguments.device)
+    base._configure_deterministic_cuda(torch, device)
+    torch.cuda.reset_peak_memory_stats(device)
+    xvc_root = str(arguments.xvc_source_root.resolve())
+    if xvc_root not in sys.path:
+        sys.path.insert(0, xvc_root)
+    from models.codec.sac.model import XVC
+    from models.codec.sac.utils import process_audio
+    from utils.file import load_config
+
+    config = load_config(str(arguments.xvc_config))
+    if "config" in config:
+        config = config["config"]
+    sample_rate = int(config["sample_rate"])
+    model = method._load_xvc(arguments, XVC, device)
+    base._initialize_loss(model, arguments.xvc_config)
+
+    target_pairs = [
+        base.MaterializedPair(pair_id, target, target, digest, digest)
+        for pair_id, target, digest in target_rows
+    ]
+    target_tensors = [
+        base._extract_pair_tensors(
+            model,
+            pair,
+            process_audio=process_audio,
+            config=config,
+            torch=torch,
+            device=device,
+        )
+        for pair in target_pairs
+    ]
+    donor_pairs: list[base.MaterializedPair] = []
+    donor_tensors: list[dict[str, Any]] = []
+    for item in donors["items"]:
+        pair, tensors = breadth._reference_tensor(
+            model,
+            item,
+            source_root=arguments.source_root,
+            output_root=donor_root,
+            process_audio=process_audio,
+            config=config,
+            torch=torch,
+            device=device,
+        )
+        donor_pairs.append(pair)
+        donor_tensors.append(tensors)
+    evaluation_pairs: list[base.MaterializedPair] = []
+    evaluation_tensors: list[dict[str, Any]] = []
+    for item in evaluation["items"]:
+        pair, tensors = breadth._reference_tensor(
+            model,
+            item,
+            source_root=arguments.source_root,
+            output_root=evaluation_root,
+            process_audio=process_audio,
+            config=config,
+            torch=torch,
+            device=device,
+        )
+        evaluation_pairs.append(pair)
+        evaluation_tensors.append(tensors)
+
+    target_reference = target_tensors[0]
+    target_reference_pair = target_pairs[0]
+
+    def render(current: Any) -> list[Any]:
+        return [
+            base._inference(
+                current,
+                source,
+                target_reference,
+                seed=base.SEED + index,
+                torch=torch,
+                device=device,
+            )
+            .detach()
+            .cpu()
+            for index, source in enumerate(evaluation_tensors)
+        ]
+
+    base_outputs = render(model)
+    control_base = method._load_xvc(arguments, XVC, device)
+    control = PeftModel.from_pretrained(
+        control_base, str(arguments.control_adapter), is_trainable=False
+    )
+    control_outputs = render(control)
+    del control, control_base
+    torch.cuda.empty_cache()
+
+    modes = role_schedule()
+    training_rows: list[dict[str, Any]] = []
+    generated_inventory: list[dict[str, str]] = []
+    row_index = 0
+    for target_index, (target_pair, target_tensor) in enumerate(
+        zip(target_pairs, target_tensors, strict=True)
+    ):
+        pair_root = regenerated_root / target_pair.pair_id
+        pair_root.mkdir()
+        for donor_index, (donor_pair, donor_tensor) in enumerate(
+            zip(donor_pairs, donor_tensors, strict=True)
+        ):
+            output = base._inference(
+                model,
+                target_tensor,
+                donor_tensor,
+                seed=base.SEED + target_index * breadth.DONOR_COUNT + donor_index,
+                torch=torch,
+                device=device,
+            )
+            output_path = pair_root / f"source-{donor_pair.pair_id}-16k.wav"
+            digest = base._write_float_wav(output_path, output, sample_rate)
+            predecessor_path = _pseudo_path(
+                arguments.predecessor_pseudo_root,
+                target_pair.pair_id,
+                donor_pair.pair_id,
+            )
+            if digest != base.sha256_file(predecessor_path):
+                raise RoleMixError("generated source no longer reproduces EXP-035")
+            with torch.inference_mode():
+                features = model.semantic_encoder.extract_and_encode(output.squeeze(1))
+            tokens = features.get("speech_tokens")
+            hidden = features.get("whisper_hidden_states_50hz")
+            if (
+                tokens is None
+                or hidden is None
+                or tokens[:, : base.SEMANTIC_FRAMES].shape
+                != (1, base.SEMANTIC_FRAMES)
+                or hidden[..., : base.TARGET_HIDDEN_FRAMES].shape[-1]
+                != base.TARGET_HIDDEN_FRAMES
+            ):
+                raise RoleMixError("generated semantic feature shape drifted")
+            generated = {
+                "source_wav": output.detach().cpu().to(torch.float32).contiguous(),
+                "semantic_tokens": tokens[:, : base.SEMANTIC_FRAMES]
+                .detach()
+                .cpu()
+                .to(torch.int64)
+                .contiguous(),
+                "target_wav": output.detach().cpu().to(torch.float32).contiguous(),
+                "ssl_feat": hidden[..., : base.TARGET_HIDDEN_FRAMES]
+                .detach()
+                .cpu()
+                .to(torch.float32)
+                .contiguous(),
+            }
+            training_rows.append(
+                assigned_tensors(target_tensor, generated, modes[row_index])
+            )
+            generated_inventory.append(
+                {
+                    "target_id": target_pair.pair_id,
+                    "donor_id": donor_pair.pair_id,
+                    "source_sha256": digest,
+                }
+            )
+            row_index += 1
+    if (
+        len(training_rows) != TOTAL_UPDATES
+        or method._canonical_sha256(generated_inventory)
+        != PREDECESSOR_INVENTORY_SHA256
+    ):
+        raise RoleMixError("regenerated EXP-035 pair inventory drifted")
+
+    scope = horizon.lora_scope(arguments.inventory, "control69")
+    target_modules = list(scope["target_modules"])
+    trained = get_peft_model(
+        model,
+        LoraConfig(
+            r=8,
+            lora_alpha=8,
+            lora_dropout=0.0,
+            bias="none",
+            use_dora=False,
+            use_rslora=False,
+            target_modules=target_modules,
+        ),
+    )
+    observed = getattr(trained, "targeted_module_names", None)
+    if not isinstance(observed, (list, tuple)) or set(observed) != set(target_modules):
+        raise RoleMixError("control69 target set drifted")
+    trainable = base._set_adapter_training_only(trained)
+    if sum(parameter.numel() for parameter in trainable) != int(
+        scope["trainable_parameter_count"]
+    ):
+        raise RoleMixError("control69 trainable parameter count drifted")
+    optimizer = torch.optim.AdamW(trainable, lr=base.LEARNING_RATE)
+    losses: list[float] = []
+    loss_by_role: dict[str, list[float]] = {role: [] for role in ROLE_COUNTS}
+    for role, tensors in zip(modes, training_rows, strict=True):
+        base._set_adapter_training_only(trained)
+        optimizer.zero_grad(set_to_none=True)
+        batch = base._gpu_batch(tensors, torch=torch, device=device)
+        with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+            loss, numeric = base._composite_loss(trained, batch, torch)
+        loss.backward()
+        gradient_norm = torch.nn.utils.clip_grad_norm_(
+            trainable, base.GRADIENT_CLIP_NORM
+        )
+        if not math.isfinite(float(gradient_norm.detach().cpu())):
+            raise RoleMixError("X-VC gradient norm is non-finite")
+        optimizer.step()
+        losses.append(numeric)
+        loss_by_role[role].append(numeric)
+    if len(losses) != TOTAL_UPDATES:
+        raise RoleMixError("EXP-036 update count drifted")
+    adapter_dir = arguments.work_dir / "adapter-1044"
+    trained.save_pretrained(adapter_dir, safe_serialization=True)
+    candidate_outputs = render(trained)
+
+    staging = arguments.work_dir / "listener-staging"
+    staging.mkdir()
+    listener_rows: list[dict[str, object]] = []
+    for index, (item, pair) in enumerate(
+        zip(evaluation["items"], evaluation_pairs, strict=True)
+    ):
+        row_root = staging / f"{index:02d}-{item['id']}"
+        row_root.mkdir()
+        shutil.copyfile(pair.source_path, row_root / "00-source-reference.wav")
+        shutil.copyfile(
+            target_reference_pair.target_path, row_root / "01-target-reference.wav"
+        )
+        hashes = {
+            "base": base._write_float_wav(
+                row_root / "10-xvc-base.wav", base_outputs[index], sample_rate
+            ),
+            "cv12-standard": base._write_float_wav(
+                row_root / "20-xvc-cv12-standard.wav",
+                control_outputs[index],
+                sample_rate,
+            ),
+            "cv12-role-mix": base._write_float_wav(
+                row_root / "30-xvc-cv12-role-mix.wav",
+                candidate_outputs[index],
+                sample_rate,
+            ),
+        }
+        method._write_json(
+            row_root / "index.json", listening_index(item, hashes=hashes)
+        )
+        listener_rows.append({"source_id": item["id"], "hashes": hashes})
+
+    result = {
+        "schema_version": 1,
+        "kind": "liveconv-exp036-xvc-role-mix-result/v1",
+        "status": "completed-listen-now-unselected",
+        "git_commit": base._git_output(
+            ["git", "rev-parse", "HEAD"], "repository commit"
+        ),
+        "question": "Does official role mixing beat all-standard fine-tuning?",
+        "independent_variable": (
+            "training role assignment: all-standard versus 418 standard, "
+            "208 reconstruction, and 418 reversed updates"
+        ),
+        "fixed": {
+            "predecessor_git_commit": predecessor["git_commit"],
+            "generated_inventory_sha256": PREDECESSOR_INVENTORY_SHA256,
+            "target_voice": "Amitaro runrun",
+            "target_text_count": method.PAIR_COUNT,
+            "target_exposures_per_text": breadth.DONOR_COUNT,
+            "optimizer_updates": TOTAL_UPDATES,
+            "lora_scope": "control69",
+            "learning_rate": base.LEARNING_RATE,
+            "gradient_clip_norm": base.GRADIENT_CLIP_NORM,
+            "target_wav_cond": "zeros",
+            "loss": "pinned X-VC composite generative loss",
+        },
+        "role_counts": ROLE_COUNTS,
+        "role_schedule_sha256": method._canonical_sha256(modes),
+        "donor_manifest_sha256": base.sha256_file(arguments.donors),
+        "evaluation_set_sha256": base.sha256_file(arguments.evaluation_set),
+        "generated_pair_count": len(training_rows),
+        "generated_inventory_sha256": method._canonical_sha256(generated_inventory),
+        "loss_first": losses[0],
+        "loss_last": losses[-1],
+        "loss_by_role_first_last": {
+            role: {"first": values[0], "last": values[-1]}
+            for role, values in loss_by_role.items()
+        },
+        "elapsed_seconds": time.monotonic() - started,
+        "peak_gpu_bytes": int(torch.cuda.max_memory_allocated(device)),
+        "listener_rows": listener_rows,
+        "machine_screen_boundary": (
+            "content/corruption and repetition only; not naturalness, similarity, "
+            "or a winner"
+        ),
+        "claims": {
+            "perceptual_winner": False,
+            "promoted": False,
+            "route_qualified": False,
+        },
+    }
+    method._write_json(arguments.work_dir / "result.json", result)
+    staging.rename(arguments.listener_dir)
+    print(
+        json.dumps(
+            {
+                "status": result["status"],
+                "updates": len(losses),
+                "role_counts": ROLE_COUNTS,
+                "evaluation_rows": len(evaluation_pairs),
+                "listener_dir": str(arguments.listener_dir),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true")
+    parser.add_argument("--donors", type=Path, required=True)
+    parser.add_argument("--evaluation-set", type=Path, required=True)
+    parser.add_argument("--source-root", type=Path, required=True)
+    parser.add_argument("--pair-root", type=Path, required=True)
+    parser.add_argument("--predecessor-result", type=Path, required=True)
+    parser.add_argument("--predecessor-pseudo-root", type=Path, required=True)
+    parser.add_argument("--control-adapter", type=Path, required=True)
+    parser.add_argument("--xvc-source-root", type=Path, required=True)
+    parser.add_argument("--xvc-config", type=Path, required=True)
+    parser.add_argument("--checkpoint", type=Path, required=True)
+    parser.add_argument(
+        "--inventory",
+        type=Path,
+        default=(
+            REPO_ROOT
+            / "artifacts"
+            / "exp007"
+            / "phase0-inputs-v1"
+            / "inventory.json"
+        ),
+    )
+    parser.add_argument("--work-dir", type=Path, required=True)
+    parser.add_argument("--listener-dir", type=Path, required=True)
+    parser.add_argument("--confirm-gpu-lease", choices=("gpu0",))
+    parser.add_argument("--device", choices=("cuda:0",), default="cuda:0")
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    arguments = _parser().parse_args(argv)
+    try:
+        donors, evaluation, targets, predecessor = validate_inputs(arguments)
+        if arguments.check:
+            print(
+                json.dumps(
+                    {
+                        "status": "checked-no-cuda",
+                        "donors": len(donors["items"]),
+                        "evaluation_rows": len(evaluation["items"]),
+                        "training_targets": len(targets),
+                        "generated_pairs": TOTAL_UPDATES,
+                        "updates": TOTAL_UPDATES,
+                        "role_counts": ROLE_COUNTS,
+                    },
+                    sort_keys=True,
+                )
+            )
+            return 0
+        return run(arguments, donors, evaluation, targets, predecessor)
+    except (
+        base.ListenNowError,
+        breadth.BreadthError,
+        external.ExternalEvaluationError,
+        method.SourceDiversityError,
+        RoleMixError,
+        OSError,
+        ValueError,
+    ) as error:
+        print(f"exp036-role-mix-error: {error}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

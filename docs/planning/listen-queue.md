@@ -58,18 +58,24 @@ they do not establish ChatGPT-browser performance. Exact human87 horizon, LR,
 LoRA-scope and EXP-024 DTW retries remain closed. New data construction,
 conditioning, loss, and freeze-scope methods are open. EXP-033 completed, but
 its JVS-clean improvement did not generalize to the first six Common Voice
-rows and one low-quality source produced a gross loop. EXP-035 is the current
-single GPU lane. It replaces three donors repeated four times with twelve
-distinct admitted donors once, while holding 87 targets, 12 exposures/text,
-1,044 updates, control69, LR, loss, target voice, and zero target conditioning
-fixed. Seven other Common Voice speakers are reserved for external evaluation.
+rows and one low-quality source produced a gross loop. EXP-035 replaced three
+donors repeated four times with twelve distinct admitted donors once while
+holding 87 targets, 12 exposures/text, 1,044 updates, control69, LR, loss,
+target voice, and zero target conditioning fixed. It avoided gross repetition
+on seven disjoint speakers and reduced the adapted worst case, but did not
+beat base overall. On the frozen ten-condition set it tied EXP-033's auxiliary
+content score and retained the same noise regression. Donor-count expansion is
+therefore closed. EXP-036 is the current single GPU lane: keep EXP-035 data,
+updates, scope, LR, loss, and conditioning fixed and change only the upstream
+training-role assignment to X-VC's official standard/reconstruction/reversed
+mix.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Commit and run EXP-035: twelve distinct Common Voice donors, fixed 1,044-update control69 pilot | parent | no | seven-row base/JVS3/CV12 comparison published and coarse screen recorded |
-| 2 | If CV12 still corrupts heldout speakers, change method to conditioning or upstream role assignment; do not add another donor-count point | parent | no human dependency for machine reject | one technical stop and replan |
+| 1 | Commit and run EXP-036: official standard/reconstruction/reversed role mix on EXP-035's fixed 1,044 pairs | parent | no | seven-row CV12-standard/role-mix comparison published and coarse screen recorded |
+| 2 | If role mix avoids a gross external regression, render it once on the frozen ten clean/tempo/F0/noise/silence conditions | parent | no human dependency for machine reject | fixed-condition comparison published; no automated winner |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

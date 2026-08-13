@@ -152,17 +152,23 @@ claims from that artifact are superseded. The active join is now:
  EXP-033 fixed 10-row method pilot (complete)
         -> EXP-034 external-speaker check (JVS3 gross loop; no generalization claim)
         -> 52-speaker Common Voice source admission
-        -> EXP-035 12-donor breadth at fixed 1,044 updates (gpu0)
+        -> EXP-035 12-donor breadth at fixed 1,044 updates (complete)
+        -> seven disjoint speakers + frozen ten conditions (complete)
+        -> EXP-036 official 40/20/40 training-role mix (gpu0)
         -> seven disjoint-speaker content/corruption screen
-        -> publish base / JVS3 / CV12 audio on 8878
+        -> publish CV12 standard / role-mix audio on 8878
         -> operator hearing when available
 ```
 
-EXP-035 holds target text exposure and 1,044 updates fixed while replacing
+EXP-035 held target text exposure and 1,044 updates fixed while replacing
 EXP-033's three donor speakers repeated four times with twelve distinct donor
-speakers in one pass. Training donors and external evaluation speakers are
-disjoint. This stays on the method/data path without retrying the closed
-human87 epoch/LR/scope or EXP-024 DTW axes.
+speakers in one pass. Its external worst case improved, but base remained
+competitive and the fixed noise regression survived; no more donor-count point
+is admitted. EXP-036 reuses those exact generated pairs and changes only role
+assignment from all-standard to X-VC's official standard/reconstruction/
+reversed proportions. Training donors and external evaluation speakers remain
+disjoint. This stays on the method path without retrying the closed human87
+epoch/LR/scope or EXP-024 DTW axes.
 
 ```text
  Unheard on 8878: EXP-033/034/035 / stable public RVC-XVC / EXP-023 Qwen
