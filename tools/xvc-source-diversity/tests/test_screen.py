@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -61,3 +62,23 @@ def test_evaluation_loader_keeps_external_evaluation_kind(tmp_path: Path) -> Non
     result = SCREEN._load_evaluation(path)
 
     assert result["kind"] == "liveconv-exp034-commonvoice25-ja-unseen/v1"
+
+
+def test_listener_variants_are_discovered_from_index(tmp_path: Path) -> None:
+    (tmp_path / "index.json").write_text(
+        json.dumps(
+            {
+                "source_output_file": "00-source.wav",
+                "variants": [
+                    {"variant_id": "base", "output_file": "10-base.wav"},
+                    {"variant_id": "cv12", "output_file": "20-cv12.wav"},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    source, variants = SCREEN._load_listener_variants(tmp_path)
+
+    assert source == "00-source.wav"
+    assert variants == {"base": "10-base.wav", "cv12": "20-cv12.wav"}

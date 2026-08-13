@@ -23,13 +23,6 @@ class ScreenError(RuntimeError):
     """The fixed X-VC screen inputs are incomplete or malformed."""
 
 
-VARIANTS = {
-    "base": "10-xvc-base.wav",
-    "human87-control69-e12": "20-xvc-human87-control69-e12.wav",
-    "jvs3-generated-pairs": "30-xvc-jvs3-generated-pairs.wav",
-}
-
-
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -126,7 +119,8 @@ def aggregate_rows(rows: Sequence[Mapping[str, object]]) -> dict[str, object]:
                 known_distances
             ) / len(known_distances)
     macro: dict[str, object] = {}
-    for variant in VARIANTS:
+    variants = sorted({str(row["variant"]) for row in rows})
+    for variant in variants:
         items = [row for row in rows if row["variant"] == variant]
         distances = [float(item["source_relative_distance"]) for item in items]
         macro[variant] = {
@@ -157,6 +151,37 @@ def _load_evaluation(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict) or not isinstance(value.get("items"), list):
         raise ScreenError("evaluation set schema drifted")
     return value
+
+
+def _load_listener_variants(row_root: Path) -> tuple[str, dict[str, str]]:
+    index_path = row_root / "index.json"
+    try:
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ScreenError(f"listener index is invalid: {row_root.name}") from error
+    source_file = index.get("source_output_file") if isinstance(index, dict) else None
+    rows = index.get("variants") if isinstance(index, dict) else None
+    if (
+        not isinstance(source_file, str)
+        or Path(source_file).name != source_file
+        or not isinstance(rows, list)
+        or not rows
+    ):
+        raise ScreenError(f"listener index schema drifted: {row_root.name}")
+    variants: dict[str, str] = {}
+    for row in rows:
+        variant = row.get("variant_id") if isinstance(row, dict) else None
+        filename = row.get("output_file") if isinstance(row, dict) else None
+        if (
+            not isinstance(variant, str)
+            or not variant
+            or variant in variants
+            or not isinstance(filename, str)
+            or Path(filename).name != filename
+        ):
+            raise ScreenError(f"listener variant drifted: {row_root.name}")
+        variants[variant] = filename
+    return source_file, variants
 
 
 def _transcribe(model: Any, path: Path) -> str:
@@ -199,10 +224,16 @@ def run(arguments: argparse.Namespace) -> int:
     )
     rows: list[dict[str, object]] = []
     transcripts: dict[str, str] = {}
+    expected_variants: dict[str, str] | None = None
     for index, item in enumerate(evaluation["items"]):
         row_root = arguments.listener_root / f"{index:02d}-{item['id']}"
-        source_path = row_root / "00-source-reference.wav"
-        expected_files = [source_path, *(row_root / name for name in VARIANTS.values())]
+        source_file, variants = _load_listener_variants(row_root)
+        if expected_variants is None:
+            expected_variants = variants
+        elif variants != expected_variants:
+            raise ScreenError("listener variant set changes between rows")
+        source_path = row_root / source_file
+        expected_files = [source_path, *(row_root / name for name in variants.values())]
         if any(path.is_symlink() or not path.is_file() for path in expected_files):
             raise ScreenError(f"listener row is incomplete: {item['id']}")
         source_transcript = _transcribe(model, source_path)
@@ -210,7 +241,7 @@ def run(arguments: argparse.Namespace) -> int:
         if known_text is not None and not isinstance(known_text, str):
             raise ScreenError(f"known text is malformed: {item['id']}")
         transcripts[f"{item['id']}/source"] = source_transcript
-        for variant, filename in VARIANTS.items():
+        for variant, filename in variants.items():
             output_path = row_root / filename
             transcript = _transcribe(model, output_path)
             transcripts[f"{item['id']}/{variant}"] = transcript
@@ -263,6 +294,7 @@ def run(arguments: argparse.Namespace) -> int:
         },
         "evaluation_set_sha256": sha256_file(arguments.evaluation_set),
         "evaluation_kind": evaluation.get("kind"),
+        "variants": expected_variants,
         "rows": rows,
         "aggregate": aggregate_rows(rows),
         "transcripts": transcripts,

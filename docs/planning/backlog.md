@@ -77,13 +77,14 @@ name one owner and ownership zone below.
 | LV-066 | Done | P0 | MS-3 | Run one Seed-VC v1 full offline gross screen | The sole admitted EXP-022 attempt failed closed during the discarded warmup, published no candidate, cleaned up, and was not retried or replaced by a tiny model or parameter sweep |
 | LV-067 | Review | P1 | MS-3 optional | Gross-screen one Qwen3-TTS Ono_Anna Japanese candidate | EXP-023 12 texts are on port 8878; operator `continue`/`rejected` only; this cannot win the VC path |
 | LV-068 | Done | P0 | MS-3 | Listen-now train the 87 whole-short human pairs through X-VC | EXP-025/026 stretch+pad training and heldout renders completed; scope, horizon, and learning-rate follow-ups are closed, with stable comparisons published on 8878 and no quality winner claimed |
-| LV-069 | In progress | P0 | MS-3 | Retrain X-VC with generated same-content source-speaker diversity and a fixed diverse evaluation | EXP-033 holds 87 target texts, 12 exposures/text, 1,044 updates, control69, LR, loss, and target voice fixed; publish base/legacy/new on ten cross-speaker/tempo/pitch/noise/silence rows |
+| LV-069 | Done | P0 | MS-3 | Retrain X-VC with generated same-content source-speaker diversity and a fixed diverse evaluation | EXP-033 published 30 candidates; JVS-clean content improved, but external Common Voice exposed one gross loop and no generalization claim survives |
+| LV-070 | In progress | P0 | MS-3 | Expand generated-source donor breadth at fixed exposure and evaluate on disjoint external speakers | EXP-035 changes 3 donors x 4 epochs to 12 donors x 1 epoch while fixing 87 targets, 1,044 updates, scope, LR, loss, target voice, and conditioning |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| LV-069 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-033 note, and its ignored artifacts | Publish ten base/legacy/new comparisons, record the groupwise machine screen, then replan |
+| LV-070 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-035 note, and its ignored artifacts | Publish seven base/JVS3/CV12 comparisons, record the external machine screen, then replan |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.
@@ -104,9 +105,10 @@ zones. Completed writers are removed from this table immediately.
 MS-1 is closed. MS-2 closed by scope decision after the operator rejected the
 prepared audio. Human hearing is temporarily unavailable. MS-3 therefore runs
 one committed method-level GPU pilot at a time, publishes its audio on 8878,
-and uses machine metrics only to reject corruption. EXP-033 is active; exact
-human87 epoch/LR/scope and EXP-024 DTW retries remain closed. Do not spend this
-batch on hashes or receipts.
+and uses machine metrics only to reject corruption. EXP-035 is active after
+EXP-033 failed to establish external generalization; exact human87 epoch/LR/
+scope and EXP-024 DTW retries remain closed. Do not spend this batch on hashes
+or receipts.
 
 ## MS-3 dispatch plan
 
@@ -115,8 +117,8 @@ The live board is [`listen-queue.md`](listen-queue.md). Process is
 
 | Ready item | Intended ownership zone | Stop condition |
 |---|---|---|
-| LV-069 EXP-033 | `tools/xvc-source-diversity/` and fixed-port 8878 | ten-row base/legacy/new audio plus groupwise corruption screen, then replan |
-| Unheard drain | Fixed-port 8878: EXP-033, stable public sets, EXP-023 | Operator `continue`/`rejected` when hearing returns |
+| LV-070 EXP-035 | `tools/xvc-source-diversity/` and fixed-port 8878 | seven-row base/JVS3/CV12 audio plus external corruption screen, then replan |
+| Unheard drain | Fixed-port 8878: EXP-033/034/035, stable public sets, EXP-023 | Operator `continue`/`rejected` when hearing returns |
 
 LV-032, LV-055, LV-056, LV-057, LV-058, and LV-068 are complete. LV-059,
 LV-061, LV-062, and LV-064 Stage B are historical or blocked. The prior nine-family

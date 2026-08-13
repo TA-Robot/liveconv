@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "kind": "liveconv-exp035-commonvoice-external-evaluation/v1",
+  "source": {
+    "dataset": "Mozilla Common Voice Scripted Speech 25.0 - Japanese",
+    "license": "CC0-1.0",
+    "mirror": "FluidInference/cv-corpus-25.0-ja",
+    "mirror_revision": "365b7654cd582e20e8000921ef7b0e32caa1906a",
+    "split": "ja_00/test",
+    "admission": "first-2.4s known-text distance <= 0.375 with pinned faster-whisper small"
+  },
+  "items": [
+    {"id":"cv38912041","group":"commonvoice-heldout","filename":"common_voice_ja_38912041.mp3","sha256":"8393ddea81758a08b98689b123d6a6542c9b2ca87a5e629fafb0a3771335d006","client_id_sha256":"eec174ceddfa8ce1d268390d10861454f78200b0facaa3c8c4602962cd3737ee","text":"福岡県糸田町","source_transcript":"福岡県糸田町","known_text_distance":0.0,"age":"twenties","gender":"male_masculine"},
+    {"id":"cv42131114","group":"commonvoice-heldout","filename":"common_voice_ja_42131114.mp3","sha256":"9298b684b22d19a6a573fce24446d7e3d8465577cbf446296be88720f370531b","client_id_sha256":"b59177e0c874d5a43c1bd0aca2b0469a5d917f853e291dbb8fe8866f881be125","text":"こんにちは。とってもいいてんきですね","source_transcript":"こんにちはとってもいいて","known_text_distance":0.29411764705882354,"age":"twenties","gender":"female_feminine"},
+    {"id":"cv27706769","group":"commonvoice-heldout","filename":"common_voice_ja_27706769.mp3","sha256":"4da69a453b14a5088479cff8dcfde470bee588bc83d60d65dbbed94d1296e372","client_id_sha256":"c165e0c4121a562594d773796bdb209475b42d78144536f4c67c2f5272a99805","text":"いきなり突き飛ばして逃げ出した","source_transcript":"いきなり突き飛ばして","known_text_distance":0.3333333333333333,"age":"thirties","gender":"male_masculine"},
+    {"id":"cv39005101","group":"commonvoice-heldout","filename":"common_voice_ja_39005101.mp3","sha256":"a8b58bbd4ef232a741123577256d4b9523afcf16449aa4374301e97f755aadf2","client_id_sha256":"57fb454057cc081889af4a41261183c06f94553811a67b071f907d7bd625355c","text":"長野県小諸市","source_transcript":"長野県小もろ市","known_text_distance":0.3333333333333333,"age":"twenties","gender":"male_masculine"},
+    {"id":"cv22066690","group":"commonvoice-heldout","filename":"common_voice_ja_22066690.mp3","sha256":"29b9b7f71737c26c7a452268eba52f1e301d397e12dad11901f21cc04d0c6be5","client_id_sha256":"9c0639c93520a06fd0042273aa4fb93cda643de81ae7069dad2d3682b18281ac","text":"辞書はあそこの本棚にあります。","source_transcript":"自称はあそこのホンダにあります","known_text_distance":0.35714285714285715,"age":"teens","gender":"male_masculine"},
+    {"id":"cv45195640","group":"commonvoice-heldout","filename":"common_voice_ja_45195640.mp3","sha256":"46e85fe3f1f346ec171dc3cd9e8588ff1d925624972396bc7e2cb4c33d9935e8","client_id_sha256":"15cf2b6e6d640898e808c23d72592ab65ec799a0a2ecacc3753d6e8a5c717538","text":"ここで履き物を脱いでください","source_transcript":"ここで吐き物塗りにください","known_text_distance":0.35714285714285715,"age":"twenties","gender":"do_not_wish_to_say"},
+    {"id":"cv45141533","group":"commonvoice-heldout","filename":"common_voice_ja_45141533.mp3","sha256":"51e1f6e846f43af5035dd65484a9fec2541b4cf7b7933761d6c1e9d56aa6ce13","client_id_sha256":"b6e7cc22496ed7397f045be072bec2f6531855a2b2eb847bab25f7e52536229a","text":"メロスは激怒した","source_transcript":"メロスは効き出した","known_text_distance":0.375,"age":"twenties","gender":"female_feminine"}
+  ]
+}

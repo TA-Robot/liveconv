@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "kind": "liveconv-exp035-commonvoice-donors/v1",
+  "source": {
+    "dataset": "Mozilla Common Voice Scripted Speech 25.0 - Japanese",
+    "license": "CC0-1.0",
+    "mirror": "FluidInference/cv-corpus-25.0-ja",
+    "mirror_revision": "365b7654cd582e20e8000921ef7b0e32caa1906a",
+    "split": "ja_00/test",
+    "admission": "first-2.4s known-text distance <= 0.375 with pinned faster-whisper small"
+  },
+  "items": [
+    {"id":"cv30686349","filename":"common_voice_ja_30686349.mp3","sha256":"46cf4211e6ce7b227b76aee02e094b7480df1f73f5de2c29a3c07ded0a27cdbf","client_id_sha256":"23efcadd9c512c8679cba6d9c49bf0af49ca9d671a5d4b820afe71c98a17b979","text":"今までの悲しさをぶつけるように。","source_transcript":"今までの悲しさをぶつけるように","known_text_distance":0.0,"age":"teens","gender":"male_masculine"},
+    {"id":"cv39061593","filename":"common_voice_ja_39061593.mp3","sha256":"cd9fc73056c9cca075fc245ed4ee34e1516be6e622d0d9d3ec004d3033dd9db3","client_id_sha256":"943c6951f2fd92bced0bebbec7e30fa04f460be286ea3a6a94680844c47bb49d","text":"お願いします","source_transcript":"お願いします","known_text_distance":0.0,"age":"twenties","gender":"female_feminine"},
+    {"id":"cv41143600","filename":"common_voice_ja_41143600.mp3","sha256":"64c438791173b3eb22466bb203fe1a92b1c47fa2ee0549a4f982b9a235d33beb","client_id_sha256":"e1db2e8e336b289c5473a84e96c0ac435d002788ad66eb444d9fed1a565ad49e","text":"元気の出る曲をかけて","source_transcript":"元気の出る曲をかけて","known_text_distance":0.0,"age":"fourties","gender":"male_masculine"},
+    {"id":"cv41783356","filename":"common_voice_ja_41783356.mp3","sha256":"05f89dce6fd10fa824442d1659790bfee60899a0a7c100969a010c71f4729c7a","client_id_sha256":"658e34849471e81626852cf108c1b3ee02a123c36828391caf3ccba6e0c344c5","text":"お茶を入れて休憩しましょう。","source_transcript":"お茶を入れて休憩しましょう","known_text_distance":0.0,"age":"twenties","gender":"do_not_wish_to_say"},
+    {"id":"cv39095807","filename":"common_voice_ja_39095807.mp3","sha256":"92283275c95aafd868c3702fa78d9ed573c3c994047918156a313a10f274060a","client_id_sha256":"857677a3bc1e387039fde5e320f0e55c7a63f05e4ce5325142ffe075e9665774","text":"先週インフルエンザにかかりました","source_transcript":"先週インフルエンザにかかります。","known_text_distance":0.125,"age":"twenties","gender":"female_feminine"},
+    {"id":"cv21573728","filename":"common_voice_ja_21573728.mp3","sha256":"2b8ca3a56719ae2dc00f5ee0929ccf5c1a9bd4db2ef0d2b14cbe434f4d031443","client_id_sha256":"84b3b40d4e2f45786e996eb3623a77f8c3c4a55681b055cc946797dca8aec3a2","text":"ラジオでニュースを聞きます。","source_transcript":"ラジオでニュースを聞き","known_text_distance":0.15384615384615385,"age":"teens","gender":"male_masculine"},
+    {"id":"cv41768939","filename":"common_voice_ja_41768939.mp3","sha256":"17e471e5e66589b0d2cc5eba9ce0d42de13dfa85f631aaa3bc81f912a43625c5","client_id_sha256":"ad47dfa1a6cd0cf5e70e3d54dc610b67300ca91c18c047f232b1923ccb989d9e","text":"もうよいかな","source_transcript":"もう良いかな?","known_text_distance":0.16666666666666666,"age":"teens","gender":"female_feminine"},
+    {"id":"cv45132518","filename":"common_voice_ja_45132518.mp3","sha256":"43f796e9a067fbe363935e666c7ab250b61a241c9d77b791011c9aa5675c5532","client_id_sha256":"18feea3a14e3e64bbf079300a0cf93a76f0a82ad40c8722b8ac161347abdd6a3","text":"抜けそう？行け！","source_transcript":"抜けそう?いけ!","known_text_distance":0.16666666666666666,"age":"teens","gender":"female_feminine"},
+    {"id":"cv45131118","filename":"common_voice_ja_45131118.mp3","sha256":"6b1ab0fadfa29c28027505103164d9aec1bd21197e9436404d2263a14e26831f","client_id_sha256":"46d3c817e257a17711d0c6ba6880935e8245bfc1c952bd9758aa288797d87a32","text":"ケーキ屋さんで買い物をします。","source_transcript":"ケーキ屋さんで買い物を","known_text_distance":0.21428571428571427,"age":"twenties","gender":"do_not_wish_to_say"},
+    {"id":"cv39338882","filename":"common_voice_ja_39338882.mp3","sha256":"47c331cec8c080427c6965ff216199afa2413cedc92580bb0ca04693895749e1","client_id_sha256":"77d7dcad16ed29fc24433c8b60e4df34d72e8357078e59af0df47de23779c1dc","text":"みるみる顔が青ざめていく。","source_transcript":"みるみる顔側を覚めていく","known_text_distance":0.25,"age":"thirties","gender":"male_masculine"},
+    {"id":"cv39016327","filename":"common_voice_ja_39016327.mp3","sha256":"3f3a1ddddd17b856f0b029e2846511e6456be75bae706753a079a78ccd6aca7b","client_id_sha256":"ebe742035c61bcba5371b1bb26db4419e867098be6fbce8d3d340a44f1468451","text":"低い音は波長が長いため回折する","source_transcript":"低い音は波長が長いため","known_text_distance":0.26666666666666666,"age":"twenties","gender":"male_masculine"},
+    {"id":"cv45219004","filename":"common_voice_ja_45219004.mp3","sha256":"011f5d85d547ae8e8cf0cff942c140503021c6d7c5ebd141d24e2f626146800b","client_id_sha256":"698712a31ddafbc3b2f68d937a0a0acf1a604ee1654e9adb6fc799fe283562e8","text":"その映画は感動的でした。","source_transcript":"その映画は感動的","known_text_distance":0.2727272727272727,"age":"fifties","gender":"female_feminine"}
+  ]
+}

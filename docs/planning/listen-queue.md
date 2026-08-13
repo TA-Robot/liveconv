@@ -30,6 +30,7 @@ target.
 
 | Item | What to hear | Action | Afterward |
 |---|---|---|---|
+| EXP-034/035 external speakers | Base vs JVS3 and, after its run, CV12 donor-breadth X-VC on disjoint Common Voice Japanese speakers | after hearing returns: reject obvious loops first, then judge naturalness and target voice across the set | machine ASR only screens content/corruption; no automatic winner |
 | EXP-033 source diversity | Base vs legacy human87 control69-e12 vs JVS3 generated-pair X-VC on ten fixed cross-speaker/constraint rows | after hearing returns: prefer one arm per group or reject all; judge naturalness and target voice by ear | machine ASR may reject corruption only; a consistent audible result admits the next method decision, not promotion |
 | EXP-023 | 12 Qwen3-TTS Ono_Anna texts | per text: `continue` or `rejected` | one `rejected` stops this exact TTS profile; all `continue` only admits later TTS transport work, not a VC win |
 | EXP-025 whole-short 87 | Frozen base vs human-paired adapted X-VC on three public heldout source-only utterances | `keep` only if adapted is clearly preferable on the set; otherwise `rejected` | `keep` admits a separate promote pass; `rejected` closes this exact 87-pair schedule |
@@ -55,20 +56,21 @@ Method reset (2026-08-13): the later `actual-input` statements in this file's
 historical narrative refer to the now-corrected local tongue-twister artifact;
 they do not establish ChatGPT-browser performance. Exact human87 horizon, LR,
 LoRA-scope and EXP-024 DTW retries remain closed. New data construction,
-conditioning, loss, and freeze-scope methods are open. EXP-033 is the current
-single GPU lane: it changes source construction to three JVS generated
-same-content voices while holding 87 target texts, 12 exposures per text,
-1,044 updates, control69, LR, loss, and target voice fixed. Its fixed ten-row
-evaluation spans clean cross-speaker, tempo, pitch, noise, and leading-silence
-conditions. Auxiliary ASR can only screen content/corruption by group.
+conditioning, loss, and freeze-scope methods are open. EXP-033 completed, but
+its JVS-clean improvement did not generalize to the first six Common Voice
+rows and one low-quality source produced a gross loop. EXP-035 is the current
+single GPU lane. It replaces three donors repeated four times with twelve
+distinct admitted donors once, while holding 87 targets, 12 exposures/text,
+1,044 updates, control69, LR, loss, target voice, and zero target conditioning
+fixed. Seven other Common Voice speakers are reserved for external evaluation.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Commit and run EXP-033: JVS3 generated same-content source pairs, fixed 1,044-update control69 pilot | parent | no | ten-row base/legacy/new comparison published and coarse group screen recorded |
-| 2 | If EXP-033 avoids a clear machine regression, preserve it for hearing; otherwise record the failure and change method, not epoch/LR/scope | parent | no human dependency for machine reject | one technical stop and replan |
-| 3 | After hearing returns, hear EXP-033 and the stable public heldout/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
+| 1 | Commit and run EXP-035: twelve distinct Common Voice donors, fixed 1,044-update control69 pilot | parent | no | seven-row base/JVS3/CV12 comparison published and coarse screen recorded |
+| 2 | If CV12 still corrupts heldout speakers, change method to conditioning or upstream role assignment; do not add another donor-count point | parent | no human dependency for machine reject | one technical stop and replan |
+| 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.
 EXP-032 closes the lookahead sweep at a 120-ms auxiliary-ASR floor; do not open

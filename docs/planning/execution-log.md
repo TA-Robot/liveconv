@@ -1794,3 +1794,40 @@ job queue.
   added as evaluation-only data before selecting the next training method.
 - Expected time saved: this sub-two-minute external render can detect donor
   overfit before spending another 3--5 minutes on a method-level train.
+
+## 2026-08-13T12:03:08Z - EXP-034 rejected an EXP-033 generalization claim
+
+- Agent: `primary-integrator`.
+- Task: Render base, legacy human87, and EXP-033 on six Common Voice Japanese
+  speakers excluded from training and the three JVS donor references.
+- Dependencies: commits `8bf11d9`, `daf34c2`, and `4525be7`; exclusive
+  `gpu0`; exact Common Voice 25.0 mirror revision.
+- Result: 18 candidates were published in 83.68 seconds. The first attempt
+  stopped before publication because a 2.196-second real turn did not fill the
+  fixed 2.4-second X-VC window; the committed retry right-padded short turns.
+- Machine screen: mean source-relative distance was 0.422 base, 0.689 legacy,
+  and 3.190 EXP-033. EXP-033 produced one gross loop on the row whose source
+  ASR was itself invalid. Two of six sources had unusable source ASR, so the
+  six-row mean is not treated as a clean generalization benchmark. It is still
+  sufficient to reject any automatic claim that JVS3 generalized.
+- Changed action: screen a wider deterministic Common Voice pool against its
+  known text before model comparison. Do not promote EXP-033 or optimize the
+  old tongue-twister.
+
+## 2026-08-13T12:08:22Z - Common Voice source pool expanded before next train
+
+- Agent: `primary-integrator`.
+- Task: Test whether a larger external evaluation and donor pool can be built
+  without admitting obviously undecodable source clips.
+- Result: 52 distinct Common Voice speakers were screened on only the first
+  2.4 seconds, matching X-VC's model window. Nineteen had known-text distance
+  at or below 0.375; five were exact and eleven were at or below 0.25.
+- Decision: use twelve distinct admissible speakers as training donor
+  references and reserve seven disjoint speakers for external evaluation.
+  Keep 87 target texts, twelve exposures per text, 1,044 updates, control69,
+  LR, loss, target voice, and zero target conditioning fixed. The sole method
+  change from EXP-033 is donor-pool construction: twelve unique speakers in
+  one pass instead of three speakers repeated four times.
+- Next: commit EXP-035 runner and manifests, run the single GPU lane, then
+  screen seven disjoint Common Voice rows. Re-render the original ten
+  conditions only if the external screen avoids a clear regression.

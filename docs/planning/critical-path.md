@@ -149,20 +149,23 @@ tongue-twister recording from the `actual ChatGPT` role. Earlier browser-domain
 claims from that artifact are superseded. The active join is now:
 
 ```text
- fixed 10-row diverse evaluation
-        -> EXP-033 one-variable generated-source-diversity training (gpu0)
-        -> groupwise content/corruption screen
-        -> publish base / legacy / new audio on 8878
+ EXP-033 fixed 10-row method pilot (complete)
+        -> EXP-034 external-speaker check (JVS3 gross loop; no generalization claim)
+        -> 52-speaker Common Voice source admission
+        -> EXP-035 12-donor breadth at fixed 1,044 updates (gpu0)
+        -> seven disjoint-speaker content/corruption screen
+        -> publish base / JVS3 / CV12 audio on 8878
         -> operator hearing when available
 ```
 
-EXP-033 holds target text exposure and 1,044 updates fixed while replacing one
-real Hadou source speaker with three base-X-VC-generated JVS donor voices. This
-reopens X-VC at the method/data level without retrying the closed human87
-epoch/LR/scope or EXP-024 DTW axes.
+EXP-035 holds target text exposure and 1,044 updates fixed while replacing
+EXP-033's three donor speakers repeated four times with twelve distinct donor
+speakers in one pass. Training donors and external evaluation speakers are
+disjoint. This stays on the method/data path without retrying the closed
+human87 epoch/LR/scope or EXP-024 DTW axes.
 
 ```text
- Unheard on 8878: EXP-033 diverse set / stable public RVC-XVC / EXP-023 Qwen
+ Unheard on 8878: EXP-033/034/035 / stable public RVC-XVC / EXP-023 Qwen
         |
         +--> operator keep / continue / rejected
 
