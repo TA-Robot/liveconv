@@ -28,6 +28,9 @@ ACTUAL_SOURCE_ID = "ACTUAL_CHATGPT_20260811_114251"
 ACTUAL_SOURCE_SHA256 = (
     "78b15cd5e9d25ee10d8cb27084c63275221d773a04b21d11e4e3ba2be8056da6"
 )
+ACTUAL_SOURCE_F32_SHA256 = (
+    "b114aed49c79291b10caf30f9828e6efb0e191773aa2fe8ab77d786f7a83b5f2"
+)
 ACTUAL_UNSEEDED_CONTROL_SHA256 = (
     "004b443754f8d1d9615a520220b6ca2d04e05f317bda53228be853d3d5bcd03e"
 )
@@ -120,7 +123,34 @@ async def execute(
         repeat_count = REPEAT_COUNT
     arguments.work_dir.mkdir(parents=True)
     source_f32 = arguments.work_dir / "source.f32le"
-    heldout.wav_to_f32le(source["path"], source_f32)
+    if is_actual:
+        try:
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-v",
+                    "error",
+                    "-y",
+                    "-i",
+                    str(source["path"]),
+                    "-f",
+                    "f32le",
+                    "-acodec",
+                    "pcm_f32le",
+                    "-ar",
+                    "48000",
+                    "-ac",
+                    "1",
+                    str(source_f32),
+                ],
+                check=True,
+            )
+        except subprocess.CalledProcessError as error:
+            raise RepeatTurnError("actual source conversion failed") from error
+        if session.sha256_file(source_f32) != ACTUAL_SOURCE_F32_SHA256:
+            raise RepeatTurnError("actual source PCM identity drifted")
+    else:
+        heldout.wav_to_f32le(source["path"], source_f32)
     frames, _, _ = renderer.source_frames(source_f32)
 
     manifest = renderer.read_json(deployment / "manifest.json")
