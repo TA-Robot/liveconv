@@ -1256,3 +1256,26 @@ job queue.
   Gateway used a 10,000 ms evaluation budget; no model setting changed.
 - Changed action: close this actual-input job after publication and gross
   screen. The stable converter remains unselected pending hearing.
+
+## 2026-08-13T08:02:00Z - stable two-family heldout shortlist published
+
+- Agent: `primary-integrator`.
+- Task: Replace the hearing shortlist's turn-unstable RVC arm with the frozen
+  seed-0 profile without opening another model or seed point.
+- Dependencies: commit `08d63a2`; evaluation Gateway `8881`; exact three
+  public source hashes; retained X-VC Q034 route outputs; existing stable RVC
+  row `EMOTION100_017`; listener `8878`.
+- Result: seed-0 RVC generated the two missing public rows in one persistent
+  session. After worker load, both 120-frame generations completed in
+  2.403/2.402 seconds with finite changed PCM, contiguous sequences, and echoed
+  timestamps. The existing third seed-0 row and all three X-VC rows were reused
+  by exact hash. Six comparison WAVs are published as
+  `ms3-stable-vc-heldout-shortlist-v1`.
+- Machine screen: stable RVC known-text CER by row was 0.444/0.053/0.333,
+  macro 0.277. Retained X-VC was 0.222/0.053/0.222, macro 0.166. Neither arm
+  gross-looped. These values reject corruption only and do not select voice
+  quality.
+- Changed action: make the stable shortlist the only active cross-family
+  hearing surface. The prior `ms3-vc-heldout-shortlist-v1` remains historical
+  because its RVC arm predates the generation-boundary fix. Do not add another
+  seed or model knob before hearing.

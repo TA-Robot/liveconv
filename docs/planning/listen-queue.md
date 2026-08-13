@@ -29,7 +29,7 @@ each result. Accumulated candidates remain unselected until human hearing.
 | EXP-025 whole-short 87 | Frozen base vs human-paired adapted X-VC on three public heldout source-only utterances | `keep` only if adapted is clearly preferable on the set; otherwise `rejected` | `keep` admits a separate promote pass; `rejected` closes this exact 87-pair schedule |
 | EXP-026 horizon | The same three X-VC rows at base / epoch 4 / epoch 8 / epoch 12 | nominate one horizon only if it is clearly preferable across the set; otherwise `rejected` | a nomination chooses the next listen-now model state only; it is not a route or product decision |
 | EXP-032 stream floor + system path | Actual 8.17 s input at epoch 8 with future 100 / 110 / 120 / 125 ms, followed by the future-120 candidate through the bounded worker/cancellation path | hear 120 and 125 ms, then compare the source/system pair; record the lowest acceptable arm, or `rejected` | 100/110 have auxiliary-ASR repetition; the worker probe completed with zero stale frames but is not Gateway-, Extension-, or route-qualified |
-| MS-3 VC heldout shortlist | The same three public utterances through live RVC Sasayaki clean-bright and live X-VC Yofukashi Q034 | per row prefer one arm, or reject both; judge clarity, naturalness, and target-voice fit by ear | a consistent preference admits one next listen-now route; it is not promotion or product selection |
+| MS-3 stable VC heldout shortlist | The same three public utterances through stable seed-0 RVC Sasayaki clean-bright and stable X-VC Yofukashi Q034 | per row prefer one arm, or reject both; judge clarity, naturalness, and target-voice fit by ear | a consistent preference admits one next listen-now route; it is not promotion or product selection |
 | RVC turn-consistency diagnostic | `ms3-rvc-repeat-turn-v1` versus the explicit seed-0/seed-34 repeat collections | compare whether the seeded output removes audible turn-to-turn voice changes; do not choose by auxiliary CER alone | seed 0 is the system integration candidate only; a later audible preference may change it |
 
 Historical X-VC synthetic blinds (EXP-010–019) stay on the listener as
@@ -47,7 +47,7 @@ authorize promote claims or several speculative sweeps in parallel.
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
 | 1 | Help the operator finish the six rows above; EXP-027--031 are superseded diagnostics and do not need separate draining | parent | n/a | decisions recorded |
-| 2 | Keep `ms3-vc-heldout-shortlist-v1` as the only cross-family hearing surface; do not add another model knob while it is unheard | parent | no: the exact six candidates are already published | one operator preference set or both arms rejected |
+| 2 | Keep `ms3-stable-vc-heldout-shortlist-v1` as the only active cross-family hearing surface; the unseeded predecessor is historical | parent | no: the exact six candidates are already published | one operator preference set or both arms rejected |
 | 3 | If EXP-032 receives a `keep`, bind that exact candidate to the formal Gateway profile and exercise native fallback/Extension playout | parent | yes: EXP-032 `keep` | one route-qualified system listen or a recorded integration blocker |
 | 4 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
 
@@ -136,6 +136,14 @@ Auxiliary source-relative CER was 0.636 for seed 0 and 0.727 for the historical
 control, with no gross repetition in either. The historical raw float input is
 no longer retained, so use this as a hearing comparison rather than a strict
 seed-only causal estimate. Do not rerender this input or add another seed.
+
+The deployable heldout shortlist is now complete as
+`ms3-stable-vc-heldout-shortlist-v1`. Two missing seed-0 RVC rows were rendered
+in one persistent Gateway session; the third stable RVC row and all three X-VC
+rows were reused by exact hash. Stable RVC auxiliary macro CER was 0.277 and
+X-VC was 0.166, with no gross repetition. Machine evidence does not select
+perceptual quality. The predecessor `ms3-vc-heldout-shortlist-v1` remains an
+archive because its RVC arm predates the generation-stability fix.
 
 ## Keepers
 
