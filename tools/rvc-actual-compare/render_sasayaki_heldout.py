@@ -371,7 +371,7 @@ async def execute(
 async def run(arguments: argparse.Namespace) -> int:
     deployment, renderer = validate_inputs(arguments)
     if arguments.check:
-        print("ok   RVC Sasayaki heldout CPU admission complete")
+        print(f"ok   {arguments.profile_set} heldout CPU admission complete")
         return 0
     result = await execute(arguments, deployment, renderer)
     print(json.dumps(result, ensure_ascii=True, sort_keys=True))
