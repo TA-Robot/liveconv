@@ -86,6 +86,17 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "from heldout speakers?"
             ),
         }
+    if kind == "semantic2x":
+        return {
+            "experiment_id": "EXP-050",
+            "variant_id": "cv12-semantic2x",
+            "display_name": "EXP-049 / CV12 / semantic SSL loss 2x",
+            "result_kind": "liveconv-exp050-xvc-semantic2x-new-utterance/v1",
+            "question": (
+                "Does semantic2x preserve content on new utterances from "
+                "heldout speakers?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -430,6 +441,7 @@ def _parser() -> argparse.ArgumentParser:
             "reconstruction20",
             "aligned-conditions",
             "authentic-anchor",
+            "semantic2x",
         ),
         default="speaker7",
     )

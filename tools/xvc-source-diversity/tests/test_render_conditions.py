@@ -50,3 +50,10 @@ def test_authentic_anchor_uses_exp048_condition_policy() -> None:
     assert policy["experiment_id"] == "EXP-048"
     assert policy["control"][0] == "cv12-control69"
     assert policy["candidate"][0] == "cv11-authentic1"
+
+
+def test_semantic2x_uses_exp051_condition_policy() -> None:
+    policy = RENDER.candidate_policy("semantic2x")
+
+    assert policy["experiment_id"] == "EXP-051"
+    assert policy["candidate"][0] == "cv12-semantic2x"

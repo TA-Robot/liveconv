@@ -2334,3 +2334,16 @@ job queue.
 - Changed action: commit before training and launch one GPU lane. Seven rows are
   published but cannot decide the method; twelve changed utterances and ten
   conditions remain mandatory before replan.
+
+## 2026-08-13T14:37:41Z - EXP-049 training and external audio completed
+
+- Agent: `primary-integrator`.
+- Task: Double semantic SSL reconstruction weight at fixed EXP-035 data and
+  publish seven external comparisons.
+- Dependencies: commit `bfe143a`; exclusive `gpu0`; listener `8878`.
+- Result: all 1,044 updates completed in 273.28 seconds with 4.77 GB peak
+  allocation and 21 published candidates. The explicit loss weights were
+  semantic 2000, mel 15, speaker 10, and VQ 1; total loss moved 230.36 to
+  216.30. No method decision is made from this result alone.
+- Changed action: commit the already-tested EXP-050/051 render policies, then
+  run seven, twelve, and ten-row screens before selecting another method.

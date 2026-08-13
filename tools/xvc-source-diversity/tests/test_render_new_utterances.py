@@ -78,3 +78,10 @@ def test_authentic_anchor_candidate_is_exp047() -> None:
 
     assert policy["experiment_id"] == "EXP-047"
     assert policy["variant_id"] == "cv11-authentic1"
+
+
+def test_semantic2x_candidate_is_exp050() -> None:
+    policy = NEW.candidate_policy("semantic2x")
+
+    assert policy["experiment_id"] == "EXP-050"
+    assert policy["variant_id"] == "cv12-semantic2x"

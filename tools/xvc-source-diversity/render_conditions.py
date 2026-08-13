@@ -77,6 +77,22 @@ def candidate_policy(kind: str) -> dict[str, Any]:
                 "30-xvc-cv11-authentic1.wav",
             ),
         }
+    if kind == "semantic2x":
+        return {
+            "experiment_id": "EXP-051",
+            "result_kind": "liveconv-exp051-xvc-semantic2x-condition-result/v1",
+            "run_kind": "EXP-051 X-VC semantic2x condition evaluation",
+            "control": (
+                "cv12-control69",
+                "EXP-035 / CV12 / standard semantic loss",
+                "20-xvc-cv12-control69.wav",
+            ),
+            "candidate": (
+                "cv12-semantic2x",
+                "EXP-049 / CV12 / semantic SSL loss 2x",
+                "30-xvc-cv12-semantic2x.wav",
+            ),
+        }
     raise ConditionRenderError(f"unknown candidate kind: {kind}")
 
 
@@ -342,7 +358,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--check", action="store_true")
     parser.add_argument(
         "--candidate-kind",
-        choices=("donor-breadth", "reconstruction20", "authentic-anchor"),
+        choices=(
+            "donor-breadth",
+            "reconstruction20",
+            "authentic-anchor",
+            "semantic2x",
+        ),
         default="donor-breadth",
     )
     parser.add_argument("--evaluation-set", type=Path, required=True)
