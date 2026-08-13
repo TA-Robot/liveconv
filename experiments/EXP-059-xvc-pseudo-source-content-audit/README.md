@@ -1,6 +1,6 @@
 # EXP-059: X-VC pseudo-source content audit
 
-Status: ready training-input audit; no quality claim
+Status: completed training-input audit; retraining admitted; no quality claim
 
 ## Goal
 
@@ -40,3 +40,14 @@ voice quality.
   --model-root artifacts/shared/stt/faster-whisper-small \
   --output artifacts/xvc-source-diversity/exp059-pseudo-content-audit-v1.json
 ```
+
+## Result
+
+The audit scored all 1,044 pseudo sources in 118.39 seconds. It found no empty
+ASR output and two gross-repetition rows. Keeping the best six eligible donors
+per target reduced mean target-relative distance from 0.341 to 0.217 (36.3%)
+and median from 0.267 to 0.188. Every target retained six rows and all twelve
+donors remained represented, with 54--126 updates each after two passes.
+
+All frozen admission conditions passed. One filtered6x2 retraining run is
+admitted; no other keep count or threshold is admitted.

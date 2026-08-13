@@ -73,3 +73,10 @@ def test_target275_uses_exp057_condition_policy() -> None:
     assert policy["experiment_id"] == "EXP-057"
     assert policy["control"][0] == "cv12-control69"
     assert policy["candidate"][0] == "cv12-target275"
+
+
+def test_content_filtered_uses_exp062_condition_policy() -> None:
+    policy = RENDER.candidate_policy("content-filtered6x2")
+
+    assert policy["experiment_id"] == "EXP-062"
+    assert policy["candidate"][0] == "cv12-content-filtered6x2"

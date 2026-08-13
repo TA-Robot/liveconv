@@ -2488,3 +2488,18 @@ job queue.
   retraining unless every target retains six candidates, at least ten donors
   survive globally, and selected mean content distance improves at least 25%.
   No keep-count sweep is admitted.
+
+## 2026-08-13T15:39:00Z - EXP-059 audit passed and EXP-060 admitted
+
+- Agent: `primary-integrator`.
+- Task: Execute the one committed training-input audit and decide whether a
+  content-filtered retraining run has enough signal to justify gpu0.
+- Result: all 1,044 sources completed in 118.39 seconds. There were zero empty
+  transcripts and two gross-repetition rows. The frozen best-six policy reduced
+  mean target-relative distance from 0.341 to 0.217 (36.3%) and median from
+  0.267 to 0.188. All 87 targets retained six sources and all twelve donors
+  survived, contributing 54--126 updates each after two passes.
+- Changed action: admit exactly one filtered6x2 run at fixed control69, target87,
+  loss, LR, seed, zero condition, and 1,044 updates. Freeze 31 clean Hadou
+  heldout rows before training and prepare the existing twelve changed-utterance
+  plus ten-condition policies. Do not test another keep count.

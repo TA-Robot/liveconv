@@ -133,6 +133,18 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "Common Voice utterances?"
             ),
         }
+    if kind == "content-filtered6x2":
+        return {
+            "experiment_id": "EXP-061",
+            "variant_id": "cv12-content-filtered6x2",
+            "display_name": (
+                "EXP-060 / best 6 pseudo donors x 2 / fixed 1,044 updates"
+            ),
+            "result_kind": "liveconv-exp061-xvc-filtered-new-utterance/v1",
+            "question": (
+                "Does pseudo-source content filtering preserve changed utterances?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -502,6 +514,7 @@ def _parser() -> argparse.ArgumentParser:
             "source36",
             "target275",
             "target275-expanded",
+            "content-filtered6x2",
         ),
         default="speaker7",
     )

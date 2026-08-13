@@ -103,6 +103,13 @@ def test_target275_candidate_policies_cover_changed_and_expanded_sets() -> None:
     assert changed["variant_id"] == expanded["variant_id"] == "cv12-target275"
 
 
+def test_content_filtered_candidate_is_exp061() -> None:
+    policy = NEW.candidate_policy("content-filtered6x2")
+
+    assert policy["experiment_id"] == "EXP-061"
+    assert policy["variant_id"] == "cv12-content-filtered6x2"
+
+
 def test_expanded_manifest_uses_all_33_unique_local_files() -> None:
     path = (
         Path(__file__).resolve().parents[3]

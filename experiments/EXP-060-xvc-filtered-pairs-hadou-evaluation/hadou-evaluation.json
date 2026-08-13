@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "kind": "liveconv-exp060-hadou-clean-heldout/v1",
+  "purpose": "sentence-diverse human-source corruption screen; not a naturalness or identity score",
+  "source": {
+    "corpus": "Hadou Voice Dataset / ITA",
+    "license": "CC-BY-4.0",
+    "manifest_sha256": "12e334fb3649fa57a90713a8fe3d036a59bbc7d5aa8971f4cdc4f785941b772b",
+    "pronunciation_audit_sha256": "73d749f6e087b83c1f30c0650f5c67225715f3848ddd9e38c8e446873fe524ee"
+  },
+  "selection": {
+    "split": "heldout",
+    "maximum_full_utterance_asr_cer": 0.15,
+    "row_count": 31,
+    "id_list_sha256": "4c02ea64a71da74cd5a92eb868017945172c5310695f51ac3b7612364379a35f",
+    "window_policy": "first-endpoint-complete-2.4s-right-pad-if-short"
+  },
+  "ids": [
+    "EMOTION100_004",
+    "EMOTION100_008",
+    "EMOTION100_017",
+    "RECITATION324_026",
+    "RECITATION324_037",
+    "RECITATION324_042",
+    "RECITATION324_076",
+    "RECITATION324_082",
+    "RECITATION324_090",
+    "RECITATION324_099",
+    "RECITATION324_100",
+    "RECITATION324_138",
+    "RECITATION324_143",
+    "RECITATION324_144",
+    "RECITATION324_151",
+    "RECITATION324_155",
+    "RECITATION324_164",
+    "RECITATION324_165",
+    "RECITATION324_177",
+    "RECITATION324_180",
+    "RECITATION324_182",
+    "RECITATION324_206",
+    "RECITATION324_222",
+    "RECITATION324_241",
+    "RECITATION324_253",
+    "RECITATION324_263",
+    "RECITATION324_295",
+    "RECITATION324_310",
+    "RECITATION324_311",
+    "RECITATION324_312",
+    "RECITATION324_318"
+  ]
+}
