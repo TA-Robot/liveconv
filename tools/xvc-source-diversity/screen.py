@@ -1,0 +1,272 @@
+#!/usr/bin/env python3
+"""Coarse source-relative ASR and repetition screen for EXP-033 audio.
+
+This tool deliberately compares each converted arm with ASR of its own source.
+It can identify content drift or gross loops. It cannot score naturalness,
+speaker similarity, target-voice fit, or perceptual quality.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import re
+import unicodedata
+from collections import defaultdict
+from collections.abc import Mapping, Sequence
+from pathlib import Path
+from typing import Any
+
+
+class ScreenError(RuntimeError):
+    """The fixed EXP-033 screen inputs are incomplete or malformed."""
+
+
+VARIANTS = {
+    "base": "10-xvc-base.wav",
+    "human87-control69-e12": "20-xvc-human87-control69-e12.wav",
+    "jvs3-generated-pairs": "30-xvc-jvs3-generated-pairs.wav",
+}
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def normalize_japanese(value: str) -> str:
+    normalized = unicodedata.normalize("NFKC", value).lower()
+    output: list[str] = []
+    for character in normalized:
+        codepoint = ord(character)
+        if 0x30A1 <= codepoint <= 0x30F6:
+            character = chr(codepoint - 0x60)
+        if character.isspace() or unicodedata.category(character)[0] in {"P", "S"}:
+            continue
+        output.append(character)
+    return "".join(output)
+
+
+def edit_distance(left: str, right: str) -> int:
+    if len(left) < len(right):
+        left, right = right, left
+    previous = list(range(len(right) + 1))
+    for left_index, left_character in enumerate(left, start=1):
+        current = [left_index]
+        for right_index, right_character in enumerate(right, start=1):
+            current.append(
+                min(
+                    current[-1] + 1,
+                    previous[right_index] + 1,
+                    previous[right_index - 1] + (left_character != right_character),
+                )
+            )
+        previous = current
+    return previous[-1]
+
+
+def normalized_distance(reference: str, hypothesis: str) -> float:
+    reference_normalized = normalize_japanese(reference)
+    hypothesis_normalized = normalize_japanese(hypothesis)
+    return edit_distance(reference_normalized, hypothesis_normalized) / max(
+        len(reference_normalized), 1
+    )
+
+
+def repetition_metrics(value: str) -> dict[str, object]:
+    normalized = normalize_japanese(value)
+    character_runs = [
+        len(match.group(0)) for match in re.finditer(r"(.)\1*", normalized)
+    ]
+    maximum_run = max(character_runs, default=0)
+    maximum_ngram_repeats = 1 if normalized else 0
+    for width in range(2, 5):
+        for start in range(max(len(normalized) - width + 1, 0)):
+            token = normalized[start : start + width]
+            repeats = 1
+            cursor = start + width
+            while normalized[cursor : cursor + width] == token:
+                repeats += 1
+                cursor += width
+            maximum_ngram_repeats = max(maximum_ngram_repeats, repeats)
+    return {
+        "normalized_characters": len(normalized),
+        "maximum_character_run": maximum_run,
+        "maximum_repeated_ngram_count": maximum_ngram_repeats,
+        "gross_repetition": maximum_run >= 6 or maximum_ngram_repeats >= 4,
+    }
+
+
+def aggregate_rows(rows: Sequence[Mapping[str, object]]) -> dict[str, object]:
+    buckets: dict[tuple[str, str], list[Mapping[str, object]]] = defaultdict(list)
+    for row in rows:
+        buckets[(str(row["group"]), str(row["variant"]))].append(row)
+    groups: dict[str, dict[str, object]] = defaultdict(dict)
+    for (group, variant), items in sorted(buckets.items()):
+        distances = [float(item["source_relative_distance"]) for item in items]
+        groups[group][variant] = {
+            "rows": len(items),
+            "mean_source_relative_distance": sum(distances) / len(distances),
+            "maximum_source_relative_distance": max(distances),
+            "gross_repetition_rows": sum(
+                bool(item["repetition"]["gross_repetition"]) for item in items
+            ),
+        }
+    macro: dict[str, object] = {}
+    for variant in VARIANTS:
+        items = [row for row in rows if row["variant"] == variant]
+        distances = [float(item["source_relative_distance"]) for item in items]
+        macro[variant] = {
+            "rows": len(items),
+            "mean_source_relative_distance": sum(distances) / len(distances),
+            "maximum_source_relative_distance": max(distances),
+            "gross_repetition_rows": sum(
+                bool(item["repetition"]["gross_repetition"]) for item in items
+            ),
+        }
+    return {"by_group": dict(groups), "macro": macro}
+
+
+def _load_evaluation(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ScreenError("evaluation set is not valid JSON") from error
+    if not isinstance(value, dict) or not isinstance(value.get("items"), list):
+        raise ScreenError("evaluation set schema drifted")
+    return value
+
+
+def _transcribe(model: Any, path: Path) -> str:
+    from faster_whisper.audio import decode_audio
+
+    audio = decode_audio(str(path), sampling_rate=16_000)
+    segments, _ = model.transcribe(
+        audio,
+        language="ja",
+        task="transcribe",
+        beam_size=5,
+        temperature=0.0,
+        condition_on_previous_text=False,
+        log_progress=False,
+        word_timestamps=False,
+    )
+    return "".join(str(segment.text) for segment in segments).strip()
+
+
+def run(arguments: argparse.Namespace) -> int:
+    evaluation = _load_evaluation(arguments.evaluation_set)
+    if arguments.output.exists() or arguments.output.is_symlink():
+        raise ScreenError("screen output already exists")
+    if arguments.listener_root.is_symlink() or not arguments.listener_root.is_dir():
+        raise ScreenError("EXP-033 listener root is unavailable")
+    if arguments.model_root.is_symlink() or not arguments.model_root.is_dir():
+        raise ScreenError("STT model root is unavailable")
+
+    from faster_whisper import WhisperModel
+    from liveconv_stt.model_artifact import sha256_model_tree
+
+    model_digest = sha256_model_tree(arguments.model_root)
+    model = WhisperModel(
+        str(arguments.model_root),
+        device=arguments.device,
+        compute_type=arguments.compute_type,
+        cpu_threads=4,
+        num_workers=1,
+        local_files_only=True,
+    )
+    rows: list[dict[str, object]] = []
+    transcripts: dict[str, str] = {}
+    for index, item in enumerate(evaluation["items"]):
+        row_root = arguments.listener_root / f"{index:02d}-{item['id']}"
+        source_path = row_root / "00-source-reference.wav"
+        expected_files = [source_path, *(row_root / name for name in VARIANTS.values())]
+        if any(path.is_symlink() or not path.is_file() for path in expected_files):
+            raise ScreenError(f"listener row is incomplete: {item['id']}")
+        source_transcript = _transcribe(model, source_path)
+        transcripts[f"{item['id']}/source"] = source_transcript
+        for variant, filename in VARIANTS.items():
+            output_path = row_root / filename
+            transcript = _transcribe(model, output_path)
+            transcripts[f"{item['id']}/{variant}"] = transcript
+            source_normalized = normalize_japanese(source_transcript)
+            output_normalized = normalize_japanese(transcript)
+            rows.append(
+                {
+                    "source_id": item["id"],
+                    "group": item["group"],
+                    "variant": variant,
+                    "source_sha256": sha256_file(source_path),
+                    "output_sha256": sha256_file(output_path),
+                    "source_transcript": source_transcript,
+                    "output_transcript": transcript,
+                    "source_normalized_characters": len(source_normalized),
+                    "output_normalized_characters": len(output_normalized),
+                    "source_relative_distance": normalized_distance(
+                        source_transcript, transcript
+                    ),
+                    "repetition": repetition_metrics(transcript),
+                }
+            )
+    result = {
+        "schema_version": 1,
+        "kind": "liveconv-exp033-machine-content-screen/v1",
+        "boundary": (
+            "Auxiliary source-relative ASR and repetition only. This cannot rank "
+            "naturalness, target-voice fit, speaker similarity, or a winner."
+        ),
+        "model": {
+            "engine": "faster-whisper==1.2.1",
+            "artifact_sha256": model_digest,
+            "device": arguments.device,
+            "compute_type": arguments.compute_type,
+            "decode": {
+                "beam_size": 5,
+                "temperature": 0.0,
+                "condition_on_previous_text": False,
+            },
+        },
+        "evaluation_set_sha256": sha256_file(arguments.evaluation_set),
+        "rows": rows,
+        "aggregate": aggregate_rows(rows),
+        "transcripts": transcripts,
+        "claims": {
+            "perceptual_winner": False,
+            "promoted": False,
+            "route_qualified": False,
+        },
+    }
+    arguments.output.parent.mkdir(parents=True, exist_ok=True)
+    arguments.output.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    print(json.dumps(result["aggregate"], ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--evaluation-set", type=Path, required=True)
+    parser.add_argument("--listener-root", type=Path, required=True)
+    parser.add_argument("--model-root", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--device", choices=("cpu", "cuda"), default="cuda")
+    parser.add_argument("--compute-type", default="float16")
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    try:
+        return run(_parser().parse_args(argv))
+    except (OSError, ValueError, ScreenError) as error:
+        print(f"exp033-screen-error: {error}")
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
