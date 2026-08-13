@@ -921,3 +921,92 @@ job queue.
 - Changed action: presets materially change content behavior, so compare the
   five existing Runrun presets through the actual Gateway next rather than
   training RVC or extrapolating from the standard profile alone.
+
+## 2026-08-13T05:28:00Z - Runrun presets rendered through the live Gateway
+
+- Agent: `primary-integrator`.
+- Task: Compare Runrun standard plus four deployed presets, with Sasayaki
+  standard as a cross-style reference, on the exact 8.17-second actual input.
+- Dependencies: commit `1db055b`, sealed deployment
+  `9b7e2090039f3ed89511307573f98882d8fa692029e2dddda2b662ebdba7b11d`,
+  exact source hash, live Gateway `8877`, realtime 20 ms pacing, and `gpu0`.
+- Result: all six profiles completed without fallback or dropped frames and
+  were published as `exp020-runrun-presets-actual-v1`. Per-profile wall time
+  was 85.89--97.94 seconds, dominated by worker/model startup.
+- Machine screen: source-relative transcript distance was 0.512 for Sasayaki
+  standard and 0.610 for Runrun standard. Runrun soft/high/clean-bright were
+  0.829/0.707/0.683; girl-bright produced a gross repeated phrase and is closed
+  for further machine-only work. No perceptual winner is selected.
+- Changed action: a second Runrun standard "system-path" render would be
+  duplicate work because this run already used the live Gateway and realtime
+  frame pacing. Use cross-input evidence before another RVC preset decision.
+
+## 2026-08-13T05:32:00Z - existing VC families cross-screened
+
+- Agent: `primary-integrator`.
+- Task: Apply the same pinned auxiliary-ASR corruption/content screen to the
+  existing 32-variant actual-input library; generate no duplicate audio.
+- Result: best normalized source-relative distances were 0.488 for RVC
+  Sasayaki clean-bright and X-VC Yofukashi q34, 0.561 for X-VC Runrun, and
+  0.585 for several RVC/X-VC standard arms. OpenVoice Runrun/Yofukashi and
+  MeanVC2 q34 contained severe transcript-length/repetition explosions. The
+  later X-VC base future-200 output was 0.463, lower than all 32 historical
+  candidates on this content metric only.
+- Changed action: close OpenVoice and MeanVC2 parameter/reference-length
+  expansion for machine-only work. Keep RVC Sasayaki clean-bright and X-VC
+  base future-200 as hearing candidates; neither is an audible selection.
+
+## 2026-08-13T05:45:26Z - Qwen natural-style axis closed
+
+- Agent: `primary-integrator`.
+- Task: Hold Qwen3-TTS 1.7B, Ono_Anna, Japanese, 12 texts, sampling, and seeds
+  fixed; change only empty `instruct` to one natural-conversation instruction.
+- Dependencies: commits `1d4efa4` and cleanup fix `b543eca`, the existing
+  EXP-023 runtime/model/fixture, fixed listener `8878`, and exclusive `gpu0`.
+- Result: 12 new style outputs plus the 12 exact default controls were
+  published as `exp023-qwen3-tts-ono-anna-natural-style-v1`; all 12 new files
+  completed the pinned CUDA faster-whisper screen.
+- Machine screen: default macro text CER was 0.0876 with 6/12 exact rows;
+  natural-style was 0.1175 with 5/12 exact rows. TTS007 improved, but TTS006
+  and TTS012 regressed. This is content evidence only, not a naturalness score.
+- Problems: the first wrapper run generated all 12 WAVs but failed before
+  publication because it used non-recursive removal for Qwen's temporary HOME
+  cache. Fail-closed cleanup removed staging; no partial collection appeared.
+- Rework: changed only cache cleanup to recursive removal, added a regression
+  test, committed the fix, and reran identical model settings. Do not add a
+  second instruction wording or another TTS profile in this machine-only lane.
+
+## 2026-08-13T05:43:55Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, no tools or delegation).
+- Result: `CONTINUE`. The preceding 30 minutes produced committed Runrun and
+  Qwen comparisons on 8878 while X-VC search, RVC retraining, promote work, and
+  parallel GPU sweeps stayed closed. Grok warned that another TTS lane would
+  become a detour from realtime VC.
+- Adopted: yes. Close TTS style expansion and return to the RVC path with one
+  machine-screened lane. Continue one GPU job at a time and keep all audio
+  unselected until human hearing.
+- Not adopted literally: Grok proposed another Runrun standard bounded
+  system-path render, but the just-completed six-profile run already exercised
+  the exact profile through live Gateway/WebSocket with realtime 20 ms pacing.
+  Rerendering it would add no quality information.
+- Changed action: test whether the best historical RVC content candidate,
+  Sasayaki clean-bright, generalizes against Sasayaki standard across three
+  public heldout source utterances. This avoids single-input overfitting while
+  producing six new hearing files.
+- Expected saving: skip one redundant 85--98 second worker render and all
+  further TTS/X-VC tuning cycles.
+
+## 2026-08-13T05:53:28Z - Sasayaki heldout generalization started
+
+- Agent: `primary-integrator`.
+- Task: Render deployed Sasayaki standard and clean-bright on public heldout
+  `EMOTION100_002`, `EMOTION100_004`, and `EMOTION100_017` through live Gateway
+  `8877`, then content-screen the six outputs.
+- Dependencies: commit `78a3551`, the exact sealed deployment and public
+  source hashes, realtime 20 ms pacing, fixed listener `8878`, and `gpu0`.
+- Stop: publish exactly six unselected outputs, close any arm with gross
+  corruption, and do not convert auxiliary ASR into a perceptual winner.
+- Status: in progress; profiles are ordered outermost so all three rows for one
+  worker identity run consecutively before the second profile is loaded.

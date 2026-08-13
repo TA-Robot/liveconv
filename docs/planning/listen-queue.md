@@ -45,7 +45,7 @@ authorize promote claims or several speculative sweeps in parallel.
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
 | 1 | Help the operator finish the six rows above; EXP-027--031 are superseded diagnostics and do not need separate draining | parent | n/a | decisions recorded |
-| 2 | Compare the five existing RVC Runrun presets on the exact 8.17 s actual input through the live Gateway | parent | no: X-VC machine streaming search is closed; profiles and route already exist | one source/Runrun/Sasayaki-reference collection and coarse content screen |
+| 2 | Complete the active Sasayaki standard vs clean-bright comparison on three public heldout utterances | parent | no: Runrun/Gateway screen is complete and clean-bright led historical RVC content triage | six new Gateway WAVs and one coarse cross-row content stop |
 | 3 | If EXP-032 receives a `keep`, bind that exact candidate to the formal Gateway profile and exercise native fallback/Extension playout | parent | yes: EXP-032 `keep` | one route-qualified system listen or a recorded integration blocker |
 | 4 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
 
@@ -90,6 +90,21 @@ close X-VC horizon/LR/scope/lookahead machine search. The next single GPU lane
 uses the already-deployed RVC Runrun standard plus four presets on the same
 actual source, with the existing Sasayaki standard as a cross-style reference.
 It adds no RVC training and cannot select a perceptual winner.
+
+That live-Gateway Runrun comparison is complete. Sasayaki standard had the
+lowest auxiliary content error at 0.512; Runrun standard was 0.610, the other
+non-looping Runrun presets were 0.683--0.829, and girl-bright produced gross
+repetition. Because the comparison already used realtime 20 ms Gateway pacing,
+do not duplicate Runrun standard as another system-path render. The historical
+32-profile screen placed Sasayaki clean-bright at 0.488 on the same source.
+Test only standard versus clean-bright on the three existing public heldout
+source rows next, then stop this RVC preset axis. Human hearing is still needed
+for any quality decision.
+
+The separate Qwen natural-conversation instruction probe also completed. Its
+known-text macro CER worsened from 0.0876 for default to 0.1175 and exact rows
+fell from 6/12 to 5/12. Keep the new audio for hearing, but close further TTS
+style/profile expansion during this machine-only window.
 
 ## Keepers
 
