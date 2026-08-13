@@ -1,0 +1,244 @@
+{
+  "schema_version": 1,
+  "top_status": {
+    "updated_at": "2026-08-13T01:12:00Z",
+    "current": "MS-3の最優先は、すでに聴ける実入力候補の判定です。EXP-020の人間学習済みRVC 3候補、EXP-021のゼロショットVC 2候補、EXP-023のQwen3-TTS 12候補をこの順で確認します。",
+    "hold": "履歴のX-VC比較と370本の発音確認は今回の判定を止めません。EXP-024のDTW pilotは再実行せず、RVC再学習、TTSの人間VC corpusへの混入、keep前のpromote作業も行いません。",
+    "next": "各候補は、明らかな欠損・反復・不明瞭さがあれば理由つきでrejected、それ以外はcontinueを記録してください。continueは次の大きなlistenを許可するだけで、製品採用ではありません。固定ポート: 8878。"
+  },
+  "collections": [
+    {
+      "match_all": ["exp025-whole-short-87-listen-now"],
+      "display_title": "EXP-025: whole-short 87ペア listen-now",
+      "purpose": "人間Hadou→Amitaro runrunのwhole-short 87ペアで短く適応したX-VCを、同じ入力のbaseと比較",
+      "data": "public heldout source-only 3本、別文のtrain-role target reference 1本、expanded79 LoRA r8、LR 1e-4、gradient clip 5、348 updates。heldout targetは未使用。",
+      "status": "EXP-020/021/023の後に確認。adaptedが明確に良ければkeep、それ以外はrejected。listen-nowのみで、334/36/54・route・realtime・製品採用は主張しません。",
+      "review_priority": "normal"
+    },
+    {
+      "match_all": ["exp025-hadou-source-pronunciation-review"],
+      "display_title": "EXP-025: Hadou source発話の発音確認",
+      "purpose": "固定済みのEXP-025候補について、Hadou source発話の発音だけを確認",
+      "data": "source-only evidenceとして公開された候補だけ。source発話以外の音声・出力・設定は表示・書出し対象外です。",
+      "status": "各source発話を残すか外すかだけ記録します。外す場合は理由が必要です。",
+      "review_priority": "normal",
+      "review_mode": "pronunciation_keep_exclude"
+    },
+    {
+      "match_all": ["exp024-hadou-pronunciation-review"],
+      "display_title": "EXP-024: Hadou 370発話の発音確認",
+      "purpose": "X-VC学習へ入れる人間source発話を、公式本文・公式かな・ASR結果と音声で確認",
+      "data": "Hadou source 424本のうち train 334本と validation 36本。heldout 54本は表示・書出し対象外。各行にID、公式本文、公式かな、ASR、リスク段階、フラグを表示します。",
+      "status": "発音監査の候補を370本に固定。任意の将来確認で、現在のlisten-now判定やEXP-025の小規模renderを止めません。",
+      "review_priority": "normal",
+      "review_mode": "pronunciation_keep_exclude"
+    },
+    {
+      "match_all": ["exp023-qwen3-tts-ono-anna-ja12-plain"],
+      "display_title": "EXP-023: Qwen3-TTS 1.7B / Ono_Anna / 日本語12文",
+      "purpose": "音声変換ではなく、日本語テキストから直接音声を生成するQwen3-TTSの単独粗スクリーニング",
+      "data": "固定日本語12文。Qwen3-TTS 1.7B CustomVoice、Ono_Anna、日本語、公式sampling設定、24 kHz、12出力、新規学習なし。各行に入力文を表示します。",
+      "status": "技術生成完了・operator未レビュー。欠損、反復、誤読、明らかな不自然さの粗い却下だけを記録します。補助STTではTTS008の『メモ』とTTS009の『realtime』が崩れたため、この2本は特に要確認です。offline診断で、リアルタイム適格性や製品採用の根拠ではありません。",
+      "review_priority": "next",
+      "review_mode": "gross_reject_only"
+    },
+    {
+      "match_all": ["exp021-zero-shot-gross-8s-plain-20260812"],
+      "display_title": "EXP-021: 実入力8.17秒・ゼロショットVCの粗い失敗確認",
+      "purpose": "同じ実際の変換前VC 8.17秒の早口言葉入力を、MeanVC2 Runrun Q007 ゼロショットと OpenVoice V2 Runrun Q007 ゼロショットで確認",
+      "data": "新規学習なし。候補ラベルは index の平文ラベルをそのまま表示します。",
+      "status": "2番目に確認。技術レンダーのみ・operator 未レビュー。聞いた瞬間に分かる欠損・反復・不明瞭さの粗い却下だけを記録します。合格・勝者・リアルタイム・E2E の主張はしません。",
+      "review_priority": "priority",
+      "review_mode": "gross_reject_only"
+    },
+    {
+      "match_all": ["exp020-human-rvc-smoke-8s-plain"],
+      "display_title": "EXP-020: 実入力8.17秒の粗い却下チェック",
+      "purpose": "実際の変換前ChatGPTタブ音声を、Nativeと人間音声学習済みRVC 3種へ同条件で入力",
+      "data": "2026-08-11収録の実入力1件・8.17秒。小型Whisperから推定した発話内容は『隣の客はよく柿食う客だ』を2回＋『生麦生米生卵』。Native / はきはき / るんるん / よふかし",
+      "status": "最初にNativeを基準として聴き、3変換を候補ごとにcontinueまたは理由つきrejected。小型Whisperでは3変換ともNativeから文字列が大きく崩れ、よふかしは反復あり。品質合格やモデル選定には使いません。",
+      "review_priority": "highest",
+      "review_mode": "gross_reject_only"
+    },
+    {
+      "match_all": ["exp006"],
+      "display_title": "EXP-006: 9方式 × 10発話",
+      "purpose": "初期の変換方式・声プロファイル比較",
+      "data": "synthetic validation 10発話・90候補",
+      "status": "履歴・品質不足の基準確認",
+      "review_priority": "normal"
+    },
+    {
+      "match_all": ["adaptation-validation-listening-preview"],
+      "display_title": "EXP-009: adaptation データ範囲",
+      "purpose": "base / control69 / expanded79 の LoRA 学習範囲比較",
+      "data": "synthetic validation LV001-JA-011/014・各3候補",
+      "status": "履歴・品質不足の基準確認",
+      "review_priority": "normal",
+      "candidate_labels": {
+        "Candidate A": "base checkpoint (adapterなし)",
+        "Candidate B": "EXP-009 control69 LoRA",
+        "Candidate C": "EXP-009 expanded79 LoRA"
+      }
+    },
+    {
+      "match_all": ["exp010"],
+      "display_title": "EXP-010: expanded79 LoRA checkpoint",
+      "purpose": "expanded79 LoRA r8 / LR 3e-4 / zero frame condition の学習時点比較",
+      "data": "synthetic validation LV001-JA-011/014・各5候補",
+      "status": "履歴・品質不足の基準確認",
+      "review_priority": "normal",
+      "candidate_labels": {
+        "Candidate A": "expanded79 LoRA r8 / update 192",
+        "Candidate B": "fresh base / update 0",
+        "Candidate C": "expanded79 LoRA r8 / update 400",
+        "Candidate D": "expanded79 LoRA r8 / update 48",
+        "Candidate E": "expanded79 LoRA r8 / update 96"
+      }
+    },
+    {
+      "match_all": ["exp013"],
+      "display_title": "EXP-013: full converter checkpoint",
+      "purpose": "full acoustic converter / LR 1e-4 / zero frame condition の学習時点比較",
+      "data": "synthetic validation LV001-JA-011/014・各5候補",
+      "status": "履歴・品質不足の基準確認",
+      "review_priority": "normal",
+      "candidate_labels": {
+        "Candidate A": "full converter / update 192",
+        "Candidate B": "full converter / update 0",
+        "Candidate C": "full converter / update 400",
+        "Candidate D": "full converter / update 48",
+        "Candidate E": "full converter / update 96"
+      }
+    },
+    {
+      "match_all": ["exp015-xvc-target-conditioning-render-v1"],
+      "display_title": "EXP-015: target frame condition",
+      "purpose": "update 96 の同一 adapter で zero frame condition と synthetic target condition を比較",
+      "data": "synthetic validation LV001-JA-011/014・各2候補",
+      "status": "履歴・品質不足の基準確認",
+      "review_priority": "normal",
+      "candidate_labels": {
+        "Candidate A": "target_wav_cond=zeros / update 96",
+        "Candidate B": "target_wav_cond=synthetic_target / update 96"
+      }
+    },
+    {
+      "match_all": ["exp016"],
+      "display_title": "EXP-016: gradient clip checkpoint",
+      "purpose": "expanded79 LoRA r8 / LR 3e-4 / gradient clip 5 / zero frame condition の比較",
+      "data": "synthetic validation LV001-JA-011/014・各5候補",
+      "status": "履歴・品質不足の基準確認",
+      "review_priority": "normal",
+      "candidate_labels": {
+        "Candidate A": "grad clip 5 / update 192",
+        "Candidate B": "grad clip 5 / update 0",
+        "Candidate C": "grad clip 5 / update 400",
+        "Candidate D": "grad clip 5 / update 48",
+        "Candidate E": "grad clip 5 / update 96"
+      }
+    },
+    {
+      "match_all": ["exp017"],
+      "display_title": "EXP-017: 発話窓 coverage",
+      "purpose": "EXP-010 prefix 窓 control と start/mid/end 窓 variant を update 96・q位置別に比較",
+      "data": "synthetic validation LV001-JA-011/014 × q0/q0.5/q1・各2候補",
+      "status": "履歴・品質不足の基準確認",
+      "review_priority": "normal",
+      "candidate_labels_by_sha256": {
+        "73ca3115c8c91f67a401091e05f7170922e48288cebf42e129bf22d120c42bef": "EXP-010 control prefix window / update 96 / q=0",
+        "6641201f29240e340bc823cefee45cfa3dbe7e44f2c197b2d92e8a7b10c22cad": "EXP-017 start/mid/end window / update 96 / q=0",
+        "b0145a43f81980e0f1c44748e57a6df0a17fbd206dce0839b3864e4e8136f096": "EXP-010 control prefix window / update 96 / q=0.5",
+        "55c72f705e591e076f514fd20c17c8c266dc377cf9a37d5df8a45ecffbd15556": "EXP-017 start/mid/end window / update 96 / q=0.5",
+        "cbe46b07ab9406cf00da6b20b46ed740d488b874acf0c38131e770b605706fc0": "EXP-017 start/mid/end window / update 96 / q=1",
+        "7e4c94c81eb4a7f174e9300f2e23a11079f950c062dc9f10d5b942e258abae1f": "EXP-010 control prefix window / update 96 / q=1",
+        "71df5c86932dd7913b4c00bf5e479dbfcf088084bb9d72693134559e67454f7d": "EXP-017 start/mid/end window / update 96 / q=0",
+        "1321b652dda2dba0f7a12691ea78c1597513750a234ffbe01c9e526b3d257237": "EXP-010 control prefix window / update 96 / q=0",
+        "08af9562d43aef167d7019df7ba512112323a49cb7eb93a26e9505263310b6bb": "EXP-010 control prefix window / update 96 / q=0.5",
+        "fbabad6c04000835b7defc1356a50238d3b2cb2f3ef07dd9ce6cb4b16616d8f9": "EXP-017 start/mid/end window / update 96 / q=0.5",
+        "25c845a784d2ff5cf11fd509931454e9c5a72ffcbd8cd838a9538005eee5f91e": "EXP-010 control prefix window / update 96 / q=1",
+        "f3f7f5c1c574d18c40653e8329daa214375de9e471a25269720338361a073760": "EXP-017 start/mid/end window / update 96 / q=1"
+      }
+    },
+    {
+      "match_all": ["exp018"],
+      "display_title": "EXP-018: LR 1e-4 checkpoint",
+      "purpose": "expanded79 LoRA r8 / LR 1e-4 / zero frame condition の学習時点比較",
+      "data": "synthetic validation LV001-JA-011/014・各5候補",
+      "status": "履歴・品質不足の基準確認",
+      "review_priority": "normal",
+      "candidate_labels": {
+        "Candidate A": "LR 1e-4 / update 192",
+        "Candidate B": "fresh base / update 0",
+        "Candidate C": "LR 1e-4 / update 400",
+        "Candidate D": "LR 1e-4 / update 48",
+        "Candidate E": "LR 1e-4 / update 96"
+      }
+    },
+    {
+      "match_all": ["exp019"],
+      "display_title": "EXP-019: rank 8 vs 16",
+      "purpose": "rank 8 / alpha 8 と rank 16 / alpha 16 を LR 1e-4・update 96/192 で比較",
+      "data": "synthetic validation LV001-JA-011/014・各4候補",
+      "status": "履歴・品質不足の基準確認",
+      "review_priority": "normal",
+      "candidate_labels_by_sha256": {
+        "cb6c50f33348423bf022d8d593b2d76ab4b176b0386b516b9694658785b6de61": "rank 8 / alpha 8 / update 192",
+        "5a7bc3681886b2a689c7670c8327efb94ce22791daf61efb3ac7a7efc29e773d": "rank 16 / alpha 16 / update 96",
+        "49acc974df18cb84ae764fbd8e74c85b469f443b51155bbbb9d88edeef10f2b6": "rank 8 / alpha 8 / update 96",
+        "809bbcacb1ce6270ad92952eb459e1f6f590ad74480aa76ce6d834a04120685b": "rank 16 / alpha 16 / update 192",
+        "790bed123f49db0b24a191767fd0cc6273c0e5c7e7dba53e9ec78d82ecdb680d": "rank 16 / alpha 16 / update 192",
+        "c478cf8fe454ed822ef5e54608cafc6b48df83ac3420975cc1bed148bc5b4802": "rank 8 / alpha 8 / update 96",
+        "2a3f8d0fb92929d9dc010a789d7d75c52b6f24405f682c379438291ed7166251": "rank 16 / alpha 16 / update 96",
+        "b1e29455240e18d5cef6417323e16bb93521d4fffbd11ec84ded0a55ff862ff8": "rank 8 / alpha 8 / update 192"
+      }
+    },
+    {
+      "match_all": ["20260812-0252"],
+      "display_title": "X-VC 横断 best-of",
+      "purpose": "既存レーンから代表候補を横断比較",
+      "data": "synthetic validation LV001-JA-011/014・各5候補",
+      "status": "履歴・品質不足の基準確認",
+      "review_priority": "normal",
+      "candidate_labels": {
+        "Candidate A": "EXP-016 grad clip / update 96",
+        "Candidate B": "EXP-015 synthetic target condition / update 96",
+        "Candidate C": "EXP-010 fresh base / update 0",
+        "Candidate D": "EXP-010 expanded79 LoRA / update 96",
+        "Candidate E": "EXP-013 full converter / update 48"
+      }
+    },
+    {
+      "match_all": ["route"],
+      "display_title": "route 診断（履歴）",
+      "purpose": "実験ではない route 診断 / legacy artifact",
+      "data": "履歴の音声",
+      "status": "判断の根拠には使わない",
+      "review_priority": "excluded"
+    },
+    {
+      "match_all": ["rnnoise"],
+      "display_title": "RNNoise/RVC 診断（履歴）",
+      "purpose": "実験ではない route 診断 / legacy artifact",
+      "data": "履歴の音声",
+      "status": "判断の根拠には使わない",
+      "review_priority": "excluded"
+    },
+    {
+      "match_all": ["multiref"],
+      "display_title": "X-VC multiref 診断（履歴）",
+      "purpose": "実験ではない route 診断 / legacy artifact",
+      "data": "履歴の音声",
+      "status": "判断の根拠には使わない",
+      "review_priority": "excluded"
+    },
+    {
+      "match_all": ["20260811"],
+      "display_title": "初期 voice intake（履歴）",
+      "purpose": "実験ではない route 診断 / legacy artifact",
+      "data": "履歴の音声",
+      "status": "判断の根拠には使わない",
+      "review_priority": "excluded"
+    }
+  ]
+}
