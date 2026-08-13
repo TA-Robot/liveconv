@@ -561,6 +561,21 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "on 31 disjoint clean Hadou utterances?"
             ),
         }
+    if kind == "real-teacher-output-multidomain48-stress":
+        return {
+            "experiment_id": "EXP-128",
+            "variant_id": "cv12-real-teacher-output-multidomain48",
+            "display_name": (
+                "EXP-124 / full-output teacher / CV24 + Hadou21 + JVS3"
+            ),
+            "result_kind": (
+                "liveconv-exp128-xvc-real-teacher-output-multidomain48-stress60/v1"
+            ),
+            "question": (
+                "Does cross-corpus teacher-source composition remain stable "
+                "across frozen clean, noise, silence, tempo, and pitch inputs?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1054,6 +1069,7 @@ def _parser() -> argparse.ArgumentParser:
             "real-teacher-output48-temporal-fresh48",
             "real-teacher-output-multidomain48-fresh48",
             "real-teacher-output-multidomain48-hadou",
+            "real-teacher-output-multidomain48-stress",
         ),
         default="speaker7",
     )
