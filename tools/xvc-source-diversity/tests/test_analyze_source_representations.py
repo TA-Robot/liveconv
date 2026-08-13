@@ -58,3 +58,8 @@ def test_exploratory_separation_counts_nonloop_rows() -> None:
 
     assert rules[0]["nonloop_rows_flagged"] == 0
     assert rules[0]["loop_rows_covered"] == 2
+    assert {rule["metric"] for rule in rules} == {
+        "hidden.global_std",
+        "tokens.unique_tokens",
+        "waveform.rms",
+    }

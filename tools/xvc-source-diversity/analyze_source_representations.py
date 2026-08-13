@@ -163,16 +163,13 @@ def exploratory_separation(
     """Rank simple one-sided rules; never treat them as fitted production gates."""
     if not loop_source_ids:
         raise RepresentationAuditError("no labelled loop sources were supplied")
-    metric_names = sorted(
-        key
+    metric_paths = sorted(
+        (section, key)
         for section in ("waveform", "tokens", "hidden")
         for key in rows[0][section]
     )
     candidates: list[dict[str, object]] = []
-    for metric in metric_names:
-        section = next(
-            name for name in ("waveform", "tokens", "hidden") if metric in rows[0][name]
-        )
+    for section, metric in metric_paths:
         labelled = [
             (str(row["source_id"]), float(row[section][metric])) for row in rows
         ]

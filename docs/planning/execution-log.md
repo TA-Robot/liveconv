@@ -2843,3 +2843,16 @@ job queue.
 - Changed action: commit before one GPU extraction. Do not fit a production
   threshold on these 33 rows. The result must either name a new testable
   training/bypass hypothesis or close source-validity gating.
+
+## 2026-08-13T18:31:00Z - EXP-093 first extraction exposed report-key collision
+
+- Agent: `primary-integrator`.
+- Result: all 33 source representations completed in 82.18 seconds at 2.58 GB
+  peak. The first exploratory table showed that the best simple rule covering
+  all three loop-prone sources flagged eleven rows, eight of them non-loop.
+- Problems: the table enumerated metric names without their section, so
+  waveform and hidden `mean_abs` collided and duplicated the waveform rule.
+  Extracted row metrics and loop labels were intact.
+- Rework: qualify every metric by section, add a regression asserting all
+  homonymous paths remain distinct, and regenerate the deterministic report.
+  This reporting fix does not change model inference or add a threshold sweep.
