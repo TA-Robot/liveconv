@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare one versus two generation boundaries on exact actual-input RVC."""
+"""Compare one versus two generation boundaries on exact actual-input VC."""
 
 from __future__ import annotations
 
@@ -22,10 +22,26 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[2]
 REPEAT_RUNNER = Path(__file__).with_name("render_rvc_repeat_turn.py")
 RVC_PROFILE_ID = "vc.rvc-v2.amitaro-sasayaki-clean-bright-seed0.v1"
+XVC_PROFILE_ID = "vc.x-vc.amitaro-yofukashi-q34.v1"
 SOURCE_ID = "ACTUAL_CHATGPT_20260811_114251"
 SOURCE_WAV_SHA256 = "78b15cd5e9d25ee10d8cb27084c63275221d773a04b21d11e4e3ba2be8056da6"
 SOURCE_F32_SHA256 = "b114aed49c79291b10caf30f9828e6efb0e191773aa2fe8ab77d786f7a83b5f2"
 BASELINE_RVC_SHA256 = "e00b7f6ec53e838ee3b7cd77d1c6af3035ff3a8e49b724c674631f53cc56e13f"
+BASELINE_XVC_SHA256 = "bbcc638cd330940a79d8b009653e7d1cd930dc452de0252ca7b01d9c97c31442"
+PROFILE_SPECS = {
+    RVC_PROFILE_ID: {
+        "label": "Stable seed-0 RVC",
+        "slug": "stable-rvc",
+        "baseline_sha256": BASELINE_RVC_SHA256,
+        "result_kind": "liveconv-ms3-stable-rvc-turn-split-result",
+    },
+    XVC_PROFILE_ID: {
+        "label": "Stable X-VC Yofukashi Q034",
+        "slug": "stable-xvc-q34",
+        "baseline_sha256": BASELINE_XVC_SHA256,
+        "result_kind": "liveconv-ms3-stable-xvc-turn-split-result",
+    },
+}
 EXPECTED_FRAMES = 409
 SPLIT_FRAME = 212
 QUIET_START_FRAME = 198
@@ -35,6 +51,13 @@ MAX_QUIET_RMS = 10.0 ** (-50.0 / 20.0)
 
 class StableTurnSplitError(RuntimeError):
     """The bounded stable-RVC generation-boundary comparison cannot continue."""
+
+
+def profile_spec(profile_id: str) -> dict[str, str]:
+    try:
+        return PROFILE_SPECS[profile_id]
+    except KeyError:
+        raise StableTurnSplitError("profile is outside the bounded split") from None
 
 
 def sha256_file(path: Path) -> str:
@@ -85,15 +108,16 @@ def validate(
 ) -> tuple[Path, ModuleType, ModuleType, ModuleType]:
     checked_file(arguments.source_wav, SOURCE_WAV_SHA256, "listening source")
     checked_file(arguments.source_f32, SOURCE_F32_SHA256, "original float PCM")
-    checked_file(arguments.baseline_rvc_wav, BASELINE_RVC_SHA256, "baseline RVC")
+    spec = profile_spec(arguments.profile_id)
+    checked_file(arguments.baseline_wav, spec["baseline_sha256"], "baseline VC")
     deployment = arguments.deployment.resolve(strict=True)
     repeat = load_repeat_runner()
     session = repeat._load_session_runner()  # noqa: SLF001
     heldout = session._load_heldout_runner()  # noqa: SLF001
     manifest = json.loads((deployment / "manifest.json").read_text())
     profiles = json.loads((deployment / "profiles.json").read_text())
-    heldout._selected_records(manifest, "variants", (RVC_PROFILE_ID,))  # noqa: SLF001
-    heldout._selected_records(profiles, "profiles", (RVC_PROFILE_ID,))  # noqa: SLF001
+    heldout._selected_records(manifest, "variants", (arguments.profile_id,))  # noqa: SLF001
+    heldout._selected_records(profiles, "profiles", (arguments.profile_id,))  # noqa: SLF001
     if (
         arguments.work_dir.exists()
         or arguments.listener_dir.exists()
@@ -115,16 +139,20 @@ async def execute(
     renderer: ModuleType,
 ) -> dict[str, Any]:
     arguments.work_dir.mkdir(parents=True)
+    profile_id = arguments.profile_id
+    spec = profile_spec(profile_id)
+    label = spec["label"]
+    slug = spec["slug"]
     frames, source_samples, source_levels = renderer.source_frames(arguments.source_f32)
     turn_one, turn_two, quiet_rms = split_turns(frames)
 
     manifest = renderer.read_json(deployment / "manifest.json")
     profiles = renderer.read_json(deployment / "profiles.json")
     variant = heldout._selected_records(  # noqa: SLF001
-        manifest, "variants", (RVC_PROFILE_ID,)
+        manifest, "variants", (profile_id,)
     )[0]
     sealed = heldout._selected_records(  # noqa: SLF001
-        profiles, "profiles", (RVC_PROFILE_ID,)
+        profiles, "profiles", (profile_id,)
     )[0]
     profile = {
         **sealed,
@@ -149,12 +177,12 @@ async def execute(
             for item in catalog.json().get("profiles", [])
             if isinstance(item, dict)
         }
-        current = advertised.get(RVC_PROFILE_ID)
+        current = advertised.get(profile_id)
         if not isinstance(current, dict) or any(
             current.get(field) != variant.get(field)
             for field in ("profile_hash", "configuration_hash")
         ):
-            raise StableTurnSplitError("Gateway stable RVC profile identity differs")
+            raise StableTurnSplitError("Gateway stable VC profile identity differs")
         outputs = await session.render_profile_turns(
             client,
             renderer=renderer,
@@ -175,28 +203,29 @@ async def execute(
     staging = listener_staging_path(arguments.listener_dir)
     staging.mkdir()
     shutil.copyfile(arguments.source_wav, staging / "00-source.wav")
-    shutil.copyfile(arguments.baseline_rvc_wav, staging / "10-stable-rvc-one-turn.wav")
-    renderer.write_wav(staging / "20-stable-rvc-two-turn.wav", split_output)
+    baseline_file = f"10-{slug}-one-turn.wav"
+    split_file = f"20-{slug}-two-turn.wav"
+    shutil.copyfile(arguments.baseline_wav, staging / baseline_file)
+    renderer.write_wav(staging / split_file, split_output)
     variants = [
         {
-            "variant_id": "stable-rvc-one-generation",
-            "display_name": "Stable seed-0 RVC / one 8.17 s generation",
+            "variant_id": f"{slug}-one-generation",
+            "display_name": f"{label} / one 8.17 s generation",
             "display_order": 1,
-            "output_file": "10-stable-rvc-one-turn.wav",
-            "output_sha256": "sha256:" + BASELINE_RVC_SHA256,
-            "profile_id": RVC_PROFILE_ID,
+            "output_file": baseline_file,
+            "output_sha256": "sha256:" + spec["baseline_sha256"],
+            "profile_id": profile_id,
             "status": "passed",
             "operator_judgment": "unreviewed",
             "reused_by_exact_hash": True,
         },
         {
-            "variant_id": "stable-rvc-two-generations",
-            "display_name": "Stable seed-0 RVC / split into two generations",
+            "variant_id": f"{slug}-two-generations",
+            "display_name": f"{label} / split into two generations",
             "display_order": 2,
-            "output_file": "20-stable-rvc-two-turn.wav",
-            "output_sha256": "sha256:"
-            + sha256_file(staging / "20-stable-rvc-two-turn.wav"),
-            "profile_id": RVC_PROFILE_ID,
+            "output_file": split_file,
+            "output_sha256": "sha256:" + sha256_file(staging / split_file),
+            "profile_id": profile_id,
             "generations": [item[2] for item in outputs],
             "status": "passed",
             "operator_judgment": "unreviewed",
@@ -204,7 +233,7 @@ async def execute(
     ]
     index = {
         "schema_version": 1,
-        "title": "Stable RVC actual input: one vs two generations",
+        "title": f"{label} actual input: one vs two generations",
         "run_kind": "MS-3 generation-boundary actual-input comparison",
         "status": "completed-listen-now-unselected",
         "source_id": SOURCE_ID,
@@ -215,9 +244,9 @@ async def execute(
         "source_levels": source_levels,
         "comparison_scope": {
             "changed_variable": "one generation versus two generations",
-            "fixed": ["source bytes", "source order", RVC_PROFILE_ID, "Gateway"],
+            "fixed": ["source bytes", "source order", profile_id, "Gateway"],
             "machine_selection_allowed": False,
-            "question": "Does a natural turn boundary degrade stable RVC output?",
+            "question": f"Does a natural turn boundary degrade {label} output?",
         },
         "turn_boundary": {
             "split_frame": SPLIT_FRAME,
@@ -237,7 +266,7 @@ async def execute(
     staging.rename(arguments.listener_dir)
     result = {
         "schema_version": 1,
-        "kind": "liveconv-ms3-stable-rvc-turn-split-result",
+        "kind": spec["result_kind"],
         "status": "completed-listen-now-unselected",
         "git_commit": subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -246,7 +275,7 @@ async def execute(
             capture_output=True,
             text=True,
         ).stdout.strip(),
-        "profile_id": RVC_PROFILE_ID,
+        "profile_id": profile_id,
         "source_id": SOURCE_ID,
         "split_seconds": SPLIT_FRAME * 0.02,
         "output_sha256": {
@@ -266,7 +295,7 @@ async def run(arguments: argparse.Namespace) -> int:
     if arguments.check:
         frames, _, _ = renderer.source_frames(arguments.source_f32)
         split_turns(frames)
-        print("ok   stable RVC natural turn-split CPU admission complete")
+        print(f"ok   {arguments.profile_id} natural turn-split CPU admission complete")
         return 0
     await execute(arguments, deployment, session, heldout, renderer)
     return 0
@@ -278,9 +307,18 @@ def parser() -> argparse.ArgumentParser:
     mode.add_argument("--check", action="store_true")
     mode.add_argument("--execute", action="store_true")
     value.add_argument("--deployment", type=Path, required=True)
+    value.add_argument(
+        "--profile-id", choices=tuple(PROFILE_SPECS), default=RVC_PROFILE_ID
+    )
     value.add_argument("--source-wav", type=Path, required=True)
     value.add_argument("--source-f32", type=Path, required=True)
-    value.add_argument("--baseline-rvc-wav", type=Path, required=True)
+    value.add_argument(
+        "--baseline-wav",
+        "--baseline-rvc-wav",
+        dest="baseline_wav",
+        type=Path,
+        required=True,
+    )
     value.add_argument("--work-dir", type=Path, required=True)
     value.add_argument("--listener-dir", type=Path, required=True)
     value.add_argument("--gateway-url", default="http://127.0.0.1:8881")
