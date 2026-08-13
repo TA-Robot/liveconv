@@ -3210,3 +3210,32 @@ job queue.
 - Rework: stop before stress60 and do not tune the failed row. Retain the audio
   unheard and unselected. Next change only freeze scope: remove all 47 attention
   targets and keep the 22 converter FFN linears under the same objective/data.
+
+## 2026-08-13T20:50:25Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux `liveconv-grok-auditor`; independent, read-only,
+  no tools or delegation.
+- Verdict: `CONTINUE`.
+- Adopted: EXP-116/117 satisfied the recent-audio condition; keep train48,
+  fresh48, the full-output objective, and the no-added-loop stop fixed, and run
+  the selected 22-FFN freeze-scope point as one sequential lane.
+- Discarded as requested: individual tuning of the repeated-`ぷ` row, stress60
+  before fresh48 survival, adjacent scope points, old human87/DTW retries, the
+  non-ChatGPT 8.17-second diagnostic, and promote ceremony.
+- Evidence gap: Grok could not observe operator browser localStorage or whether
+  the new lane had started. Direct process inspection confirmed the committed
+  smoke was already active; no second lane was opened.
+
+## 2026-08-13T20:54:00Z - EXP-118 FFN-only output-teacher smoke passed
+
+- Agent: `primary-integrator`.
+- Dependencies: commit `481efb9`; exact train48/fresh48 bindings; gpu0.
+- Result: 52 focused tests passed. CPU admission fixed 22 FFN LoRA targets
+  (ten `ff_c`, twelve `ff_x`), 450,560 trainable parameters, 835 standard and
+  209 full-output teacher rows. One real-model smoke produced a 38,400-sample
+  teacher target, loss `161.0455`, gradient norm `11.5205`, and 3.28 GiB peak
+  GPU allocation; exit status zero.
+- Problems: checkpoint load was disk-bound for roughly two minutes; backward
+  itself completed normally.
+- Rework: runtime evidence only. Admit exactly one 1,044-update EXP-118 lane,
+  followed by external7 and frozen fresh48. Do not run adjacent scopes.

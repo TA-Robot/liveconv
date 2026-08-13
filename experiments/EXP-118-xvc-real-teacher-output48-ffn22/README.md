@@ -1,6 +1,6 @@
 # EXP-118: X-VC full-output teacher with FFN-only LoRA
 
-Status: prepared; one bounded gpu0 lane
+Status: admitted; one bounded gpu0 lane
 
 ## Question
 
@@ -28,3 +28,10 @@ backward smoke, then train once. Render external7 and frozen fresh48. Stop befor
 stress60 on any added gross loop or broad common-non-loop regression. Do not fit
 fresh48 or open neighboring scope points. Machine metrics cannot select
 naturalness, target voice, or a winner.
+
+## Runtime admission
+
+Commit `481efb9` passed 52 focused tests and exact CPU admission for 835 standard
+plus 209 full-output teacher rows. The committed FFN-only real-model smoke
+produced a 38,400-sample teacher target, full composite loss `161.0455`, LoRA
+gradient norm `11.5205`, and 3.28 GiB peak GPU allocation with exit status zero.
