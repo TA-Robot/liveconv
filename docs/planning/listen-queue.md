@@ -176,16 +176,23 @@ EXP-086 rejected the apparent robustness: across 60 rows source-semantic
 regressed macro distance from `0.320` to `0.484`, noise20 from `0.397` to
 `1.247`, and added one noise loop. Tempo improved, but noise, pitch, and leading
 silence did not. Direct source-hidden replacement and blend weights are closed.
-The next distinct objective is denoising semantic consistency: alternate clean
-and noise20 inputs while supervising semantic MSE with the corresponding clean
-source hidden state.
+EXP-087--092 completed denoising semantic consistency. The balanced 60-row
+matrix improved noise20 from `0.397` to `0.258`, tempo from `0.374` to `0.287`,
+and macro from `0.320` to `0.311`, but pitch regressed from `0.279` to `0.512`.
+The twelve changed utterances also regressed from `0.184` to `0.232`, and an
+ASR-empty expanded source triggered a distance-111 repeated-`ぷ` loop. Retain
+the unheard audio but reject the method as a generic keeper. Noise ratio, SNR,
+condition level, and semantic blend sweeps are closed. The next shortest step
+is to test whether source semantic-token or acoustic statistics identify the
+low-information inputs that trigger different adapter loops before admitting
+another retraining objective.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Train one clean/noise20 denoising-semantic adapter at fixed control69, loss weights, LR, and 1,044 updates | parent | no | clean hidden target and exact 522/522 schedule committed before GPU |
-| 2 | Publish it on 7 + 12 + 31 + 33 and the 60-row stress matrix | parent | no human dependency for machine reject | corruption screen complete and next method decision recorded |
+| 1 | Measure frozen source semantic-token and acoustic statistics on the existing varied sets, with known loop rows labelled only after extraction | parent | no | decide whether a simple input-validity signal separates loop-prone low-information rows |
+| 2 | Admit one distinct retraining or safe-bypass slice only if that diagnostic names a causal, testable change | parent | no | commit one method and its fixed varied screen before GPU |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.
@@ -267,7 +274,8 @@ were identical. Keep the three new WAVs for hearing and close further seed,
 bit-exactness, runtime-identity, and route-receipt work.
 
 The same frozen seed-0 profile also completed one bounded render on the
-existing 8.17-second actual ChatGPT input. It is published beside the
+existing 8.17-second legacy diagnostic input. That input is not established as
+ChatGPT browser audio. It is published beside the
 historical unseeded clean-bright control as `ms3-rvc-seed0-actual-input-v5`.
 Auxiliary source-relative CER was 0.636 for seed 0 and 0.727 for the historical
 control, with no gross repetition in either. The historical raw float input is

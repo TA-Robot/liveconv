@@ -2790,3 +2790,41 @@ job queue.
   admission, and all 7 + 12 + 10 + 31 + 33 + 60 render admissions passed.
 - Changed action: commit and admit one training lane. Do not sweep noise ratio,
   SNR, or semantic blend; machine diagnostics remain content/corruption only.
+
+## 2026-08-13T18:18:00Z - EXP-087--092 completed; generic method rejected
+
+- Agent: `primary-integrator`.
+- Task: train one clean/noise20 denoising-semantic adapter and screen the same
+  checkpoint on 7 + 12 + 10 + 31 + 33 + 60 frozen rows.
+- Dependencies: commit `8a4da06`; exact 522/522 clean/noise schedule; fixed
+  EXP-035 identities, target waveform/speaker losses, control69, LR, seed,
+  zero condition, and 1,044 updates; exclusive `gpu0`; listener 8878.
+- Result: training completed in 267.04 seconds at 5.13 GB peak; loss moved
+  `135.04` to `108.65`. Seven external rows were 2/2/3 and effectively tied
+  control69 (`0.362` versus `0.360`). Changed utterances regressed `0.184` to
+  `0.232` (1/6/5). The original ten conditions improved `0.153` to `0.075`
+  (3/7/0), and Hadou31 improved `0.210` to `0.185` (7/22/2). On the balanced
+  stress matrix, noise20 improved `0.397` to `0.258`, tempo `0.374` to `0.287`,
+  and macro `0.320` to `0.311`, but pitch regressed `0.279` to `0.512`.
+  Expanded33 added a candidate repeated-`ぷ` loop on ASR-empty
+  `cv41934139u`, with maximum distance `111`. All comparison audio is on 8878
+  and remains unheard.
+- Changed action: the denoising hypothesis is supported narrowly for noise but
+  rejected as a generic keeper. Close noise-ratio, SNR, condition-level, and
+  semantic-blend sweeps. Before another retraining method, measure frozen
+  source-side semantic/acoustic statistics for loop-prone low-information
+  inputs; machine ASR still cannot rank naturalness or voice quality.
+
+## 2026-08-13T18:20:25Z - Grok progress audit
+
+- Agent: `grok` in tmux `liveconv-grok-auditor`; read-only, no delegation.
+- Verdict: `CONTINUE`.
+- Adopted: denoising-semantic was a valid one-variable response to EXP-086;
+  retain the fixed varied gate, reject ratio/SNR/blend sweeps, keep a single
+  GPU lane moving without human hearing, and make no machine naturalness or
+  voice-quality claim.
+- Not adopted: the audit snapshot reported EXP-087 unlaunched and prescribed
+  starting it. Training had already completed, all six frozen screens had been
+  published, and the severe EXP-091 loop was known by audit completion. The
+  next action therefore uses the completed evidence rather than rerunning the
+  same job.
