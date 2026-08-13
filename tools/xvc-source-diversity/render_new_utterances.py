@@ -516,6 +516,21 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "adding corruption on frozen fresh48?"
             ),
         }
+    if kind == "real-teacher-output48-temporal-fresh48":
+        return {
+            "experiment_id": "EXP-123",
+            "variant_id": "cv12-real-teacher-output48-temporal",
+            "display_name": (
+                "EXP-122 / full-output teacher / temporal difference"
+            ),
+            "result_kind": (
+                "liveconv-exp123-xvc-real-teacher-output48-temporal-fresh48/v1"
+            ),
+            "question": (
+                "Does aligned waveform first-difference matching avoid "
+                "corruption on frozen fresh48?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1006,6 +1021,7 @@ def _parser() -> argparse.ArgumentParser:
             "real-teacher-output48-fresh48",
             "real-teacher-output48-ffn22-fresh48",
             "real-teacher-output48-dora-fresh48",
+            "real-teacher-output48-temporal-fresh48",
         ),
         default="speaker7",
     )

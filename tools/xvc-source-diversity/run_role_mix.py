@@ -91,6 +91,7 @@ STANDARD_LOSS_WEIGHTS = {
     "mel_loss": 15.0,
     "sim_mse_loss": 10.0,
 }
+TEMPORAL_DIFFERENCE_WEIGHT = 1000.0
 TOTAL_UPDATES = breadth.TOTAL_UPDATES
 SPEAKER7_TARGETS = tuple(
     [
@@ -434,6 +435,37 @@ def training_scope(inventory: Path, name: str) -> dict[str, object]:
 
 def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
     peft_variant = getattr(arguments, "peft_variant", "standard")
+    teacher_loss = getattr(arguments, "teacher_loss", "standard")
+    if (
+        arguments.training_policy == REAL_TEACHER_OUTPUT_POLICY
+        and arguments.lora_scope == "control69"
+        and peft_variant == "standard"
+        and teacher_loss == "temporal-difference"
+    ):
+        return {
+            "experiment_id": "EXP-122",
+            "slug": "exp122",
+            "candidate_id": "cv12-real-teacher-output48-temporal",
+            "candidate_name": (
+                "EXP-122 / full-output teacher / temporal difference"
+            ),
+            "run_kind": "EXP-122 X-VC temporal full-output teacher evaluation",
+            "result_kind": "liveconv-exp122-xvc-real-teacher-output48-temporal/v1",
+            "question": (
+                "Does aligned waveform first-difference matching prevent local "
+                "temporal collapse while retaining full-output teacher gains?"
+            ),
+            "independent_variable": (
+                "teacher-row loss: EXP-116 full composite versus the same loss "
+                "plus weight-1000 aligned waveform first-difference L1; train48, "
+                "835/209 roles, updates, control69 standard LoRA, LR, rank, seed, "
+                "target voice, and zero frame condition stay fixed"
+            ),
+        }
+    if teacher_loss != "standard":
+        raise RoleMixError(
+            "temporal teacher loss is admitted only for EXP-122 control69"
+        )
     if (
         arguments.training_policy == REAL_TEACHER_OUTPUT_POLICY
         and arguments.lora_scope == "control69"
@@ -1026,8 +1058,27 @@ def training_loss(
     role: str,
     *,
     torch: Any,
+    teacher_loss: str = "standard",
 ) -> tuple[Any, float]:
     """Use semantic-only distillation on the bounded real-source teacher rows."""
+    if role == "real-donor-teacher-output" and teacher_loss == "temporal-difference":
+        outputs = model(dict(batch))
+        reconstruction = outputs.get("recons") if isinstance(outputs, dict) else None
+        if reconstruction is None or not bool(torch.isfinite(reconstruction).all()):
+            raise RoleMixError("temporal teacher output is malformed")
+        target = batch["target_wav"][..., : reconstruction.shape[-1]]
+        outputs["audios"] = target
+        losses = model.generative_loss(outputs)
+        composite = losses.get("loss") if isinstance(losses, dict) else None
+        if composite is None or not bool(torch.isfinite(composite)):
+            raise RoleMixError("temporal teacher composite loss is non-finite")
+        temporal = temporal_difference_loss(reconstruction, target, torch=torch)
+        loss = composite + TEMPORAL_DIFFERENCE_WEIGHT * temporal
+        if not bool(torch.isfinite(loss)):
+            raise RoleMixError("temporal teacher total loss is non-finite")
+        return loss, float(loss.detach().cpu())
+    if teacher_loss != "standard":
+        raise RoleMixError("temporal loss may be applied only to output-teacher rows")
     if role != "real-donor-teacher-semantic":
         return base._composite_loss(model, batch, torch)
     outputs = model(dict(batch))
@@ -1039,6 +1090,22 @@ def training_loss(
     if not bool(torch.isfinite(loss)):
         raise RoleMixError("teacher-semantic loss is non-finite")
     return loss, float(loss.detach().cpu())
+
+
+def temporal_difference_loss(
+    reconstruction: Any, target: Any, *, torch: Any
+) -> Any:
+    """Measure aligned local waveform motion without rewarding static collapse."""
+    if reconstruction.shape != target.shape or reconstruction.shape[-1] < 2:
+        raise RoleMixError("temporal difference tensors are not aligned")
+    reconstruction_delta = reconstruction[..., 1:] - reconstruction[..., :-1]
+    target_delta = target[..., 1:] - target[..., :-1]
+    value = torch.nn.functional.l1_loss(
+        reconstruction_delta.float(), target_delta.float()
+    )
+    if not bool(torch.isfinite(value)):
+        raise RoleMixError("temporal difference loss is non-finite")
+    return value
 
 
 def conditioned_inference(
@@ -1498,7 +1565,11 @@ def run_teacher_output_smoke(
     batch = base._gpu_batch(tensors, torch=torch, device=device)
     with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
         loss, numeric = training_loss(
-            trained, batch, "real-donor-teacher-output", torch=torch
+            trained,
+            batch,
+            "real-donor-teacher-output",
+            torch=torch,
+            teacher_loss=arguments.teacher_loss,
         )
     loss.backward()
     gradient_norm = torch.nn.utils.clip_grad_norm_(
@@ -1516,6 +1587,7 @@ def run_teacher_output_smoke(
                 "peak_gpu_bytes": int(torch.cuda.max_memory_allocated(device)),
                 "peft_variant": arguments.peft_variant,
                 "trainable_parameters": expected_trainable,
+                "teacher_loss": arguments.teacher_loss,
             },
             sort_keys=True,
         )
@@ -2011,7 +2083,17 @@ def run(
                 device=device, dtype=torch.float32
             )
         with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
-            loss, numeric = training_loss(trained, batch, role, torch=torch)
+            loss, numeric = training_loss(
+                trained,
+                batch,
+                role,
+                torch=torch,
+                teacher_loss=(
+                    arguments.teacher_loss
+                    if role == "real-donor-teacher-output"
+                    else "standard"
+                ),
+            )
         loss.backward()
         gradient_norm = torch.nn.utils.clip_grad_norm_(
             trainable, base.GRADIENT_CLIP_NORM
@@ -2096,6 +2178,12 @@ def run(
             "lora_scope": arguments.lora_scope,
             "peft_variant": arguments.peft_variant,
             "trainable_parameters": expected_trainable,
+            "teacher_loss": arguments.teacher_loss,
+            "temporal_difference_weight": (
+                TEMPORAL_DIFFERENCE_WEIGHT
+                if arguments.teacher_loss == "temporal-difference"
+                else None
+            ),
             "learning_rate": base.LEARNING_RATE,
             "gradient_clip_norm": base.GRADIENT_CLIP_NORM,
             "target_wav_cond": (
@@ -2249,6 +2337,11 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--peft-variant", choices=("standard", "dora"), default="standard"
+    )
+    parser.add_argument(
+        "--teacher-loss",
+        choices=("standard", "temporal-difference"),
+        default="standard",
     )
     parser.add_argument("--donors", type=Path, required=True)
     parser.add_argument("--evaluation-set", type=Path, required=True)

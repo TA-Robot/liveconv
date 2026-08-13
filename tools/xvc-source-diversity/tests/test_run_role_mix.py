@@ -329,6 +329,70 @@ def test_real_teacher_output48_dora_changes_only_peft_parameterization() -> None
     assert choices == ("standard", "dora")
 
 
+def test_real_teacher_output48_temporal_changes_only_teacher_loss() -> None:
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(
+            training_policy=ROLE_MIX.REAL_TEACHER_OUTPUT_POLICY,
+            lora_scope="control69",
+            peft_variant="standard",
+            teacher_loss="temporal-difference",
+        )
+    )
+
+    assert ROLE_MIX.TEMPORAL_DIFFERENCE_WEIGHT == 1000.0
+    assert policy["experiment_id"] == "EXP-122"
+    assert policy["candidate_id"] == "cv12-real-teacher-output48-temporal"
+    choices = next(
+        action.choices
+        for action in ROLE_MIX._parser()._actions
+        if action.dest == "teacher_loss"
+    )
+    assert choices == ("standard", "temporal-difference")
+
+
+def test_temporal_difference_loss_is_aligned_and_zero_for_equal_motion() -> None:
+    class Functional:
+        @staticmethod
+        def l1_loss(left, right):
+            return FakeTensor(abs(a - b) for a, b in zip(left.values, right.values))
+
+    class NN:
+        functional = Functional()
+
+    class Torch:
+        nn = NN()
+
+        @staticmethod
+        def isfinite(value):
+            return value
+
+    class FakeTensor:
+        def __init__(self, values):
+            self.values = tuple(values)
+            self.shape = (1, 1, len(self.values))
+
+        def __getitem__(self, item):
+            tail = item[-1]
+            return FakeTensor(self.values[tail])
+
+        def __sub__(self, other):
+            return FakeTensor(a - b for a, b in zip(self.values, other.values))
+
+        def float(self):
+            return self
+
+        def __bool__(self):
+            return all(value == value for value in self.values)
+
+    value = ROLE_MIX.temporal_difference_loss(
+        FakeTensor((0.0, 1.0, 3.0)),
+        FakeTensor((4.0, 5.0, 7.0)),
+        torch=Torch(),
+    )
+
+    assert value.values == (0.0, 0.0)
+
+
 def test_source_augmentation_is_exact_and_keeps_standard_roles() -> None:
     conditions = ROLE_MIX.source_condition_schedule("source-augmentation")
     policy = ROLE_MIX.experiment_policy(
