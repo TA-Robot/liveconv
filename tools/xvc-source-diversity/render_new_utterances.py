@@ -648,6 +648,30 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "and generalize on frozen fresh48?"
             ),
         }
+    if kind in {
+        "clean-post-rehearsal-fresh48",
+        "clean-post-rehearsal-hadou",
+    }:
+        hadou = kind.endswith("-hadou")
+        return {
+            "experiment_id": "EXP-143" if hadou else "EXP-142",
+            "variant_id": "cv12-clean-post-rehearsal170",
+            "display_name": (
+                "EXP-141 / control69 + clean unique teacher rehearsal pass"
+            ),
+            "result_kind": (
+                "liveconv-exp143-xvc-clean-post-rehearsal-hadou31/v1"
+                if hadou
+                else "liveconv-exp142-xvc-clean-post-rehearsal-fresh48/v1"
+            ),
+            "question": (
+                "Does clean post-adaptation rehearsal avoid heldout corruption "
+                "on 31 disjoint Hadou utterances?"
+                if hadou
+                else "Does clean post-adaptation rehearsal avoid corruption and "
+                "generalize on frozen fresh48?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1148,6 +1172,8 @@ def _parser() -> argparse.ArgumentParser:
             "real-teacher-output-window48-hadou",
             "real-teacher-output-window201-fresh48",
             "real-teacher-output-window201-hadou",
+            "clean-post-rehearsal-fresh48",
+            "clean-post-rehearsal-hadou",
         ),
         default="speaker7",
     )

@@ -274,6 +274,28 @@ def test_cross_target_condition_policies_cover_all_followup_sets() -> None:
     assert all(policy["conditioned_inference"] for policy in policies)
 
 
+def test_clean_post_rehearsal_policies_cover_fresh_and_hadou() -> None:
+    policies = [
+        NEW.candidate_policy("clean-post-rehearsal-fresh48"),
+        NEW.candidate_policy("clean-post-rehearsal-hadou"),
+    ]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-142",
+        "EXP-143",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "cv12-clean-post-rehearsal170"
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert "clean-post-rehearsal-fresh48" in choices
+    assert "clean-post-rehearsal-hadou" in choices
+
+
 def test_semantic_token_hold_policies_cover_all_followup_sets() -> None:
     kinds = (
         "semantic-token-hold",

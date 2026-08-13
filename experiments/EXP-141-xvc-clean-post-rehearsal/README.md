@@ -36,3 +36,10 @@ not select naturalness, target identity, a keeper, or promotion.
 
 No threshold, LR, epoch, source-count, loss-weight, adversarial, conditioning,
 or module-scope sweep is admitted.
+
+## Smoke
+
+Commit `727b27f` loaded control69 as a trainable adapter and completed one real
+teacher backward pass with loss `213.5427`, finite pre-clip gradient norm
+`156.4660`, 835,584 trainable parameters, and 3.30 GiB peak GPU allocation.
+The unchanged norm-5 clip bounds the admitted 170-update pass.

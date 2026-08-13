@@ -3433,3 +3433,16 @@ job queue.
   existing `<0.5`, no-gross diagnostic before training, deduplicate to 170
   real teacher IDs, and test one materially different two-stage optimization:
   start from control69 and make one clean teacher-only rehearsal pass.
+
+## 2026-08-13T23:39:00Z - EXP-141 post-rehearsal smoke passed
+
+- Agent: `primary-integrator`.
+- Dependencies: commit `727b27f`; clean manifest SHA-256 `86822d41`; frozen
+  control69 adapter; gpu0.
+- Result: 68 focused tests passed. One admitted teacher row loaded control69
+  as trainable and completed backward with loss `213.5427`, finite pre-clip
+  gradient norm `156.4660`, 835,584 trainable parameters, and 3.30 GiB peak.
+- Problems: the first-row gradient is much larger than the fresh-base teacher
+  smoke, but the unchanged norm-5 clip operated normally.
+- Rework: admit exactly one 170-update clean pass. Do not change LR, clip,
+  threshold, or row count. Render external7, fresh48, and Hadou31 only.
