@@ -25,16 +25,24 @@ leave the GPU idle.
 Historical X-VC synthetic blinds (EXP-010–019) stay on the listener as
 archives. They do not gate the current queue.
 
+Active-thread GPU directive (2026-08-13): operator listening remains the
+decision critical path, but it must not leave the GPU idle. While decisions are
+pending, admit one bounded, committed, single-variable GPU lane at a time when
+it produces new listening audio or directly advances the realtime system.
+Publish or record a technical stop before starting the next lane. This does not
+authorize promote claims or several speculative sweeps in parallel.
+
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
 | 1 | Help the operator finish the four rows above (labels, order, one-page brief if the UI is unclear) | parent | n/a | decisions recorded |
-| 2 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
+| 2 | EXP-026 human87 X-VC training horizon: exact 4-epoch control vs 8/12 epochs | parent | no; this is the single active idle-GPU lane | three four-way comparisons on `8878`, or a technical stop before publication |
+| 3 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
 
 The independent EXP-025 render lane is complete and has moved to `Unheard now`.
-Do not start another X-VC trajectory while its base/adapted comparison is
-unheard.
+EXP-026 is the only active GPU trajectory. Do not start a second GPU lane until
+it publishes or stops.
 
 ## Keepers
 
