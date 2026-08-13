@@ -2828,3 +2828,18 @@ job queue.
   published, and the severe EXP-091 loop was known by audit completion. The
   next action therefore uses the completed evidence rather than rerunning the
   same job.
+
+## 2026-08-13T18:27:00Z - EXP-093 representation audit prepared
+
+- Agent: `primary-integrator`.
+- Task: extract waveform, semantic-token, and frozen Whisper-hidden statistics
+  for all 33 expanded Common Voice inputs, then apply the existing loop labels
+  from EXP-058, EXP-076, EXP-085, and EXP-091.
+- Dependencies: frozen EXP-055 source set; unadapted X-VC checkpoint; exclusive
+  `gpu0`; no new ASR or audio render.
+- Result: the diagnostic keeps metric extraction independent of the labels and
+  reports only exploratory one-sided separation. Pure tests cover token
+  collapse, waveform active span, and false-positive accounting.
+- Changed action: commit before one GPU extraction. Do not fit a production
+  threshold on these 33 rows. The result must either name a new testable
+  training/bypass hypothesis or close source-validity gating.

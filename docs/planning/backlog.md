@@ -97,12 +97,13 @@ name one owner and ownership zone below.
 | LV-086 | Done | P0 | MS-3 | Change X-VC's semantic learning target from target-voice hidden states to source hidden states | EXP-081--085 improved 7-row, condition, Hadou, and 33-row means but regressed changed utterances and gross-looped one ASR-empty source; retain unheard without a blend sweep |
 | LV-087 | Done | P0 | MS-3 | Replace one-row audio limitations with a multi-speaker Common Voice stress matrix | EXP-086 found source-semantic regressed the 60-row macro from 0.320 to 0.484 and added a noise loop; the one-row robustness signal did not generalize |
 | LV-088 | Done | P0 | MS-3 | Train X-VC with denoising semantic consistency | EXP-087--092 improved noise20 and tempo in the balanced stress matrix, but regressed changed utterances and pitch and gross-looped one ASR-empty expanded input; retain unheard audio and close ratio/SNR/blend sweeps |
+| LV-089 | In progress | P0 | MS-3 | Isolate X-VC loop-prone source representations | EXP-093 extracts waveform, semantic-token, and frozen Whisper-hidden statistics on all 33 expanded sources and tests exploratory separation of the three known loop-prone inputs before another training objective |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| None | - | - | Recompute after the EXP-087--092 result decision |
+| LV-089 | `primary-integrator` | `tools/xvc-source-diversity/analyze_source_representations.py`, its tests, EXP-093, and ignored result JSON | Commit the extractor, run one 33-row GPU diagnostic, and record the next method decision |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.
