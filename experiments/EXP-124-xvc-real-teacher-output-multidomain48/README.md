@@ -1,6 +1,6 @@
 # EXP-124: X-VC full-output teacher with cross-corpus sources
 
-Status: prepared; materialization then one bounded gpu0 lane
+Status: admitted; one bounded gpu0 lane
 
 ## Question
 
@@ -19,6 +19,14 @@ zero frame condition, and Amitaro target fixed. Change only the teacher pool:
   three official clean JVS speaker samples.
 
 The fixed ratio is 24/21/3. Do not sweep it or change teacher share.
+
+## Bound input
+
+- Manifest: `artifacts/xvc-source-diversity/exp124-multidomain-teacher48-inputs-v1/training.json`
+- SHA-256: `eb7d506a70e644829223cbbfe244c6ad4dffa23c5005280f96a61d391b66cc0b`
+- Materialized rows: Common Voice 24, Hadou 21, JVS 3
+- Hadou exclusions: every Amitaro target ID and every frozen Hadou31
+- Method commit: `d47a464`
 
 ## Stop
 
