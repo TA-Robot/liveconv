@@ -207,6 +207,19 @@ def test_source_semantic_policies_cover_changed_hadou_and_expanded() -> None:
     } == {"cv12-source-semantic"}
 
 
+def test_source_semantic_stress_policy_is_exp086() -> None:
+    policy = NEW.candidate_policy("source-semantic-stress")
+
+    assert policy["experiment_id"] == "EXP-086"
+    assert policy["variant_id"] == "cv12-source-semantic"
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert "source-semantic-stress" in choices
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"

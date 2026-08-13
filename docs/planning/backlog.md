@@ -94,13 +94,14 @@ name one owner and ownership zone below.
 | LV-083 | Done | P0 | MS-3 | Test decoder-interface X-VC adaptation as one function-aware scope | EXP-068--071 regressed twelve changed utterances from 0.184 to 0.375 and added one Hadou gross loop; reject output2 and prohibit adjacent scope/rank/LR sweeps |
 | LV-084 | Done | P0 | MS-3 | Rehearse real donor speech during target-voice X-VC retraining | EXP-072--075 regressed changed utterances and added one Hadou gross loop; reject rehearsal and prohibit ratio sweeps |
 | LV-085 | Done | P0 | MS-3 | Adapt one bounded final waveform-decoder stage | EXP-077--080 regressed every aggregate content screen, including changed utterances from 0.184 to 0.394 and Hadou from 0.210 to 0.305; reject the method and prohibit decoder-depth/LR sweeps |
-| LV-086 | In progress | P0 | MS-3 | Change X-VC's semantic learning target from target-voice hidden states to source hidden states | Keep EXP-035 data/scope/LR/weights/updates fixed, train one source-semantic point, then apply the frozen 7 + 12 + 10 + 31 + 33 bundle |
+| LV-086 | Done | P0 | MS-3 | Change X-VC's semantic learning target from target-voice hidden states to source hidden states | EXP-081--085 improved 7-row, condition, Hadou, and 33-row means but regressed changed utterances and gross-looped one ASR-empty source; retain unheard without a blend sweep |
+| LV-087 | In progress | P0 | MS-3 | Replace one-row audio limitations with a multi-speaker Common Voice stress matrix | Apply clean/noise/leading-silence/tempo/pitch conditions across the twelve changed utterances, freeze identities before render, and compare control69 with source-semantic on 8878 |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| LV-086 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-081--085 notes, and their ignored artifacts | Commit one source-semantic learning-target point or reject it before GPU admission |
+| LV-087 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-086 stress note, and its ignored artifacts | Commit the stress-matrix builder/render contract before GPU admission |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.

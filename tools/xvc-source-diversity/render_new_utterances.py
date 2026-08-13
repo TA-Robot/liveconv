@@ -28,12 +28,22 @@ import screen  # noqa: E402
 KIND = "liveconv-exp039-commonvoice-same-speaker-new-utterances/v1"
 EXPANDED_KIND = "liveconv-exp055-commonvoice-local-unused/v1"
 HADOU_KIND = "liveconv-exp060-hadou-clean-heldout/v1"
+STRESS_KIND = "liveconv-exp086-commonvoice-condition-matrix/v1"
 EXPECTED_ROWS = 12
 EXPECTED_SPEAKERS = 6
 EXPANDED_ROWS = 33
 EXPANDED_SPEAKERS = 33
 HADOU_ROWS = 31
 HADOU_SPEAKERS = 1
+STRESS_ROWS = 60
+STRESS_SPEAKERS = 6
+STRESS_GROUPS = {
+    "stress-clean",
+    "stress-noise20",
+    "stress-silence300",
+    "stress-tempo120",
+    "stress-pitchp3",
+}
 TARGET_ID = "EMOTION100_003"
 TARGET_SHA256 = "76f5a4a9b989ed692a55343a7681623fa4f18e354ca04026f022e3e449195ca2"
 
@@ -290,6 +300,17 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "locally unused Common Voice speakers and utterances?"
             ),
         }
+    if kind == "source-semantic-stress":
+        return {
+            "experiment_id": "EXP-086",
+            "variant_id": "cv12-source-semantic",
+            "display_name": "EXP-081 / source-hidden semantic supervision",
+            "result_kind": "liveconv-exp086-xvc-source-semantic-stress/v1",
+            "question": (
+                "Does source-hidden supervision improve named audio limitations "
+                "across twelve real Common Voice utterances?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -304,14 +325,16 @@ def load_evaluation(path: Path) -> dict[str, Any]:
     expected_rows = {
         EXPANDED_KIND: EXPANDED_ROWS,
         HADOU_KIND: HADOU_ROWS,
+        STRESS_KIND: STRESS_ROWS,
     }.get(kind, EXPECTED_ROWS)
     expected_speakers = {
         EXPANDED_KIND: EXPANDED_SPEAKERS,
         HADOU_KIND: HADOU_SPEAKERS,
+        STRESS_KIND: STRESS_SPEAKERS,
     }.get(kind, EXPECTED_SPEAKERS)
     if (
         not isinstance(value, dict)
-        or kind not in {KIND, EXPANDED_KIND, HADOU_KIND}
+        or kind not in {KIND, EXPANDED_KIND, HADOU_KIND, STRESS_KIND}
         or not isinstance(source, dict)
         or source.get("license")
         != ("CC-BY-4.0" if kind == HADOU_KIND else "CC0-1.0")
@@ -367,6 +390,13 @@ def load_evaluation(path: Path) -> dict[str, Any]:
             or float(item["full_utterance_audit_cer"]) > 0.15
         ):
             raise NewUtteranceError("Hadou evaluation row identity drifted")
+        if kind == STRESS_KIND and (
+            item.get("group") not in STRESS_GROUPS
+            or not isinstance(item.get("base_id"), str)
+            or not isinstance(item.get("stress_condition"), dict)
+            or item.get("duration_seconds") != base.MODEL_SAMPLES / 16_000
+        ):
+            raise NewUtteranceError("stress evaluation row identity drifted")
         identifiers.add(identifier)
         filenames.add(filename)
         clients.add(client)
@@ -392,7 +422,7 @@ def validate_inputs(
     clients = {item["client_id_sha256"] for item in evaluation["items"]}
     original_files = {item["filename"] for item in original["items"]}
     donor_files = {item["filename"] for item in donors["items"]}
-    if evaluation["kind"] == KIND:
+    if evaluation["kind"] in {KIND, STRESS_KIND}:
         if not clients < original_clients or clients & donor_clients:
             raise NewUtteranceError("evaluation speaker binding drifted")
     elif evaluation["kind"] == EXPANDED_KIND and any(
@@ -689,6 +719,7 @@ def _parser() -> argparse.ArgumentParser:
             "source-semantic",
             "source-semantic-hadou",
             "source-semantic-expanded",
+            "source-semantic-stress",
         ),
         default="speaker7",
     )

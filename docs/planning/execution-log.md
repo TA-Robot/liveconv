@@ -2708,3 +2708,37 @@ job queue.
 - Changed action: commit before one GPU run, then publish every frozen screen.
   Do not sweep source/target blend weights and do not interpret machine ASR as
   naturalness or target-voice quality.
+
+## 2026-08-13T17:50:00Z - EXP-081--085 completed mixed source-semantic gate
+
+- Agent: `primary-integrator`.
+- Task: replace only the semantic MSE target with source hidden states and
+  screen 7 + 12 + 10 + 31 + 33 frozen rows.
+- Dependencies: commit `e985798`; exclusive `gpu0`; listener 8878.
+- Result: training completed in 280.32 seconds at 5.13 GB; loss moved 135.04 to
+  96.75. The seven-row mean improved `0.360` to `0.299` (2/4/1), conditions
+  improved `0.153` to `0.075` (3/7/0), and Hadou improved `0.210` to `0.194`
+  (5/22/4). Changed utterances regressed `0.184` to `0.303` (1/8/3). On 33
+  unused speakers the mean improved `1.084` to `0.942` (9/16/8), but the
+  candidate gross-looped one ASR-empty input. All 279 model outputs plus their
+  references are published and unheard.
+- Problems: each renderer reloads the 4.7 GB checkpoint, leaving GPU compute
+  idle during storage-bound initialization. This is a throughput issue, not a
+  result failure; do not refactor the renderer inside this experiment.
+- Changed action: retain source-semantic as mixed unheard audio without a blend
+  sweep or quality claim. Before another retraining method, replace the
+  statistically weak one-noise/one-silence evidence with a multi-speaker stress
+  matrix over the twelve real changed utterances.
+
+## 2026-08-13T17:56:00Z - EXP-086 multi-speaker stress matrix prepared
+
+- Agent: `primary-integrator`.
+- Task: cross the twelve real changed Common Voice utterances with clean,
+  noise20, leading-silence300, tempo1.2, and pitch+3 conditions.
+- Dependencies: EXP-039 source identities; deterministic transform code;
+  EXP-035 control69 and EXP-081 source-semantic adapters; evaluation only.
+- Result: the plan contains exactly sixty balanced rows, twelve per condition.
+  Forty-nine focused tests, Ruff, CPU admission, and `git diff --check` passed.
+- Changed action: commit, materialize and freeze source WAV identities, then
+  render base/control/candidate in one bounded GPU run. Do not tune condition
+  levels or start another training method before this result.

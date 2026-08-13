@@ -1,6 +1,6 @@
 # EXP-081: source-hidden semantic supervision
 
-Status: ready method pilot; operator hearing deferred
+Status: completed; mixed technical result retained for broader stress evaluation
 
 ## Question
 
@@ -46,3 +46,13 @@ HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
   --listener-dir artifacts/ms3/listening/exp081-source-semantic-v1 \
   --confirm-gpu-lease gpu0 --device cuda:0
 ```
+
+## Result
+
+All 1,044 updates completed in 280.32 seconds at 5.13 GB peak allocation; loss
+moved from 135.04 to 96.75. On seven external rows the candidate produced two
+wins, four ties, and one loss against control69, improving mean
+source-relative distance from `0.360` to `0.299` and maximum from `0.571` to
+`0.556`, without gross repetition. The larger screens are mixed, so this is an
+unheard candidate rather than a selected method. Do not sweep a source/target
+blend weight.

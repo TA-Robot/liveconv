@@ -165,14 +165,20 @@ changed utterances moved from `0.184` to `0.394` and Hadou from `0.210` to
 hypothesis keeps target waveform and target speaker objectives but supervises
 the semantic decoder with the generated source's frozen Whisper hidden states
 instead of the target-voice hidden states. It will also reuse the 33-speaker
-expanded set; no tongue-twister optimization is involved.
+expanded set; no tongue-twister optimization is involved. EXP-081--085 then
+improved the seven-row, condition, Hadou, and 33-row aggregate means, but
+regressed the twelve changed utterances and gross-looped one ASR-empty expanded
+input. Retain it unheard without a blend sweep. The largest positive signal was
+the ten-condition set, but noise and leading silence each had only one row.
+The next evaluation therefore crosses those named limitations with all twelve
+changed Common Voice utterances before another retraining method is admitted.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Train one control69 adapter with source-hidden semantic supervision at fixed EXP-035 data, loss weights, LR, and 1,044 updates | parent | no | one-variable plan and exact tensor binding committed, or rejected before GPU |
-| 2 | Publish that one adapter on the full 7 + 12 + 10 + 31 + 33 varied evaluation bundle | parent | no human dependency for machine reject | corruption screen complete and next method decision recorded |
+| 1 | Freeze a multi-speaker clean/noise/leading-silence/tempo/pitch matrix from the twelve changed Common Voice utterances | parent | no | identities and transform parameters committed before render |
+| 2 | Publish control69 versus source-semantic on that matrix | parent | no human dependency for machine reject | per-condition corruption summary and next method decision recorded |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.
