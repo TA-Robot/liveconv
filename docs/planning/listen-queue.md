@@ -84,13 +84,16 @@ It did not: speaker7 worsened mean source-relative distance from control69's
 scope, LR, loss, condition, and 1,044 updates, but replaces 209 standard
 updates with same-Amitaro reconstruction. It excludes the reversed donor-target
 updates implicated in EXP-036, so every target remains the authorized voice.
+The seven-row screen had no loops and only mixed small changes. EXP-041 is the
+current render-only lane, replacing speaker7 with reconstruction20 on the
+twelve new utterances before any condition-set expansion.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Train EXP-040 with 835 standard + 209 same-target reconstruction updates and no reversed roles | parent | no | seven-row control69/reconstruction20 comparison and corruption screen published |
-| 2 | If reconstruction20 avoids gross regression, render it on EXP-039's twelve new utterances | parent | no human dependency for machine reject | new-utterance comparison published; no automated winner |
+| 1 | Render EXP-041 control69/reconstruction20 on EXP-039's twelve new utterances | parent | no | 36 candidates and source-window-relative corruption screen published |
+| 2 | If reconstruction20 survives EXP-041, render it once on the frozen ten clean/tempo/F0/noise/silence rows | parent | no human dependency for machine reject | fixed-condition comparison published; no automated winner |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

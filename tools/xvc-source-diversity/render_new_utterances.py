@@ -36,6 +36,33 @@ class NewUtteranceError(RuntimeError):
     """The bounded EXP-039 evaluation cannot safely continue."""
 
 
+def candidate_policy(kind: str) -> dict[str, str]:
+    if kind == "speaker7":
+        return {
+            "experiment_id": "EXP-039",
+            "variant_id": "cv12-speaker7",
+            "display_name": "EXP-038 / CV12 / speaker-conditioned AdaLN only",
+            "result_kind": "liveconv-exp039-xvc-new-utterance-result/v1",
+            "question": (
+                "Does speaker7 generalize to new utterances from heldout speakers?"
+            ),
+        }
+    if kind == "reconstruction20":
+        return {
+            "experiment_id": "EXP-041",
+            "variant_id": "cv12-reconstruction20",
+            "display_name": (
+                "EXP-040 / CV12 / 80% standard + 20% Amitaro reconstruction"
+            ),
+            "result_kind": "liveconv-exp041-xvc-reconstruction20-new-utterance/v1",
+            "question": (
+                "Does reconstruction20 generalize to new utterances from heldout "
+                "speakers?"
+            ),
+        }
+    raise NewUtteranceError(f"unknown candidate kind: {kind}")
+
+
 def load_evaluation(path: Path) -> dict[str, Any]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -124,7 +151,7 @@ def validate_inputs(
         raise NewUtteranceError("target reference identity drifted")
     for label, adapter in (
         ("EXP-035 control", arguments.control_adapter),
-        ("EXP-038 candidate", arguments.candidate_adapter),
+        ("method candidate", arguments.candidate_adapter),
     ):
         if adapter.is_symlink() or not (
             adapter / "adapter_model.safetensors"
@@ -145,7 +172,10 @@ def validate_inputs(
 
 
 def listening_index(
-    item: Mapping[str, Any], *, hashes: Mapping[str, str]
+    item: Mapping[str, Any],
+    *,
+    hashes: Mapping[str, str],
+    policy: Mapping[str, str],
 ) -> dict[str, object]:
     variants = (
         ("base", "X-VC base", "10-xvc-base.wav", 1),
@@ -156,15 +186,17 @@ def listening_index(
             2,
         ),
         (
-            "cv12-speaker7",
-            "EXP-038 / CV12 / speaker-conditioned AdaLN only",
-            "30-xvc-cv12-speaker7.wav",
+            policy["variant_id"],
+            policy["display_name"],
+            "30-xvc-candidate.wav",
             3,
         ),
     )
     return {
         "schema_version": 1,
-        "run_kind": "EXP-039 X-VC same-speaker new-utterance evaluation",
+        "run_kind": (
+            f"{policy['experiment_id']} X-VC same-speaker new-utterance evaluation"
+        ),
         "status": "completed-listen-now-unselected",
         "source_file": (
             f"Common Voice 25.0 / {item['duration_seconds']} s / {item['text']}"
@@ -192,7 +224,9 @@ def listening_index(
                 "display_order": order,
                 "output_file": filename,
                 "status": "passed",
-                "profile_id": f"xvc.exp039.{variant_id}.listen-now",
+                "profile_id": (
+                    f"xvc.{policy['experiment_id'].lower()}.{variant_id}.listen-now"
+                ),
                 "family_id": "x-vc",
                 "output_sha256": hashes[variant_id],
             }
@@ -206,6 +240,7 @@ def run(
     evaluation: Mapping[str, Any],
     target_rows: list[tuple[str, Path, str]],
 ) -> int:
+    policy = candidate_policy(arguments.candidate_kind)
     for name in ("HF_DATASETS_OFFLINE", "HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"):
         if os.environ.get(name) != "1":
             raise NewUtteranceError(f"{name}=1 is required before model import")
@@ -283,7 +318,7 @@ def run(
     outputs = {"base": render(model)}
     for label, adapter in (
         ("cv12-control69", arguments.control_adapter),
-        ("cv12-speaker7", arguments.candidate_adapter),
+        (policy["variant_id"], arguments.candidate_adapter),
     ):
         adapted_base = method._load_xvc(arguments, XVC, device)
         adapted = PeftModel.from_pretrained(
@@ -312,25 +347,26 @@ def run(
                 outputs["cv12-control69"][index],
                 sample_rate,
             ),
-            "cv12-speaker7": base._write_float_wav(
-                row_root / "30-xvc-cv12-speaker7.wav",
-                outputs["cv12-speaker7"][index],
+            policy["variant_id"]: base._write_float_wav(
+                row_root / "30-xvc-candidate.wav",
+                outputs[policy["variant_id"]][index],
                 sample_rate,
             ),
         }
         method._write_json(
-            row_root / "index.json", listening_index(item, hashes=hashes)
+            row_root / "index.json",
+            listening_index(item, hashes=hashes, policy=policy),
         )
         listener_rows.append({"source_id": item["id"], "hashes": hashes})
 
     result = {
         "schema_version": 1,
-        "kind": "liveconv-exp039-xvc-new-utterance-result/v1",
+        "kind": policy["result_kind"],
         "status": "completed-listen-now-unselected",
         "git_commit": base._git_output(
             ["git", "rev-parse", "HEAD"], "repository commit"
         ),
-        "question": "Does speaker7 generalize to new utterances from heldout speakers?",
+        "question": policy["question"],
         "training_update_count": 0,
         "evaluation_set_sha256": base.sha256_file(arguments.evaluation_set),
         "evaluation_rows": listener_rows,
@@ -361,6 +397,11 @@ def run(
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument(
+        "--candidate-kind",
+        choices=("speaker7", "reconstruction20"),
+        default="speaker7",
+    )
     parser.add_argument("--evaluation-set", type=Path, required=True)
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--pair-root", type=Path, required=True)
@@ -405,6 +446,7 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     arguments = _parser().parse_args(argv)
     try:
+        candidate_policy(arguments.candidate_kind)
         evaluation, targets = validate_inputs(arguments)
         if arguments.check:
             print(

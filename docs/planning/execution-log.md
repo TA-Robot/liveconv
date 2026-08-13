@@ -2048,3 +2048,48 @@ job queue.
   `git diff --check` pass.
 - Changed action: commit before execution and launch the sole GPU lane while
   the scheduled Grok audit runs read-only in parallel.
+
+## 2026-08-13T13:21:58Z - Grok progress audit continued target reconstruction
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, exact 1,800-second cadence).
+- Result: `CONTINUE`. Grok accepted the EXP-038/039 audio, rejection of
+  speaker7 after changed utterances, and the target-preserving reconstruction
+  hypothesis. It requested that EXP-040 be the sole GPU lane and explicitly
+  required the twelve new utterances after the first external screen.
+- Adopted: yes. EXP-040 was already committed as `042fada` and loading while
+  the auditor read its snapshot; the sampled 2 MiB/0% state was transient, not
+  an absent job. Closed-axis work and speaker7 refinements remain discarded.
+- Expected time saved: skip speaker7 condition rendering and avoid selecting
+  reconstruction from the original seven rows alone.
+
+## 2026-08-13T13:27:25Z - EXP-040 seven-row audio published
+
+- Agent: `primary-integrator`.
+- Task: Train 835 standard plus 209 same-Amitaro reconstruction updates at
+  fixed control69 scope, with zero reversed donor-target updates.
+- Dependencies: commit `042fada`; exclusive `gpu0`; generated inventory
+  `e909e465...`; listener `8878`.
+- Result: all 1,044 generated hashes matched. Training completed in 269.36
+  seconds with 5.13 GB peak allocation and published 21 candidates. No arm
+  gross-looped. Reconstruction20 moved source-relative distance from 0.360 to
+  0.349 versus all-standard, while known-text distance moved from 0.399 to
+  0.409; both kept maximum source-relative distance 0.571.
+- Changed action: no selection from mixed small changes. Commit a render-only
+  EXP-041 on all twelve new utterances before any frozen-condition render.
+
+## 2026-08-13T13:30:18Z - EXP-041 new-utterance render prepared
+
+- Agent: `primary-integrator`.
+- Task: Replace EXP-039's rejected speaker7 arm with EXP-040 reconstruction20
+  while keeping the twelve sources, base, control69, target, and seeds fixed.
+- Dependencies: EXP-039 frozen evaluation set; EXP-040 adapter; listener
+  `8878`; exclusive `gpu0` during model execution.
+- Result: the reusable renderer gained an explicit candidate policy. Ruff, 28
+  focused tests, exact input/adapter CPU admission, and `git diff --check`
+  passed. The first admission attempt intentionally stopped because the wrong
+  Common Voice root did not match the frozen source identities; rerunning with
+  the recorded root matched all twelve rows without GPU use.
+- Rework: one path correction, under one minute; no artifact was changed.
+- Changed action: commit the evaluation slice, then publish 36 candidates and
+  run the source-window-relative corruption screen as the sole GPU lane.

@@ -159,8 +159,9 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-038 speaker-conditioned AdaLN-only LoRA (complete)
         -> seven disjoint-speaker screen (mean improved; one empty-output tradeoff)
         -> EXP-039 twelve new utterances / six heldout speakers (speaker7 regressed)
-        -> EXP-040 80% standard / 20% same-target reconstruction (gpu0)
-        -> seven disjoint-speaker content/corruption screen
+        -> EXP-040 80% standard / 20% same-target reconstruction (complete)
+        -> seven disjoint-speaker screen (non-corrupt; mixed small changes)
+        -> EXP-041 twelve new utterances / six heldout speakers (gpu0)
         -> operator hearing when available
 ```
 

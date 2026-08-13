@@ -57,3 +57,10 @@ def test_manifest_rejects_a_short_source_transcript(tmp_path: Path) -> None:
 
     with pytest.raises(NEW.NewUtteranceError, match="identity"):
         NEW.load_evaluation(path)
+
+
+def test_reconstruction_candidate_is_exp041() -> None:
+    policy = NEW.candidate_policy("reconstruction20")
+
+    assert policy["experiment_id"] == "EXP-041"
+    assert policy["variant_id"] == "cv12-reconstruction20"
