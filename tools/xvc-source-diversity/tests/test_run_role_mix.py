@@ -5,6 +5,7 @@ import json
 import sys
 from collections import Counter
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -69,3 +70,27 @@ def test_predecessor_receipt_rejects_drift(tmp_path: Path) -> None:
 
     with pytest.raises(ROLE_MIX.RoleMixError, match="identity"):
         ROLE_MIX._load_predecessor(path)
+
+
+def test_speaker7_scope_contains_only_global_speaker_modulators() -> None:
+    inventory = (
+        ROLE_MIX.REPO_ROOT
+        / "artifacts"
+        / "exp007"
+        / "phase0-inputs-v1"
+        / "inventory.json"
+    )
+
+    scope = ROLE_MIX.training_scope(inventory, "speaker7")
+
+    assert tuple(scope["target_modules"]) == ROLE_MIX.SPEAKER7_TARGETS
+    assert scope["trainable_parameter_count"] == 166_400
+
+
+def test_speaker7_policy_is_all_standard_and_exp038() -> None:
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(training_policy="all-standard", lora_scope="speaker7")
+    )
+
+    assert policy["experiment_id"] == "EXP-038"
+    assert Counter(ROLE_MIX.training_modes("all-standard")) == {"standard": 1_044}

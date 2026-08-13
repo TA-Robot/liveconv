@@ -35,6 +35,14 @@ PREDECESSOR_INVENTORY_SHA256 = (
 ROLE_COUNTS = {"standard": 418, "reconstruction": 208, "reversed": 418}
 ROLE_CYCLE = ("standard", "reversed", "reconstruction", "standard", "reversed")
 TOTAL_UPDATES = breadth.TOTAL_UPDATES
+SPEAKER7_TARGETS = tuple(
+    [
+        f"acoustic_converter.transformer_blocks.{index}.attn_norm_x.linear"
+        for index in range(6)
+    ]
+    + ["acoustic_converter.norm_out.linear"]
+)
+SPEAKER7_TRAINABLE_PARAMETERS = 166_400
 
 
 class RoleMixError(RuntimeError):
@@ -53,6 +61,73 @@ def role_schedule(count: int = TOTAL_UPDATES) -> list[str]:
     if Counter(schedule) != ROLE_COUNTS:
         raise RoleMixError("role schedule proportions drifted")
     return schedule
+
+
+def training_modes(policy: str) -> list[str]:
+    if policy == "role-mix":
+        return role_schedule()
+    if policy == "all-standard":
+        return ["standard"] * TOTAL_UPDATES
+    raise RoleMixError(f"unknown training policy: {policy}")
+
+
+def training_scope(inventory: Path, name: str) -> dict[str, object]:
+    if name == "control69":
+        return horizon.lora_scope(inventory, name)
+    if name != "speaker7":
+        raise RoleMixError(f"unknown LoRA scope: {name}")
+    expanded = horizon.lora_scope(inventory, "expanded79")
+    observed = tuple(
+        item for item in expanded["target_modules"] if item in SPEAKER7_TARGETS
+    )
+    if observed != SPEAKER7_TARGETS:
+        raise RoleMixError("speaker7 target topology drifted")
+    return {
+        "target_modules": list(observed),
+        "trainable_parameter_count": SPEAKER7_TRAINABLE_PARAMETERS,
+    }
+
+
+def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
+    if arguments.training_policy == "role-mix" and arguments.lora_scope == "control69":
+        return {
+            "experiment_id": "EXP-036",
+            "slug": "exp036",
+            "candidate_id": "cv12-role-mix",
+            "candidate_name": (
+                "EXP-036 / CV12 / standard-reconstruction-reversed / 1,044 updates"
+            ),
+            "run_kind": "EXP-036 X-VC role-mix external evaluation",
+            "result_kind": "liveconv-exp036-xvc-role-mix-result/v1",
+            "question": "Does official role mixing beat all-standard fine-tuning?",
+            "independent_variable": (
+                "training role assignment: all-standard versus 418 standard, "
+                "208 reconstruction, and 418 reversed updates"
+            ),
+        }
+    if (
+        arguments.training_policy == "all-standard"
+        and arguments.lora_scope == "speaker7"
+    ):
+        return {
+            "experiment_id": "EXP-038",
+            "slug": "exp038",
+            "candidate_id": "cv12-speaker7",
+            "candidate_name": (
+                "EXP-038 / CV12 / speaker-conditioning-only LoRA / 1,044 updates"
+            ),
+            "run_kind": "EXP-038 X-VC speaker7 external evaluation",
+            "result_kind": "liveconv-exp038-xvc-speaker7-result/v1",
+            "question": (
+                "Does speaker-conditioning-only LoRA preserve external content "
+                "better than control69?"
+            ),
+            "independent_variable": (
+                "LoRA scope: 69 attention/FFN linears versus seven speaker-conditioned "
+                "AdaLN linears"
+            ),
+        }
+    raise RoleMixError("unsupported training-policy and LoRA-scope combination")
 
 
 def assigned_tensors(
@@ -162,7 +237,9 @@ def validate_inputs(
         arguments.control_adapter / "adapter_model.safetensors"
     ).is_file():
         raise RoleMixError("EXP-035 all-standard adapter is unavailable")
-    role_schedule()
+    experiment_policy(arguments)
+    training_modes(arguments.training_policy)
+    training_scope(arguments.inventory, arguments.lora_scope)
     method._validate_xvc(arguments)
     base._require_new_output(
         arguments.work_dir,
@@ -178,7 +255,10 @@ def validate_inputs(
 
 
 def listening_index(
-    item: Mapping[str, Any], *, hashes: Mapping[str, str]
+    item: Mapping[str, Any],
+    *,
+    hashes: Mapping[str, str],
+    policy: Mapping[str, Any],
 ) -> dict[str, object]:
     variants = (
         ("base", "X-VC base", "10-xvc-base.wav", 1),
@@ -189,15 +269,15 @@ def listening_index(
             2,
         ),
         (
-            "cv12-role-mix",
-            "EXP-036 / CV12 / standard-reconstruction-reversed / 1,044 updates",
-            "30-xvc-cv12-role-mix.wav",
+            policy["candidate_id"],
+            policy["candidate_name"],
+            "30-xvc-candidate.wav",
             3,
         ),
     )
     return {
         "schema_version": 1,
-        "run_kind": "EXP-036 X-VC role-mix external evaluation",
+        "run_kind": policy["run_kind"],
         "status": "completed-listen-now-unselected",
         "source_file": (
             f"Common Voice 25.0 / {item['age']} / {item['gender']} / {item['text']}"
@@ -225,7 +305,7 @@ def listening_index(
                 "display_order": order,
                 "output_file": filename,
                 "status": "passed",
-                "profile_id": f"xvc.exp036.{variant_id}.listen-now",
+                "profile_id": f"xvc.{policy['slug']}.{variant_id}.listen-now",
                 "family_id": "x-vc",
                 "output_sha256": hashes[variant_id],
             }
@@ -241,11 +321,14 @@ def run(
     target_rows: list[tuple[str, Path, str]],
     predecessor: Mapping[str, Any],
 ) -> int:
+    policy = experiment_policy(arguments)
     for name in ("HF_DATASETS_OFFLINE", "HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"):
         if os.environ.get(name) != "1":
             raise RoleMixError(f"{name}=1 is required before model import")
     if arguments.confirm_gpu_lease != "gpu0" or arguments.device != "cuda:0":
-        raise RoleMixError("EXP-036 requires the explicit gpu0 lease")
+        raise RoleMixError(
+            f"{policy['experiment_id']} requires the explicit gpu0 lease"
+        )
     started = time.monotonic()
     arguments.work_dir.mkdir()
     donor_root = arguments.work_dir / "donor-references"
@@ -349,7 +432,7 @@ def run(
     del control, control_base
     torch.cuda.empty_cache()
 
-    modes = role_schedule()
+    modes = training_modes(arguments.training_policy)
     training_rows: list[dict[str, Any]] = []
     generated_inventory: list[dict[str, str]] = []
     row_index = 0
@@ -423,7 +506,7 @@ def run(
     ):
         raise RoleMixError("regenerated EXP-035 pair inventory drifted")
 
-    scope = horizon.lora_scope(arguments.inventory, "control69")
+    scope = training_scope(arguments.inventory, arguments.lora_scope)
     target_modules = list(scope["target_modules"])
     trained = get_peft_model(
         model,
@@ -439,15 +522,20 @@ def run(
     )
     observed = getattr(trained, "targeted_module_names", None)
     if not isinstance(observed, (list, tuple)) or set(observed) != set(target_modules):
-        raise RoleMixError("control69 target set drifted")
+        raise RoleMixError(f"{arguments.lora_scope} target set drifted")
     trainable = base._set_adapter_training_only(trained)
     if sum(parameter.numel() for parameter in trainable) != int(
         scope["trainable_parameter_count"]
     ):
-        raise RoleMixError("control69 trainable parameter count drifted")
+        raise RoleMixError(
+            f"{arguments.lora_scope} trainable parameter count drifted"
+        )
     optimizer = torch.optim.AdamW(trainable, lr=base.LEARNING_RATE)
     losses: list[float] = []
-    loss_by_role: dict[str, list[float]] = {role: [] for role in ROLE_COUNTS}
+    observed_role_counts = dict(Counter(modes))
+    loss_by_role: dict[str, list[float]] = {
+        role: [] for role in observed_role_counts
+    }
     for role, tensors in zip(modes, training_rows, strict=True):
         base._set_adapter_training_only(trained)
         optimizer.zero_grad(set_to_none=True)
@@ -464,7 +552,7 @@ def run(
         losses.append(numeric)
         loss_by_role[role].append(numeric)
     if len(losses) != TOTAL_UPDATES:
-        raise RoleMixError("EXP-036 update count drifted")
+        raise RoleMixError(f"{policy['experiment_id']} update count drifted")
     adapter_dir = arguments.work_dir / "adapter-1044"
     trained.save_pretrained(adapter_dir, safe_serialization=True)
     candidate_outputs = render(trained)
@@ -490,29 +578,27 @@ def run(
                 control_outputs[index],
                 sample_rate,
             ),
-            "cv12-role-mix": base._write_float_wav(
-                row_root / "30-xvc-cv12-role-mix.wav",
+            policy["candidate_id"]: base._write_float_wav(
+                row_root / "30-xvc-candidate.wav",
                 candidate_outputs[index],
                 sample_rate,
             ),
         }
         method._write_json(
-            row_root / "index.json", listening_index(item, hashes=hashes)
+            row_root / "index.json",
+            listening_index(item, hashes=hashes, policy=policy),
         )
         listener_rows.append({"source_id": item["id"], "hashes": hashes})
 
     result = {
         "schema_version": 1,
-        "kind": "liveconv-exp036-xvc-role-mix-result/v1",
+        "kind": policy["result_kind"],
         "status": "completed-listen-now-unselected",
         "git_commit": base._git_output(
             ["git", "rev-parse", "HEAD"], "repository commit"
         ),
-        "question": "Does official role mixing beat all-standard fine-tuning?",
-        "independent_variable": (
-            "training role assignment: all-standard versus 418 standard, "
-            "208 reconstruction, and 418 reversed updates"
-        ),
+        "question": policy["question"],
+        "independent_variable": policy["independent_variable"],
         "fixed": {
             "predecessor_git_commit": predecessor["git_commit"],
             "generated_inventory_sha256": PREDECESSOR_INVENTORY_SHA256,
@@ -520,13 +606,13 @@ def run(
             "target_text_count": method.PAIR_COUNT,
             "target_exposures_per_text": breadth.DONOR_COUNT,
             "optimizer_updates": TOTAL_UPDATES,
-            "lora_scope": "control69",
+            "lora_scope": arguments.lora_scope,
             "learning_rate": base.LEARNING_RATE,
             "gradient_clip_norm": base.GRADIENT_CLIP_NORM,
             "target_wav_cond": "zeros",
             "loss": "pinned X-VC composite generative loss",
         },
-        "role_counts": ROLE_COUNTS,
+        "role_counts": observed_role_counts,
         "role_schedule_sha256": method._canonical_sha256(modes),
         "donor_manifest_sha256": base.sha256_file(arguments.donors),
         "evaluation_set_sha256": base.sha256_file(arguments.evaluation_set),
@@ -558,7 +644,7 @@ def run(
             {
                 "status": result["status"],
                 "updates": len(losses),
-                "role_counts": ROLE_COUNTS,
+                "role_counts": observed_role_counts,
                 "evaluation_rows": len(evaluation_pairs),
                 "listener_dir": str(arguments.listener_dir),
             },
@@ -572,6 +658,14 @@ def run(
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument(
+        "--training-policy",
+        choices=("role-mix", "all-standard"),
+        default="role-mix",
+    )
+    parser.add_argument(
+        "--lora-scope", choices=("control69", "speaker7"), default="control69"
+    )
     parser.add_argument("--donors", type=Path, required=True)
     parser.add_argument("--evaluation-set", type=Path, required=True)
     parser.add_argument("--source-root", type=Path, required=True)
@@ -605,6 +699,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         donors, evaluation, targets, predecessor = validate_inputs(arguments)
         if arguments.check:
+            modes = training_modes(arguments.training_policy)
             print(
                 json.dumps(
                     {
@@ -614,7 +709,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "training_targets": len(targets),
                         "generated_pairs": TOTAL_UPDATES,
                         "updates": TOTAL_UPDATES,
-                        "role_counts": ROLE_COUNTS,
+                        "role_counts": dict(Counter(modes)),
+                        "lora_scope": arguments.lora_scope,
                     },
                     sort_keys=True,
                 )

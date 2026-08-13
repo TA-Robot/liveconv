@@ -80,13 +80,14 @@ name one owner and ownership zone below.
 | LV-069 | Done | P0 | MS-3 | Retrain X-VC with generated same-content source-speaker diversity and a fixed diverse evaluation | EXP-033 published 30 candidates; JVS-clean content improved, but external Common Voice exposed one gross loop and no generalization claim survives |
 | LV-070 | Done | P0 | MS-3 | Expand generated-source donor breadth at fixed exposure and evaluate on disjoint external speakers | EXP-035 published 21 disjoint-speaker and 30 fixed-condition candidates; CV12 removed the JVS3 gross external failure but did not beat base overall and retained the noise weakness, so donor-count expansion is closed |
 | LV-071 | Done | P0 | MS-3 | Restore X-VC's upstream training-role mixture at fixed EXP-035 exposure | EXP-036 completed 1,044 updates and 21 external candidates; it restored one empty output and worsened aggregate auxiliary content versus all-standard, so no fixed-condition expansion is admitted |
-| LV-072 | In progress | P0 | MS-3 | Test content-safe target frame context before context-aware X-VC retraining | First render the same seven external speakers with a separate Amitaro context plus masked current window; only a non-corrupt result admits one fixed-pair retrain |
+| LV-072 | Done | P0 | MS-3 | Test content-safe target frame context before context-aware X-VC retraining | EXP-037 published 14 candidates; context did not loop but worsened external known-text distance from 0.399 to 0.505, so retraining was skipped |
+| LV-073 | In progress | P0 | MS-3 | Restrict X-VC adaptation to global-speaker modulation at fixed EXP-035 exposure | EXP-038 changes only LoRA scope from control69's 69 attention/FFN linears to seven speaker-conditioned AdaLN linears; data, 1,044 all-standard updates, LR, loss, and zero condition stay fixed |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| LV-072 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-037 note, and its ignored artifacts | Publish the seven-row zero/context admission render and either start one context-aware train or record a technical stop |
+| LV-073 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-038 note, and its ignored artifacts | Publish the seven-row control69/speaker7 comparison, record the corruption screen, then replan |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.
@@ -109,10 +110,10 @@ prepared audio. Human hearing is temporarily unavailable. MS-3 therefore runs
 one committed method-level GPU pilot at a time, publishes its audio on 8878,
 and uses machine metrics only to reject corruption. EXP-035 closed donor-count
 expansion after improving external stability without repairing the shared
-noise weakness. EXP-036 role mixing then regressed the external screen.
-EXP-037 now tests content-safe target frame context before spending on its
-matching retrain; exact human87 epoch/LR/scope and EXP-024 DTW retries remain
-closed. Do not spend this batch on hashes or receipts.
+noise weakness. EXP-036 role mixing and EXP-037 target context then regressed
+the external screen. EXP-038 isolates speaker-conditioned AdaLN adaptation
+from content attention/FFN adaptation; exact human87 epoch/LR/scope and EXP-024
+DTW retries remain closed. Do not spend this batch on hashes or receipts.
 
 ## MS-3 dispatch plan
 
@@ -121,7 +122,7 @@ The live board is [`listen-queue.md`](listen-queue.md). Process is
 
 | Ready item | Intended ownership zone | Stop condition |
 |---|---|---|
-| LV-072 EXP-037 | `tools/xvc-source-diversity/` and fixed-port 8878 | seven-row zero/context audio plus corruption screen; retrain only if admitted |
+| LV-073 EXP-038 | `tools/xvc-source-diversity/` and fixed-port 8878 | seven-row control69/speaker7 audio plus external corruption screen, then replan |
 | Unheard drain | Fixed-port 8878: EXP-033/034/035, stable public sets, EXP-023 | Operator `continue`/`rejected` when hearing returns |
 
 LV-032, LV-055, LV-056, LV-057, LV-058, and LV-068 are complete. LV-059,

@@ -1944,3 +1944,47 @@ job queue.
   admission, and `git diff --check` pass.
 - Changed action: commit and render the two arms on `gpu0`. Admit one matching
   1,044-update retrain only if the contextual arm avoids gross corruption.
+
+## 2026-08-13T12:52:36Z - Grok progress audit continued conditioning admission
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, exact 1,800-second cadence).
+- Result: `CONTINUE`. Grok accepted the new audio, disjoint seven-speaker and
+  frozen ten-condition evaluation, closure of donor count and role mixing, and
+  the cheap target-context admission before retraining. It explicitly rejected
+  EXP-036 fixed-condition rendering, closed-axis retries, evaluation redesign,
+  and machine quality selection.
+- Adopted: yes. EXP-037 had already been committed as `3ee987a` and launched
+  while the auditor evaluated its earlier snapshot; the reported idle GPU was
+  stale by audit completion.
+- Expected time saved: the 88.65-second inference admission avoided a full
+  context-aware training run after detecting its content regression.
+
+## 2026-08-13T12:55:01Z - EXP-037 context-aware retraining rejected at admission
+
+- Agent: `primary-integrator`.
+- Task: Compare all-zero frame conditioning with a separate Amitaro utterance
+  followed by a zeroed current 2.4-second window on seven external speakers.
+- Dependencies: commit `3ee987a`; EXP-035 adapter; exclusive `gpu0`; listener
+  `8878`.
+- Result: 14 candidates completed in 88.65 seconds with 2.67 GB peak GPU
+  allocation. Neither arm gross-looped. Context worsened mean source-relative
+  distance from 0.360 to 0.370, known-text distance from 0.399 to 0.505, and
+  maximum source-relative distance from 0.571 to 0.714.
+- Listener: the refreshed library exposes EXP-035/036/037 at 548 runs / 976
+  candidates, resolving the auditor's snapshot uncertainty.
+- Changed action: do not train the contextual variant. Move adaptation off the
+  content attention/FFN linears and onto the seven global-speaker AdaLN linears
+  while restoring all-standard roles and zero condition.
+
+## 2026-08-13T13:00:00Z - EXP-038 speaker7 pilot prepared
+
+- Agent: `primary-integrator`.
+- Task: Hold EXP-035's exact data and schedule fixed while moving LoRA from 69
+  content attention/FFN linears to seven global-speaker AdaLN modulators.
+- Result: the derived scope contains exactly six block
+  `attn_norm_x.linear` modules plus `norm_out.linear`, or 166,400 trainable
+  rank-8 parameters versus control69's 835,584. Twenty-four focused tests,
+  Ruff, all-1,044-artifact CPU admission, and `git diff --check` pass.
+- Changed action: commit before execution, run the sole `gpu0` lane, and screen
+  the same seven external rows before any fixed-condition expansion.

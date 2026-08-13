@@ -30,7 +30,7 @@ target.
 
 | Item | What to hear | Action | Afterward |
 |---|---|---|---|
-| EXP-034/035 external speakers | Base vs JVS3 and, after its run, CV12 donor-breadth X-VC on disjoint Common Voice Japanese speakers | after hearing returns: reject obvious loops first, then judge naturalness and target voice across the set | machine ASR only screens content/corruption; no automatic winner |
+| EXP-034--038 external speakers | Base and method-level X-VC variants on disjoint Common Voice Japanese speakers | after hearing returns: reject obvious loops first, then judge naturalness and target voice across the set | machine ASR only screens content/corruption; no automatic winner |
 | EXP-033 source diversity | Base vs legacy human87 control69-e12 vs JVS3 generated-pair X-VC on ten fixed cross-speaker/constraint rows | after hearing returns: prefer one arm per group or reject all; judge naturalness and target voice by ear | machine ASR may reject corruption only; a consistent audible result admits the next method decision, not promotion |
 | EXP-023 | 12 Qwen3-TTS Ono_Anna texts | per text: `continue` or `rejected` | one `rejected` stops this exact TTS profile; all `continue` only admits later TTS transport work, not a VC win |
 | EXP-025 whole-short 87 | Frozen base vs human-paired adapted X-VC on three public heldout source-only utterances | `keep` only if adapted is clearly preferable on the set; otherwise `rejected` | `keep` admits a separate promote pass; `rejected` closes this exact 87-pair schedule |
@@ -69,17 +69,20 @@ therefore closed. EXP-036 kept those controls and changed only the upstream
 training-role assignment to X-VC's official standard/reconstruction/reversed
 mix. It restored an empty external output that EXP-035 had rescued and was
 worse on both aggregate content diagnostics, so the role mix is technically
-rejected without a fixed-condition expansion. EXP-037 is the current lane: a
-cheap external render first tests content-safe target context versus the
-all-zero frame condition; only a non-corrupt result admits context-aware
-retraining on the same pairs.
+rejected without a fixed-condition expansion. EXP-037 then tested a separate
+Amitaro context followed by a masked current window. It did not loop, but
+worsened external known-text distance from 0.399 to 0.505, so context-aware
+retraining was skipped. EXP-038 is the current lane: keep EXP-035 data, roles,
+updates, LR, loss, and zero condition fixed, and move LoRA from 69 content/
+attention/FFN linears to only seven global-speaker AdaLN modulators. This is a
+new conditioning-oriented freeze scope, not another control69/expanded79 point.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Render a content-safe Amitaro context plus a masked 2.4-second current window on the seven external speakers | parent | no | zero-condition/context-condition comparison and corruption screen published |
-| 2 | If contextual inference avoids gross regression, retrain the fixed EXP-035 1,044 pairs with the same context policy | parent | no human dependency for machine reject | trained-context external comparison published; no automated winner |
+| 1 | Train EXP-038 speaker7 on the exact EXP-035 1,044 generated pairs and zero condition | parent | no | seven-row control69/speaker7 comparison and corruption screen published |
+| 2 | If speaker7 avoids gross external regression, render it once on the frozen ten condition rows | parent | no human dependency for machine reject | fixed-condition comparison published; no automated winner |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

@@ -155,8 +155,8 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-035 12-donor breadth at fixed 1,044 updates (complete)
         -> seven disjoint speakers + frozen ten conditions (complete)
         -> EXP-036 official 40/20/40 training-role mix (external regression; stop)
-        -> EXP-037 content-safe target-context render admission (gpu0)
-        -> context-aware fixed-pair retrain only if non-corrupt
+        -> EXP-037 content-safe target-context render (external regression; stop)
+        -> EXP-038 speaker-conditioned AdaLN-only LoRA (gpu0)
         -> seven disjoint-speaker content/corruption screen
         -> operator hearing when available
 ```
@@ -167,11 +167,14 @@ speakers in one pass. Its external worst case improved, but base remained
 competitive and the fixed noise regression survived; no more donor-count point
 is admitted. EXP-036 reused those exact generated pairs and changed only role
 assignment; the all-standard adapter remained safer on the external screen, so
-role mixing is closed. EXP-037 next tests X-VC's otherwise-unused frame
-condition with a different Amitaro utterance followed by a zeroed current
-window, preventing same-text leakage. Training donors and external evaluation
-speakers remain disjoint. This stays on the method path without retrying the
-closed human87 epoch/LR/scope or EXP-024 DTW axes.
+role mixing is closed. EXP-037 tested X-VC's otherwise-unused frame condition
+with a different Amitaro utterance followed by a zeroed current window; its
+external content regression closed that route before training. EXP-038 keeps
+the zero condition and all-standard data but adapts only the seven AdaLN
+linears directly driven by the global speaker embedding, rather than the 69
+attention/FFN linears that also carry content. Training donors and external
+evaluation speakers remain disjoint. This stays on the method path without
+retrying the closed human87 epoch/LR/scope or EXP-024 DTW axes.
 
 ```text
  Unheard on 8878: EXP-033/034/035 / stable public RVC-XVC / EXP-023 Qwen
