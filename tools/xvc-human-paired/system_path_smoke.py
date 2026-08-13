@@ -432,6 +432,7 @@ def run(args: argparse.Namespace) -> int:
     if not torch.cuda.is_available():
         raise SystemPathError("CUDA is unavailable")
     device = torch.device(args.device)
+    torch.cuda.set_device(device)
     torch.use_deterministic_algorithms(True, warn_only=False)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True

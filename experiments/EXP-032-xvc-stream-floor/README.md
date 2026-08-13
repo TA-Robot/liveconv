@@ -44,7 +44,13 @@ HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
   --adapter-dir artifacts/xvc-human-paired/listen-now/exp026-human87-horizon-v1/adapter-0696 \
   --target-reference artifacts/xvc-human-paired/listen-now/exp026-human87-horizon-v1/train-pairs/EMOTION100_003/target-48k.wav \
   --actual-source artifacts/ms3/listening/exp020-human-rvc-smoke-8s-plain-20260812/00-native-source.wav \
-  --work-dir artifacts/xvc-human-paired/listen-now/exp032-system-path-v1 \
-  --listener-dir artifacts/ms3/listening/exp032-system-path-v1 \
+  --work-dir artifacts/xvc-human-paired/listen-now/exp032-system-path-v2 \
+  --listener-dir artifacts/ms3/listening/exp032-system-path-v2 \
   --confirm-gpu-lease gpu0 --device cuda:0
 ```
+
+Repair note: `v1` stopped before model load, inference, or listener publication
+because the isolated Torch runtime requires `cuda:0` to be selected before its
+peak-memory counter can be reset. `v2` adds that ordering call only; the model,
+adapter, stream geometry, input, cancellation probe, and retained generation do
+not change.
