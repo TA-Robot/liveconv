@@ -79,13 +79,18 @@ rows improved mean source-relative distance from 0.360 to 0.321 without loops,
 but lost one empty-output rescue from control69. EXP-039 is the current lane:
 twelve new utterances from six of the same external speakers test whether that
 scope result survives changed content and 2.184--9.612-second source lengths.
+It did not: speaker7 worsened mean source-relative distance from control69's
+0.184 to 0.345. Speaker7 is closed. EXP-040 keeps the exact control69 data,
+scope, LR, loss, condition, and 1,044 updates, but replaces 209 standard
+updates with same-Amitaro reconstruction. It excludes the reversed donor-target
+updates implicated in EXP-036, so every target remains the authorized voice.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Render EXP-039 base/control69/speaker7 on twelve new utterances from six heldout speakers | parent | no | 36 candidates and source-window-relative corruption screen published |
-| 2 | If speaker7's content stability survives EXP-039, render it once on the frozen ten condition rows | parent | no human dependency for machine reject | fixed-condition comparison published; no automated winner |
+| 1 | Train EXP-040 with 835 standard + 209 same-target reconstruction updates and no reversed roles | parent | no | seven-row control69/reconstruction20 comparison and corruption screen published |
+| 2 | If reconstruction20 avoids gross regression, render it on EXP-039's twelve new utterances | parent | no human dependency for machine reject | new-utterance comparison published; no automated winner |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

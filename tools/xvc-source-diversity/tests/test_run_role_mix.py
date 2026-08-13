@@ -94,3 +94,17 @@ def test_speaker7_policy_is_all_standard_and_exp038() -> None:
 
     assert policy["experiment_id"] == "EXP-038"
     assert Counter(ROLE_MIX.training_modes("all-standard")) == {"standard": 1_044}
+
+
+def test_target_preserving_reconstruction_has_no_reversed_updates() -> None:
+    schedule = ROLE_MIX.training_modes("standard-reconstruction")
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(
+            training_policy="standard-reconstruction", lora_scope="control69"
+        )
+    )
+
+    assert schedule[:10] == list(ROLE_MIX.RECONSTRUCTION_CYCLE) * 2
+    assert Counter(schedule) == ROLE_MIX.RECONSTRUCTION_COUNTS
+    assert "reversed" not in schedule
+    assert policy["experiment_id"] == "EXP-040"

@@ -2020,3 +2020,31 @@ job queue.
 - Changed action: commit the render plan and runner, publish 36 base/control69/
   speaker7 candidates, and judge machine corruption relative to each exact
   2.4-second source window rather than its mostly unconsumed full sentence.
+
+## 2026-08-13T13:18:42Z - EXP-039 rejected speaker7 generalization
+
+- Agent: `primary-integrator`.
+- Task: Render base, control69, and speaker7 on twelve new utterances from six
+  of the same heldout speakers, with source durations from 2.184 to 9.612
+  seconds.
+- Dependencies: commit `664a54a`; exclusive `gpu0`; listener `8878`.
+- Result: 36 candidates completed in 102.16 seconds with 5.13 GB peak GPU
+  allocation. No arm gross-looped. On exact first-window source-relative ASR,
+  control69 scored 0.184, base 0.263, and speaker7 0.345; speaker7's initial
+  seven-row advantage did not survive changed utterances. Port 8878 exposed
+  567 runs / 1,033 candidates after publication.
+- Changed action: close speaker7 without a frozen-condition render. Preserve
+  control69 and test one target-preserving 80/20 standard/reconstruction
+  schedule, excluding all reversed donor-target updates.
+
+## 2026-08-13T13:20:39Z - EXP-040 reconstruction pilot prepared
+
+- Agent: `primary-integrator`.
+- Task: Retain control69 and isolate the target-preserving portion of upstream
+  role mixing after EXP-036's donor-target dilution failure.
+- Result: a deterministic 1,044-update schedule contains 835 standard and 209
+  same-Amitaro reconstruction updates, with exactly zero reversed updates.
+  Twenty-seven focused tests, Ruff, all-1,044-artifact CPU admission, and
+  `git diff --check` pass.
+- Changed action: commit before execution and launch the sole GPU lane while
+  the scheduled Grok audit runs read-only in parallel.

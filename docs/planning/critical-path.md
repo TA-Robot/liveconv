@@ -158,8 +158,9 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-037 content-safe target-context render (external regression; stop)
         -> EXP-038 speaker-conditioned AdaLN-only LoRA (complete)
         -> seven disjoint-speaker screen (mean improved; one empty-output tradeoff)
-        -> EXP-039 twelve new utterances / six heldout speakers (gpu0)
-        -> source-window-relative content/corruption screen
+        -> EXP-039 twelve new utterances / six heldout speakers (speaker7 regressed)
+        -> EXP-040 80% standard / 20% same-target reconstruction (gpu0)
+        -> seven disjoint-speaker content/corruption screen
         -> operator hearing when available
 ```
 
@@ -175,11 +176,12 @@ external content regression closed that route before training. EXP-038 keeps
 the zero condition and all-standard data but adapts only the seven AdaLN
 linears directly driven by the global speaker embedding, rather than the 69
 attention/FFN linears that also carry content. Its first external set improved
-the mean but restored one base-like empty output. EXP-039 therefore adds twelve
-new utterances from six of the same heldout speakers before any further scope
-decision. Training donors and external evaluation speakers remain disjoint.
-This stays on the method path without retrying the closed human87 epoch/LR/
-scope or EXP-024 DTW axes.
+the mean but restored one base-like empty output. EXP-039's twelve new
+utterances then rejected speaker7 generalization. EXP-040 returns to control69
+and tests 20% same-Amitaro reconstruction as content regularization while
+removing EXP-036's 40% reversed donor-target dilution. Training donors and
+external evaluation speakers remain disjoint. This stays on the method path
+without retrying the closed human87 epoch/LR/scope or EXP-024 DTW axes.
 
 ```text
  Unheard on 8878: EXP-033/034/035 / stable public RVC-XVC / EXP-023 Qwen

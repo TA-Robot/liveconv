@@ -34,6 +34,14 @@ PREDECESSOR_INVENTORY_SHA256 = (
 )
 ROLE_COUNTS = {"standard": 418, "reconstruction": 208, "reversed": 418}
 ROLE_CYCLE = ("standard", "reversed", "reconstruction", "standard", "reversed")
+RECONSTRUCTION_COUNTS = {"standard": 835, "reconstruction": 209}
+RECONSTRUCTION_CYCLE = (
+    "standard",
+    "standard",
+    "reconstruction",
+    "standard",
+    "standard",
+)
 TOTAL_UPDATES = breadth.TOTAL_UPDATES
 SPEAKER7_TARGETS = tuple(
     [
@@ -68,6 +76,15 @@ def training_modes(policy: str) -> list[str]:
         return role_schedule()
     if policy == "all-standard":
         return ["standard"] * TOTAL_UPDATES
+    if policy == "standard-reconstruction":
+        repeats, remainder = divmod(TOTAL_UPDATES, len(RECONSTRUCTION_CYCLE))
+        tail = ("standard", "standard", "reconstruction", "standard")
+        if remainder != len(tail):
+            raise RoleMixError("reconstruction schedule tail drifted")
+        schedule = list(RECONSTRUCTION_CYCLE) * repeats + list(tail)
+        if Counter(schedule) != RECONSTRUCTION_COUNTS:
+            raise RoleMixError("reconstruction schedule proportions drifted")
+        return schedule
     raise RoleMixError(f"unknown training policy: {policy}")
 
 
@@ -125,6 +142,28 @@ def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
             "independent_variable": (
                 "LoRA scope: 69 attention/FFN linears versus seven speaker-conditioned "
                 "AdaLN linears"
+            ),
+        }
+    if (
+        arguments.training_policy == "standard-reconstruction"
+        and arguments.lora_scope == "control69"
+    ):
+        return {
+            "experiment_id": "EXP-040",
+            "slug": "exp040",
+            "candidate_id": "cv12-reconstruction20",
+            "candidate_name": (
+                "EXP-040 / CV12 / 80% standard + 20% Amitaro reconstruction"
+            ),
+            "run_kind": "EXP-040 X-VC target-preserving reconstruction evaluation",
+            "result_kind": "liveconv-exp040-xvc-reconstruction20-result/v1",
+            "question": (
+                "Does target-preserving reconstruction regularize control69 "
+                "without reversed donor-target dilution?"
+            ),
+            "independent_variable": (
+                "training roles: all-standard versus 835 standard and 209 "
+                "same-target reconstruction updates, with zero reversed updates"
             ),
         }
     raise RoleMixError("unsupported training-policy and LoRA-scope combination")
@@ -660,7 +699,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--check", action="store_true")
     parser.add_argument(
         "--training-policy",
-        choices=("role-mix", "all-standard"),
+        choices=("role-mix", "all-standard", "standard-reconstruction"),
         default="role-mix",
     )
     parser.add_argument(
