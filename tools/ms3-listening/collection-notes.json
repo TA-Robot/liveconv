@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "top_status": {
-    "updated_at": "2026-08-13T09:39:00Z",
+    "updated_at": "2026-08-13T09:43:00Z",
     "current": "MS-3の最優先は、会話ターン安定化済みRVC seed 0と数値安定なX-VC Yofukashi Q034のstable shortlistです。公開3発話のheldout比較に加え、過去比較と完全一致する実ChatGPT入力PCMでの2候補比較も公開しました。",
     "hold": "履歴のX-VC比較、EXP-027〜031、370本の発音確認は今回の判定を止めません。EXP-024のDTW pilotやlookahead sweepは再開せず、RVC再学習、TTSの人間VC corpusへの混入、keep前のpromote作業も行いません。",
     "next": "人間が戻ったら、まずstable VC heldout shortlistの3行、次にexact actual-input shortlistを聴いてください。実入力の補助CERはRVC 0.417、X-VC 0.833ですが、これは内容崩壊の粗いscreenで音質順位ではありません。明瞭さ、自然さ、目標声への近さを耳で判断します。固定ポート: 8878。"
@@ -85,6 +85,15 @@
       "purpose": "full reset後にRMVPE pitch/pitchf cacheだけ復元し、RNG・input context・RMS・SOLAをresetしたままturn 2を比較",
       "data": "全体CERはreset/pitch-cacheとも0.556、turn 2も両方0.500で改善なし。gross repetitionなし。",
       "status": "原因診断の任意聴覚対照。pitch cache持越し案は終了。製品経路には採用しません。",
+      "review_priority": "low",
+      "review_mode": "gross_reject_only"
+    },
+    {
+      "match_all": ["ms3-rvc-rng-state-v1"],
+      "display_title": "RVC state対照: buffer reset + RNGだけ継続",
+      "purpose": "input・pitch・RMS・SOLAをfull resetしたまま、turn 1後のCPU/CUDA RNG continuation pointだけ復元してturn 2を比較",
+      "data": "全体CERはreset/RNG継続とも0.556、turn 2も両方0.500で改善なし。gross repetitionなし。",
+      "status": "原因診断の任意聴覚対照。RNG継続案とRVC state分解GPU探索は終了。製品経路には採用しません。",
       "review_priority": "low",
       "review_mode": "gross_reject_only"
     },

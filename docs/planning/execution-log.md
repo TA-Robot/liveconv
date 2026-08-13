@@ -1540,3 +1540,20 @@ job queue.
 - Changed action: close pitch-cache carry. Run one final state-decomposition
   control that resets all audio/pitch/RMS/SOLA buffers but restores the RNG
   continuation point after turn 1; stop this GPU diagnosis after its result.
+
+## 2026-08-13T09:43:00Z - RVC RNG continuation rejected; state split closed
+
+- Agent: `primary-integrator`.
+- Task: After turn 1, fully reset audio, pitch, RMS, and SOLA state, then
+  restore only CPU/CUDA RNG continuation state before exact turn 2.
+- Dependencies: commit `88d5c1e`; exact direct-reset baseline; sealed seed-0
+  runtime; listener `8878`; exclusive `gpu0`.
+- Result: the RNG-state arm completed in 92.687 seconds and published as
+  `ms3-rvc-rng-state-v1` with SHA-256
+  `4d15577482849a5632b6466c19e59d7175f66a4cf9ca19b629ef8537c114c47e`.
+- Machine screen: reset and RNG-continuation arms both retained turn-2 CER
+  0.500 and full CER 0.556, without gross repetition.
+- Changed action: close RVC state decomposition. Do not test SOLA, state
+  combinations, another seed, or another split. Apply the fixed natural split
+  once to stable X-VC Q034 to distinguish RVC-specific from system-common
+  generation-boundary behavior.

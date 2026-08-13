@@ -225,6 +225,13 @@ high-value state explanation is RNG continuation versus reseeding. Isolate RNG
 continuation once with all audio, pitch, RMS, and SOLA buffers reset; then stop
 state-decomposition GPU work regardless of outcome.
 
+RNG continuation alone also failed: reset/reseed and reset/continued-RNG both
+stayed at 0.500 turn-2 CER and 0.556 full CER. Close RVC state decomposition;
+do not test SOLA, state combinations, another seed, or another split point.
+Apply the already-fixed natural split once to stable X-VC Q034. That determines
+whether the defect is RVC-specific or common to the conversation boundary
+without widening model, training, or quality axes.
+
 ## Keepers
 
 None yet. A `keep` here is the only ticket into a promote pass.
