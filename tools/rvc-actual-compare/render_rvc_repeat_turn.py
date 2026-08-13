@@ -21,6 +21,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[2]
 SESSION_RUNNER = Path(__file__).with_name("render_vc_session_reuse.py")
 PROFILE_ID = "vc.rvc-v2.amitaro-sasayaki-clean-bright.v1"
+SEEDED_PROFILE_ID = "vc.rvc-v2.amitaro-sasayaki-clean-bright-seed0.v1"
 SOURCE_ID = "EMOTION100_017"
 REPEAT_COUNT = 3
 
@@ -63,9 +64,14 @@ def signal_comparison(anchor_pcm: bytes, candidate_pcm: bytes) -> dict[str, floa
     }
 
 
-def validate_scope() -> None:
-    if PROFILE_ID not in _load_session_runner().PROFILE_IDS:
+def validate_scope(profile_id: str) -> None:
+    if (
+        profile_id == PROFILE_ID
+        and profile_id not in _load_session_runner().PROFILE_IDS
+    ):
         raise RepeatTurnError("repeat profile is not a surviving live arm")
+    if profile_id not in {PROFILE_ID, SEEDED_PROFILE_ID}:
+        raise RepeatTurnError("repeat profile is outside the bounded diagnostic")
     if REPEAT_COUNT != 3:
         raise RepeatTurnError("repeat diagnostic must contain exactly three turns")
 
@@ -77,6 +83,7 @@ async def execute(
     deployment: Path,
     renderer: ModuleType,
 ) -> dict[str, Any]:
+    profile_id = arguments.profile_id
     source = next(item for item in heldout.SOURCES if item["source_id"] == SOURCE_ID)
     arguments.work_dir.mkdir(parents=True)
     source_f32 = arguments.work_dir / "source.f32le"
@@ -86,10 +93,10 @@ async def execute(
     manifest = renderer.read_json(deployment / "manifest.json")
     profile_document = renderer.read_json(deployment / "profiles.json")
     variant = heldout._selected_records(  # noqa: SLF001
-        manifest, "variants", (PROFILE_ID,)
+        manifest, "variants", (profile_id,)
     )[0]
     sealed_profile = heldout._selected_records(  # noqa: SLF001
-        profile_document, "profiles", (PROFILE_ID,)
+        profile_document, "profiles", (profile_id,)
     )[0]
     profile = {
         **sealed_profile,
@@ -114,7 +121,7 @@ async def execute(
             for item in catalog.json().get("profiles", [])
             if isinstance(item, dict)
         }
-        current = advertised.get(PROFILE_ID)
+        current = advertised.get(profile_id)
         if not isinstance(current, dict) or any(
             current.get(field) != variant.get(field)
             for field in ("profile_hash", "configuration_hash")
@@ -168,7 +175,7 @@ async def execute(
                 "output_file": output_file,
                 "output_sha256": "sha256:" + session.sha256_file(output_path),
                 "status": "passed",
-                "profile_id": PROFILE_ID,
+                "profile_id": profile_id,
                 "operator_judgment": "unreviewed",
                 "generation": generation,
             }
@@ -211,7 +218,7 @@ async def execute(
             capture_output=True,
             text=True,
         ).stdout.strip(),
-        "profile_id": PROFILE_ID,
+        "profile_id": profile_id,
         "source_id": SOURCE_ID,
         "repeat_count": REPEAT_COUNT,
         "comparisons": comparisons,
@@ -224,10 +231,37 @@ async def execute(
 
 
 async def run(arguments: argparse.Namespace) -> int:
-    validate_scope()
+    validate_scope(arguments.profile_id)
     session = _load_session_runner()
     heldout = session._load_heldout_runner()  # noqa: SLF001
-    deployment, renderer = session.validate_inputs(arguments, heldout)
+    if arguments.profile_id == PROFILE_ID:
+        deployment, renderer = session.validate_inputs(arguments, heldout)
+    else:
+        deployment = arguments.deployment.resolve(strict=True)
+        try:
+            manifest = json.loads((deployment / "manifest.json").read_text())
+            renderer_document = json.loads((deployment / "profiles.json").read_text())
+        except (OSError, json.JSONDecodeError) as error:
+            raise RepeatTurnError("seeded deployment cannot be decoded") from error
+        heldout._selected_records(  # noqa: SLF001
+            manifest, "variants", (arguments.profile_id,)
+        )
+        heldout._selected_records(  # noqa: SLF001
+            renderer_document, "profiles", (arguments.profile_id,)
+        )
+        source = next(
+            item for item in heldout.SOURCES if item["source_id"] == SOURCE_ID
+        )
+        heldout._checked_file(  # noqa: SLF001
+            source["path"], source["sha256"], SOURCE_ID
+        )
+        if arguments.work_dir.exists() or arguments.listener_dir.exists():
+            raise RepeatTurnError("work and listener outputs must be new")
+        if not os.environ.get("LIVECONV_API_TOKEN"):
+            raise RepeatTurnError("LIVECONV_API_TOKEN is required")
+        if not os.environ.get("LIVECONV_ALLOWED_ORIGINS"):
+            raise RepeatTurnError("LIVECONV_ALLOWED_ORIGINS is required")
+        renderer = heldout._load_renderer()  # noqa: SLF001
     if arguments.check:
         print("ok   RVC same-input repeat CPU admission complete")
         return 0
@@ -245,6 +279,11 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--work-dir", type=Path, required=True)
     value.add_argument("--listener-dir", type=Path, required=True)
     value.add_argument("--gateway-url", default="http://127.0.0.1:8877")
+    value.add_argument(
+        "--profile-id",
+        choices=(PROFILE_ID, SEEDED_PROFILE_ID),
+        default=PROFILE_ID,
+    )
     value.add_argument("--timeout-seconds", type=float, default=180.0)
     return value
 

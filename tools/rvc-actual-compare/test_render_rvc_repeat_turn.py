@@ -20,6 +20,7 @@ def test_repeat_scope_is_one_profile_one_source_three_turns() -> None:
     assert run.PROFILE_ID == "vc.rvc-v2.amitaro-sasayaki-clean-bright.v1"
     assert run.SOURCE_ID == "EMOTION100_017"
     assert run.REPEAT_COUNT == 3
+    assert run.SEEDED_PROFILE_ID.endswith("clean-bright-seed0.v1")
 
 
 def test_signal_comparison_reports_exact_and_changed_pcm() -> None:
