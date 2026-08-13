@@ -45,7 +45,9 @@ CURRENT_MS = 120
 SMOOTH_MS = 20
 FUTURE_MS = 100
 HISTORY_MS = CHUNK_MS - CURRENT_MS - SMOOTH_MS - FUTURE_MS
-EXPECTED_SOURCE_SECONDS = 8.170667
+ORIGINAL_SOURCE_SECONDS = 8.170667
+EXPECTED_MODEL_SOURCE_SAMPLES = 131_840
+EXPECTED_OUTPUT_SAMPLES = 130_731
 
 
 def latency_summary(values: Sequence[float]) -> dict[str, float | int]:
@@ -184,8 +186,12 @@ def validate_inputs(
 
 def _write_output(path: Path, rendered: Any, sample_rate: int) -> str:
     values = rendered.detach().to("cpu", dtype=rendered.dtype).reshape(-1).numpy()
-    if values.size <= sample_rate or not np.isfinite(values).all():
+    if (
+        values.size != EXPECTED_MODEL_SOURCE_SAMPLES
+        or not np.isfinite(values).all()
+    ):
         raise base.ListenNowError("streamed output is malformed")
+    values = values[:EXPECTED_OUTPUT_SAMPLES]
     pcm = (np.clip(values, -1.0, 1.0) * 32767.0).round().astype("<i2")
     with wave.open(str(path), "wb") as output:
         output.setnchannels(1)
@@ -304,9 +310,11 @@ def run(arguments: argparse.Namespace) -> int:
     source_wav = torch.from_numpy(source_array).reshape(1, 1, -1).to(device)
     target_wav = torch.from_numpy(target_array).reshape(1, 1, -1).to(device)
     target_wav_cond = torch.zeros_like(target_wav)
-    source_duration_seconds = source_wav.shape[-1] / sample_rate
-    if abs(source_duration_seconds - EXPECTED_SOURCE_SECONDS) > 0.002:
-        raise base.ListenNowError("actual source duration drifted after preprocessing")
+    if source_wav.shape[-1] != EXPECTED_MODEL_SOURCE_SAMPLES:
+        raise base.ListenNowError(
+            "actual source sample count drifted after preprocessing"
+        )
+    source_duration_seconds = ORIGINAL_SOURCE_SECONDS
 
     model = XVC.load_from_checkpoint(
         str(arguments.xvc_config),
@@ -396,6 +404,8 @@ def run(arguments: argparse.Namespace) -> int:
         ),
         "source_sha256": ACTUAL_SOURCE_SHA256,
         "source_duration_seconds": source_duration_seconds,
+        "model_input_samples": EXPECTED_MODEL_SOURCE_SAMPLES,
+        "listener_output_samples": EXPECTED_OUTPUT_SAMPLES,
         "target_reference_id": "EMOTION100_003",
         "adapter_epochs": [4, 8, 12],
         "stream_window": {

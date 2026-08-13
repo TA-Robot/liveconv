@@ -1,6 +1,6 @@
 # EXP-027: X-VC human87 horizons on actual streaming input
 
-Status: **runner prepared; GPU listen-now not yet run**.
+Status: **v1 technical stop; corrected v2 runner prepared**.
 
 ## Goal and Definition of Done
 
@@ -48,10 +48,18 @@ HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
   --checkpoint artifacts/x-vc/checkpoint/xvc.pt \
   --exp026-work-dir artifacts/xvc-human-paired/listen-now/exp026-human87-horizon-v1 \
   --actual-source artifacts/ms3/listening/exp020-human-rvc-smoke-8s-plain-20260812/00-native-source.wav \
-  --work-dir artifacts/xvc-human-paired/listen-now/exp027-actual-input-stream-v1 \
-  --listener-dir artifacts/ms3/listening/exp027-actual-input-stream-v1 \
+  --work-dir artifacts/xvc-human-paired/listen-now/exp027-actual-input-stream-v2 \
+  --listener-dir artifacts/ms3/listening/exp027-actual-input-stream-v2 \
   --confirm-gpu-lease gpu0 --device cuda:0
 ```
+
+Repair note: `v1` stopped before model load, adapter load, stream inference, or
+listener publication. The exact 48-kHz source is 8.170667 seconds, while pinned
+`process_audio` deterministically right-pads its 16-kHz model input to 131,840
+samples (8.24 seconds, 103 latent hops). The corrected `v2` binds that model
+sample count and trims every completed output to 130,731 samples, the nearest
+16-kHz representation of the original duration. No audio, adapter, streaming
+window, or comparison arm changed.
 
 Not in scope: alternate streaming windows, another model family, more training,
 automatic checkpoint selection, route qualification, Extension playback,

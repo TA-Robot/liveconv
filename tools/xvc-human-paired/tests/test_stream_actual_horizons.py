@@ -25,6 +25,8 @@ def test_stream_window_matches_the_pinned_upstream_online_shape() -> None:
     assert STREAM.SMOOTH_MS == 20
     assert STREAM.FUTURE_MS == 100
     assert STREAM.HISTORY_MS == 2160
+    assert STREAM.EXPECTED_MODEL_SOURCE_SAMPLES == 131_840
+    assert STREAM.EXPECTED_OUTPUT_SAMPLES == 130_731
 
 
 def test_latency_summary_reports_p50_p95_and_failures() -> None:
