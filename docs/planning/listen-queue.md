@@ -48,7 +48,7 @@ authorize promote claims or several speculative sweeps in parallel.
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
 | 1 | Help the operator finish the six rows above; EXP-027--031 are superseded diagnostics and do not need separate draining | parent | n/a | decisions recorded |
-| 2 | Keep `ms3-stable-vc-heldout-shortlist-v1` as the only active cross-family hearing surface; the unseeded predecessor is historical | parent | no: the exact six candidates are already published | one operator preference set or both arms rejected |
+| 2 | Hear `ms3-stable-vc-heldout-shortlist-v1` first, the new public-validation generalization set second, and the exact actual-input pair third; the unseeded predecessor is historical | parent | no: all candidates are already published | one operator preference set or both arms rejected |
 | 3 | If EXP-032 receives a `keep`, bind that exact candidate to the formal Gateway profile and exercise native fallback/Extension playout | parent | yes: EXP-032 `keep` | one route-qualified system listen or a recorded integration blocker |
 | 4 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
 
@@ -239,6 +239,16 @@ therefore not RVC-only. Close generation-boundary model diagnostics and retain
 both A/Bs for hearing. Search retained artifacts for a distinct actual pre-VC
 input next; if none exists, use public known-text rows for one bounded
 generalization batch rather than another boundary or parameter point.
+
+No second retained actual pre-VC input exists: every collection tagged as the
+actual ChatGPT source resolves to the same source hash. The bounded fallback is
+complete as `ms3-stable-vc-generalization-v1`. It uses three previously unused
+Hadou validation rows spanning 3.0, 4.8, and 7.3 seconds, each in an independent
+fresh Gateway session. Stable RVC CER was 0.111/0.000/0.032 and stable X-VC was
+0.000/0.100/0.000; all six outputs avoided gross repetition. This establishes
+content-intact generalization only, not naturalness or voice identity. Retain
+the three RVC/X-VC pairs for hearing and stop adding public rows before an
+operator decision.
 
 ## Keepers
 

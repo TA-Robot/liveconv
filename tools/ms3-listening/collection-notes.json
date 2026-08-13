@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "top_status": {
-    "updated_at": "2026-08-13T09:49:00Z",
-    "current": "MS-3の最優先は、会話ターン安定化済みRVC seed 0と数値安定なX-VC Yofukashi Q034のstable shortlistです。公開3発話のheldout比較に加え、過去比較と完全一致する実ChatGPT入力PCMでの2候補比較も公開しました。",
+    "updated_at": "2026-08-13T10:10:00Z",
+    "current": "MS-3の最優先は、会話ターン安定化済みRVC seed 0と数値安定なX-VC Yofukashi Q034のstable shortlistです。既存heldout、未使用validation 3発話のgeneralization、完全一致する実ChatGPT入力の3面で比較音声を公開しました。",
     "hold": "履歴のX-VC比較、EXP-027〜031、370本の発音確認は今回の判定を止めません。EXP-024のDTW pilotやlookahead sweepは再開せず、RVC再学習、TTSの人間VC corpusへの混入、keep前のpromote作業も行いません。",
-    "next": "人間が戻ったら、まずstable VC heldout shortlistの3行、次にexact actual-input shortlistを聴いてください。実入力の補助CERはRVC 0.417、X-VC 0.833ですが、これは内容崩壊の粗いscreenで音質順位ではありません。明瞭さ、自然さ、目標声への近さを耳で判断します。固定ポート: 8878。"
+    "next": "人間が戻ったら、まずstable VC heldout shortlist、次に未使用validation generalization、最後にexact actual-inputを聴いてください。新しい6候補は補助CER 0.000〜0.111、gross repetitionなしですが、これは内容screenで音質順位ではありません。明瞭さ、自然さ、目標声への近さを耳で判断します。固定ポート: 8878。"
   },
   "collections": [
     {
@@ -22,6 +22,15 @@
       "purpose": "過去X-VC比較で実際に消費されたものと完全一致する8.17秒の生PCMを、stable RVC seed 0とstable X-VC Yofukashi Q034で比較",
       "data": "同一入力2候補。RVCは新規live Gateway出力、X-VCは同じ生PCMから作られた既存出力をhash一致で再利用。補助CERはRVC 0.417、X-VC 0.833。gross repetitionなし。",
       "status": "明瞭さ・自然さ・目標声への近さを聴き、RVC、X-VC、または両方rejectedを記録してください。機械値は内容screenのみで、声質選定ではありません。",
+      "review_priority": "priority",
+      "review_mode": "gross_reject_only"
+    },
+    {
+      "match_all": ["ms3-stable-vc-generalization-v1"],
+      "display_title": "優先: stable VC 未使用validation一般化（RVC seed 0 vs X-VC）",
+      "purpose": "既存shortlistや学習pairで使っていないHadou validation 3発話を、stable RVC seed 0とstable X-VC Yofukashi Q034のfresh Gateway sessionで比較",
+      "data": "3.0/4.8/7.3秒の3発話×2候補。RVC補助CERは0.111/0.000/0.032、X-VCは0.000/0.100/0.000。全6候補gross repetitionなし。",
+      "status": "両familyとも別入力で内容崩壊しないことだけ確認済み。明瞭さ・自然さ・目標声への近さを耳で比較し、機械値でwinnerを選ばないでください。",
       "review_priority": "priority",
       "review_mode": "gross_reject_only"
     },

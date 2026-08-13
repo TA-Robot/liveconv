@@ -1586,3 +1586,32 @@ job queue.
 - Changed action: close generation-boundary model diagnostics. Find a distinct
   retained actual pre-VC input by source identity; otherwise return to one
   bounded public known-text generalization batch.
+
+## 2026-08-13T10:10:00Z - stable VC public-validation generalization published
+
+- Agent: `primary-integrator`.
+- Task: After proving that all retained actual-input collections share one
+  source hash, render the two stable VC families on three unused, authorized
+  Hadou validation rows of 3.0, 4.8, and 7.3 seconds.
+- Dependencies: commits `ad17c4e` and `f935022`; frozen source-manifest SHA-256
+  `12e334f...`; evaluation Gateways `8881`/`8882`; listener `8878`; exclusive
+  sequential `gpu0` lease.
+- Result: six fresh-session outputs completed with contiguous finite frames and
+  atomically published as `ms3-stable-vc-generalization-v1`. RVC output hashes
+  are `fe59f8e...`, `8814223...`, and `1b8fa4d...`; X-VC hashes are
+  `a9e98fa...`, `2861e06...`, and `39470f5...`.
+- Machine screen: the frozen source audit had zero CER on all three inputs.
+  Output CER for RVC was 0.111/0.000/0.032 and for X-VC was
+  0.000/0.100/0.000. No output triggered the gross-repeat screen. This admits
+  all six for hearing but does not rank naturalness, identity, or voice quality.
+- Problems/rework: the first execution stopped before GPU inference because an
+  older single-render helper called the non-qualification session endpoint and
+  received HTTP 404. The runner moved to the already-qualified current session
+  path and the partial hidden staging tree was isolated under `/tmp`. The first
+  STT invocation then rejected PCM24 at the strict PCM16 package ingress; the
+  same pinned local engine and decode configuration successfully screened the
+  WAVs directly without changing audio.
+- Changed action: stop adding public rows before hearing. Keep this collection
+  after the original stable heldout shortlist and before the exact actual-input
+  pair; ask the next scheduled progress audit for the shortest system-side or
+  quality-candidate slice that does not reopen closed training or diagnostics.
