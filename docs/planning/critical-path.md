@@ -174,7 +174,8 @@ claims from that artifact are superseded. The active join is now:
         -> mandatory 7 + 12 + 10 + 33 sentence-diversity gate (complete)
         -> EXP-059--063 pseudo-source content filter (closed: changed-row regression + Hadou loop)
         -> EXP-064--067 upstream waveform-adversarial method (viable unheard candidate)
-        -> one decoder-interface function scope at fixed data/loss/updates
+        -> EXP-068--071 decoder-interface output2 (rejected: changed-row regression + loop)
+        -> one real-speech rehearsal data point at fixed control69/loss/updates
         -> operator hearing when available
 ```
 

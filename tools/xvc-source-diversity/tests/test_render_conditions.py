@@ -108,3 +108,17 @@ def test_output2_uses_exp070_condition_policy() -> None:
         if action.dest == "candidate_kind"
     )
     assert "output2" in choices
+
+
+def test_real_rehearsal_uses_exp074_condition_policy() -> None:
+    policy = RENDER.candidate_policy("real-reconstruction20")
+
+    assert policy["experiment_id"] == "EXP-074"
+    assert policy["control"][0] == "cv12-control69"
+    assert policy["candidate"][0] == "cv12-real-reconstruction20"
+    choices = next(
+        action.choices
+        for action in RENDER._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert "real-reconstruction20" in choices

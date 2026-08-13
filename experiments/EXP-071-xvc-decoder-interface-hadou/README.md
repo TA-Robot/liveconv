@@ -1,12 +1,18 @@
 # EXP-071: decoder-interface X-VC on 31 clean Hadou sentences
 
-Status: frozen; waiting for EXP-068
+Status: completed; one new gross repetition rejects the method
 
 Render EXP-068 on the already-materialized 31 Hadou 2.4-second windows against
 EXP-035. Compare machine transcripts with the exact source windows. Official
 full-sentence text is listening context and is not a valid CER reference for a
 truncated window. This set is broader than the misidentified tongue-twister
 artifact and does not represent retained ChatGPT browser audio.
+
+Against control69, output2 produced ten lower, eighteen equal, and three higher
+source-relative distances, and mean distance moved from `0.210` to `0.170`.
+However, `RECITATION324_138` introduced a gross repeated-number loop. Machine
+ASR cannot infer naturalness, but this explicit corruption failure is enough to
+reject the parent method despite the lower aggregate mean.
 
 ```bash
 HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \

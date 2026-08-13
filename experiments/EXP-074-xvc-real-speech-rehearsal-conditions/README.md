@@ -1,29 +1,24 @@
-# EXP-070: decoder-interface X-VC on frozen audio conditions
+# EXP-074: real-speech rehearsal on frozen audio conditions
 
-Status: completed; two improvements and eight ties, but parent method rejected
+Status: frozen; waiting for EXP-072
 
-Render EXP-068 on the existing ten clean/noise/leading-silence/tempo/pitch rows
+Render EXP-072 on the existing ten clean/noise/leading-silence/tempo/pitch rows
 against EXP-035. Machine results only screen content corruption and repetition.
-
-No row grossly repeated. Output2 improved two rows and tied eight against
-control69; macro source-relative distance moved from `0.153` to `0.119`. The
-separate changed-utterance regression and Hadou loop reject the parent method,
-so this local condition result does not admit an adjacent scope point.
 
 ```bash
 HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
   artifacts/exp007/peft-resolve-20260811/runtime-1e52ef9ab8f1/bin/python \
   tools/xvc-source-diversity/render_conditions.py \
-  --candidate-kind output2 \
+  --candidate-kind real-reconstruction20 \
   --evaluation-set experiments/EXP-033-xvc-source-diversity/evaluation-set.json \
   --pair-root artifacts/xvc-human-paired/listen-now/exp026-human87-control69-v1/train-pairs \
   --jvs-root artifacts/xvc-method-reset/jvs-samples \
   --heldout-root artifacts/xvc-human-paired/listen-now/exp026-human87-control69-v1/render-sources \
   --control-adapter artifacts/xvc-source-diversity/exp035-cv12-v1/adapter-1044 \
-  --candidate-adapter artifacts/xvc-source-diversity/exp068-output2-v1/adapter-1044 \
+  --candidate-adapter artifacts/xvc-source-diversity/exp072-real-rehearsal-v1/adapter-1044 \
   --xvc-source-root artifacts/x-vc/source --xvc-config artifacts/x-vc/xvc-local.yaml \
   --checkpoint artifacts/x-vc/checkpoint/xvc.pt \
-  --work-dir artifacts/xvc-source-diversity/exp070-output2-conditions-v1 \
-  --listener-dir artifacts/ms3/listening/exp070-output2-conditions-v1 \
+  --work-dir artifacts/xvc-source-diversity/exp074-real-rehearsal-conditions-v1 \
+  --listener-dir artifacts/ms3/listening/exp074-real-rehearsal-conditions-v1 \
   --confirm-gpu-lease gpu0 --device cuda:0
 ```

@@ -64,6 +64,36 @@ def test_assigned_tensors_follow_waveform_roles() -> None:
     }
 
 
+def test_real_donor_rehearsal_uses_real_waveform_and_features() -> None:
+    target = {
+        "source_wav": "target-wave",
+        "semantic_tokens": "target-token",
+        "target_wav": "target-wave",
+        "ssl_feat": "target-ssl",
+    }
+    generated = {
+        "source_wav": "generated-wave",
+        "semantic_tokens": "generated-token",
+        "target_wav": "generated-wave",
+        "ssl_feat": "generated-ssl",
+    }
+    real = {
+        "source_wav": "real-wave",
+        "semantic_tokens": "real-token",
+        "target_wav": "real-wave",
+        "ssl_feat": "real-ssl",
+    }
+
+    assert ROLE_MIX.assigned_tensors(
+        target, generated, "real-donor-reconstruction", real_donor=real
+    ) == {
+        "source_wav": "real-wave",
+        "semantic_tokens": "real-token",
+        "target_wav": "real-wave",
+        "ssl_feat": "real-ssl",
+    }
+
+
 def test_predecessor_receipt_rejects_drift(tmp_path: Path) -> None:
     path = tmp_path / "result.json"
     path.write_text(json.dumps({"kind": "wrong"}), encoding="utf-8")
@@ -108,6 +138,27 @@ def test_target_preserving_reconstruction_has_no_reversed_updates() -> None:
     assert Counter(schedule) == ROLE_MIX.RECONSTRUCTION_COUNTS
     assert "reversed" not in schedule
     assert policy["experiment_id"] == "EXP-040"
+
+
+def test_real_reconstruction_rehearsal_is_exact_and_exp072() -> None:
+    schedule = ROLE_MIX.training_modes("real-reconstruction20")
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(
+            training_policy="real-reconstruction20", lora_scope="control69"
+        )
+    )
+
+    assert Counter(schedule) == {
+        "standard": 835,
+        "real-donor-reconstruction": 209,
+    }
+    assert policy["experiment_id"] == "EXP-072"
+    choices = next(
+        action.choices
+        for action in ROLE_MIX._parser()._actions
+        if action.dest == "training_policy"
+    )
+    assert "real-reconstruction20" in choices
 
 
 def test_source_augmentation_is_exact_and_keeps_standard_roles() -> None:

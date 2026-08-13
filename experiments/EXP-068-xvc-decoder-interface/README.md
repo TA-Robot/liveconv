@@ -1,6 +1,6 @@
 # EXP-068: decoder-interface X-VC adaptation
 
-Status: committed listen-now method; waiting for one GPU run
+Status: completed; rejected for changed-content regression and one gross loop
 
 ## Question
 
@@ -29,6 +29,18 @@ utterances, ten named conditions, and 31 clean Hadou sentences. Machine ASR may
 reject empty, grossly repeated, or content-drifted output. It cannot measure
 naturalness, target identity, or select a winner. Retain viable audio unheard
 until operator listening returns. Do not sweep adjacent output layers or rank.
+
+## Result
+
+Training completed 1,044 updates in 245.40 seconds at 5.13 GB peak allocated
+GPU memory; the composite loss moved from 144.22 to 137.90. Across the full 60
+rows, the seven external rows included one ASR-empty output, and the twelve
+changed utterances had zero wins, five ties, and seven losses against control69
+with mean source-relative distance `0.375` versus `0.184`. The ten-condition
+set improved two rows and tied eight, but the 31 Hadou rows added one gross
+repetition failure. A lower Hadou mean cannot offset a new loop and the broad
+changed-content regression. Reject this scope and do not sweep adjacent output
+layers, rank, or learning rate.
 
 ## Command
 

@@ -208,6 +208,28 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "Hadou heldout sentences?"
             ),
         }
+    if kind == "real-reconstruction20":
+        return {
+            "experiment_id": "EXP-073",
+            "variant_id": "cv12-real-reconstruction20",
+            "display_name": "EXP-072 / 20% real Common Voice rehearsal",
+            "result_kind": "liveconv-exp073-xvc-real-rehearsal-new-utterance/v1",
+            "question": (
+                "Does real-speech rehearsal preserve changed utterances from "
+                "heldout speakers?"
+            ),
+        }
+    if kind == "real-reconstruction20-hadou":
+        return {
+            "experiment_id": "EXP-075",
+            "variant_id": "cv12-real-reconstruction20",
+            "display_name": "EXP-072 / 20% real Common Voice rehearsal",
+            "result_kind": "liveconv-exp075-xvc-real-rehearsal-hadou/v1",
+            "question": (
+                "Does real-speech rehearsal preserve 31 clean Hadou heldout "
+                "sentences?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -599,6 +621,8 @@ def _parser() -> argparse.ArgumentParser:
             "wave-adversarial-hadou",
             "output2",
             "output2-hadou",
+            "real-reconstruction20",
+            "real-reconstruction20-hadou",
         ),
         default="speaker7",
     )

@@ -173,6 +173,22 @@ def candidate_policy(kind: str) -> dict[str, Any]:
                 "30-xvc-cv12-output2.wav",
             ),
         }
+    if kind == "real-reconstruction20":
+        return {
+            "experiment_id": "EXP-074",
+            "result_kind": "liveconv-exp074-xvc-real-rehearsal-condition/v1",
+            "run_kind": "EXP-074 X-VC real-speech rehearsal condition evaluation",
+            "control": (
+                "cv12-control69",
+                "EXP-035 / all target-conversion updates",
+                "20-xvc-cv12-control69.wav",
+            ),
+            "candidate": (
+                "cv12-real-reconstruction20",
+                "EXP-072 / 20% real Common Voice rehearsal",
+                "30-xvc-cv12-real-reconstruction20.wav",
+            ),
+        }
     raise ConditionRenderError(f"unknown candidate kind: {kind}")
 
 
@@ -448,6 +464,7 @@ def _parser() -> argparse.ArgumentParser:
             "content-filtered6x2",
             "wave-adversarial",
             "output2",
+            "real-reconstruction20",
         ),
         default="donor-breadth",
     )

@@ -35,6 +35,10 @@ PREDECESSOR_INVENTORY_SHA256 = (
 ROLE_COUNTS = {"standard": 418, "reconstruction": 208, "reversed": 418}
 ROLE_CYCLE = ("standard", "reversed", "reconstruction", "standard", "reversed")
 RECONSTRUCTION_COUNTS = {"standard": 835, "reconstruction": 209}
+REAL_RECONSTRUCTION_COUNTS = {
+    "standard": 835,
+    "real-donor-reconstruction": 209,
+}
 RECONSTRUCTION_CYCLE = (
     "standard",
     "standard",
@@ -122,6 +126,22 @@ def training_modes(policy: str) -> list[str]:
         schedule = list(RECONSTRUCTION_CYCLE) * repeats + list(tail)
         if Counter(schedule) != RECONSTRUCTION_COUNTS:
             raise RoleMixError("reconstruction schedule proportions drifted")
+        return schedule
+    if policy == "real-reconstruction20":
+        repeats, remainder = divmod(TOTAL_UPDATES, len(RECONSTRUCTION_CYCLE))
+        tail = ("standard", "standard", "real-donor-reconstruction", "standard")
+        if remainder != len(tail):
+            raise RoleMixError("real-reconstruction schedule tail drifted")
+        cycle = (
+            "standard",
+            "standard",
+            "real-donor-reconstruction",
+            "standard",
+            "standard",
+        )
+        schedule = list(cycle) * repeats + list(tail)
+        if Counter(schedule) != REAL_RECONSTRUCTION_COUNTS:
+            raise RoleMixError("real-reconstruction schedule proportions drifted")
         return schedule
     raise RoleMixError(f"unknown training policy: {policy}")
 
@@ -227,6 +247,30 @@ def training_scope(inventory: Path, name: str) -> dict[str, object]:
 
 
 def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
+    if (
+        arguments.training_policy == "real-reconstruction20"
+        and arguments.lora_scope == "control69"
+    ):
+        return {
+            "experiment_id": "EXP-072",
+            "slug": "exp072",
+            "candidate_id": "cv12-real-reconstruction20",
+            "candidate_name": (
+                "EXP-072 / 80% Amitaro conversion + 20% real donor rehearsal"
+            ),
+            "run_kind": "EXP-072 X-VC real-speech rehearsal evaluation",
+            "result_kind": "liveconv-exp072-xvc-real-rehearsal-result/v1",
+            "question": (
+                "Does real Common Voice self-reconstruction rehearsal reduce "
+                "content forgetting while retaining target-voice conversion?"
+            ),
+            "independent_variable": (
+                "training data role: all 1,044 generated-source-to-Amitaro updates "
+                "versus 835 such updates plus 209 self-reconstructions of the "
+                "twelve real Common Voice donor windows; total updates, scope, "
+                "loss, LR, seed, condition, and evaluation stay fixed"
+            ),
+        }
     if (
         arguments.training_policy == "all-standard"
         and arguments.lora_scope == "output2"
@@ -425,9 +469,22 @@ def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
 
 
 def assigned_tensors(
-    target: Mapping[str, Any], generated: Mapping[str, Any], role: str
+    target: Mapping[str, Any],
+    generated: Mapping[str, Any],
+    role: str,
+    *,
+    real_donor: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Assign waveform and feature roles using the upstream role semantics."""
+    if role == "real-donor-reconstruction":
+        if real_donor is None:
+            raise RoleMixError("real donor tensors are required for rehearsal")
+        return {
+            "source_wav": real_donor["source_wav"],
+            "semantic_tokens": real_donor["semantic_tokens"],
+            "target_wav": real_donor["target_wav"],
+            "ssl_feat": real_donor["ssl_feat"],
+        }
     if role == "standard":
         source, reference = generated, target
     elif role == "reconstruction":
@@ -909,7 +966,12 @@ def run(
                 .contiguous(),
             }
             training_rows.append(
-                assigned_tensors(training_target, generated, modes[row_index])
+                assigned_tensors(
+                    training_target,
+                    generated,
+                    modes[row_index],
+                    real_donor=donor_tensor,
+                )
             )
             generated_inventory.append(
                 {
@@ -1136,6 +1198,7 @@ def _parser() -> argparse.ArgumentParser:
             "paired-augmentation",
             "authentic-anchor",
             "semantic2x",
+            "real-reconstruction20",
         ),
         default="role-mix",
     )

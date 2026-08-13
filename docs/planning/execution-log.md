@@ -2607,3 +2607,38 @@ job queue.
 - Changed action: commit and admit one GPU run. Do not sweep output layers,
   rank, LR, or adjacent scope counts. Machine ASR can reject corruption but
   cannot decide the naturalness hypothesis or select a winner.
+
+## 2026-08-13T16:46:00Z - EXP-068--071 rejected decoder-interface output2
+
+- Agent: `primary-integrator`.
+- Task: Train output2 and screen seven external, twelve changed-utterance, ten
+  condition, and 31 Hadou rows.
+- Result: 1,044 updates completed in 245.40 seconds at 5.13 GB peak; loss moved
+  144.22 to 137.90. The first seven rows had one ASR-empty output. Changed
+  utterances produced zero wins, five ties, seven losses, and mean distance
+  `0.375` versus control69 `0.184`. Conditions improved two and tied eight.
+  Hadou produced ten wins, eighteen ties, three losses, but introduced one
+  gross repeated-number loop. All 180 model-output WAVs plus references are on
+  the listener and remain unheard.
+- Problems: a tmux watcher used prefix target matching and waited on its own
+  `liveconv-exp068-bundle` session after training. Exact-name matching fixed it
+  before any downstream job started; idle time was under one minute.
+- Changed action: reject output2 and all adjacent output-scope/rank/LR sweeps.
+  Prepare one real-speech rehearsal data point that retains control69 and
+  replaces 209 target-conversion updates with real donor self-reconstruction.
+
+## 2026-08-13T16:49:00Z - EXP-072--075 real-speech rehearsal prepared
+
+- Agent: `primary-integrator`.
+- Task: Replace one fixed 20% share of target-conversion updates with
+  reconstruction of real, evaluation-disjoint Common Voice training donors.
+- Dependencies: exact EXP-035 pair inventory; the same twelve admitted donor
+  identities and 87 target windows; fixed control69, loss, LR, seed, zero
+  condition, and 1,044 total updates.
+- Result: the deterministic schedule contains 835 standard target conversions
+  and 209 real-donor self-reconstructions. Every rehearsal row binds the real
+  donor waveform, its semantic tokens, waveform target, and SSL target. Forty
+  focused tests, Ruff, four CPU admissions, and `git diff --check` passed.
+- Changed action: commit and admit exactly one run plus the frozen
+  7 + 12 + 10 + 31 screen. Do not sweep the rehearsal ratio or train on any
+  heldout evaluation row.

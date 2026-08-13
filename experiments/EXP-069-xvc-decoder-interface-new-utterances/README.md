@@ -1,10 +1,14 @@
 # EXP-069: decoder-interface X-VC on changed Common Voice utterances
 
-Status: frozen; waiting for EXP-068
+Status: completed; rejected changed-utterance content result
 
 Render EXP-068 on the existing twelve changed utterances from six heldout
 Common Voice speakers against the exact EXP-035 adapter. This is a
 content/corruption screen only; it cannot select naturalness or identity.
+
+All 36 model outputs avoided gross repetition, but output2 had zero wins, five
+ties, and seven losses against control69. Mean source-relative distance worsened
+from `0.184` to `0.375`, and the maximum worsened from `0.571` to `1.000`.
 
 ```bash
 HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \

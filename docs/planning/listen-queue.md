@@ -152,12 +152,18 @@ and all ten conditions tied control69, twelve changed utterances moved from
 do not sweep the objective or call it better. The next separate hypothesis is
 decoder-interface placement: adapt only final speaker-conditioned normalization
 and `proj_out` while all EXP-035 data and optimizer controls remain fixed.
+EXP-068--071 rejected that scope: twelve changed utterances regressed from
+`0.184` to `0.375`, and one gross repeated-number loop appeared on Hadou even
+though two condition rows and the Hadou aggregate improved. Do not sweep output
+layers or rank. The next distinct data hypothesis retains control69 and replaces
+exactly 209 target-conversion updates with self-reconstruction rehearsal of the
+twelve real Common Voice training-donor windows.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Train one decoder-interface function scope (`norm_out.linear` + `proj_out`) on fixed EXP-035 data | parent | no | one-variable plan and exact 22,016-parameter scope committed, or rejected before GPU |
+| 1 | Train one control69 adapter with 835 target conversions + 209 real-donor self-reconstructions | parent | no | one-variable plan, exact role schedule, and real donor binding committed, or rejected before GPU |
 | 2 | Publish that one adapter on the full 7 + 12 + 10 + 31 varied evaluation bundle | parent | no human dependency for machine reject | corruption screen complete and next method decision recorded |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
