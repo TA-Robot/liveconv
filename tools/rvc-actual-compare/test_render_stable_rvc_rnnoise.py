@@ -24,6 +24,13 @@ def test_listener_staging_is_on_final_parent() -> None:
     )
 
 
+def test_profile_specs_bound_only_two_stable_candidates() -> None:
+    assert set(run.PROFILE_SPECS) == {run.RVC_PROFILE_ID, run.XVC_PROFILE_ID}
+    assert run.profile_spec(run.XVC_PROFILE_ID)["slug"] == "stable-xvc-q34"
+    with pytest.raises(run.StableRnnoiseError, match="outside"):
+        run.profile_spec("vc.other")
+
+
 def test_preprocess_rnnoise_preserves_frame_shape(tmp_path: Path) -> None:
     helper = tmp_path / "helper.py"
     helper.write_text(

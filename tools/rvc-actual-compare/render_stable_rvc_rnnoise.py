@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render raw and RNNoise-preprocessed actual input through stable RVC seed 0."""
+"""Compare raw and RNNoise-preprocessed actual input on one stable VC profile."""
 
 from __future__ import annotations
 
@@ -21,7 +21,20 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
 REPEAT_RUNNER = Path(__file__).with_name("render_rvc_repeat_turn.py")
-PROFILE_ID = "vc.rvc-v2.amitaro-sasayaki-clean-bright-seed0.v1"
+RVC_PROFILE_ID = "vc.rvc-v2.amitaro-sasayaki-clean-bright-seed0.v1"
+XVC_PROFILE_ID = "vc.x-vc.amitaro-yofukashi-q34.v1"
+PROFILE_SPECS = {
+    RVC_PROFILE_ID: {
+        "label": "Stable seed-0 RVC",
+        "slug": "stable-rvc",
+        "result_kind": "liveconv-ms3-stable-rvc-rnnoise-result",
+    },
+    XVC_PROFILE_ID: {
+        "label": "Stable X-VC Yofukashi Q034",
+        "slug": "stable-xvc-q34",
+        "result_kind": "liveconv-ms3-stable-xvc-rnnoise-result",
+    },
+}
 SOURCE_ID = "ACTUAL_CHATGPT_20260811_114251"
 SOURCE_SHA256 = "78b15cd5e9d25ee10d8cb27084c63275221d773a04b21d11e4e3ba2be8056da6"
 SOURCE_F32_SHA256 = "60e2b54bc4a013e653865bc8b80a55e9af3c994fa21ee506de1137f5816a4802"
@@ -61,6 +74,13 @@ def listener_staging_path(listener_dir: Path) -> Path:
     """Keep publication staging beside the final directory for atomic rename."""
 
     return listener_dir.with_name(f".{listener_dir.name}.staging")
+
+
+def profile_spec(profile_id: str) -> dict[str, str]:
+    try:
+        return PROFILE_SPECS[profile_id]
+    except KeyError:
+        raise StableRnnoiseError("profile is outside the bounded comparison") from None
 
 
 def preprocess_rnnoise(frames: list[bytes], executable: Path) -> list[bytes]:
@@ -104,13 +124,15 @@ def validate(
     if not os.access(arguments.rnnoise_stream, os.X_OK):
         raise StableRnnoiseError("RNNoise helper is not executable")
     deployment = arguments.deployment.resolve(strict=True)
+    profile_id = arguments.profile_id
+    profile_spec(profile_id)
     repeat = load_repeat_runner()
     session = repeat._load_session_runner()  # noqa: SLF001
     heldout = session._load_heldout_runner()  # noqa: SLF001
     manifest = json.loads((deployment / "manifest.json").read_text())
     profiles = json.loads((deployment / "profiles.json").read_text())
-    heldout._selected_records(manifest, "variants", (PROFILE_ID,))  # noqa: SLF001
-    heldout._selected_records(profiles, "profiles", (PROFILE_ID,))  # noqa: SLF001
+    heldout._selected_records(manifest, "variants", (profile_id,))  # noqa: SLF001
+    heldout._selected_records(profiles, "profiles", (profile_id,))  # noqa: SLF001
     if (
         arguments.work_dir.exists()
         or arguments.listener_dir.exists()
@@ -131,6 +153,10 @@ async def execute(
     heldout: ModuleType,
     renderer: ModuleType,
 ) -> dict[str, Any]:
+    profile_id = arguments.profile_id
+    spec = profile_spec(profile_id)
+    slug = spec["slug"]
+    label = spec["label"]
     arguments.work_dir.mkdir(parents=True)
     source_f32 = arguments.work_dir / "source.f32le"
     subprocess.run(
@@ -160,8 +186,12 @@ async def execute(
 
     manifest = renderer.read_json(deployment / "manifest.json")
     profiles = renderer.read_json(deployment / "profiles.json")
-    variant = heldout._selected_records(manifest, "variants", (PROFILE_ID,))[0]  # noqa: SLF001
-    sealed = heldout._selected_records(profiles, "profiles", (PROFILE_ID,))[0]  # noqa: SLF001
+    variant = heldout._selected_records(  # noqa: SLF001
+        manifest, "variants", (profile_id,)
+    )[0]
+    sealed = heldout._selected_records(  # noqa: SLF001
+        profiles, "profiles", (profile_id,)
+    )[0]
     profile = {
         **sealed,
         "profile_hash": variant["profile_hash"],
@@ -185,12 +215,12 @@ async def execute(
             for item in catalog.json().get("profiles", [])
             if isinstance(item, dict)
         }
-        current = advertised.get(PROFILE_ID)
+        current = advertised.get(profile_id)
         if not isinstance(current, dict) or any(
             current.get(field) != variant.get(field)
             for field in ("profile_hash", "configuration_hash")
         ):
-            raise StableRnnoiseError("Gateway stable RVC profile identity differs")
+            raise StableRnnoiseError("Gateway stable VC profile identity differs")
         outputs = await session.render_profile_turns(
             client,
             renderer=renderer,
@@ -208,29 +238,30 @@ async def execute(
     staging = listener_staging_path(arguments.listener_dir)
     staging.mkdir()
     shutil.copyfile(arguments.actual_source_wav, staging / "00-source.wav")
-    renderer.write_wav(staging / "10-stable-rvc-raw.wav", outputs[0][1])
+    raw_file = f"10-{slug}-raw.wav"
+    rnnoise_file = f"30-{slug}-rnnoise.wav"
+    renderer.write_wav(staging / raw_file, outputs[0][1])
     renderer.write_wav(staging / "20-rnnoise-input.wav", b"".join(denoised_frames))
-    renderer.write_wav(staging / "30-stable-rvc-rnnoise.wav", outputs[1][1])
+    renderer.write_wav(staging / rnnoise_file, outputs[1][1])
     variants = [
         {
-            "variant_id": "stable-rvc-raw",
-            "display_name": "Stable seed-0 RVC / raw actual input",
+            "variant_id": f"{slug}-raw",
+            "display_name": f"{label} / raw actual input",
             "display_order": 1,
-            "output_file": "10-stable-rvc-raw.wav",
-            "output_sha256": "sha256:" + sha256_file(staging / "10-stable-rvc-raw.wav"),
-            "profile_id": PROFILE_ID,
+            "output_file": raw_file,
+            "output_sha256": "sha256:" + sha256_file(staging / raw_file),
+            "profile_id": profile_id,
             "generation": outputs[0][2],
             "status": "passed",
             "operator_judgment": "unreviewed",
         },
         {
-            "variant_id": "stable-rvc-rnnoise",
-            "display_name": "RNNoise + stable seed-0 RVC",
+            "variant_id": f"{slug}-rnnoise",
+            "display_name": f"RNNoise + {label}",
             "display_order": 2,
-            "output_file": "30-stable-rvc-rnnoise.wav",
-            "output_sha256": "sha256:"
-            + sha256_file(staging / "30-stable-rvc-rnnoise.wav"),
-            "profile_id": PROFILE_ID,
+            "output_file": rnnoise_file,
+            "output_sha256": "sha256:" + sha256_file(staging / rnnoise_file),
+            "profile_id": profile_id,
             "generation": outputs[1][2],
             "status": "passed",
             "operator_judgment": "unreviewed",
@@ -238,7 +269,7 @@ async def execute(
     ]
     index = {
         "schema_version": 1,
-        "title": "Stable RVC actual input: raw vs RNNoise",
+        "title": f"{label} actual input: raw vs RNNoise",
         "run_kind": "MS-3 single-variable actual-input preprocessing comparison",
         "status": "completed-listen-now-unselected",
         "source_id": SOURCE_ID,
@@ -247,9 +278,9 @@ async def execute(
         "diagnostic_input_file": "20-rnnoise-input.wav",
         "comparison_scope": {
             "changed_variable": "stateful RNNoise preprocessing",
-            "fixed": ["source", "stable seed-0 RVC profile", "Gateway", "session"],
+            "fixed": ["source", profile_id, "Gateway", "session"],
             "machine_selection_allowed": False,
-            "question": "Does RNNoise improve the stable RVC actual-input candidate?",
+            "question": f"Does RNNoise improve the {label} actual-input candidate?",
         },
         "rnnoise": {
             "stream_sha256": "sha256:" + RNNOISE_STREAM_SHA256,
@@ -265,7 +296,7 @@ async def execute(
     staging.rename(arguments.listener_dir)
     result = {
         "schema_version": 1,
-        "kind": "liveconv-ms3-stable-rvc-rnnoise-result",
+        "kind": spec["result_kind"],
         "status": "completed-listen-now-unselected",
         "git_commit": subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -274,7 +305,7 @@ async def execute(
             capture_output=True,
             text=True,
         ).stdout.strip(),
-        "profile_id": PROFILE_ID,
+        "profile_id": profile_id,
         "source_id": SOURCE_ID,
         "output_sha256": {
             item["variant_id"]: item["output_sha256"] for item in variants
@@ -291,7 +322,7 @@ async def execute(
 async def run(arguments: argparse.Namespace) -> int:
     deployment, session, heldout, renderer = validate(arguments)
     if arguments.check:
-        print("ok   stable RVC RNNoise CPU admission complete")
+        print(f"ok   {arguments.profile_id} RNNoise CPU admission complete")
         return 0
     await execute(arguments, deployment, session, heldout, renderer)
     return 0
@@ -303,6 +334,11 @@ def parser() -> argparse.ArgumentParser:
     mode.add_argument("--check", action="store_true")
     mode.add_argument("--execute", action="store_true")
     value.add_argument("--deployment", type=Path, required=True)
+    value.add_argument(
+        "--profile-id",
+        choices=tuple(PROFILE_SPECS),
+        default=RVC_PROFILE_ID,
+    )
     value.add_argument("--actual-source-wav", type=Path, required=True)
     value.add_argument("--rnnoise-stream", type=Path, required=True)
     value.add_argument("--rnnoise-manifest", type=Path, required=True)
