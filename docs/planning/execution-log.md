@@ -2893,3 +2893,38 @@ job queue.
   lane. Do not sweep condition ratio, identity, strength, scope, or LR. Reject
   content copy/corruption mechanically but leave naturalness and voice quality
   for hearing.
+
+## 2026-08-13T18:53:00Z - EXP-094--099 completed; conditioning method rejected
+
+- Agent: `primary-integrator`.
+- Dependencies: commit `2baa6b1`; exact cross-target rotation; fixed
+  `EMOTION100_009` inference condition; exclusive `gpu0`; listener 8878.
+- Result: training completed in 262.04 seconds at 5.13 GB peak, with loss
+  `141.10` to `123.42`. External7 regressed `0.360` to `0.410` (2/4/1), and
+  changed12 regressed `0.184` to `0.306` (1/5/6). Conditions improved only one
+  leading-silence row; Hadou moved `0.210` to `0.199` (4/25/2). Expanded33
+  regressed `1.084` to `1.247` (9/15/9) and added one repeated-`ヘイ` loop.
+  Stress60 improved noise20 `0.397` to `0.275` and tempo `0.374` to `0.339`,
+  but regressed silence, pitch, clean, and macro (`0.320` to `0.329`). The
+  fixed condition sentence was absent from all candidate ASR transcripts. All
+  459 model-output WAVs plus references are on 8878 and remain unheard.
+- Problems: the bundle watcher initially used tmux prefix matching and waited
+  on its own `liveconv-exp094-bundle` session. It was replaced with exact-name
+  matching after three seconds; no GPU work or audio was discarded.
+- Changed action: reject cross-target conditioning and close reference,
+  strength, ratio, scope, and LR follow-ups. Preserve the narrow noise signal
+  only as a diagnostic. Next test semantic-token corruption during training to
+  force the redundant acoustic path to carry content under token collapse.
+
+## 2026-08-13T18:50:25Z - Grok progress audit
+
+- Agent: `grok` in tmux `liveconv-grok-auditor`; read-only, no delegation.
+- Verdict: `CONTINUE`.
+- Adopted: EXP-094 was a legitimate one-variable conditioning hypothesis;
+  screen only content copy, empty output, and gross loops mechanically, keep
+  naturalness/voice quality unheard, and close the method on failure rather
+  than sweeping it.
+- Not adopted: the audit snapshot saw only the seven-row render and advised
+  against blindly launching EXP-095--099. Those were not new training points
+  but precommitted frozen screens of the same checkpoint, and all had completed
+  by audit return. No job was stopped or repeated.

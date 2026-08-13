@@ -193,13 +193,20 @@ It remains a disjoint-validation safety hypothesis, not a fitted runtime gate.
 The next distinct training method addresses the still-open conditioning
 contract: supply each training row with a deterministic same-Amitaro,
 different-utterance frame condition instead of the always-zero waveform.
+EXP-094--099 then rejected that contract as a generic method: changed
+utterances regressed `0.184` to `0.306`, expanded33 regressed `1.084` to
+`1.247` and added a loop, and the balanced stress macro regressed `0.320` to
+`0.329`. Noise20 improved `0.397` to `0.275`, but silence and pitch worsened.
+No fixed-condition text copy was detected. Close condition reference, strength,
+and ratio sweeps. The next learning input hypothesis should make the redundant
+acoustic path tolerate semantic-token collapse without fitting a runtime gate.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Train one cross-utterance target-frame-conditioned control69 adapter with all data, loss, LR, seed, and update controls fixed | parent | no | exact condition rotation and inference reference committed before GPU |
-| 2 | Publish zero-condition and matching conditioned candidate arms on the existing varied screens | parent | no human dependency for machine reject | content/corruption screen complete; naturalness left unheard |
+| 1 | Train one semantic-token-hold adapter that alternates clean tokens with deterministic collapsed-token blocks while preserving clean waveform and target objectives | parent | no | exact token corruption and fixed 1,044-update schedule committed before GPU |
+| 2 | Publish the candidate on the existing 7 + 12 + 10 + 31 + 33 + 60 screens | parent | no human dependency for machine reject | adapter-added loop and broad regression decision recorded |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

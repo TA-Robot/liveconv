@@ -1,6 +1,6 @@
 # EXP-094: X-VC cross-utterance target-frame conditioning
 
-Status: ready method pilot; operator hearing deferred
+Status: completed; rejected as generic conditioning; hearing deferred
 
 ## Question
 
@@ -31,3 +31,12 @@ weights, LR `1e-4`, seed, clean inputs, and 1,044 updates fixed.
 
 No zero/nonzero ratio, reference-ID, condition-strength, LR, rank, scope, or
 data sweep. No retry of human87 horizon or EXP-024 DTW.
+
+## Result
+
+Training completed 1,044 updates in 262.04 seconds at 5.13 GB peak; loss moved
+from `141.10` to `123.42`. The seven external rows were 2 wins / 4 ties / 1
+loss, but mean source-relative auxiliary ASR distance regressed from `0.360` to
+`0.410`. No gross loop appeared there. EXP-095--099 found condition-specific
+benefit but broad regressions and one expanded-speaker loop, so the method and
+all adjacent condition reference/strength/ratio sweeps are closed.
