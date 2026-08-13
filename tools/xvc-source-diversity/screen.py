@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Coarse source-relative ASR and repetition screen for EXP-033 audio.
+"""Coarse source-relative ASR and repetition screen for X-VC audio.
 
 This tool deliberately compares each converted arm with ASR of its own source.
 It can identify content drift or gross loops. It cannot score naturalness,
@@ -20,7 +20,7 @@ from typing import Any
 
 
 class ScreenError(RuntimeError):
-    """The fixed EXP-033 screen inputs are incomplete or malformed."""
+    """The fixed X-VC screen inputs are incomplete or malformed."""
 
 
 VARIANTS = {
@@ -181,7 +181,7 @@ def run(arguments: argparse.Namespace) -> int:
     if arguments.output.exists() or arguments.output.is_symlink():
         raise ScreenError("screen output already exists")
     if arguments.listener_root.is_symlink() or not arguments.listener_root.is_dir():
-        raise ScreenError("EXP-033 listener root is unavailable")
+        raise ScreenError("X-VC listener root is unavailable")
     if arguments.model_root.is_symlink() or not arguments.model_root.is_dir():
         raise ScreenError("STT model root is unavailable")
 
@@ -245,7 +245,7 @@ def run(arguments: argparse.Namespace) -> int:
             )
     result = {
         "schema_version": 1,
-        "kind": "liveconv-exp033-machine-content-screen/v1",
+        "kind": "liveconv-xvc-machine-content-screen/v2",
         "boundary": (
             "Auxiliary source-relative ASR and repetition only. This cannot rank "
             "naturalness, target-voice fit, speaker similarity, or a winner."
@@ -262,6 +262,7 @@ def run(arguments: argparse.Namespace) -> int:
             },
         },
         "evaluation_set_sha256": sha256_file(arguments.evaluation_set),
+        "evaluation_kind": evaluation.get("kind"),
         "rows": rows,
         "aggregate": aggregate_rows(rows),
         "transcripts": transcripts,

@@ -49,3 +49,15 @@ def test_aggregate_is_groupwise_and_never_invents_quality_score() -> None:
     assert result["macro"]["human87-control69-e12"]["gross_repetition_rows"] == 1
     assert result["macro"]["base"]["mean_known_text_distance"] == 0.30000000000000004
     assert "quality" not in str(result).lower()
+
+
+def test_evaluation_loader_keeps_external_evaluation_kind(tmp_path: Path) -> None:
+    path = tmp_path / "evaluation.json"
+    path.write_text(
+        '{"kind":"liveconv-exp034-commonvoice25-ja-unseen/v1","items":[]}',
+        encoding="utf-8",
+    )
+
+    result = SCREEN._load_evaluation(path)
+
+    assert result["kind"] == "liveconv-exp034-commonvoice25-ja-unseen/v1"
