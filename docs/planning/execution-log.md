@@ -718,3 +718,24 @@ job queue.
   controls before publishing the extension.
 - Not admitted: concurrent GPU sweeps, another lookahead point, RVC retraining,
   TTS-to-VC corpus mixing, EXP-024 retry, or any model/route selection claim.
+
+## 2026-08-13T04:23:20Z - human87 extended horizon machine-screened
+
+- Agent: `primary-integrator`.
+- Task: Extend only the completed human87 training duration from epoch 12 to
+  epochs 18/24 while operator hearing is unavailable.
+- Dependencies: commit `8c40f26`, exact EXP-026 inputs, idle exclusive `gpu0`,
+  the three public source-only rows, and fixed listener `8878`.
+- Result: 2,088 updates completed in 262.54 seconds. Epoch-12 and base WAVs
+  reproduced exactly; heldout-target access remained zero; 12 candidates were
+  published. Loss at 12/18/24 was 367.1953/356.9258/310.8828.
+- Machine screen: frozen base preserved the three texts closely. Expanded79
+  adaptation degraded all three by epoch 12; epoch 24 produced a nonsensical
+  second row and `ああああああ` for the third. This is a coarse content screen,
+  not a naturalness or speaker-quality judgment.
+- Changed action: stop horizon extension despite falling train loss. The next
+  job changes only LoRA scope from expanded79 to the established control69
+  attention/FFN modules at epochs 4/8/12. The hypothesis is that the extra ten
+  projections damage content preservation on human pairs.
+- GPU: peak allocation 3,568,677,888 bytes; returned idle after publication and
+  the auxiliary ASR batch.

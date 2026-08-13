@@ -28,6 +28,11 @@ EXTENDED_CHECKPOINT_EPOCHS = (12, 18, 24)
 ALLOWED_CHECKPOINT_EPOCHS = (CHECKPOINT_EPOCHS, EXTENDED_CHECKPOINT_EPOCHS)
 FINAL_EPOCH = CHECKPOINT_EPOCHS[-1]
 TOTAL_UPDATES = base.EXPECTED_TRAIN_PAIRS * FINAL_EPOCH
+CONTROL69_TARGET_COUNT = 69
+CONTROL69_TRAINABLE_PARAMETERS = 835_584
+CONTROL69_TARGET_NAME_LIST_SHA256 = (
+    "61652c6faf760d655f5c35d169980b158eb79a46eb3fb781db6b0ebb3bfc4860"
+)
 EXPECTED_BASE_HASHES = {
     "EMOTION100_002": (
         "5d0197ebbb21b61b35ec5924b3a06027e709a20a28ce4a7cdff4aa17fab70740"
@@ -69,6 +74,7 @@ def listening_index(
     target_reference_id: str,
     hashes: Mapping[int, str],
     checkpoint_epochs: Sequence[int] = CHECKPOINT_EPOCHS,
+    scope_name: str = "expanded79",
 ) -> dict[str, object]:
     variants: list[dict[str, object]] = [
         {
@@ -89,12 +95,14 @@ def listening_index(
                 "variant_id": f"xvc-human87-epoch{epoch:02d}",
                 "display_name": (
                     "X-VC / 人間whole-short 87ペア / "
-                    f"{epoch} epochs / {updates} updates"
+                    f"{scope_name} / {epoch} epochs / {updates} updates"
                 ),
                 "display_order": order,
                 "output_file": f"{order}0-xvc-human87-e{epoch:02d}.wav",
                 "status": "passed",
-                "profile_id": f"xvc.exp026.human87.e{epoch:02d}.listen-now",
+                "profile_id": (
+                    f"xvc.exp026.human87.{scope_name}.e{epoch:02d}.listen-now"
+                ),
                 "family_id": "x-vc",
                 "output_sha256": hashes[epoch],
             }
@@ -155,6 +163,11 @@ def assert_extended_control(
         )
 
 
+def assert_base_control(source_id: str, *, base_sha256: str) -> None:
+    if EXPECTED_BASE_HASHES.get(source_id) != base_sha256:
+        raise base.ListenNowError(f"EXP-026 base control drifted for {source_id}")
+
+
 def parse_checkpoint_epochs(value: str) -> tuple[int, ...]:
     try:
         epochs = tuple(int(item) for item in value.split(","))
@@ -169,6 +182,28 @@ def parse_checkpoint_epochs(value: str) -> tuple[int, ...]:
         )
         raise argparse.ArgumentTypeError(f"checkpoint epochs must be {allowed}")
     return epochs
+
+
+def lora_scope(inventory_path: Path, scope_name: str) -> dict[str, object]:
+    expanded = base.expanded79_scope(inventory_path)
+    if scope_name == "expanded79":
+        return expanded
+    if scope_name != "control69":
+        raise base.ListenNowError("LoRA scope must be control69 or expanded79")
+    targets = [
+        name
+        for name in expanded["target_modules"]
+        if ".attn." in name or ".ff_c." in name or ".ff_x." in name
+    ]
+    if (
+        len(targets) != CONTROL69_TARGET_COUNT
+        or base._canonical_sha256(targets) != CONTROL69_TARGET_NAME_LIST_SHA256
+    ):
+        raise base.ListenNowError("control69 LoRA scope drifted")
+    return {
+        "target_modules": targets,
+        "trainable_parameter_count": CONTROL69_TRAINABLE_PARAMETERS,
+    }
 
 
 def run(
@@ -264,7 +299,7 @@ def run(
         ]
     }
 
-    scope = base.expanded79_scope(arguments.inventory)
+    scope = lora_scope(arguments.inventory, arguments.lora_scope)
     targets = list(scope["target_modules"])
     model = get_peft_model(
         model,
@@ -342,18 +377,23 @@ def run(
                 outputs[epoch][index - 1],
                 sample_rate,
             )
-        if checkpoint_epochs == CHECKPOINT_EPOCHS:
+        if (
+            arguments.lora_scope == "expanded79"
+            and checkpoint_epochs == CHECKPOINT_EPOCHS
+        ):
             assert_epoch4_control(
                 source.pair_id,
                 base_sha256=hashes[0],
                 epoch4_sha256=hashes[4],
             )
-        else:
+        elif arguments.lora_scope == "expanded79":
             assert_extended_control(
                 source.pair_id,
                 base_sha256=hashes[0],
                 epoch12_sha256=hashes[12],
             )
+        else:
+            assert_base_control(source.pair_id, base_sha256=hashes[0])
         base._write_json(
             row_dir / "index.json",
             listening_index(
@@ -361,6 +401,7 @@ def run(
                 target_reference_id=target_reference_pair.pair_id,
                 hashes=hashes,
                 checkpoint_epochs=checkpoint_epochs,
+                scope_name=arguments.lora_scope,
             ),
         )
         listener_rows.append(
@@ -372,11 +413,7 @@ def run(
 
     receipt = {
         "schema_version": 1,
-        "kind": (
-            "liveconv-exp026-human87-horizon-listen-now-result"
-            if checkpoint_epochs == CHECKPOINT_EPOCHS
-            else "liveconv-exp026-human87-extended-horizon-listen-now-result"
-        ),
+        "kind": "liveconv-exp026-human87-horizon-listen-now-result",
         "status": "completed-listen-now-unselected",
         "git_commit": base._git_output(
             ["git", "rev-parse", "HEAD"], "repository commit"
@@ -387,6 +424,8 @@ def run(
             "improve X-VC?"
         ),
         "train_pair_count": len(materialized),
+        "lora_scope": arguments.lora_scope,
+        "lora_target_count": len(targets),
         "checkpoint_epochs": list(checkpoint_epochs),
         "updates": len(losses),
         "learning_rate": base.LEARNING_RATE,
@@ -399,9 +438,14 @@ def run(
         "render_sources": listener_rows,
         "target_reference_id": target_reference_pair.pair_id,
         "heldout_target_access_count": 0,
-        "control_epoch": checkpoint_epochs[0],
-        "control_epoch_reproduced": True,
-        "epoch4_control_reproduced": checkpoint_epochs == CHECKPOINT_EPOCHS,
+        "control_epoch": (
+            checkpoint_epochs[0] if arguments.lora_scope == "expanded79" else None
+        ),
+        "control_epoch_reproduced": arguments.lora_scope == "expanded79",
+        "epoch4_control_reproduced": (
+            arguments.lora_scope == "expanded79"
+            and checkpoint_epochs == CHECKPOINT_EPOCHS
+        ),
         "elapsed_seconds": time.monotonic() - started,
         "peak_gpu_bytes": int(torch.cuda.max_memory_allocated(device)),
         "claims": {
@@ -456,6 +500,11 @@ def _parser() -> argparse.ArgumentParser:
         metavar="EPOCHS",
         help="exactly 4,8,12 or 12,18,24",
     )
+    parser.add_argument(
+        "--lora-scope",
+        choices=("expanded79", "control69"),
+        default="expanded79",
+    )
     parser.add_argument("--confirm-gpu-lease", choices=("gpu0",))
     parser.add_argument("--device", choices=("cuda:0",), default="cuda:0")
     return parser
@@ -474,6 +523,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "row_count": len(rows),
                         "expected_train_pair_count": base.EXPECTED_TRAIN_PAIRS,
                         "checkpoint_epochs": list(arguments.checkpoint_epochs),
+                        "lora_scope": arguments.lora_scope,
                     },
                     ensure_ascii=False,
                     sort_keys=True,

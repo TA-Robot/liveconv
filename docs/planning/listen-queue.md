@@ -45,7 +45,7 @@ authorize promote claims or several speculative sweeps in parallel.
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
 | 1 | Help the operator finish the six rows above; EXP-027--031 are superseded diagnostics and do not need separate draining | parent | n/a | decisions recorded |
-| 2 | Extend the exact EXP-026 human87 trajectory to epochs 12/18/24; require epoch-12 WAV control reproduction, then machine-screen and publish | parent | no: operator unavailable and GPU would otherwise idle | one completed comparison collection or technical stop |
+| 2 | Compare human87 expanded79 against control69 at the same 4/8/12 epochs after the extended curve degraded content despite lower loss | parent | no: directly follows the machine screen | one completed comparison collection or technical stop |
 | 3 | If EXP-032 receives a `keep`, bind that exact candidate to the formal Gateway profile and exercise native fallback/Extension playout | parent | yes: EXP-032 `keep` | one route-qualified system listen or a recorded integration blocker |
 | 4 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
 
@@ -54,8 +54,10 @@ EXP-032 closes the lookahead sweep at a 120-ms auxiliary-ASR floor; do not open
 another lookahead point. Its bounded worker/cancellation probe also completed
 and published one actual-input system WAV. While hearing is unavailable, GPU
 work returns to bounded quality-candidate generation, starting with the one-axis
-EXP-026 horizon extension. A recorded `keep` is still required before formal
-Gateway/Extension binding.
+EXP-026 horizon extension. That extension reproduced its controls but degraded
+content at epochs 18/24, so no longer horizon is admitted. The next one-axis
+job narrows LoRA scope from expanded79 to control69. A recorded `keep` is still
+required before formal Gateway/Extension binding.
 
 ## Keepers
 
