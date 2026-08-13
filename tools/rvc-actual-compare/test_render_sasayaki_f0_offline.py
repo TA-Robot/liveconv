@@ -23,6 +23,8 @@ def test_cli_changes_only_f0_method() -> None:
     assert [(left, right) for left, right in zip(rmvpe, pm) if left != right] == [
         ("rmvpe", "pm")
     ]
+    assert rmvpe[rmvpe.index("--input") + 1] == "/source"
+    assert rmvpe[rmvpe.index("--output") + 1] == "/output"
 
 
 def test_cli_rejects_another_f0_method() -> None:
