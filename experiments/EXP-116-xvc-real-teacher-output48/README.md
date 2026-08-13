@@ -1,6 +1,6 @@
 # EXP-116: X-VC full-output teacher on train48
 
-Status: Grok-redirect-admitted; awaiting committed runtime smoke
+Status: admitted for one gpu0 training run
 
 ## Question
 
@@ -28,3 +28,10 @@ Commit the objective and one-row runtime smoke before gpu0. Train once, render
 built-in external7 and then frozen fresh48. Stop before stress60 on any added
 gross loop or broad common-non-loop regression. Machine metrics cannot select
 naturalness, target voice, or a winner.
+
+## Runtime smoke
+
+Commit `2fe309a` passed a one-row real-model LoRA backward smoke: the frozen
+teacher target contained 38,400 samples, full composite loss was `161.0455`,
+gradient norm was `24.3294`, and peak GPU allocation was 3.30 GiB. Exit status
+was zero. No smoke adapter was retained.

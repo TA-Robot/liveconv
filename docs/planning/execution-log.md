@@ -3174,3 +3174,16 @@ job queue.
 - Problems: none so far.
 - Changed action: commit before the runtime smoke. Run one smoke and one lane
   only; stop at fresh48 before stress60 on added repetition or broad regression.
+
+## 2026-08-13T20:33:00Z - EXP-116 full-output backward smoke passed
+
+- Agent: `primary-integrator`.
+- Dependencies: commit `2fe309a`; exact train48/fresh48 bindings; gpu0.
+- Result: one frozen-base converted target had 38,400 samples. Standard full
+  composite loss was `161.0455`; LoRA backward gradient norm was `24.3294`;
+  peak GPU allocation was 3.30 GiB; exit status was zero.
+- Problems: the first invocation's execution wrapper lost stdout/exit status
+  after the process detached, although it produced the teacher reference. The
+  same one-row smoke was rerun with explicit log and status capture; no adapter
+  or comparison output from either smoke was retained.
+- Rework: runtime evidence only. Admit one 1,044-update EXP-116 lane now.
