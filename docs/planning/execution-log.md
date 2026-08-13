@@ -1524,3 +1524,19 @@ job queue.
 - Changed action: close input-context carry. Isolate RMVPE pitch/pitchf cache
   once while resetting RNG, input context, RMS, and SOLA; do not combine more
   state classes or bind a diagnostic route.
+
+## 2026-08-13T09:39:00Z - RVC pitch-cache carry rejected
+
+- Agent: `primary-integrator`.
+- Task: After turn 1, fully reset generation state, restore only RMVPE
+  pitch/pitchf caches, and process exact turn 2.
+- Dependencies: commit `0c34c2a`; exact direct-reset baseline; sealed seed-0
+  runtime; listener `8878`; exclusive `gpu0`.
+- Result: the pitch-cache arm completed in 84.944 seconds and published as
+  `ms3-rvc-pitch-cache-v1` with SHA-256
+  `b28ac146ce1f9c99138500d4dd5ec7c6dc7b95bd4eef15437762406d3cc6c0ea`.
+- Machine screen: reset and pitch-cache arms both retained turn-2 CER 0.500 and
+  full CER 0.556, without gross repetition.
+- Changed action: close pitch-cache carry. Run one final state-decomposition
+  control that resets all audio/pitch/RMS/SOLA buffers but restores the RNG
+  continuation point after turn 1; stop this GPU diagnosis after its result.

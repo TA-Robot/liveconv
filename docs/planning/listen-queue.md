@@ -218,6 +218,13 @@ uses RMVPE and pitch cache is the remaining state directly tied to short speech,
 isolate pitch/pitchf cache once while resetting input context, RNG, RMS, and
 SOLA. Do not test an arbitrary combination or ship state carryover.
 
+Pitch/pitchf cache alone also failed: reset and cache-carry both remained at
+0.500 turn-2 CER and 0.556 full CER. Close pitch-cache carry. With threshold
+gating disabled at -60 dBFS and SOLA limited to the 90 ms join, the last
+high-value state explanation is RNG continuation versus reseeding. Isolate RNG
+continuation once with all audio, pitch, RMS, and SOLA buffers reset; then stop
+state-decomposition GPU work regardless of outcome.
+
 ## Keepers
 
 None yet. A `keep` here is the only ticket into a promote pass.
