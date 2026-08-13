@@ -161,6 +161,31 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "heldout sentences?"
             ),
         }
+    if kind == "wave-adversarial":
+        return {
+            "experiment_id": "EXP-065",
+            "variant_id": "cv12-wave-adversarial",
+            "display_name": (
+                "EXP-064 / CV12 / pretrained waveform adversarial"
+            ),
+            "result_kind": "liveconv-exp065-xvc-wave-adversarial-new-utterance/v1",
+            "question": (
+                "Does waveform-adversarial adaptation preserve changed utterances?"
+            ),
+        }
+    if kind == "wave-adversarial-hadou":
+        return {
+            "experiment_id": "EXP-067",
+            "variant_id": "cv12-wave-adversarial",
+            "display_name": (
+                "EXP-064 / CV12 / pretrained waveform adversarial"
+            ),
+            "result_kind": "liveconv-exp067-xvc-wave-adversarial-hadou/v1",
+            "question": (
+                "Does waveform-adversarial adaptation preserve clean Hadou "
+                "heldout sentences?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 

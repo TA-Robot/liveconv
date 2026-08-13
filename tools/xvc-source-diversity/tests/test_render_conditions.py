@@ -80,3 +80,11 @@ def test_content_filtered_uses_exp062_condition_policy() -> None:
 
     assert policy["experiment_id"] == "EXP-062"
     assert policy["candidate"][0] == "cv12-content-filtered6x2"
+
+
+def test_wave_adversarial_uses_exp066_condition_policy() -> None:
+    policy = RENDER.candidate_policy("wave-adversarial")
+
+    assert policy["experiment_id"] == "EXP-066"
+    assert policy["control"][0] == "cv12-control69"
+    assert policy["candidate"][0] == "cv12-wave-adversarial"

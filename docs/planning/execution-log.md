@@ -2536,3 +2536,21 @@ job queue.
   Retain all audio unheard on 8878. The next distinct method tests the pretrained
   waveform discriminator and upstream alternating adversarial loss omitted by
   the local adapter runner; ASR cannot judge its intended naturalness effect.
+
+## 2026-08-13T16:08:00Z - EXP-064 waveform-adversarial method prepared
+
+- Agent: `primary-integrator`.
+- Task: Restore the upstream X-VC adversarial branch without changing EXP-035's
+  generated data, target exposure, updates, LoRA topology, LR, condition, or
+  base generative loss.
+- Dependencies: the pinned checkpoint contains `generator`, `ema_generator`,
+  and a 324-tensor pretrained `discriminator`; the EXP-035 generated inventory
+  digest remains fixed at `e909e465`.
+- Result: the runner restores alternating discriminator and generator updates,
+  discriminator feature matching, upstream optimizer settings, and gradient
+  clipping. Twenty-five focused policy/schedule tests, Ruff, exact CPU admission,
+  and `git diff --check` passed. EXP-065--067 freeze the twelve changed rows,
+  ten conditions, and 31 Hadou sentences before training.
+- Changed action: after committing, admit one 1,044-update GPU run only. Do not
+  sweep adversarial weights, warmup, or D/G learning rates. Publish viable audio
+  but make no naturalness claim without hearing.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Train EXP-035 with twelve distinct generated-source donor speakers."""
+"""Train fixed-data X-VC donor-breadth and waveform-adversarial pilots."""
 
 from __future__ import annotations
 
@@ -32,10 +32,74 @@ DONOR_COUNT = 12
 EVALUATION_COUNT = 7
 TOTAL_UPDATES = method.PAIR_COUNT * DONOR_COUNT
 MAX_ADMISSION_DISTANCE = 0.375
+GENERATIVE_OBJECTIVE = "generative-only"
+ADVERSARIAL_OBJECTIVE = "upstream-adversarial"
+EXP035_CONTROL_ADAPTER_SHA256 = (
+    "2cd08900b8992877158ef16f5963706a0ac909d076d139288dcd5d7c66825e7f"
+)
+EXP035_GENERATED_INVENTORY_SHA256 = (
+    "e909e465ae5b49fb2be67dded797acf13895acd7f2ddd77c570cea8acdba9cd0"
+)
 
 
 class BreadthError(RuntimeError):
     """The bounded EXP-035 donor-breadth pilot cannot safely continue."""
+
+
+def training_policy(objective: str) -> dict[str, Any]:
+    if objective == GENERATIVE_OBJECTIVE:
+        return {
+            "experiment_id": "EXP-035",
+            "result_kind": "liveconv-exp035-xvc-donor-breadth-result/v1",
+            "run_kind": "EXP-035 X-VC donor-breadth external evaluation",
+            "question": (
+                "Does twelve-donor breadth beat three donors at fixed exposure?"
+            ),
+            "independent_variable": (
+                "generated-source donor pool: 3 distinct speakers repeated four "
+                "times versus 12 distinct speakers in one pass"
+            ),
+            "control": (
+                "jvs3-generated-pairs",
+                "EXP-033 / JVS 3 donor x 4 epochs / 1,044 updates",
+                "20-xvc-jvs3-generated-pairs.wav",
+            ),
+            "candidate": (
+                "cv12-generated-pairs",
+                "EXP-035 / Common Voice 12 donor x 1 epoch / 1,044 updates",
+                "30-xvc-cv12-generated-pairs.wav",
+            ),
+            "loss": "pinned X-VC composite generative loss",
+        }
+    if objective == ADVERSARIAL_OBJECTIVE:
+        return {
+            "experiment_id": "EXP-064",
+            "result_kind": "liveconv-exp064-xvc-wave-adversarial-result/v1",
+            "run_kind": "EXP-064 X-VC waveform-adversarial external evaluation",
+            "question": (
+                "Does restoring X-VC's pretrained waveform-adversarial objective "
+                "produce a viable fixed-data listening candidate?"
+            ),
+            "independent_variable": (
+                "training objective: composite generative loss only versus the same "
+                "loss plus pretrained waveform adversarial and feature matching"
+            ),
+            "control": (
+                "cv12-control69",
+                "EXP-035 / CV12 / generative-only control69",
+                "20-xvc-cv12-control69.wav",
+            ),
+            "candidate": (
+                "cv12-wave-adversarial",
+                "EXP-064 / CV12 / pretrained waveform adversarial",
+                "30-xvc-cv12-wave-adversarial.wav",
+            ),
+            "loss": (
+                "pinned X-VC composite generative + pretrained waveform "
+                "adversarial + feature matching"
+            ),
+        }
+    raise BreadthError(f"unknown training objective: {objective}")
 
 
 def _load_manifest(path: Path, *, kind: str, count: int) -> dict[str, Any]:
@@ -134,6 +198,10 @@ def validate_inputs(
         or not (arguments.control_adapter / "adapter_model.safetensors").is_file()
     ):
         raise BreadthError("EXP-033 control adapter is unavailable")
+    if arguments.training_objective == ADVERSARIAL_OBJECTIVE and base.sha256_file(
+        arguments.control_adapter / "adapter_model.safetensors"
+    ) != EXP035_CONTROL_ADAPTER_SHA256:
+        raise BreadthError("EXP-035 generative-only control adapter drifted")
     method._validate_xvc(arguments)
     base._require_new_output(
         arguments.work_dir,
@@ -178,26 +246,22 @@ def _reference_tensor(
 
 
 def listening_index(
-    item: Mapping[str, Any], *, hashes: Mapping[str, str]
+    item: Mapping[str, Any],
+    *,
+    hashes: Mapping[str, str],
+    policy: Mapping[str, Any] | None = None,
 ) -> dict[str, object]:
+    policy = training_policy(GENERATIVE_OBJECTIVE) if policy is None else policy
+    control_id, control_name, control_filename = policy["control"]
+    candidate_id, candidate_name, candidate_filename = policy["candidate"]
     variants = (
         ("base", "X-VC base", "10-xvc-base.wav", 1),
-        (
-            "jvs3-generated-pairs",
-            "EXP-033 / JVS 3 donor x 4 epochs / 1,044 updates",
-            "20-xvc-jvs3-generated-pairs.wav",
-            2,
-        ),
-        (
-            "cv12-generated-pairs",
-            "EXP-035 / Common Voice 12 donor x 1 epoch / 1,044 updates",
-            "30-xvc-cv12-generated-pairs.wav",
-            3,
-        ),
+        (control_id, control_name, control_filename, 2),
+        (candidate_id, candidate_name, candidate_filename, 3),
     )
     return {
         "schema_version": 1,
-        "run_kind": "EXP-035 X-VC donor-breadth external evaluation",
+        "run_kind": policy["run_kind"],
         "status": "completed-listen-now-unselected",
         "source_file": (
             f"Common Voice 25.0 / {item['age']} / {item['gender']} / {item['text']}"
@@ -225,12 +289,126 @@ def listening_index(
                 "display_order": order,
                 "output_file": filename,
                 "status": "passed",
-                "profile_id": f"xvc.exp035.{variant_id}.listen-now",
+                "profile_id": (
+                    f"xvc.{str(policy['experiment_id']).lower()}."
+                    f"{variant_id}.listen-now"
+                ),
                 "family_id": "x-vc",
                 "output_sha256": hashes[variant_id],
             }
             for variant_id, display_name, filename, order in variants
         ],
+    }
+
+
+def _load_pretrained_discriminator(
+    arguments: argparse.Namespace,
+    config: Mapping[str, Any],
+    *,
+    torch: Any,
+    device: Any,
+) -> tuple[Any, Any]:
+    import hydra
+
+    discriminator_config = config["model"]["discriminator"]
+    discriminator = hydra.utils.instantiate(discriminator_config)
+    checkpoint = torch.load(
+        arguments.checkpoint,
+        map_location="cpu",
+        weights_only=False,
+        mmap=True,
+    )
+    state = checkpoint.get("discriminator") if isinstance(checkpoint, dict) else None
+    if not isinstance(state, dict) or len(state) != 324:
+        raise BreadthError("pretrained X-VC discriminator state drifted")
+    discriminator.load_state_dict(state, strict=True)
+    del checkpoint, state
+    discriminator.to(device).train()
+    parameters = list(discriminator.parameters())
+    if not parameters or not all(parameter.requires_grad for parameter in parameters):
+        raise BreadthError("pretrained X-VC discriminator is not trainable")
+    optimizer_config = discriminator_config["optim_conf"]
+    optimizer = torch.optim.AdamW(
+        parameters,
+        lr=float(optimizer_config["lr"]),
+        betas=tuple(float(value) for value in optimizer_config["betas"]),
+    )
+    return discriminator, optimizer
+
+
+def _finite_loss(value: Any, *, torch: Any, label: str) -> Any:
+    if value is None or not bool(torch.isfinite(value)):
+        raise BreadthError(f"{label} is non-finite")
+    return value
+
+
+def _adversarial_update(
+    trained: Any,
+    discriminator: Any,
+    generator_optimizer: Any,
+    discriminator_optimizer: Any,
+    trainable: Sequence[Any],
+    batch: Mapping[str, Any],
+    *,
+    torch: Any,
+) -> dict[str, float]:
+    base._set_adapter_training_only(trained)
+    discriminator.train()
+    generator_optimizer.zero_grad(set_to_none=True)
+    discriminator_optimizer.zero_grad(set_to_none=True)
+
+    with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+        outputs = trained(dict(batch))
+        reconstruction = outputs.get("recons") if isinstance(outputs, dict) else None
+        if reconstruction is None or not bool(torch.isfinite(reconstruction).all()):
+            raise BreadthError("X-VC adversarial reconstruction is malformed")
+        outputs["audios"] = batch["target_wav"][..., : reconstruction.shape[-1]]
+        discriminator_losses = discriminator.discriminative_loss(outputs)
+        discriminator_loss = _finite_loss(
+            discriminator_losses.get("loss"),
+            torch=torch,
+            label="X-VC discriminator loss",
+        )
+    discriminator_loss.backward()
+    discriminator_norm = torch.nn.utils.clip_grad_norm_(
+        discriminator.parameters(), base.GRADIENT_CLIP_NORM
+    )
+    if not math.isfinite(float(discriminator_norm.detach().cpu())):
+        raise BreadthError("X-VC discriminator gradient norm is non-finite")
+    discriminator_optimizer.step()
+
+    for parameter in discriminator.parameters():
+        parameter.requires_grad_(False)
+    with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+        generator_losses = trained.generative_loss(outputs)
+        adversarial_losses = discriminator.adversarial_loss(outputs)
+        generator_loss = _finite_loss(
+            generator_losses.get("loss"),
+            torch=torch,
+            label="X-VC generative loss",
+        )
+        adversarial_loss = _finite_loss(
+            adversarial_losses.get("loss"),
+            torch=torch,
+            label="X-VC adversarial loss",
+        )
+        total_loss = generator_loss + adversarial_loss
+    total_loss.backward()
+    generator_norm = torch.nn.utils.clip_grad_norm_(
+        trainable, base.GRADIENT_CLIP_NORM
+    )
+    if not math.isfinite(float(generator_norm.detach().cpu())):
+        raise BreadthError("X-VC generator gradient norm is non-finite")
+    generator_optimizer.step()
+    for parameter in discriminator.parameters():
+        parameter.requires_grad_(True)
+
+    return {
+        "total": float(total_loss.detach().cpu()),
+        "generative": float(generator_loss.detach().cpu()),
+        "discriminator": float(discriminator_loss.detach().cpu()),
+        "adversarial_generator": float(adversarial_losses["adv_gen_loss"]),
+        "adversarial_feature": float(adversarial_losses["adv_feat_loss"]),
     }
 
 
@@ -240,11 +418,14 @@ def run(
     evaluation: Mapping[str, Any],
     target_rows: list[tuple[str, Path, str]],
 ) -> int:
+    policy = training_policy(arguments.training_objective)
     for name in ("HF_DATASETS_OFFLINE", "HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"):
         if os.environ.get(name) != "1":
             raise BreadthError(f"{name}=1 is required before model import")
     if arguments.confirm_gpu_lease != "gpu0" or arguments.device != "cuda:0":
-        raise BreadthError("EXP-035 requires the explicit gpu0 lease")
+        raise BreadthError(
+            f"{policy['experiment_id']} requires the explicit gpu0 lease"
+        )
     started = time.monotonic()
     arguments.work_dir.mkdir()
     donor_root = arguments.work_dir / "donor-references"
@@ -398,6 +579,12 @@ def run(
             )
     if len(generated_tensors) != TOTAL_UPDATES:
         raise BreadthError("generated pair count drifted")
+    generated_inventory_sha256 = method._canonical_sha256(generated_inventory)
+    if (
+        arguments.training_objective == ADVERSARIAL_OBJECTIVE
+        and generated_inventory_sha256 != EXP035_GENERATED_INVENTORY_SHA256
+    ):
+        raise BreadthError("EXP-035 generated training data drifted")
 
     scope = horizon.lora_scope(arguments.inventory, "control69")
     target_modules = list(scope["target_modules"])
@@ -425,22 +612,42 @@ def run(
         raise BreadthError("control69 trainable parameter count drifted")
     optimizer = torch.optim.AdamW(trainable, lr=base.LEARNING_RATE)
     losses: list[float] = []
-    for tensors in generated_tensors:
-        base._set_adapter_training_only(trained)
-        optimizer.zero_grad(set_to_none=True)
-        batch = base._gpu_batch(tensors, torch=torch, device=device)
-        with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
-            loss, numeric = base._composite_loss(trained, batch, torch)
-        loss.backward()
-        gradient_norm = torch.nn.utils.clip_grad_norm_(
-            trainable, base.GRADIENT_CLIP_NORM
+    adversarial_metrics: list[dict[str, float]] = []
+    discriminator = None
+    discriminator_optimizer = None
+    if arguments.training_objective == ADVERSARIAL_OBJECTIVE:
+        discriminator, discriminator_optimizer = _load_pretrained_discriminator(
+            arguments, config, torch=torch, device=device
         )
-        if not math.isfinite(float(gradient_norm.detach().cpu())):
-            raise BreadthError("X-VC gradient norm is non-finite")
-        optimizer.step()
-        losses.append(numeric)
+    for tensors in generated_tensors:
+        batch = base._gpu_batch(tensors, torch=torch, device=device)
+        if discriminator is not None and discriminator_optimizer is not None:
+            metrics = _adversarial_update(
+                trained,
+                discriminator,
+                optimizer,
+                discriminator_optimizer,
+                trainable,
+                batch,
+                torch=torch,
+            )
+            losses.append(metrics["total"])
+            adversarial_metrics.append(metrics)
+        else:
+            base._set_adapter_training_only(trained)
+            optimizer.zero_grad(set_to_none=True)
+            with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+                loss, numeric = base._composite_loss(trained, batch, torch)
+            loss.backward()
+            gradient_norm = torch.nn.utils.clip_grad_norm_(
+                trainable, base.GRADIENT_CLIP_NORM
+            )
+            if not math.isfinite(float(gradient_norm.detach().cpu())):
+                raise BreadthError("X-VC gradient norm is non-finite")
+            optimizer.step()
+            losses.append(numeric)
     if len(losses) != TOTAL_UPDATES:
-        raise BreadthError("EXP-035 update count drifted")
+        raise BreadthError(f"{policy['experiment_id']} update count drifted")
     adapter_dir = arguments.work_dir / "adapter-1044"
     trained.save_pretrained(adapter_dir, safe_serialization=True)
     candidate_outputs = render(trained)
@@ -457,38 +664,38 @@ def run(
         shutil.copyfile(
             target_reference_pair.target_path, row_root / "01-target-reference.wav"
         )
+        control_id, _, control_filename = policy["control"]
+        candidate_id, _, candidate_filename = policy["candidate"]
         hashes = {
             "base": base._write_float_wav(
                 row_root / "10-xvc-base.wav", base_outputs[index], sample_rate
             ),
-            "jvs3-generated-pairs": base._write_float_wav(
-                row_root / "20-xvc-jvs3-generated-pairs.wav",
+            control_id: base._write_float_wav(
+                row_root / control_filename,
                 control_outputs[index],
                 sample_rate,
             ),
-            "cv12-generated-pairs": base._write_float_wav(
-                row_root / "30-xvc-cv12-generated-pairs.wav",
+            candidate_id: base._write_float_wav(
+                row_root / candidate_filename,
                 candidate_outputs[index],
                 sample_rate,
             ),
         }
         method._write_json(
-            row_root / "index.json", listening_index(item, hashes=hashes)
+            row_root / "index.json",
+            listening_index(item, hashes=hashes, policy=policy),
         )
         listener_rows.append({"source_id": item["id"], "hashes": hashes})
 
     result = {
         "schema_version": 1,
-        "kind": "liveconv-exp035-xvc-donor-breadth-result/v1",
+        "kind": policy["result_kind"],
         "status": "completed-listen-now-unselected",
         "git_commit": base._git_output(
             ["git", "rev-parse", "HEAD"], "repository commit"
         ),
-        "question": "Does twelve-donor breadth beat three donors at fixed exposure?",
-        "independent_variable": (
-            "generated-source donor pool: 3 distinct speakers repeated four times "
-            "versus 12 distinct speakers in one pass"
-        ),
+        "question": policy["question"],
+        "independent_variable": policy["independent_variable"],
         "fixed": {
             "target_voice": "Amitaro runrun",
             "target_text_count": method.PAIR_COUNT,
@@ -498,16 +705,25 @@ def run(
             "learning_rate": base.LEARNING_RATE,
             "gradient_clip_norm": base.GRADIENT_CLIP_NORM,
             "target_wav_cond": "zeros",
-            "loss": "pinned X-VC composite generative loss",
+            "loss": policy["loss"],
         },
         "donor_manifest_sha256": base.sha256_file(arguments.donors),
         "evaluation_set_sha256": base.sha256_file(arguments.evaluation_set),
         "donor_count": len(donor_pairs),
         "external_evaluation_speaker_count": len(evaluation_pairs),
         "generated_pair_count": len(generated_tensors),
-        "generated_inventory_sha256": method._canonical_sha256(generated_inventory),
+        "generated_inventory_sha256": generated_inventory_sha256,
         "loss_first": losses[0],
         "loss_last": losses[-1],
+        "adversarial_metrics": (
+            {
+                "updates": len(adversarial_metrics),
+                "first": adversarial_metrics[0],
+                "last": adversarial_metrics[-1],
+            }
+            if adversarial_metrics
+            else None
+        ),
         "elapsed_seconds": time.monotonic() - started,
         "peak_gpu_bytes": int(torch.cuda.max_memory_allocated(device)),
         "listener_rows": listener_rows,
@@ -538,6 +754,11 @@ def run(
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument(
+        "--training-objective",
+        choices=(GENERATIVE_OBJECTIVE, ADVERSARIAL_OBJECTIVE),
+        default=GENERATIVE_OBJECTIVE,
+    )
     parser.add_argument("--donors", type=Path, required=True)
     parser.add_argument("--evaluation-set", type=Path, required=True)
     parser.add_argument("--source-root", type=Path, required=True)

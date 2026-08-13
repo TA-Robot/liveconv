@@ -117,6 +117,17 @@ def test_content_filtered_hadou_candidate_is_exp063() -> None:
     assert policy["variant_id"] == "cv12-content-filtered6x2"
 
 
+def test_wave_adversarial_policies_cover_changed_and_hadou_sets() -> None:
+    changed = NEW.candidate_policy("wave-adversarial")
+    hadou = NEW.candidate_policy("wave-adversarial-hadou")
+
+    assert changed["experiment_id"] == "EXP-065"
+    assert hadou["experiment_id"] == "EXP-067"
+    assert changed["variant_id"] == hadou["variant_id"] == (
+        "cv12-wave-adversarial"
+    )
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"

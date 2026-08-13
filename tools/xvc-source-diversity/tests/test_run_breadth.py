@@ -55,3 +55,17 @@ def test_manifest_rejects_source_above_admission_distance(tmp_path: Path) -> Non
         BREADTH._load_manifest(
             path, kind=BREADTH.DONOR_KIND, count=BREADTH.DONOR_COUNT
         )
+
+
+def test_adversarial_policy_changes_only_objective_and_candidate_identity() -> None:
+    policy = BREADTH.training_policy(BREADTH.ADVERSARIAL_OBJECTIVE)
+
+    assert policy["experiment_id"] == "EXP-064"
+    assert policy["control"][0] == "cv12-control69"
+    assert policy["candidate"][0] == "cv12-wave-adversarial"
+    assert "adversarial" in policy["loss"]
+
+
+def test_unknown_training_objective_is_rejected() -> None:
+    with pytest.raises(BREADTH.BreadthError, match="objective"):
+        BREADTH.training_policy("sweep")

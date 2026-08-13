@@ -141,6 +141,22 @@ def candidate_policy(kind: str) -> dict[str, Any]:
                 "30-xvc-content-filtered6x2.wav",
             ),
         }
+    if kind == "wave-adversarial":
+        return {
+            "experiment_id": "EXP-066",
+            "result_kind": "liveconv-exp066-xvc-wave-adversarial-condition/v1",
+            "run_kind": "EXP-066 X-VC waveform-adversarial condition evaluation",
+            "control": (
+                "cv12-control69",
+                "EXP-035 / CV12 / generative-only control69",
+                "20-xvc-cv12-control69.wav",
+            ),
+            "candidate": (
+                "cv12-wave-adversarial",
+                "EXP-064 / CV12 / pretrained waveform adversarial",
+                "30-xvc-cv12-wave-adversarial.wav",
+            ),
+        }
     raise ConditionRenderError(f"unknown candidate kind: {kind}")
 
 
