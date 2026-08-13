@@ -427,6 +427,7 @@ def run(args: argparse.Namespace) -> int:
     source = decode_pcm24_wav(args.actual_source)
     frames, original_samples = frame_audio(source)
 
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
     import torch
 
     if not torch.cuda.is_available():

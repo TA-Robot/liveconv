@@ -44,8 +44,8 @@ HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
   --adapter-dir artifacts/xvc-human-paired/listen-now/exp026-human87-horizon-v1/adapter-0696 \
   --target-reference artifacts/xvc-human-paired/listen-now/exp026-human87-horizon-v1/train-pairs/EMOTION100_003/target-48k.wav \
   --actual-source artifacts/ms3/listening/exp020-human-rvc-smoke-8s-plain-20260812/00-native-source.wav \
-  --work-dir artifacts/xvc-human-paired/listen-now/exp032-system-path-v2 \
-  --listener-dir artifacts/ms3/listening/exp032-system-path-v2 \
+  --work-dir artifacts/xvc-human-paired/listen-now/exp032-system-path-v3 \
+  --listener-dir artifacts/ms3/listening/exp032-system-path-v3 \
   --confirm-gpu-lease gpu0 --device cuda:0
 ```
 
@@ -54,3 +54,9 @@ because the isolated Torch runtime requires `cuda:0` to be selected before its
 peak-memory counter can be reset. `v2` adds that ordering call only; the model,
 adapter, stream geometry, input, cancellation probe, and retained generation do
 not change.
+
+`v2` then stopped after checkpoint/adapter load but before condition completion,
+window inference, or publication: deterministic Torch requires
+`CUBLAS_WORKSPACE_CONFIG=:4096:8` before its first cuBLAS operation. `v3` sets
+that standard deterministic-runtime value before importing Torch. No candidate
+input or worker behavior changes.
