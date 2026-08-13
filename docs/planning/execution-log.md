@@ -3380,3 +3380,18 @@ job queue.
   `unique semantic tokens <= 5` safety hypothesis on disjoint fresh48/Hadou31;
   if it misses the failures, move to a different training objective rather
   than another coverage point.
+
+## 2026-08-13T23:07:00Z - EXP-137 disjoint semantic gate rejected
+
+- Agent: `primary-integrator`.
+- Dependencies: commit `6c0a3ca`; frozen EXP-135/136 inputs and loop labels;
+  gpu0.
+- Result: all 79 source windows completed in 94.77 seconds at 2.40 GiB peak.
+  The unchanged EXP-093 `unique_tokens <= 5` rule flagged zero rows and missed
+  both adapter-added loops. The fresh failure had 24 unique tokens and the
+  Hadou failure had 29 versus a dataset median of 28.
+- Problems: the earlier low-token association did not generalize.
+- Rework: reject the input gate and do not fit a threshold on these 79 outputs.
+  Replace repeated exposure to 48 teacher sources with a near-one-pass pool of
+  about 201 disjoint training sources/windows while keeping teacher positions,
+  standard rows, loss, LR, target, and evaluation fixed.

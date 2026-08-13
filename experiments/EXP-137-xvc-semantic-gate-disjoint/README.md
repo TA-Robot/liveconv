@@ -1,6 +1,6 @@
 # EXP-137: disjoint low-semantic-token safety validation
 
-Status: admitted; one read-only gpu0 diagnostic
+Status: completed; fixed low-token rule rejected
 
 ## Question
 
@@ -23,3 +23,17 @@ different training objective or explicit hard-input rehearsal. If it catches
 all added loops, retain a separately reviewed fallback-routing hypothesis; do
 not bind a production gate from this diagnostic alone. This cannot select
 naturalness, target identity, or a quality winner and produces no promotion.
+
+## Result
+
+All 79 rows completed in `94.77` seconds at `2.40 GiB` peak. The fixed rule
+flagged zero rows and missed both adapter-added failures: `cv30615849f` had 24
+unique tokens and `RECITATION324_138` had 29, versus a dataset median of 28.
+Reject the low-token safety rule; do not fit a replacement threshold on these
+outputs. The failures are not explained by frozen source-token collapse.
+
+Next, change the amount of distinct real model-window supervision rather than
+another gate or coverage heuristic: keep 209 teacher positions fixed but use a
+near-one-pass pool spanning all quality-admitted training-only Hadou utterances,
+all 48 disjoint Common Voice teachers, and JVS3. Frozen fresh48/Hadou31 remain
+evaluation-only.
