@@ -205,6 +205,13 @@ a product fix because an interrupted older generation must not contaminate a
 new one. Admit one fully reset, silence-only context priming control next; stop
 if it does not recover turn 2.
 
+The fully reset 3.5-second zero-PCM prime did not recover turn 2: both reset and
+prime stayed at 0.500 turn CER and 0.556 full CER without gross repetition.
+Close silence-prime lengths. The positive carryover result therefore depends
+on prior-generation state, not merely a warmed zero context. Isolate the prior
+input-context buffers once while still clearing RNG, pitch, RMS, and SOLA; any
+shipping design must clear all carryover on interruption.
+
 ## Keepers
 
 None yet. A `keep` here is the only ticket into a promote pass.

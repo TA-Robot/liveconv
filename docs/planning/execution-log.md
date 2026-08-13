@@ -1489,3 +1489,21 @@ job queue.
 - Changed action: run one fully reset, silence-only context prime before turn 2.
   If that fails to recover content, stop priming and inspect individual reset
   buffers without broad GPU expansion.
+
+## 2026-08-13T09:30:00Z - RVC silence-only prime rejected
+
+- Agent: `primary-integrator`.
+- Task: After a full safe generation reset, process and discard 3.5 seconds of
+  zero PCM, reapply seed 0, then process exact turn 2; use no audio or state
+  from the prior generation.
+- Dependencies: commit `89ae5ce`; exact direct-reset baseline; sealed seed-0
+  runtime; listener `8878`; exclusive `gpu0`.
+- Result: the one new direct arm completed in 92.423 seconds and published as
+  `ms3-rvc-silence-prime-v1` with SHA-256
+  `5c9551d267155ea80b8696f16a16fa097b2b6a7eb541aa04e655a5142dffe55a`.
+- Machine screen: reset and prime retained identical full CER 0.556 and turn-2
+  CER 0.500, with no gross repetition. Waveform correlation was 0.983.
+- Changed action: reject silence priming and close prime-length search. Test
+  one prior-input-context carryover control while clearing RNG, pitch, RMS, and
+  SOLA; preserve-on-clean-completion is diagnostic and must still clear on
+  interruption.
