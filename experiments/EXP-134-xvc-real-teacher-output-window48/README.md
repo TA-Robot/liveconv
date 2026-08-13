@@ -1,6 +1,6 @@
 # EXP-134: X-VC model-window-aware teacher pool
 
-Status: prepared; awaiting bound manifest and one gpu0 lane
+Status: admitted; one bounded gpu0 lane
 
 ## Goal
 
@@ -17,6 +17,15 @@ from EXP-133: seven start, seven middle, and seven end 2.4-second windows. Use
 only rows with full-utterance auxiliary CER at most 0.15, no source-ASR gross
 repetition, and at least four normalized characters; greedily maximize new
 window-ASR 1/2/3-grams.
+
+## Bound input
+
+- Manifest: `artifacts/xvc-source-diversity/exp134-window-teacher48-inputs-v1/training.json`
+- SHA-256: `4b0e8627f9a6743cf966d3ec61ea51e2a0205cca741ddc00ea31012b70488a87`
+- Composition: Common Voice 24, Hadou 21, JVS 3
+- Hadou window positions: start 7, middle 7, end 7
+- EXP-133 audit SHA-256: `641521ba94c9a7ee788e906c1bbfeeaaa97ea0525616b59d54ba411269687dd2`
+- Method commit: `8e69a32`
 
 ## Definition of done and stop
 
