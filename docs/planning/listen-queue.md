@@ -124,7 +124,10 @@ and 0 raised repeat correlation above 0.999997 and removed turn-dependent
 auxiliary-ASR changes. Seed 0 had lower coarse CER than seed 34 on the single
 diagnostic sentence (0.333 versus 0.444), so it is the sole integration
 candidate. This is not a perceptual selection. Do not add another seed point;
-route the seed-0 behavior through the bounded worker/Gateway session next.
+the bounded worker/Gateway verification is now complete. Its turn 2/3
+correlation was 0.9999967/0.9999976 and all three auxiliary-ASR transcripts
+were identical. Keep the three new WAVs for hearing and close further seed,
+bit-exactness, runtime-identity, and route-receipt work.
 
 ## Keepers
 

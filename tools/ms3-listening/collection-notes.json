@@ -8,6 +8,15 @@
   },
   "collections": [
     {
+      "match_all": ["ms3-rvc-seed0-gateway-repeat-v2"],
+      "display_title": "RVC会話ターン安定化: seed 0（実Gateway確認）",
+      "purpose": "seed 0をsealed workerとlive Gatewayへ通し、同じ公開発話の3ターンで実システム経路の安定化を確認",
+      "data": "3反復。turn 2/3の相関は0.9999967/0.9999976、最大差0.00125以下。補助ASRは3本とも『いや、ベルがなってる』。",
+      "status": "未seed診断との聴覚比較用。実Gatewayでターン変動を抑えた統合候補ですが、自然さや声質の勝者ではありません。",
+      "review_priority": "normal",
+      "review_mode": "gross_reject_only"
+    },
+    {
       "match_all": ["ms3-rvc-seed0-cudagraph-repeat-v1"],
       "display_title": "RVC会話ターン安定化: seed 0（統合候補）",
       "purpose": "同じ公開発話を同じRVC設定で3回変換し、generation境界で乱数状態を固定したときのターン間変動を確認",

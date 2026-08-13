@@ -1191,3 +1191,27 @@ job queue.
 - Changed action: integrate seed 0 through the bounded worker/Gateway profile
   and rerun the three-turn conversation comparison; do not widen training,
   model, F0, lookahead, or seed axes.
+
+## 2026-08-13T07:41:00Z - seeded RVC conversation route verified
+
+- Agent: `primary-integrator`.
+- Task: Run the seed-0 RVC profile through the sealed worker and live Gateway,
+  repeating exact public input `EMOTION100_017` for three generations in one
+  session.
+- Dependencies: commits `078f8b0` and `2533927`; isolated seeded runtime;
+  evaluation-only Gateway `8881`; fixed listener `8878`.
+- Result: three new unselected WAVs were published as
+  `ms3-rvc-seed0-gateway-repeat-v2`. Generation 2/3 correlation to generation
+  1 was 0.9999967/0.9999976, maximum difference was 0.00125/0.00118, and SNR
+  was 51.82/53.13 dB. The pre-fix route had correlation -0.283/-0.083 and
+  maximum differences above 0.42.
+- Machine screen: all three outputs transcribed as
+  `いや、ベルがなってる` (CER 0.333). This rejects gross turn-dependent
+  content corruption but does not select perceptual quality.
+- Problems/rework: the first route attempt stopped before GPU inference with
+  HTTP 404 because a listen-now profile has no promote-tier route receipt.
+  Commit `2533927` selected the existing evaluation-only session endpoint;
+  no receipt, hash ceremony, or formal route claim was added.
+- Changed action: the RVC generation-boundary fix is verified through the
+  actual Gateway/worker path. Close seed and bit-exactness work; retain seed 0
+  as the sole stable integration candidate pending hearing.
