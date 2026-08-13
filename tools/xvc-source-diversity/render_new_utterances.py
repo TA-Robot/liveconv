@@ -184,7 +184,8 @@ def load_evaluation(path: Path) -> dict[str, Any]:
         not isinstance(value, dict)
         or kind not in {KIND, EXPANDED_KIND, HADOU_KIND}
         or not isinstance(source, dict)
-        or source.get("license") != "CC0-1.0"
+        or source.get("license")
+        != ("CC-BY-4.0" if kind == HADOU_KIND else "CC0-1.0")
         or not isinstance(items, list)
         or len(items) != expected_rows
     ):

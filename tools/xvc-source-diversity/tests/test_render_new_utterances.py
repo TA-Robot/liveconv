@@ -117,6 +117,17 @@ def test_content_filtered_hadou_candidate_is_exp063() -> None:
     assert policy["variant_id"] == "cv12-content-filtered6x2"
 
 
+def test_materialized_hadou_manifest_is_admitted() -> None:
+    path = Path(
+        "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"
+    )
+
+    value = NEW.load_evaluation(path)
+
+    assert value["kind"] == NEW.HADOU_KIND
+    assert len(value["items"]) == 31
+
+
 def test_expanded_manifest_uses_all_33_unique_local_files() -> None:
     path = (
         Path(__file__).resolve().parents[3]
