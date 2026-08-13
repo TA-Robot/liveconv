@@ -172,13 +172,20 @@ input. Retain it unheard without a blend sweep. The largest positive signal was
 the ten-condition set, but noise and leading silence each had only one row.
 The next evaluation therefore crosses those named limitations with all twelve
 changed Common Voice utterances before another retraining method is admitted.
+EXP-086 rejected the apparent robustness: across 60 rows source-semantic
+regressed macro distance from `0.320` to `0.484`, noise20 from `0.397` to
+`1.247`, and added one noise loop. Tempo improved, but noise, pitch, and leading
+silence did not. Direct source-hidden replacement and blend weights are closed.
+The next distinct objective is denoising semantic consistency: alternate clean
+and noise20 inputs while supervising semantic MSE with the corresponding clean
+source hidden state.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Freeze a multi-speaker clean/noise/leading-silence/tempo/pitch matrix from the twelve changed Common Voice utterances | parent | no | identities and transform parameters committed before render |
-| 2 | Publish control69 versus source-semantic on that matrix | parent | no human dependency for machine reject | per-condition corruption summary and next method decision recorded |
+| 1 | Train one clean/noise20 denoising-semantic adapter at fixed control69, loss weights, LR, and 1,044 updates | parent | no | clean hidden target and exact 522/522 schedule committed before GPU |
+| 2 | Publish it on 7 + 12 + 31 + 33 and the 60-row stress matrix | parent | no human dependency for machine reject | corruption screen complete and next method decision recorded |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

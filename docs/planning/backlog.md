@@ -95,13 +95,14 @@ name one owner and ownership zone below.
 | LV-084 | Done | P0 | MS-3 | Rehearse real donor speech during target-voice X-VC retraining | EXP-072--075 regressed changed utterances and added one Hadou gross loop; reject rehearsal and prohibit ratio sweeps |
 | LV-085 | Done | P0 | MS-3 | Adapt one bounded final waveform-decoder stage | EXP-077--080 regressed every aggregate content screen, including changed utterances from 0.184 to 0.394 and Hadou from 0.210 to 0.305; reject the method and prohibit decoder-depth/LR sweeps |
 | LV-086 | Done | P0 | MS-3 | Change X-VC's semantic learning target from target-voice hidden states to source hidden states | EXP-081--085 improved 7-row, condition, Hadou, and 33-row means but regressed changed utterances and gross-looped one ASR-empty source; retain unheard without a blend sweep |
-| LV-087 | In progress | P0 | MS-3 | Replace one-row audio limitations with a multi-speaker Common Voice stress matrix | Apply clean/noise/leading-silence/tempo/pitch conditions across the twelve changed utterances, freeze identities before render, and compare control69 with source-semantic on 8878 |
+| LV-087 | Done | P0 | MS-3 | Replace one-row audio limitations with a multi-speaker Common Voice stress matrix | EXP-086 found source-semantic regressed the 60-row macro from 0.320 to 0.484 and added a noise loop; the one-row robustness signal did not generalize |
+| LV-088 | In progress | P0 | MS-3 | Train X-VC with denoising semantic consistency | Alternate clean and noise20 generated sources while supervising semantic MSE with clean-source hidden states; keep target waveform/speaker, control69, LR, loss weights, and 1,044 updates fixed |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| LV-087 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-086 stress note, and its ignored artifacts | Commit the stress-matrix builder/render contract before GPU admission |
+| LV-088 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-087--092 notes, and their ignored artifacts | Commit one denoising-semantic point and all frozen render policies before GPU admission |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.

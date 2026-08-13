@@ -220,6 +220,26 @@ def test_source_semantic_stress_policy_is_exp086() -> None:
     assert "source-semantic-stress" in choices
 
 
+def test_denoise_semantic_policies_cover_all_followup_sets() -> None:
+    kinds = (
+        "denoise-semantic",
+        "denoise-semantic-hadou",
+        "denoise-semantic-expanded",
+        "denoise-semantic-stress",
+    )
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-088",
+        "EXP-090",
+        "EXP-091",
+        "EXP-092",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "cv12-denoise-semantic"
+    }
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"

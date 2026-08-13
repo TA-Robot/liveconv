@@ -221,6 +221,22 @@ def candidate_policy(kind: str) -> dict[str, Any]:
                 "30-xvc-cv12-source-semantic.wav",
             ),
         }
+    if kind == "denoise-semantic":
+        return {
+            "experiment_id": "EXP-089",
+            "result_kind": "liveconv-exp089-xvc-denoise-semantic-condition/v1",
+            "run_kind": "EXP-089 X-VC denoising-semantic condition evaluation",
+            "control": (
+                "cv12-control69",
+                "EXP-035 / target-hidden clean training",
+                "20-xvc-cv12-control69.wav",
+            ),
+            "candidate": (
+                "cv12-denoise-semantic",
+                "EXP-087 / clean-noise denoising semantic consistency",
+                "30-xvc-cv12-denoise-semantic.wav",
+            ),
+        }
     raise ConditionRenderError(f"unknown candidate kind: {kind}")
 
 
@@ -499,6 +515,7 @@ def _parser() -> argparse.ArgumentParser:
             "real-reconstruction20",
             "decoder-final",
             "source-semantic",
+            "denoise-semantic",
         ),
         default="donor-breadth",
     )

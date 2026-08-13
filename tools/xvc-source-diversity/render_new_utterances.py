@@ -311,6 +311,40 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "across twelve real Common Voice utterances?"
             ),
         }
+    denoise_policies = {
+        "denoise-semantic": (
+            "EXP-088",
+            "liveconv-exp088-xvc-denoise-semantic-new/v1",
+            "changed heldout utterances",
+        ),
+        "denoise-semantic-hadou": (
+            "EXP-090",
+            "liveconv-exp090-xvc-denoise-semantic-hadou/v1",
+            "31 clean Hadou sentences",
+        ),
+        "denoise-semantic-expanded": (
+            "EXP-091",
+            "liveconv-exp091-xvc-denoise-semantic-expanded/v1",
+            "33 locally unused Common Voice speakers",
+        ),
+        "denoise-semantic-stress": (
+            "EXP-092",
+            "liveconv-exp092-xvc-denoise-semantic-stress/v1",
+            "the 60-row multi-speaker stress matrix",
+        ),
+    }
+    if kind in denoise_policies:
+        experiment_id, result_kind, evaluation_name = denoise_policies[kind]
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "cv12-denoise-semantic",
+            "display_name": "EXP-087 / clean-noise denoising semantic consistency",
+            "result_kind": result_kind,
+            "question": (
+                "Does denoising semantic consistency preserve content on "
+                f"{evaluation_name}?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -720,6 +754,10 @@ def _parser() -> argparse.ArgumentParser:
             "source-semantic-hadou",
             "source-semantic-expanded",
             "source-semantic-stress",
+            "denoise-semantic",
+            "denoise-semantic-hadou",
+            "denoise-semantic-expanded",
+            "denoise-semantic-stress",
         ),
         default="speaker7",
     )

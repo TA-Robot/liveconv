@@ -65,6 +65,11 @@ SOURCE_CONDITION_COUNTS = {
     "pitch": 104,
     "leading-silence": 104,
 }
+DENOISE_CONDITION_CYCLE = (
+    {"kind": "clean"},
+    {"kind": "noise", "snr_db": 20.0},
+)
+DENOISE_CONDITION_COUNTS = {"clean": 522, "noise": 522}
 STANDARD_LOSS_WEIGHTS = {
     "mse_loss": 1000.0,
     "vq_loss": 1.0,
@@ -123,6 +128,7 @@ def training_modes(policy: str) -> list[str]:
         "authentic-anchor",
         "semantic2x",
         "source-semantic",
+        "denoise-semantic",
     }:
         return ["standard"] * TOTAL_UPDATES
     if policy == "standard-reconstruction":
@@ -154,6 +160,14 @@ def training_modes(policy: str) -> list[str]:
 
 
 def source_condition_schedule(policy: str) -> list[dict[str, object]]:
+    if policy == "denoise-semantic":
+        repeats, remainder = divmod(TOTAL_UPDATES, len(DENOISE_CONDITION_CYCLE))
+        schedule = [dict(item) for item in DENOISE_CONDITION_CYCLE] * repeats
+        schedule.extend(dict(item) for item in DENOISE_CONDITION_CYCLE[:remainder])
+        observed = Counter(item["kind"] for item in schedule)
+        if len(schedule) != TOTAL_UPDATES or observed != DENOISE_CONDITION_COUNTS:
+            raise RoleMixError("denoise-condition schedule drifted")
+        return schedule
     if policy not in {"source-augmentation", "paired-augmentation"}:
         return [{"kind": "clean"} for _ in range(TOTAL_UPDATES)]
     repeats, remainder = divmod(TOTAL_UPDATES, len(SOURCE_CONDITION_CYCLE))
@@ -263,6 +277,31 @@ def training_scope(inventory: Path, name: str) -> dict[str, object]:
 
 
 def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
+    if (
+        arguments.training_policy == "denoise-semantic"
+        and arguments.lora_scope == "control69"
+    ):
+        return {
+            "experiment_id": "EXP-087",
+            "slug": "exp087",
+            "candidate_id": "cv12-denoise-semantic",
+            "candidate_name": (
+                "EXP-087 / CV12 / clean-noise denoising semantic consistency"
+            ),
+            "run_kind": "EXP-087 X-VC denoising-semantic evaluation",
+            "result_kind": "liveconv-exp087-xvc-denoise-semantic-result/v1",
+            "question": (
+                "Does clean-source semantic supervision recover content from "
+                "noise-corrupted X-VC inputs without harming clean speech?"
+            ),
+            "independent_variable": (
+                "denoising semantic consistency: alternate 522 clean and 522 "
+                "noise20 source waveforms/tokens while supervising semantic MSE "
+                "with the corresponding clean-source hidden states; target "
+                "waveform/speaker, loss weights, data identities, control69, LR, "
+                "seed, zero condition, and 1,044 updates stay fixed"
+            ),
+        }
     if (
         arguments.training_policy == "source-semantic"
         and arguments.lora_scope == "control69"
@@ -1022,8 +1061,14 @@ def run(
                     features = model.semantic_encoder.extract_and_encode(
                         training_source.squeeze(1)
                     )
+                    clean_features = (
+                        model.semantic_encoder.extract_and_encode(output.squeeze(1))
+                        if arguments.training_policy == "denoise-semantic"
+                        and condition_kind != "clean"
+                        else features
+                    )
                 tokens = features.get("speech_tokens")
-                hidden = features.get("whisper_hidden_states_50hz")
+                hidden = clean_features.get("whisper_hidden_states_50hz")
             else:
                 tokens = authentic_tensor["semantic_tokens"].to(device=device)
                 hidden = target_tensor["ssl_feat"].to(device=device)
@@ -1061,7 +1106,8 @@ def run(
                     real_donor=donor_tensor,
                     semantic_target=(
                         "source"
-                        if arguments.training_policy == "source-semantic"
+                        if arguments.training_policy
+                        in {"source-semantic", "denoise-semantic"}
                         else "reference"
                     ),
                 )
@@ -1206,9 +1252,13 @@ def run(
             "gradient_clip_norm": base.GRADIENT_CLIP_NORM,
             "target_wav_cond": "zeros",
             "semantic_supervision": (
-                "source_whisper_hidden_states_50hz"
-                if arguments.training_policy == "source-semantic"
-                else "target_whisper_hidden_states_50hz"
+                "clean_source_whisper_hidden_states_50hz"
+                if arguments.training_policy == "denoise-semantic"
+                else (
+                    "source_whisper_hidden_states_50hz"
+                    if arguments.training_policy == "source-semantic"
+                    else "target_whisper_hidden_states_50hz"
+                )
             ),
             "loss_weights": loss_weights,
         },
@@ -1301,6 +1351,7 @@ def _parser() -> argparse.ArgumentParser:
             "authentic-anchor",
             "semantic2x",
             "source-semantic",
+            "denoise-semantic",
             "real-reconstruction20",
         ),
         default="role-mix",
@@ -1381,9 +1432,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                             arguments.training_policy
                         ),
                         "semantic_supervision": (
-                            "source_whisper_hidden_states_50hz"
-                            if arguments.training_policy == "source-semantic"
-                            else "target_whisper_hidden_states_50hz"
+                            "clean_source_whisper_hidden_states_50hz"
+                            if arguments.training_policy == "denoise-semantic"
+                            else (
+                                "source_whisper_hidden_states_50hz"
+                                if arguments.training_policy == "source-semantic"
+                                else "target_whisper_hidden_states_50hz"
+                            )
                         ),
                         "lora_scope": arguments.lora_scope,
                     },

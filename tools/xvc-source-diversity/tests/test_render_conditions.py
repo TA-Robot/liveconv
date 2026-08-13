@@ -135,3 +135,10 @@ def test_source_semantic_uses_exp083_condition_policy() -> None:
 
     assert policy["experiment_id"] == "EXP-083"
     assert policy["candidate"][0] == "cv12-source-semantic"
+
+
+def test_denoise_semantic_uses_exp089_condition_policy() -> None:
+    policy = RENDER.candidate_policy("denoise-semantic")
+
+    assert policy["experiment_id"] == "EXP-089"
+    assert policy["candidate"][0] == "cv12-denoise-semantic"

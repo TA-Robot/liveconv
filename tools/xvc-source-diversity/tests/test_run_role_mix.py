@@ -268,6 +268,28 @@ def test_source_semantic_changes_learning_target_without_changing_schedule() -> 
     assert "source-semantic" in choices
 
 
+def test_denoise_semantic_alternates_clean_and_noise_with_fixed_objective() -> None:
+    schedule = ROLE_MIX.source_condition_schedule("denoise-semantic")
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(training_policy="denoise-semantic", lora_scope="control69")
+    )
+
+    assert schedule[:4] == [
+        {"kind": "clean"},
+        {"kind": "noise", "snr_db": 20.0},
+        {"kind": "clean"},
+        {"kind": "noise", "snr_db": 20.0},
+    ]
+    assert Counter(row["kind"] for row in schedule) == {"clean": 522, "noise": 522}
+    assert Counter(ROLE_MIX.training_modes("denoise-semantic")) == {
+        "standard": 1_044
+    }
+    assert ROLE_MIX.training_loss_weights("denoise-semantic") == (
+        ROLE_MIX.STANDARD_LOSS_WEIGHTS
+    )
+    assert policy["experiment_id"] == "EXP-087"
+
+
 def test_source36_excludes_frame_condition_and_speaker_modulators() -> None:
     inventory = (
         ROLE_MIX.REPO_ROOT

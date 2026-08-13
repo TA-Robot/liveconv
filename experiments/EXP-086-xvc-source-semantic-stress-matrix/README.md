@@ -1,6 +1,6 @@
 # EXP-086: source-semantic multi-speaker stress matrix
 
-Status: preparing frozen inputs; operator hearing deferred
+Status: completed; source-semantic robustness rejected; operator hearing deferred
 
 ## Question
 
@@ -20,3 +20,18 @@ model weights, or historical tongue-twister audio enter this experiment.
 - Report per-condition source-relative ASR and gross repetition only.
 - Do not rank naturalness, target voice, or a winner. Do not tune transform
   levels from the result.
+
+## Result
+
+All 60 rows and 180 model outputs were published. Against control69,
+source-semantic changed the per-condition source-relative means as follows:
+
+- clean `0.260 -> 0.233` (3 wins / 8 ties / 1 loss)
+- noise20 `0.397 -> 1.247` (3 / 5 / 4) with one new gross repeated-character loop
+- leading silence `0.288 -> 0.322` (4 / 7 / 1)
+- tempo1.2 `0.374 -> 0.241` (6 / 4 / 2)
+- pitch+3 `0.279 -> 0.379` (3 / 4 / 5)
+
+The 60-row macro regressed from `0.320` to `0.484`. The one-row condition gain
+did not generalize, so direct source-hidden supervision and any blend sweep are
+closed. Machine ASR still does not judge naturalness or target voice.

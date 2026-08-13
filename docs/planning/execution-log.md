@@ -2749,3 +2749,44 @@ job queue.
 - Changed action: commit, materialize and freeze source WAV identities, then
   render base/control/candidate in one bounded GPU run. Do not tune condition
   levels or start another training method before this result.
+
+## 2026-08-13T17:50:25Z - Grok progress audit
+
+- Agent: `grok` in tmux `liveconv-grok-auditor`; read-only, no delegation.
+- Verdict: `CONTINUE`.
+- Adopted: source-semantic is a valid one-variable method hypothesis; finish
+  7 + 12 + 10 + 31 + 33, reject source/target blend sweeps, and keep ASR out of
+  naturalness and voice-quality decisions.
+- Not adopted: the snapshot inferred EXP-081 was unlaunched and gpu0 idle.
+  EXP-081 had started at 17:36, completed at 17:41, and its final screen
+  completed at 17:49. No running job was changed.
+
+## 2026-08-13T18:01:00Z - EXP-086 rejected source-semantic robustness
+
+- Agent: `primary-integrator`.
+- Task: test clean, noise20, leading-silence300, tempo1.2, and pitch+3 across
+  twelve real Common Voice utterances for control69 and source-semantic.
+- Dependencies: commits `5b4a7a5` and short-input fix `fbc27b8`; exclusive
+  `gpu0`; frozen manifest digest `a1460657`; listener 8878.
+- Result: all sixty rows and 180 outputs published. Source-semantic versus
+  control69 was clean `0.233` versus `0.260`, noise `1.247` versus `0.397`,
+  silence `0.322` versus `0.288`, tempo `0.241` versus `0.374`, and pitch
+  `0.379` versus `0.279`. Macro regressed `0.320` to `0.484`; a noise row added
+  one gross repeated-character loop.
+- Changed action: reject direct source-hidden robustness and blend sweeps.
+  Preserve the useful tempo diagnostic, but address the catastrophic noise
+  result with one denoising-semantic method: noisy input waveform/tokens,
+  clean-source hidden target, and fixed clean/noise alternation.
+
+## 2026-08-13T18:07:00Z - EXP-087--092 denoising-semantic method prepared
+
+- Agent: `primary-integrator`.
+- Task: alternate 522 clean and 522 deterministic noise20 generated sources,
+  pass their current waveform and semantic tokens, and supervise semantic MSE
+  with the corresponding clean generated-source hidden state.
+- Dependencies: EXP-035 data identities, target waveform/speaker, control69,
+  standard loss weights, LR, seed, zero condition, and 1,044 updates fixed.
+- Result: 53 focused tests, Ruff, `git diff --check`, exact 522/522 CPU
+  admission, and all 7 + 12 + 10 + 31 + 33 + 60 render admissions passed.
+- Changed action: commit and admit one training lane. Do not sweep noise ratio,
+  SNR, or semantic blend; machine diagnostics remain content/corruption only.
