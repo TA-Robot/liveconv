@@ -1,6 +1,11 @@
 # EXP-028: X-VC actual-input offline control
 
-Status: **runner prepared; GPU listen-now not yet run**.
+Status: **completed; diagnostic archived**.
+
+The same epoch-8/12 states did not show gross auxiliary-ASR repetition in
+full-utterance offline inference. Longer training alone is therefore not a
+global-collapse explanation; the failure interacts with streaming position or
+windowing.
 
 EXP-027 showed gross repeated phrases in auxiliary Whisper transcripts for the
 8- and 12-epoch upstream-stream outputs. This bounded follow-up asks whether the

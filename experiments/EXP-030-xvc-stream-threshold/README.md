@@ -1,6 +1,10 @@
 # EXP-030: X-VC minimum-lookahead threshold
 
-Status: **v1 technical stop; corrected v2 runner prepared**.
+Status: **v1 technical stop; corrected v2 completed and superseded by EXP-032**.
+
+After a fixed discarded warmup separated the one-time cold path, both endpoint
+controls reproduced exactly. Future 100 ms repeated; 200/250/300 ms did not in
+the auxiliary screen.
 
 EXP-029 removed the epoch-8 actual-input repetition when future context moved
 from 100 ms to 300 or 500 ms. This follow-up brackets the smallest useful

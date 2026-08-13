@@ -1,19 +1,76 @@
 {
   "schema_version": 1,
   "top_status": {
-    "updated_at": "2026-08-13T01:38:42Z",
-    "current": "MS-3の最優先は、すでに聴ける候補の判定です。EXP-020の人間学習済みRVC 3候補、EXP-021のゼロショットVC 2候補、EXP-023のQwen3-TTS 12候補、EXP-025のX-VC base/adapted 3比較をこの順で確認します。",
-    "hold": "履歴のX-VC比較と370本の発音確認は今回の判定を止めません。EXP-024のDTW pilotは再実行せず、RVC再学習、TTSの人間VC corpusへの混入、keep前のpromote作業も行いません。",
-    "next": "EXP-020/021/023は、明らかな欠損・反復・不明瞭さがあれば理由つきでrejected、それ以外はcontinueを記録してください。EXP-025はadaptedがbaseより明確に良い場合だけkeep、それ以外はrejectedです。continue/keepは次の検証を許可するだけで、製品採用ではありません。固定ポート: 8878。"
+    "updated_at": "2026-08-13T02:50:45Z",
+    "current": "MS-3の最優先は、すでに聴ける候補の判定です。EXP-020、EXP-021、EXP-023、EXP-025、EXP-026、EXP-032の順で確認します。EXP-027〜031は最終診断EXP-032へ畳み込んだため、個別に消化しません。",
+    "hold": "履歴のX-VC比較、EXP-027〜031、370本の発音確認は今回の判定を止めません。EXP-024のDTW pilotやlookahead sweepは再開せず、RVC再学習、TTSの人間VC corpusへの混入、keep前のpromote作業も行いません。",
+    "next": "EXP-020/021/023は粗い失敗をcontinue/rejected、EXP-025/026は明確な改善だけkeepまたは候補指定、EXP-032は120/125msを聴いて最低許容値またはrejectedを記録してください。continue/keepは次の検証を許可するだけで、製品採用ではありません。固定ポート: 8878。"
   },
   "collections": [
+    {
+      "match_all": ["exp032-stream-floor-v1"],
+      "display_title": "EXP-032: 実入力X-VC streaming floor",
+      "purpose": "epoch 8の同一モデルで、実際の8.17秒入力に必要な最小future contextを聴取確認",
+      "data": "future 100/110/120/125 ms、current 120 ms、smooth 20 ms、69 chunks。補助ASRでは100/110 msに反復、120/125 msにはgross repetitionなし。",
+      "status": "EXP-026の後に120/125 msを確認し、最低許容値またはrejectedを記録。補助ASRは診断だけで、route・realtime・製品採用は未判定です。",
+      "review_priority": "sixth",
+      "review_mode": "gross_reject_only"
+    },
+    {
+      "match_all": ["exp031-stream-minimum-v1"],
+      "display_title": "EXP-031: streaming lookahead診断（履歴）",
+      "purpose": "EXP-032へ進むための125〜200 ms診断",
+      "data": "最終floorではありません。",
+      "status": "EXP-032に置き換え済み。個別判定は不要です。",
+      "review_priority": "excluded"
+    },
+    {
+      "match_all": ["exp030-stream-threshold-v2"],
+      "display_title": "EXP-030: streaming lookahead診断（履歴）",
+      "purpose": "EXP-031/032へ進むための100〜300 ms診断",
+      "data": "最終floorではありません。",
+      "status": "EXP-032に置き換え済み。個別判定は不要です。",
+      "review_priority": "excluded"
+    },
+    {
+      "match_all": ["exp029-stream-position-v1"],
+      "display_title": "EXP-029: streaming位置診断（履歴）",
+      "purpose": "反復とstreaming windowの相互作用を切り分けた診断",
+      "data": "最終floorではありません。",
+      "status": "EXP-032に置き換え済み。個別判定は不要です。",
+      "review_priority": "excluded"
+    },
+    {
+      "match_all": ["exp028-actual-input-offline-v1"],
+      "display_title": "EXP-028: actual-input offline control（履歴）",
+      "purpose": "長期学習単体では反復しないことを切り分けたoffline診断",
+      "data": "streaming floorの聴取対象ではありません。",
+      "status": "診断完了。個別判定は不要です。",
+      "review_priority": "excluded"
+    },
+    {
+      "match_all": ["exp027-actual-input-stream-v2"],
+      "display_title": "EXP-027: actual-input streaming control（履歴）",
+      "purpose": "epoch 8/12とfuture 100 msで反復を発見した起点診断",
+      "data": "最終floorではありません。",
+      "status": "EXP-032に置き換え済み。個別判定は不要です。",
+      "review_priority": "excluded"
+    },
+    {
+      "match_all": ["exp026-human87-horizon-v1"],
+      "display_title": "EXP-026: human87 X-VC training horizon",
+      "purpose": "EXP-025と同じ人間87ペア・設定で、base / epoch 4 / epoch 8 / epoch 12を比較",
+      "data": "public heldout source-only 3本、heldout target未使用。epoch 4はEXP-025と完全一致し、12 epochまでfiniteに完走。",
+      "status": "EXP-025の後に確認。セット全体で明確に良いhorizonだけ候補指定し、それ以外はrejected。route・realtime・製品採用は主張しません。",
+      "review_priority": "fifth"
+    },
     {
       "match_all": ["exp025-whole-short-87-listen-now"],
       "display_title": "EXP-025: whole-short 87ペア listen-now",
       "purpose": "人間Hadou→Amitaro runrunのwhole-short 87ペアで短く適応したX-VCを、同じ入力のbaseと比較",
       "data": "public heldout source-only 3本、別文のtrain-role target reference 1本、expanded79 LoRA r8、LR 1e-4、gradient clip 5、348 updates。heldout targetは未使用。",
       "status": "EXP-020/021/023の後に確認。adaptedが明確に良ければkeep、それ以外はrejected。listen-nowのみで、334/36/54・route・realtime・製品採用は主張しません。",
-      "review_priority": "normal"
+      "review_priority": "fourth"
     },
     {
       "match_all": ["exp025-hadou-source-pronunciation-review"],

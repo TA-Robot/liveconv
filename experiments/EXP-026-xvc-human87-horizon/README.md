@@ -1,6 +1,11 @@
 # EXP-026: X-VC human87 training-horizon listen-now
 
-Status: **runner prepared; GPU listen-now not yet run**.
+Status: **listen-now completed; operator selection pending**.
+
+The committed run completed 1,044 updates in 181.74 seconds. Loss at epochs
+4/8/12 was 420.9482/393.7865/367.1953; epoch 4 reproduced EXP-025 exactly,
+heldout-target access remained zero, and 12 labeled candidates were published.
+Loss is not a quality verdict, so the operator still chooses or rejects by ear.
 
 ## Goal and stop condition
 

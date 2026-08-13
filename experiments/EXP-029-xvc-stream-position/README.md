@@ -1,6 +1,10 @@
 # EXP-029: X-VC e8 streaming-position diagnostic
 
-Status: **runner prepared; GPU listen-now not yet run**.
+Status: **completed; superseded by EXP-032**.
+
+Future 0/100 ms repeated in the auxiliary transcript, while 300/500 ms did not.
+This supported the streaming-position hypothesis and justified a bounded lower
+lookahead bracket, not shipping the high-lookahead arms.
 
 EXP-027's epoch-8 adapter repeated phrases under upstream streaming, while the
 same adapter did not repeat under EXP-028 full-utterance inference. The human87

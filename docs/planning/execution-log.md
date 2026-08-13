@@ -615,3 +615,42 @@ job queue.
   adding Grok response time to the interval. Raw first/second audits remain in
   `/tmp/liveconv-grok-progress-auditor-v2.log`; the corrected loop writes
   `/tmp/liveconv-grok-progress-auditor-v3.log`.
+
+## 2026-08-13T02:43:55Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, no tools or delegation).
+- Result: `REDIRECT`. It recognized new EXP-026/027 audio but judged the Ready
+  board stale and warned that more X-VC diagnostics before hearing could become
+  a detour.
+- Adopted: Partially. Update the live board immediately, collapse intermediate
+  diagnostics, close the sweep at the already-committed final floor, and move
+  to system integration. Do not stop all useful GPU work: the active user
+  instruction explicitly requires productive GPU use while hearing is pending.
+- Changed action: EXP-032 is the terminal lookahead diagnostic; the next lane
+  must advance the realtime system rather than add another sweep point.
+- Expected saving: avoids four redundant operator collections and an unbounded
+  series of adjacent lookahead experiments.
+
+## 2026-08-13T02:50:45Z - bounded GPU lane closed at X-VC stream floor
+
+- Agent: `primary-integrator`.
+- Task: Keep one useful GPU lane active while operator hearing was pending,
+  then stop at a system-relevant boundary.
+- Dependencies: committed runners, EXP-025 human87 model boundary, the actual
+  8.17-second input, fixed listener `8878`, and exclusive `gpu0` use.
+- Result: EXP-026 completed base/epoch4/8/12 on three heldout source rows.
+  EXP-027 exposed epoch8/12 repetition at future 100 ms; EXP-028 showed it was
+  absent offline; EXP-029--032 isolated the streaming-window interaction and
+  closed the sweep. The lowest arm without gross auxiliary-ASR repetition was
+  future 120 ms, with 260 ms total model context and CUDA chunk compute P50
+  26.19 ms/P95 32.84 ms across 69 failures. All audio is on `8878`; operator
+  hearing remains required.
+- Problems: EXP-027 v1 stopped before model load on a padded-length assumption.
+  EXP-030 v1 stopped before publication because its first inference used a
+  one-time cold CUDA path and could not match a warm control hash.
+- Rework: one explicit padded-length binding and one fixed discarded warmup;
+  neither repair changed a published comparison arm. Intermediate EXP-027--031
+  collections are diagnostic archives so the operator only drains EXP-032.
+- Changed action: no more training-horizon or lookahead sweeps. Move to the
+  experimental X-VC system path while preserving bypass and cancellation.

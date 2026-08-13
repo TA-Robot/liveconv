@@ -269,6 +269,9 @@ test("curated collection annotations expose experiment settings and checkpoints"
   const exp021 = notes.collections.find((annotation) => annotation.match_all.join("|") === "exp021-zero-shot-gross-8s-plain-20260812");
   const exp023 = notes.collections.find((annotation) => annotation.match_all.join("|") === "exp023-qwen3-tts-ono-anna-ja12-plain");
   const exp025ListenNow = notes.collections.find((annotation) => annotation.match_all.join("|") === "exp025-whole-short-87-listen-now");
+  const exp026 = notes.collections.find((annotation) => annotation.match_all.join("|") === "exp026-human87-horizon-v1");
+  const exp027 = notes.collections.find((annotation) => annotation.match_all.join("|") === "exp027-actual-input-stream-v2");
+  const exp032 = notes.collections.find((annotation) => annotation.match_all.join("|") === "exp032-stream-floor-v1");
   const exp025 = notes.collections.find((annotation) => annotation.match_all.join("|") === "exp025-hadou-source-pronunciation-review");
   const exp015 = notes.collections.find((annotation) => annotation.match_all.join("|") === "exp015-xvc-target-conditioning-render-v1");
   const exp019 = notes.collections.find((annotation) => annotation.match_all.join("|") === "exp019");
@@ -302,7 +305,12 @@ test("curated collection annotations expose experiment settings and checkpoints"
   assert.match(exp025ListenNow.display_title, /whole-short 87ペア/);
   assert.match(exp025ListenNow.data, /heldout targetは未使用/);
   assert.match(exp025ListenNow.status, /adaptedが明確に良ければkeep/);
-  assert.equal(exp025ListenNow.review_priority, "normal");
+  assert.equal(exp025ListenNow.review_priority, "fourth");
+  assert.equal(exp026.review_priority, "fifth");
+  assert.match(exp026.data, /epoch 4はEXP-025と完全一致/);
+  assert.equal(exp027.review_priority, "excluded");
+  assert.equal(exp032.review_priority, "sixth");
+  assert.match(exp032.data, /120\/125 msにはgross repetitionなし/);
   assert.equal(exp025.review_mode, "pronunciation_keep_exclude");
   assert.match(exp025.data, /source-only/);
   assert.equal(isReviewableNote(exp023), false);

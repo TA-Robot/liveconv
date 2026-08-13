@@ -1,6 +1,11 @@
 # EXP-027: X-VC human87 horizons on actual streaming input
 
-Status: **v1 technical stop; corrected v2 runner prepared**.
+Status: **v1 technical stop; corrected v2 completed**.
+
+The corrected run published base/epoch4/epoch8/epoch12. Auxiliary Whisper found
+gross phrase repetition at epochs 8 and 12 under the fixed 100-ms-future stream;
+steady-state CUDA chunk P95 was 22.22--26.53 ms with zero failures. This does
+not include network/playout or qualify a route.
 
 ## Goal and Definition of Done
 

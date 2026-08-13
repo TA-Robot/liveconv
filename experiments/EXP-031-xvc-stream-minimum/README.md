@@ -1,6 +1,10 @@
 # EXP-031: X-VC minimum useful streaming lookahead
 
-Status: **runner prepared; GPU listen-now not yet run**.
+Status: **completed; superseded by EXP-032**.
+
+Future 125/150/175/200 ms had no gross auxiliary-ASR repetition, with the
+200-ms endpoint reproducing EXP-030 exactly. This bounded the final floor test
+to 100--125 ms.
 
 EXP-030 found gross repetition at 100 ms future context and no gross repetition
 at 200, 250, or 300 ms for the epoch-8 human87 adapter on the actual 8.17-second
