@@ -272,6 +272,7 @@ test("curated collection annotations expose experiment settings and checkpoints"
   const exp026 = notes.collections.find((annotation) => annotation.match_all.join("|") === "exp026-human87-horizon-v1");
   const exp027 = notes.collections.find((annotation) => annotation.match_all.join("|") === "exp027-actual-input-stream-v2");
   const exp032 = notes.collections.find((annotation) => annotation.match_all.join("|") === "exp032-stream-floor-v1");
+  const exp032System = notes.collections.find((annotation) => annotation.match_all.join("|") === "exp032-system-path-v4");
   const exp025 = notes.collections.find((annotation) => annotation.match_all.join("|") === "exp025-hadou-source-pronunciation-review");
   const exp015 = notes.collections.find((annotation) => annotation.match_all.join("|") === "exp015-xvc-target-conditioning-render-v1");
   const exp019 = notes.collections.find((annotation) => annotation.match_all.join("|") === "exp019");
@@ -311,6 +312,10 @@ test("curated collection annotations expose experiment settings and checkpoints"
   assert.equal(exp027.review_priority, "excluded");
   assert.equal(exp032.review_priority, "sixth");
   assert.match(exp032.data, /120\/125 msにはgross repetitionなし/);
+  assert.equal(exp032System.review_priority, "normal");
+  assert.equal(exp032System.review_mode, "gross_reject_only");
+  assert.match(exp032System.data, /409\/409 frames完走/);
+  assert.match(exp032System.status, /Gateway routing・Extension playout・route qualificationは未実施/);
   assert.equal(exp025.review_mode, "pronunciation_keep_exclude");
   assert.match(exp025.data, /source-only/);
   assert.equal(isReviewableNote(exp023), false);

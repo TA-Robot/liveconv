@@ -1,12 +1,21 @@
 {
   "schema_version": 1,
   "top_status": {
-    "updated_at": "2026-08-13T02:50:45Z",
-    "current": "MS-3の最優先は、すでに聴ける候補の判定です。EXP-020、EXP-021、EXP-023、EXP-025、EXP-026、EXP-032の順で確認します。EXP-027〜031は最終診断EXP-032へ畳み込んだため、個別に消化しません。",
+    "updated_at": "2026-08-13T03:15:39Z",
+    "current": "MS-3の最優先は、すでに聴ける候補の判定です。EXP-020、EXP-021、EXP-023、EXP-025、EXP-026、EXP-032、最後にEXP-032 system-pathの順で確認します。EXP-027〜031は最終診断EXP-032へ畳み込んだため、個別に消化しません。",
     "hold": "履歴のX-VC比較、EXP-027〜031、370本の発音確認は今回の判定を止めません。EXP-024のDTW pilotやlookahead sweepは再開せず、RVC再学習、TTSの人間VC corpusへの混入、keep前のpromote作業も行いません。",
-    "next": "EXP-020/021/023は粗い失敗をcontinue/rejected、EXP-025/026は明確な改善だけkeepまたは候補指定、EXP-032は120/125msを聴いて最低許容値またはrejectedを記録してください。continue/keepは次の検証を許可するだけで、製品採用ではありません。固定ポート: 8878。"
+    "next": "EXP-020/021/023は粗い失敗をcontinue/rejected、EXP-025/026は明確な改善だけkeepまたは候補指定、EXP-032は120/125msとsource/system pairを聴いて最低許容値またはrejectedを記録してください。continue/keepは次の検証を許可するだけで、製品採用ではありません。固定ポート: 8878。"
   },
   "collections": [
+    {
+      "match_all": ["exp032-system-path-v4"],
+      "display_title": "EXP-032: future-120候補のworker system-path",
+      "purpose": "同じ実入力とepoch 8 / future 120 ms候補を、bounded queue・generation cancel・stale抑止を持つ既存XvcWorkerへ通した最小system確認",
+      "data": "source/system 1ペア。409/409 frames完走、cancelした旧generationのstale output 0、max in-flight 25。補助ASRではgross loopingなし。",
+      "status": "EXP-032の120/125 msを確認した後、sourceとsystem出力を比較。自然さと声質をcontinueまたはrejectedで記録してください。Gateway routing・Extension playout・route qualificationは未実施です。",
+      "review_priority": "normal",
+      "review_mode": "gross_reject_only"
+    },
     {
       "match_all": ["exp032-stream-floor-v1"],
       "display_title": "EXP-032: 実入力X-VC streaming floor",

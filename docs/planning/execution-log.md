@@ -654,3 +654,47 @@ job queue.
   collections are diagnostic archives so the operator only drains EXP-032.
 - Changed action: no more training-horizon or lookahead sweeps. Move to the
   experimental X-VC system path while preserving bypass and cancellation.
+
+## 2026-08-13T03:11:37Z - EXP-032 candidate worker path published
+
+- Agent: `primary-integrator`.
+- Task: Put the existing epoch-8/future-120-ms candidate through the bounded
+  X-VC worker state machine without activating the retained Gateway profile.
+- Start: after the 02:43 Grok audit; end: 03:11 UTC.
+- Dependencies: committed system-path probe, EXP-032 candidate identities,
+  actual 8.17-second source, existing `XvcWorker`, fixed listener `8878`, and
+  exclusive `gpu0` use.
+- Result: `v4` published one source/system pair. The canceled generation
+  produced zero stale frames; the retained generation completed contiguous
+  409/409 input/output frames while respecting the 25-frame credit. Auxiliary
+  faster-whisper-small found no gross loop. Gateway routing, Extension playout,
+  route qualification, naturalness, and selection remain unclaimed.
+- Problems: `v1` stopped before model load because CUDA device selection followed
+  peak-memory reset. `v2` stopped before inference because deterministic cuBLAS
+  configuration was absent. `v3` overflowed the direct worker queue because the
+  probe omitted the Gateway bridge's output-backed credit; no failed attempt
+  published audio, and the stuck `v3` exception-exit process was terminated.
+- Rework: repaired only device ordering, deterministic runtime configuration,
+  and credit accounting. The model, adapter, source, target reference, stream
+  geometry, and cancellation question stayed fixed.
+- GPU: peak allocation 2,701,843,456 bytes; 70 model calls; zero failures;
+  compute P50 43.34 ms, P95 54.93 ms, cold max 1,573.58 ms. GPU returned idle.
+
+## 2026-08-13T03:13:55Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, no tools or delegation).
+- Result: `SIMPLIFY`. It recognized the new system-path audio as direct MS-3/MS-4
+  progress and judged the focused worker/render stop condition satisfied.
+- Adopted: Yes. Do not start another GPU lane merely to avoid idle hardware;
+  after the bounded integration render, the highest-value next information is
+  the operator's `keep | continue | rejected` on the already-published queue.
+- Corrected stale audit input: the live library contains EXP-026, EXP-032, and
+  `exp032-system-path-v4`; the auditor's compact `ready` extraction omitted
+  them even though all are served on 8878. Add a concise system-path collection
+  note so the operator sees the intended order and claim boundary.
+- Changed action: stop worker polish, lookahead/training sweeps, and pre-keep
+  route claims. Formal Gateway/Extension binding becomes eligible only after an
+  EXP-032 `keep`.
+- Expected saving: avoids at least one additional diagnostic/GPU cycle and
+  moves directly to the decision that can kill or admit the candidate.

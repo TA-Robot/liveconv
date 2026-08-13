@@ -1,6 +1,7 @@
 # EXP-032: X-VC streaming lookahead floor
 
-Status: **completed; operator hearing pending; lookahead sweep closed**.
+Status: **completed; operator hearing pending; lookahead sweep and candidate
+worker probe closed**.
 
 The 100- and 125-ms endpoint controls reproduced exactly. Auxiliary Whisper
 showed gross repetition at 100 ms, shorter repetition at 110 ms, and no gross
@@ -67,3 +68,20 @@ Gateway bridge's output-backed 25-frame credit. It published nothing, and the
 stuck exception-exit process was terminated and released its GPU memory. `v4`
 waits for output whenever credit is full and records both credit wait and
 maximum in-flight frames; model and audio conditions remain unchanged.
+
+`v4` completed at commit `9c1687a38c875f77834f5b45f1852d50b22c68f4`.
+Generation 1 was canceled during real inference with a 0.016 ms acknowledgement
+and zero stale output frames. Generation 2 retained all 409 input/output frames
+in contiguous order, completed in 9.459 s for 8.171 s of source audio, and
+never exceeded the 25-frame credit. Output-backed credit waiting totaled
+1,134.315 ms. Seventy model calls had zero failures, CUDA compute P50 43.34 ms,
+P95 54.93 ms, and a 1,573.58 ms cold maximum; peak GPU allocation was
+2,701,843,456 bytes. The output SHA-256 is
+`be4137a0d597a7a19f1b6858e62a7435f3b840bcc11db8045d9fcc3f52fbe181`.
+
+An auxiliary faster-whisper-small screen transcribed the system output as
+`2人の結構はよっかっ空客だそんなんそこはよっかっ空客だ`: it did not show
+the gross looping seen at future 100/110 ms. This is only a coarse corruption
+screen. Naturalness, speaker quality, realtime qualification, Gateway routing,
+Extension playout, and product selection remain unclaimed. The source/system
+pair is published as `exp032-system-path-v4` on port 8878.

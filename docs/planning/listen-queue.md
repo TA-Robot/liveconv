@@ -22,7 +22,7 @@ leave the GPU idle.
 | EXP-023 | 12 Qwen3-TTS Ono_Anna texts | per text: `continue` or `rejected` | one `rejected` stops this exact TTS profile; all `continue` only admits later TTS transport work, not a VC win |
 | EXP-025 whole-short 87 | Frozen base vs human-paired adapted X-VC on three public heldout source-only utterances | `keep` only if adapted is clearly preferable on the set; otherwise `rejected` | `keep` admits a separate promote pass; `rejected` closes this exact 87-pair schedule |
 | EXP-026 horizon | The same three X-VC rows at base / epoch 4 / epoch 8 / epoch 12 | nominate one horizon only if it is clearly preferable across the set; otherwise `rejected` | a nomination chooses the next listen-now model state only; it is not a route or product decision |
-| EXP-032 stream floor | Actual 8.17 s input at epoch 8 with future 100 / 110 / 120 / 125 ms | hear 120 and 125 ms; record the lowest acceptable arm, or `rejected` | 100/110 have auxiliary-ASR repetition; 120/125 are technical route candidates only, not route-qualified |
+| EXP-032 stream floor + system path | Actual 8.17 s input at epoch 8 with future 100 / 110 / 120 / 125 ms, followed by the future-120 candidate through the bounded worker/cancellation path | hear 120 and 125 ms, then compare the source/system pair; record the lowest acceptable arm, or `rejected` | 100/110 have auxiliary-ASR repetition; the worker probe completed with zero stale frames but is not Gateway-, Extension-, or route-qualified |
 
 Historical X-VC synthetic blinds (EXP-010–019) stay on the listener as
 archives. They do not gate the current queue.
@@ -39,13 +39,15 @@ authorize promote claims or several speculative sweeps in parallel.
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
 | 1 | Help the operator finish the six rows above; EXP-027--031 are superseded diagnostics and do not need separate draining | parent | n/a | decisions recorded |
-| 2 | Connect the bounded X-VC epoch-8 / future-120-ms candidate to an experimental system path while preserving native bypass and generation cancellation | parent | no for implementation preparation; route binding still requires a keep | focused adapter/worker test plus one actual-input system render, or a recorded integration blocker |
+| 2 | If EXP-032 receives a `keep`, bind that exact candidate to the formal Gateway profile and exercise native fallback/Extension playout | parent | yes: EXP-032 `keep` | one route-qualified system listen or a recorded integration blocker |
 | 3 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.
 EXP-032 closes the lookahead sweep at a 120-ms auxiliary-ASR floor; do not open
-another lookahead point. GPU work now moves to the experimental system path,
-not more training or window sweeps.
+another lookahead point. Its bounded worker/cancellation probe also completed
+and published one actual-input system WAV. The next decision is hearing, not
+another GPU lane. A recorded `keep` may admit formal Gateway/Extension work;
+without it, do not spend GPU time polishing the same candidate.
 
 ## Keepers
 
