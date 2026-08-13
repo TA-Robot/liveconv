@@ -87,7 +87,7 @@ name one owner and ownership zone below.
 | LV-076 | Done | P0 | MS-3 | Preserve target alignment while training X-VC on varied audio limitations | EXP-044 improved seven external rows, but EXP-045 regressed on twelve changed utterances; aligned augmentation is closed without a fixed-condition render |
 | LV-077 | Done | P0 | MS-3 | Anchor synthetic X-VC diversity with authentic aligned sources | EXP-047 regressed on twelve changed utterances and EXP-048 changed none of ten stress summaries; the authentic-anchor method is closed |
 | LV-078 | Done | P0 | MS-3 | Strengthen X-VC semantic content preservation without weakening acoustic losses | EXP-049 improved the ten-condition clean subset but regressed twelve changed utterances and no constrained row; semantic loss reweighting is closed |
-| LV-079 | In progress | P0 | MS-3 | Exclude train-only frame-condition modules from X-VC adaptation | EXP-052 adapts only 36 source x-branch attention/FFN linears, excluding frame-condition and speaker modulation while holding EXP-035 data/loss/updates fixed |
+| LV-079 | In progress | P0 | MS-3 | Exclude input-invariant frame-condition modules from X-VC adaptation | EXP-052 adapts only 36 source x-branch attention/FFN linears, excluding the zero-waveform-condition path and speaker modulation while holding EXP-035 data/loss/updates fixed |
 
 ## Active ownership
 

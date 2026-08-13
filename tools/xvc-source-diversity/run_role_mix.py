@@ -373,7 +373,7 @@ def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
             "run_kind": "EXP-052 X-VC source-path scope evaluation",
             "result_kind": "liveconv-exp052-xvc-source36-result/v1",
             "question": (
-                "Does excluding train-only frame-condition modules improve "
+                "Does excluding input-invariant zero-condition modules improve "
                 "content generalization while retaining source-path adaptation?"
             ),
             "independent_variable": (

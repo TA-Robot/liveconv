@@ -5,17 +5,21 @@ Status: ready method pilot; operator hearing deferred
 ## Question
 
 Does excluding the frame-condition branch from adaptation improve X-VC
-generalization when listen-now inference supplies a zero frame condition?
+generalization when both training and listen-now inference use the same
+zero-waveform frame condition?
 
 Control69 adapts 69 attention/FFN linears in the acoustic converter. Thirty-six
 belong to the source/acoustic `x` path (`to_q/k/v`, `to_out`, and `ff_x`), while
-the rest update the target-mel frame-condition `c` path. Training sees target
-mel, but the current comparison route intentionally supplies an all-zero target
-condition. EXP-052 changes only LoRA targets to those 36 source-path linears.
+the rest update the frame-condition `c` path. The current trainer and comparison
+route both supply an all-zero target waveform, so that path receives a
+deterministic zero-waveform mel condition rather than held-out target audio.
+EXP-052 tests whether adapting that input-invariant path is unnecessary or
+overfits the training set by changing only LoRA targets to the 36 source-path
+linears.
 
 It restores EXP-035's twelve synthetic donors, standard loss weights, all-
 standard roles, 87 targets, 1,044 updates, `1e-4`, seed, target voice, and zero
-inference condition. This is not the rejected speaker7 scope, which adapted
+training/inference condition. This is not the rejected speaker7 scope, which adapted
 only seven global-speaker modulators.
 
 ## Done and stop

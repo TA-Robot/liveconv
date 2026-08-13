@@ -118,7 +118,9 @@ improved the ten-condition macro 0.153 to 0.126, but regressed twelve changed
 utterances 0.184 to 0.238 and changed none of the noise/tempo/F0/silence rows.
 Loss reweighting is closed. EXP-052 changes learning targets instead: adapt the
 36 source/acoustic attention+FFN linears but exclude the 33 frame-condition
-linears that see target mel during training while inference uses zero context.
+linears. Both the campaign trainer and inference route use the same zero-waveform
+condition; the test asks whether adapting its input-invariant path is unnecessary
+or overfits, while source-path adaptation is retained.
 
 ## Next listen-now to render
 

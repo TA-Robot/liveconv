@@ -2370,11 +2370,25 @@ job queue.
 ## 2026-08-13T14:47:02Z - EXP-052 source-path scope prepared
 
 - Agent: `primary-integrator`.
-- Task: Exclude frame-condition `c` modules that train on target mel but receive
-  zero context at listen-now inference; retain the 36 source `x` attention and
-  FFN linears. This differs from the rejected seven speaker modulators.
+- Task: Exclude frame-condition `c` modules while retaining the 36 source `x`
+  attention and FFN linears. Both the custom trainer and inference route pass an
+  all-zero target waveform, so this tests whether adapting an input-invariant
+  condition path is unnecessary or overfits. It differs from the rejected seven
+  speaker modulators.
 - Result: exact topology has 36 targets and 442,368 trainable parameters. Ruff,
   40 focused tests, exact 1,044-artifact CPU admission, standard loss-weight
   validation, and `git diff --check` passed.
 - Changed action: commit before the sole GPU run. The mandatory evaluation is
   again the complete 7 + 12 + 10 bundle; no adjacent scope point is admitted.
+
+## 2026-08-13T14:50:57Z - EXP-052 hypothesis wording corrected
+
+- Agent: `primary-integrator`.
+- Problem: the prepared note incorrectly described frame conditioning as target
+  mel during training versus zeros during inference. `_gpu_batch` explicitly
+  supplies `torch.zeros_like(target)` during this campaign's training too.
+- Result: the runnable method is unchanged. The precise hypothesis is now
+  input-varying source-path adaptation versus also adapting the deterministic
+  zero-waveform-condition path. No held-out target audio is exposed.
+- Rework: documentation and result-policy wording only; the already-running
+  one-variable source36 job remains valid.
