@@ -88,3 +88,9 @@ def test_wave_adversarial_uses_exp066_condition_policy() -> None:
     assert policy["experiment_id"] == "EXP-066"
     assert policy["control"][0] == "cv12-control69"
     assert policy["candidate"][0] == "cv12-wave-adversarial"
+    choices = next(
+        action.choices
+        for action in RENDER._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert "wave-adversarial" in choices

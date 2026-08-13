@@ -126,6 +126,13 @@ def test_wave_adversarial_policies_cover_changed_and_hadou_sets() -> None:
     assert changed["variant_id"] == hadou["variant_id"] == (
         "cv12-wave-adversarial"
     )
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert "wave-adversarial" in choices
+    assert "wave-adversarial-hadou" in choices
 
 
 def test_materialized_hadou_manifest_is_admitted() -> None:

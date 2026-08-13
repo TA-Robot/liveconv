@@ -573,6 +573,8 @@ def _parser() -> argparse.ArgumentParser:
             "target275-expanded",
             "content-filtered6x2",
             "content-filtered6x2-hadou",
+            "wave-adversarial",
+            "wave-adversarial-hadou",
         ),
         default="speaker7",
     )

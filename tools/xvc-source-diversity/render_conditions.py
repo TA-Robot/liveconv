@@ -430,6 +430,7 @@ def _parser() -> argparse.ArgumentParser:
             "source36",
             "target275",
             "content-filtered6x2",
+            "wave-adversarial",
         ),
         default="donor-breadth",
     )
