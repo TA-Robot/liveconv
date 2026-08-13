@@ -1,10 +1,15 @@
 # EXP-065: waveform-adversarial X-VC on changed Common Voice utterances
 
-Status: evaluation policy ready before candidate training
+Status: completed; no loops, small changed-utterance content regression
 
 Render EXP-064 on the frozen twelve changed utterances from six heldout Common
 Voice speakers, against the exact EXP-035 adapter. This is a content/corruption
 screen only and cannot select naturalness or identity.
+
+The 36 model outputs produced no gross repetition. Candidate versus control69
+mean source-relative distance was 0.204 versus 0.184; the maxima were both
+0.571. Known-text distance was 0.579 versus 0.576. This does not reject a
+possible naturalness effect, but it supplies no machine content win.
 
 ```bash
 HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \

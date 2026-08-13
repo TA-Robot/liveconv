@@ -1,9 +1,13 @@
 # EXP-066: waveform-adversarial X-VC on frozen audio conditions
 
-Status: evaluation policy ready before candidate training
+Status: completed; all ten condition summaries matched control69 exactly
 
 Render EXP-064 on the ten clean/noise/leading-silence/tempo/pitch rows against
 the exact EXP-035 adapter. This is a content/corruption screen only.
+
+All 30 model outputs avoided gross repetition. Clean, noise, leading silence,
+tempo, and pitch rows were transcript-identical to control69; macro
+source-relative distance was 0.153 for both.
 
 ```bash
 HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \

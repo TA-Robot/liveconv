@@ -144,14 +144,21 @@ introducing one gross loop. The method and keep-count sweep are closed. The
 next distinct method restores X-VC's pretrained waveform discriminator and its
 alternating adversarial/feature-matching loss, which the local LoRA runner has
 so far omitted. Machine screens may reject corruption only; the intended
-naturalness effect remains an unheard hypothesis.
+naturalness effect remains an unheard hypothesis. EXP-064--067 completed that
+one method point with no gross loop across 60 varied rows. Seven external rows
+and all ten conditions tied control69, twelve changed utterances moved from
+0.184 to 0.204, and Hadou31 improved by 5 wins / 24 ties / 2 losses with mean
+0.210 to 0.186. Retain the adapter as unheard naturalness-motivated audio, but
+do not sweep the objective or call it better. The next separate hypothesis is
+decoder-interface placement: adapt only final speaker-conditioned normalization
+and `proj_out` while all EXP-035 data and optimizer controls remain fixed.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Restore the checkpoint's pretrained waveform discriminator in one fixed-data, fixed-scope X-VC adapter run | parent | no | upstream-faithful D/G update tested and committed, or rejected before GPU |
-| 2 | Publish the admitted adversarial adapter on the full 7 + 12 + 10 + 31 varied evaluation bundle | parent | no human dependency for machine reject | corruption screen complete and next method decision recorded |
+| 1 | Train one decoder-interface function scope (`norm_out.linear` + `proj_out`) on fixed EXP-035 data | parent | no | one-variable plan and exact 22,016-parameter scope committed, or rejected before GPU |
+| 2 | Publish that one adapter on the full 7 + 12 + 10 + 31 varied evaluation bundle | parent | no human dependency for machine reject | corruption screen complete and next method decision recorded |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

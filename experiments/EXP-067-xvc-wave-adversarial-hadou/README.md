@@ -1,11 +1,17 @@
 # EXP-067: waveform-adversarial X-VC on 31 clean Hadou sentences
 
-Status: evaluation policy ready before candidate training
+Status: completed; no loops and a mixed 5/24/2 Hadou content result
 
 Render EXP-064 on the already-materialized, pre-training-frozen 31 Hadou
 2.4-second windows against EXP-035. Compare machine transcripts only with the
 exact source windows; official full-sentence text is listening context, not a
 valid CER reference for a truncated window.
+
+All 93 model outputs avoided gross repetition. Against control69, the
+waveform-adversarial candidate had five lower, twenty-four equal, and two
+higher source-relative distances; the mean moved from 0.210 to 0.186 and the
+median from 0.111 to 0.083. The official full-text distance is not used for
+the decision because only the first 2.4-second window was converted.
 
 ```bash
 HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \

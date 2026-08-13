@@ -2554,3 +2554,40 @@ job queue.
 - Changed action: after committing, admit one 1,044-update GPU run only. Do not
   sweep adversarial weights, warmup, or D/G learning rates. Publish viable audio
   but make no naturalness claim without hearing.
+
+## 2026-08-13T16:20:25Z - Grok progress audit
+
+- Agent: `grok` in tmux `liveconv-grok-auditor`; read-only, no delegation.
+- Verdict: `CONTINUE`.
+- Adopted: keep the sole adversarial method point, finish its frozen
+  7 + 12 + 10 + 31 bundle, reject objective/warmup/D/G-rate sweeps, and make no
+  naturalness or quality claim from machine scores.
+- Not adopted: the audit snapshot inferred that EXP-064 was still waiting to
+  launch and that gpu0 was idle. EXP-064 had completed at 16:15, its seven-row
+  screen was complete, and EXP-065 had already published twelve more rows.
+  The audit's listener concern came from a `ready` sample limited to twenty
+  historical entries rather than proof that the new artifact directories were
+  absent. No running work was stopped.
+
+## 2026-08-13T16:27:00Z - EXP-064--067 completed waveform-adversarial gate
+
+- Agent: `primary-integrator`.
+- Task: Restore the pretrained waveform discriminator for one fixed-data
+  control69 adapter and screen it across the full varied evaluation bundle.
+- Result: training completed 1,044 alternating D/G updates in 330.37 seconds
+  at 5.13 GB peak. Discriminator loss moved 1.686 to 0.387 and total
+  generator-side loss 199.76 to 181.57. All 60 evaluated rows avoided gross
+  repetition. Seven external rows and ten frozen conditions were transcript-
+  identical to control69. Twelve changed utterances moved from 0.184 to 0.204
+  mean source-relative distance with the same 0.571 maximum. Hadou31 produced
+  five wins, twenty-four ties, and two losses; mean improved 0.210 to 0.186 and
+  median 0.111 to 0.083. The bundle published 180 model-output WAVs plus source
+  and target references on the listener.
+- Problems: the first EXP-065 invocation exposed an omitted CLI choice after
+  the underlying policy had passed tests. It failed before creating an output
+  directory; a direct CLI-choice regression test and commit `d0649b9` fixed it.
+- Rework: about two minutes; no GPU training or audio was discarded.
+- Changed action: retain EXP-064 unheard because its intended naturalness
+  effect cannot be judged by ASR; prohibit adjacent adversarial sweeps. The next
+  distinct method tests only the final normalization and converter-to-decoder
+  projection, rather than revisiting attention count or the human87 scope.

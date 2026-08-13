@@ -173,7 +173,8 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-055 275 target texts at fixed 1,044 updates (closed: mixed/no robust gain)
         -> mandatory 7 + 12 + 10 + 33 sentence-diversity gate (complete)
         -> EXP-059--063 pseudo-source content filter (closed: changed-row regression + Hadou loop)
-        -> one upstream-faithful waveform-adversarial method at fixed data/scope/updates
+        -> EXP-064--067 upstream waveform-adversarial method (viable unheard candidate)
+        -> one decoder-interface function scope at fixed data/loss/updates
         -> operator hearing when available
 ```
 

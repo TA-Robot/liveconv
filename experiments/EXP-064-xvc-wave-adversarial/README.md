@@ -1,6 +1,6 @@
 # EXP-064: pretrained waveform-adversarial X-VC adaptation
 
-Status: ready; runner and full evaluation policy must be committed before GPU
+Status: completed listen-now; viable unheard candidate, no quality claim
 
 ## Question
 
@@ -29,6 +29,19 @@ ten named conditions, and 31 Hadou sentences. Machine ASR may reject empty,
 content-drifted, or gross-loop output. It cannot evaluate the intended
 naturalness effect, speaker identity, or select a winner. Keep all viable audio
 unheard until operator listening returns.
+
+## Result
+
+The fixed-data adapter completed 1,044 alternating D/G updates in 330.37
+seconds at 5.13 GB peak allocated GPU memory. The discriminator loss moved
+from 1.686 to 0.387; total generator-side loss moved from 199.76 to 181.57.
+The complete EXP-064--067 bundle produced no gross loop across 60 evaluation
+rows. Seven external rows and ten named conditions were machine-identical to
+control69. Twelve changed utterances moved from 0.184 to 0.204 mean
+source-relative distance. Hadou31 moved from 0.210 to 0.186 with five lower,
+twenty-four equal, and two higher rows. The adapter remains a
+naturalness-motivated hearing candidate because machine ASR cannot decide its
+intended effect. No adversarial weight, warmup, or optimizer sweep is admitted.
 
 ## Command
 
