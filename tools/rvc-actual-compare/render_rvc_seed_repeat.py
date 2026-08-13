@@ -5,30 +5,41 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import importlib.util
 import json
 import os
 import shlex
 import shutil
+import struct
 import subprocess
 import sys
 import time
+import wave
 from pathlib import Path
-from types import ModuleType
 from typing import Any
 
 import numpy as np
-from liveconv_audio._adapter_registry import _rvc_environment
-from liveconv_audio.profiles import ModelProfile
-
-from workers.adapters.rvc_v2.backend import RvcConfiguration, UpstreamRvcBackend
 
 ROOT = Path(__file__).resolve().parents[2]
-HELDOUT_RUNNER = Path(__file__).with_name("render_sasayaki_heldout.py")
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from workers.adapters.rvc_v2.backend import (  # noqa: E402
+    RvcConfiguration,
+    UpstreamRvcBackend,
+)
+
 PROFILE_ID = "vc.rvc-v2.amitaro-sasayaki-clean-bright.v1"
 SOURCE_ID = "EMOTION100_017"
 REPEAT_COUNT = 3
 SAMPLE_RATE = 48_000
+SOURCE = {
+    "source_id": SOURCE_ID,
+    "display_text": "あっベルが鳴ってる。",
+    "path": ROOT
+    / "artifacts/ms3/listening/exp026-human87-horizon-v1/03-EMOTION100_017"
+    / "00-source-reference.wav",
+    "sha256": "9fad53ec17379745bc7e56d9306a1ffa1fda1ee0dfdf077826792e6e8199d455",
+}
 
 
 class SeedRepeatError(RuntimeError):
@@ -37,18 +48,6 @@ class SeedRepeatError(RuntimeError):
 
 def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
-
-
-def _load_heldout() -> ModuleType:
-    specification = importlib.util.spec_from_file_location(
-        "liveconv_rvc_seed_repeat_heldout", HELDOUT_RUNNER
-    )
-    if specification is None or specification.loader is None:
-        raise SeedRepeatError("heldout runner cannot load")
-    module = importlib.util.module_from_spec(specification)
-    sys.modules[specification.name] = module
-    specification.loader.exec_module(module)
-    return module
 
 
 def read_process_environment(pid: int) -> dict[str, str]:
@@ -85,16 +84,61 @@ def read_identity_environment(path: Path) -> dict[str, str]:
 
 
 def profile_environment(
-    profile: ModelProfile, parent_environment: dict[str, str], seed: int
+    profile: dict[str, Any], parent_environment: dict[str, str], seed: int
 ) -> dict[str, str]:
-    previous = os.environ.copy()
-    try:
-        os.environ.clear()
-        os.environ.update(parent_environment)
-        environment, _ = _rvc_environment(profile, profile.runtime.configuration)
-    finally:
-        os.environ.clear()
-        os.environ.update(previous)
+    profile_id = profile.get("profile_id")
+    runtime = profile.get("runtime")
+    configuration = runtime.get("configuration") if isinstance(runtime, dict) else None
+    settings = (
+        configuration.get("settings") if isinstance(configuration, dict) else None
+    )
+    if profile_id != PROFILE_ID or not isinstance(settings, dict):
+        raise SeedRepeatError("sealed RVC profile configuration is invalid")
+    suffix = "".join(
+        character if character.isalnum() else "_" for character in PROFILE_ID
+    ).strip("_").upper()
+    prefix = f"LIVECONV_RVC_VARIANT_{suffix}"
+    environment_names = {
+        "LIVECONV_RVC_SOURCE_ROOT": "LIVECONV_RVC_SOURCE_ROOT",
+        "LIVECONV_RVC_SOURCE_REVISION": "LIVECONV_RVC_SOURCE_REVISION",
+        "LIVECONV_RVC_V2_WORKER_WHEEL_PATH": (
+            "LIVECONV_RVC_V2_WORKER_WHEEL_PATH"
+        ),
+        "LIVECONV_RVC_V2_WORKER_WHEEL_SHA256": (
+            "LIVECONV_RVC_V2_WORKER_WHEEL_SHA256"
+        ),
+        "LIVECONV_RVC_V2_CHECKPOINT_PATH": f"{prefix}_CHECKPOINT_PATH",
+        "LIVECONV_RVC_V2_CHECKPOINT_SHA256": f"{prefix}_CHECKPOINT_SHA256",
+        "LIVECONV_RVC_V2_INDEX_PATH": f"{prefix}_INDEX_PATH",
+        "LIVECONV_RVC_V2_INDEX_SHA256": f"{prefix}_INDEX_SHA256",
+    }
+    environment: dict[str, str] = {}
+    for output_name, source_name in environment_names.items():
+        value = parent_environment.get(source_name)
+        if not value:
+            raise SeedRepeatError(f"identity environment is missing: {source_name}")
+        environment[output_name] = value
+    setting_names = {
+        "speaker_id": "LIVECONV_RVC_V2_SPEAKER_ID",
+        "pitch_shift": "LIVECONV_RVC_V2_PITCH_SHIFT",
+        "f0_method": "LIVECONV_RVC_V2_F0_METHOD",
+        "index_rate": "LIVECONV_RVC_V2_INDEX_RATE",
+        "rms_mix_rate": "LIVECONV_RVC_V2_RMS_MIX_RATE",
+        "sample_rate": "LIVECONV_RVC_V2_SAMPLE_RATE",
+        "block_ms": "LIVECONV_RVC_V2_BLOCK_MS",
+        "crossfade_ms": "LIVECONV_RVC_V2_CROSSFADE_MS",
+        "context_ms": "LIVECONV_RVC_V2_CONTEXT_MS",
+        "threshold_dbfs": "LIVECONV_RVC_V2_THRESHOLD_DBFS",
+    }
+    for setting, name in setting_names.items():
+        value = settings.get(setting)
+        if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+            raise SeedRepeatError(f"sealed RVC setting is invalid: {setting}")
+        environment[name] = str(value)
+    if "input_gain_db" in settings:
+        environment["LIVECONV_RVC_V2_INPUT_GAIN_DB"] = str(
+            settings["input_gain_db"]
+        )
     environment["LIVECONV_RVC_V2_INFERENCE_SEED"] = str(seed)
     return environment
 
@@ -112,6 +156,39 @@ def signal_comparison(anchor: bytes, candidate: bytes) -> dict[str, float | bool
         "max_abs_difference": float(np.max(np.abs(difference))),
         "rms_difference": difference_rms,
     }
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def wav_to_f32le(source: Path, destination: Path) -> int:
+    try:
+        with wave.open(str(source), "rb") as stream:
+            if (
+                stream.getframerate(),
+                stream.getnchannels(),
+                stream.getsampwidth(),
+                stream.getcomptype(),
+            ) != (SAMPLE_RATE, 1, 2, "NONE"):
+                raise SeedRepeatError("source must be mono PCM16 at 48 kHz")
+            frames = stream.getnframes()
+            pcm = stream.readframes(frames)
+    except (OSError, wave.Error) as error:
+        raise SeedRepeatError("source WAV cannot be decoded") from error
+    if frames <= 0 or len(pcm) != frames * 2:
+        raise SeedRepeatError("source WAV is empty or truncated")
+    destination.write_bytes(
+        b"".join(
+            struct.pack("<f", sample / 32768.0)
+            for (sample,) in struct.iter_unpack("<h", pcm)
+        )
+    )
+    return frames
 
 
 def write_wav(path: Path, pcm: bytes) -> None:
@@ -138,7 +215,7 @@ def write_wav(path: Path, pcm: bytes) -> None:
     )
 
 
-def execute(arguments: argparse.Namespace, heldout: ModuleType) -> dict[str, Any]:
+def execute(arguments: argparse.Namespace) -> dict[str, Any]:
     if arguments.work_dir.exists() or arguments.listener_dir.exists():
         raise SeedRepeatError("work and listener outputs must be new")
     document = json.loads((arguments.deployment / "profiles.json").read_text())
@@ -149,13 +226,14 @@ def execute(arguments: argparse.Namespace, heldout: ModuleType) -> dict[str, Any
     ]
     if len(records) != 1:
         raise SeedRepeatError("sealed RVC profile is unavailable")
-    profile = ModelProfile.model_validate(records[0])
-    source = next(item for item in heldout.SOURCES if item["source_id"] == SOURCE_ID)
-    heldout._checked_file(source["path"], source["sha256"], SOURCE_ID)  # noqa: SLF001
+    profile = records[0]
+    source = SOURCE
+    if sha256_file(source["path"]) != source["sha256"]:
+        raise SeedRepeatError("source identity drifted")
 
     arguments.work_dir.mkdir(parents=True)
     source_f32 = arguments.work_dir / "source.f32le"
-    heldout.wav_to_f32le(source["path"], source_f32)
+    wav_to_f32le(source["path"], source_f32)
     samples = np.fromfile(source_f32, dtype="<f4")
     if not samples.size or not np.isfinite(samples).all():
         raise SeedRepeatError("source PCM is invalid")
@@ -303,13 +381,12 @@ def parser() -> argparse.ArgumentParser:
 def main() -> int:
     arguments = parser().parse_args()
     try:
-        heldout = _load_heldout()
         if not 0 <= arguments.seed < 2**63:
             raise SeedRepeatError("seed is outside the supported range")
         if arguments.check:
             print("ok   seeded RVC direct diagnostic CPU admission complete")
             return 0
-        result = execute(arguments, heldout)
+        result = execute(arguments)
         print(json.dumps(result, ensure_ascii=True, sort_keys=True))
         return 0
     except (OSError, SeedRepeatError, subprocess.SubprocessError, ValueError) as error:
