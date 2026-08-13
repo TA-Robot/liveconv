@@ -2503,3 +2503,36 @@ job queue.
   loss, LR, seed, zero condition, and 1,044 updates. Freeze 31 clean Hadou
   heldout rows before training and prepare the existing twelve changed-utterance
   plus ten-condition policies. Do not test another keep count.
+
+## 2026-08-13T15:50:25Z - Grok progress audit
+
+- Agent: `grok` in tmux `liveconv-grok-auditor`; read-only, no delegation.
+- Verdict: `CONTINUE`.
+- Adopted: retain a sole sequential GPU lane, finish the already-frozen
+  7 + 12 + 10 + 31 evaluation bundle, prohibit keep-count, target, exposure,
+  donor, role, and context sweeps, and make no machine quality winner.
+- Not adopted: the audit snapshot described EXP-060 as not yet started and
+  gpu0 as idle. EXP-060 had completed at 15:47 and EXP-061 was actively
+  rendering. No job or method change followed from that stale observation.
+
+## 2026-08-13T15:58:00Z - EXP-060--063 closed pseudo-source filtering
+
+- Agent: `primary-integrator`.
+- Task: Train the sole admitted best-six-per-target pseudo-source schedule at
+  fixed 1,044 updates and screen it across seven external rows, twelve changed
+  utterances, ten conditions, and 31 clean Hadou heldout sentences.
+- Result: training completed in 196.15 seconds at 5.13 GB peak; loss moved
+  159.57 to 131.81. The seven-row candidate and all ten condition summaries
+  exactly matched control69. Twelve changed utterances regressed from 0.184 to
+  0.222 mean source-relative distance without loops. Hadou produced three
+  wins, twenty-five ties, three losses, and one new gross loop; excluding that
+  loop, means were 0.171 versus 0.185 and medians 0.080 versus 0.097. Full
+  official-text CER is not interpreted because only 2.4-second windows were
+  consumed. In total the bundle published 180 comparison/reference WAVs.
+- Problems: filtering the generated training transcripts improved their
+  target-relative audit but did not transfer robustly to unseen input content.
+- Rework: none; the selection and Hadou set were frozen before training.
+- Changed action: close the filtered-pair method and any keep-count sweep.
+  Retain all audio unheard on 8878. The next distinct method tests the pretrained
+  waveform discriminator and upstream alternating adversarial loss omitted by
+  the local adapter runner; ASR cannot judge its intended naturalness effect.

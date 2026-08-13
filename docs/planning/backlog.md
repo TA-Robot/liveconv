@@ -89,13 +89,14 @@ name one owner and ownership zone below.
 | LV-078 | Done | P0 | MS-3 | Strengthen X-VC semantic content preservation without weakening acoustic losses | EXP-049 improved the ten-condition clean subset but regressed twelve changed utterances and no constrained row; semantic loss reweighting is closed |
 | LV-079 | Done | P0 | MS-3 | Exclude input-invariant frame-condition modules from X-VC adaptation | EXP-052 improved the frozen condition subset but regressed twelve changed utterances; source36 is closed without an adjacent scope point |
 | LV-080 | Done | P0 | MS-3 | Expand X-VC target-text coverage at fixed updates and strengthen sentence-diverse evaluation | EXP-055 completed the 7 + 12 + 10 + 33 bundle; the apparent 33-row mean gain was outlier-driven, so target breadth is closed without a count sweep and remains unheard audio only |
-| LV-081 | In progress | P0 | MS-3 | Improve X-VC retraining data quality without another breadth or horizon sweep | Design one content-quality filter for the existing generated pseudo sources, hold total updates fixed, and use a clean sentence-diverse evaluation rather than the historical tongue twister |
+| LV-081 | Done | P0 | MS-3 | Improve X-VC retraining data quality without another breadth or horizon sweep | EXP-059 admitted one filtered6x2 run; EXP-060--063 tied the original external set and frozen conditions, regressed changed utterances, and added one Hadou loop, so the method and keep-count sweep are closed |
+| LV-082 | In progress | P0 | MS-3 | Restore X-VC's omitted pretrained waveform-adversarial objective in one bounded adapter run | Verify the checkpoint discriminator, implement its upstream alternating D/G update without changing the selected data or adapter scope, then publish the full varied evaluation bundle; do not infer naturalness from ASR |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| LV-081 | `primary-integrator` | `tools/xvc-source-diversity/`, one new experiment note, and its ignored artifacts | Commit one pseudo-source-quality method or reject it before GPU admission |
+| LV-082 | `primary-integrator` | `tools/xvc-source-diversity/`, one new experiment note, and its ignored artifacts | Commit one upstream-faithful adversarial method or reject it before GPU admission |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.

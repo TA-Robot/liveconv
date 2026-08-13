@@ -1,12 +1,20 @@
 # EXP-063: filtered-pair X-VC on 31 clean Hadou heldout sentences
 
-Status: selection and runner ready; source windows not yet materialized
+Status: completed; mixed Hadou result with one new gross loop
 
 Render EXP-060 on all 31 rows frozen by
 `EXP-060-xvc-filtered-pairs-hadou-evaluation/hadou-evaluation.json`. Materialize
 the exact first endpoint-complete 2.4 seconds before rendering. Machine ASR is
 relative to the exact source window and may only screen corruption; it cannot
 select naturalness, speaker identity, or voice quality.
+
+The candidate published 93 comparison WAVs across 31 unseen Hadou sentences.
+Relative to control69 it produced three lower, twenty-five equal, and three
+higher source-relative distances. Excluding its one gross-loop row, candidate
+versus control means were 0.171 versus 0.185 and medians were 0.080 versus
+0.097, but the balanced 3/24/3 changes do not show a broad method gain. The
+official full-utterance text is not used for a 2.4-second-window decision. The
+new loop and EXP-061 regression close filtered6x2; audio remains unheard.
 
 ```bash
 .venv/bin/python tools/xvc-source-diversity/prepare_hadou_evaluation.py \

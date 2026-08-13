@@ -1,6 +1,6 @@
 # EXP-060: content-filtered pseudo-pair X-VC retraining
 
-Status: ready method pilot; Hadou evaluation frozen before candidate training
+Status: completed listen-now; filtered-pair method closed without a quality claim
 
 ## Method
 
@@ -26,6 +26,16 @@ This complements rather than replaces the nineteen existing Common Voice rows
 and ten named clean/noise/silence/tempo/pitch conditions. Machine ASR can reject
 empty output, content drift, or gross loops. It cannot select naturalness,
 speaker identity, or a voice-quality winner.
+
+## Result
+
+The sole filtered6x2 adapter completed 1,044 updates in 196.15 seconds with
+5.13 GB peak allocated GPU memory. Loss moved from 159.57 to 131.81 and 21
+external-speaker comparison WAVs were published. The seven original external
+rows were exactly equal to control69 on the machine content screen. The
+mandatory EXP-061--063 evaluations did not establish robust improvement, so no
+keep-count or threshold sweep is admitted. All audio remains unheard and
+unselected.
 
 ## Training command
 

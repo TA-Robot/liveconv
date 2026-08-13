@@ -1,10 +1,15 @@
 # EXP-062: filtered-pair X-VC on frozen audio conditions
 
-Status: evaluation runner ready before candidate training
+Status: completed; all ten condition summaries matched control69 exactly
 
 Render EXP-060 on the ten frozen clean/noise/leading-silence/tempo/pitch rows.
 Base, EXP-035 control69, source material, target reference, and seeds remain
 fixed. This is a corruption screen, not a naturalness or identity score.
+
+The candidate published 30 comparison WAVs with no gross repetition. It was
+identical to control69 on every clean, noise, leading-silence, tempo, and pitch
+row; macro source-relative distance was 0.153 for both. It therefore supplies
+no machine evidence for the filtered-pair method.
 
 ```bash
 HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \

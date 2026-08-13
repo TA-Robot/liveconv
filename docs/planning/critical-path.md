@@ -172,7 +172,8 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-052 source-path-only 36-linears (changed-utterance regression; closed)
         -> EXP-055 275 target texts at fixed 1,044 updates (closed: mixed/no robust gain)
         -> mandatory 7 + 12 + 10 + 33 sentence-diversity gate (complete)
-        -> one pseudo-source content-quality method at fixed 1,044 updates
+        -> EXP-059--063 pseudo-source content filter (closed: changed-row regression + Hadou loop)
+        -> one upstream-faithful waveform-adversarial method at fixed data/scope/updates
         -> operator hearing when available
 ```
 
