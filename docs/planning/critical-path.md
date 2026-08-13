@@ -12,13 +12,15 @@ The user-delivery path is:
 ```text
 MS-1 executable multi-model lab
   -> MS-2 multi-model Extension MVP
-  -> MS-3 young-feminine voice Variant Lab
-  -> MS-4 shortlist optimization and architecture freeze
+  -> MS-3 hear keepers (existing human RVC, then only train if needed)
+  -> MS-4 promote a keeper and freeze architecture
   -> MS-5 responsiveness, SSH baseline, and personal recovery
   -> MS-6 personal-use v1 acceptance
 ```
 
 [`roadmap.md`](roadmap.md) owns milestone outcomes and gates.
+[`lab-operating-model.md`](lab-operating-model.md) owns how quality search
+spends time. [`listen-queue.md`](listen-queue.md) is the live Ready board.
 [`backlog.md`](backlog.md) owns work state. Findings are classified by
 [`review-triage.md`](review-triage.md). This file owns dependency order,
 parallel dispatch, and mutable resource leases.
@@ -32,16 +34,16 @@ Only these classes stop the active milestone:
 - credential/private-audio/reference/checkpoint leakage;
 - broken loopback plus SSH boundary, authentication, Origin, ticket, artifact
   identity, or worker containment used by personal v1;
-- false authorization, false evidence promotion, or evidence corruption used for
-  a model/release decision;
+- false authorization, or false evidence promotion used for a model/release
+  decision (promote tier; listen-now audio is not a promotion);
 - a reproducible expected-path hang, orphan, unbounded resource use, or inability
   to run the milestone's actual acceptance check.
 
 Quality misses, cold-start cost, offline-only candidates, public deployment,
 multi-user operation, production-scale sample counts, HA, and SLA work do not
-stop basic technical execution. Voice discovery starts in MS-3; shortlist
-selection starts in MS-4; tuning and the full SSH security baseline start in
-MS-5.
+stop basic technical execution. MS-3 now finds an operator-acceptable voice
+through the hearing loop. Missing hashes do not stop a listen-now run.
+Tuning and the full SSH security baseline start in MS-5.
 
 ## Model gate vocabulary
 
@@ -59,9 +61,10 @@ These per-model gates are independent of the six `MS-*` user milestones:
 
 MS-1 needs multiple M2 candidates, at least two M3 adapters, and one M5 route.
 It does not require every candidate to reach M4-M6. MS-2 exposed and exercised
-the technical roster. MS-3 expands this into immutable voice variants and
-shortlists them; MS-4 chooses which one continues. Rejected variants release
-their implementation and GPU lanes.
+the technical roster. MS-3 is a hearing loop: drain unheard libraries, listen
+to existing human-trained RVC on actual input, and only then train or adapt.
+Existing RVC profiles are listen-now candidates, not frozen museum pieces.
+MS-4 promotes a keeper; it does not begin with a hash cathedral.
 
 ## MS-1 dependency graph
 
@@ -133,34 +136,61 @@ are green. The operator reached the actual Extension path but rejected the audio
 quality and did not retain the frozen receipt. By active user decision the old
 serial join is historical and does not claim an EXP-005 pass.
 
-## MS-3 voice-variant frontier
+## MS-3 hearing-loop frontier
 
-The selectable unit is an immutable variant profile, not a family name or a
-client-supplied speaker/checkpoint parameter. The initial target is 9-12
-Extension-listenable variants across at least four families, primarily youthful
-feminine Japanese voices. Screening admits at most four variants, and at most two
-per family, to the full comparison.
+The live board is [`listen-queue.md`](listen-queue.md). Quality search uses
+listen-now, then promote. EXP-024's failed validation16 DTW gate stays closed.
+EXP-025/026 already completed the bounded 87-pair listen-now training path and
+its useful renders; its scope, horizon, and learning-rate axes are closed. Qwen
+TTS stays a separate fallback and is not mixed into the human VC corpus.
 
 ```text
- V0 EXP-006 + candidate catalog + bundle schema --------------------------\
-                                                                           +--> B0 immutable deployment bundle
- F0 authorized 10/40-utterance fixtures + source-STT eligibility --------/
+ Unheard on 8878: stable RVC/X-VC sets / EXP-020 / EXP-021 / EXP-023 Qwen
+        |
+        +--> operator keep / continue / rejected
 
- B0 --> P0 per-variant profile/compiler + exact pack/config identity ------\
- B0 --> U0 dynamic Extension family/variant chooser -----------------------+--> R0 route-parity receipts
- first-wave runtimes and authorized voices (gpu0 serial) -----------------/
-
- R0 + F0 -> S0 all 9-12 protocol-v1 VC variants screened through Gateway -> Extension
- S0 -> L0 preregister <=4 shortlist, <=2/family
- L0 + calibrated speaker/content/integrity lanes -> C0 full 40-utterance plan
- C0 -> MS-3 close and MS-4 shortlist optimization
+ Any EXP-020 continue --> larger actual-input RVC listen
+ Any keep -------------> promote pass (hashes, route, review) only then
+ All stable VC rejected -> revisit the model/training strategy explicitly
 ```
+
+EXP-020 and EXP-021 are active listen-now items, not historical side lanes. EXP-021
+performed one bounded
+gross-rejection render each for the already-installed MeanVC2 and OpenVoice V2
+families on the same 8.17-second actual input and the same Runrun reference.
+It added no training or parameter sweep, used explicit labels, and can only
+reject a family or inform a later separately approved actual-input experiment.
+
+EXP-021's two technical renders are complete and await direct operator review
+on port 8878. The historical conditional next step would have been one Seed-VC
+render after both failed, but that condition was superseded: EXP-022 has already
+used and closed its sole attempt. EXP-021 review cannot authorize another
+Seed-VC run or re-open the zero-shot sequence.
+
+The sole admitted EXP-022 attempt passed admission and then failed closed during
+its discarded full-source warmup. It published no candidate, cleaned up, and
+was not retried with changed settings or a smaller model. That exact attempt is
+closed as technical failure evidence.
+
+To test a materially different quality path quickly, EXP-023 rendered one
+frozen Qwen3-TTS 1.7B CustomVoice / Ono_Anna candidate for 12 fixed Japanese
+texts. All 12 explicit-label 24-kHz outputs passed technical and independent
+artifact review and are available on the same fixed port 8878. They remain an
+offline diagnostic until the operator records one `continue` or `rejected`
+action per text. A continue result can only admit later TTS transport and route
+work; it does not satisfy `D0`, EXP-020, interruption, played-text, or end-to-end
+gates. A rejected result stops this exact profile without a sampling or model
+sweep.
 
 `B0` is one content-addressed artifact. The Gateway loads it, the terminal
 launcher verifies it after tunnel setup, and the Extension fetches and binds the
 same digest. A direct-worker or terminal render is intake/debug evidence only.
 Any identity or behavior mismatch marks the variant `route_parity_failed`, hides
-it from the chooser, and stops only that variant until repaired.
+it from the chooser, and stops only that variant until repaired. Route
+qualification is performed once per frozen profile. The separate quality screen
+uses exact source/output-bound authenticated Gateway renders in the local
+listening UI; it does not repeat the fallback probe or claim Extension playout
+for each quality comparison.
 
 Bundle activation also requires the exact operator-controlled private
 authorization-registry revision. Every public authorization digest must resolve
@@ -171,27 +201,80 @@ Expiry is evaluated against the Gateway's trusted current UTC at every
 activation/restart and again before session creation, never against a bundle's
 self-declared creation timestamp.
 
-The counted first wave uses authorized youthful-feminine reference/style
-material across protocol-v1 audio-to-audio VC families. Qwen and CosyVoice TTS
-remain a parallel deferred path until an accepted ADR defines committed spoken
-text, transport, interruption, and played-text accounting; they cannot satisfy
-`S0`. One GPU lease is active at a time, and unbounded checkpoint or training
-sweeps are not admitted.
+The historical first wave used youthful-feminine reference/style material
+across protocol-v1 audio-to-audio VC families. TTS transport remains deferred
+until an accepted ADR defines committed spoken text, transport, interruption,
+and played-text accounting. EXP-023 is only a direct offline quality diagnostic
+and cannot satisfy the active RVC or route path. One GPU lease is active at a
+time, and unbounded checkpoint or training sweeps are not admitted.
+
+The exact 90-render historical artifact retains route evidence, but does not
+select a quality winner. Stage 0 uses its one 8.17-second actual source capture
+only for plain-label gross rejection. All completed listening libraries remain
+on the single fixed port `8878`, with explicit model/configuration labels; no
+experiment-specific listener port is opened.
+
+The completed acquisition and failed alignment record is EXP-024 in LV-064.
+The 87-pair whole-short inventory from EXP-025 was used for the completed
+listen-now training path, not as a hash cathedral. The old X-VC adaptation corpus contained only
+eight eSpeak texts and 19.2 seconds of effective training audio and remains
+rejected. The replacement corpus has 424 human Hadou source utterances and
+424 Amitaro runrun target utterances on the same official ITA IDs, display
+text, and kana readings. Both sides are 48 kHz mono PCM16.
+The content-alignment gate before fixed 2.4-second X-VC windows was attempted
+once on the frozen 16 validation IDs. All 16 IDs were attempted, but fewer than
+14 retained an admissible window, so Stage A stopped. The exact retained count
+and row reasons are unrecoverable because the runner deleted its in-memory
+failure evidence; no retry or threshold change is admitted. Existing human
+RVC profiles are listen-now candidates on actual input. They are not retrained
+to answer the failed X-VC alignment question.
+Clipping made all 400 post-clip norms approximately 5 and slightly improved the
+step-96 validation median, but it did not prevent the late validation regression.
+EXP-017's short, paired prefix-versus-three-window pilot is complete. Its
+update-96 six-window median is about 3% lower for the window variant while the
+start-window median is about 1.2% higher, so the numerical evidence is mixed and
+does not justify further synthetic-data work.
+EXP-018 completed the queue
+fallback with only the constant AdamW
+learning rate changed from `3e-4` to the upstream-native `1e-4`; its best numeric
+validation point moved to update 192 and its late worsening was smaller, while
+its rendered checkpoint audio remains historical. None of these paths
+is an unbounded sweep or route or product evidence. EXP-019's repaired
+one-variable rank-capacity trajectory completed 400 finite updates with exact
+EXP-014/018 receipt bindings. Its validation median was lowest at update 192
+(`522.0286`) and rose to `575.3562` at update 400; this is diagnostic only. The
+separate true cross-arm renderer also completed. It is retained as history rather
+than a gate for the next run.
+
+LV-064 has frozen the 424 candidate identities, audited audio integrity, prepared
+one machine-ASR pronunciation triage, and frozen disjoint train, validation, and
+heldout IDs. The 370-row pronunciation UI remains available; it is not a
+listen-now blocker. There is no universal 30-minute gate. The sole
+validation16 alignment pilot failed the predeclared retained-ID gate, so the
+exact EXP-024 Stage B DTW/window trajectory stays blocked. There is no RVC
+retraining, blind mapping, parameter sweep, retry of that gate, or automatic
+TTS substitution.
+
+EXP-025's CPU inventory found 87 train and 16 heldout complete short
+utterances. The bounded stretch+pad training and its EXP-026 follow-ups are
+complete. Stable RVC/X-VC heldout, actual-input, and three-row public-validation
+comparisons are published on 8878. Their machine screens reject gross content
+failure only; no perceptual winner or promote decision exists.
 
 ## MS-2 through MS-6 joins
 
 | Milestone | Serial join | Parallel preparation |
 |---|---|---|
 | MS-2 | historical: technical routes -> actual Extension listening -> quality rejection -> scope decision | formal EXP-005 receipt was not retained and no pass is claimed |
-| MS-3 | bundle/catalog -> 9-12 route-qualified protocol-v1 VC variants across >=4 families -> 10-utterance screen -> <=4 shortlist | runtimes, authorized youthful-feminine voices, fixtures, dynamic chooser, parity receipts; optional TTS ADR is off the serial path |
-| MS-4 | shortlist -> common 40-utterance evidence -> bounded tuning -> primary/fallback or no release -> ADR | blinded listening package, STT/speaker/integrity checks |
+| MS-3 | drain stable RVC/X-VC and other unheard 8878 libraries -> operator keep | 370-row pronunciation review is optional; Qwen remains a separate fallback only |
+| MS-4 | promote a keeper (identities, route, review) then freeze architecture | retain EXP-024 as a closed DTW failure; do not start MS-4 with a hash cathedral |
 | MS-5 | frozen primary -> timing/stability tune -> SSH boundary -> runbook/recovery and soak | queue/jitter/cancel tests, failure injection, auth negatives, diagnostics, maintenance checklist |
 | MS-6 | frozen server/client bundle -> external audible session -> final audit and release | release notes, known issues, rollback rehearsal, operator acceptance record |
 
-MS-3 is the broad but bounded discovery point. It narrows 9-12 protocol-v1 VC
-variants to four or fewer. MS-4 is the largest scope-reduction point and freezes one primary;
-after that, alternate writers stop unless a named issue can change the decision
-inside a short timebox. MS-5 never retunes multiple models in parallel.
+MS-3 is the hearing loop that produces at least one operator `keep`. The
+EXP-024 DTW/window trajectory stays unauthorized. The 87-pair whole-short path
+is complete and its closed axes are not rerun. MS-5 never retunes multiple
+models in parallel.
 
 ## Two-tier agent schedule
 
