@@ -3341,3 +3341,42 @@ job queue.
 - Rework: reject and stop before stress60. Close temporal-weight neighbors.
   Change data construction next by holding count/share fixed while crossing
   Common Voice, Hadou, and JVS training-source domains.
+
+## 2026-08-13T22:53:01Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux `liveconv-grok-auditor`; independent, read-only,
+  no tools or delegation.
+- Verdict: `CONTINUE`.
+- Adopted: the source-window teacher remained one committed variable on one
+  GPU lane with frozen external7/fresh48 screens and 8878 publication. Close
+  coverage methods if the same repetition survives.
+- Not adopted: none. The sampled 0% GPU was a load transition; direct process
+  evidence showed EXP-134 active.
+- Changed action: retain the no-added-loop stop, do not open stress60, and
+  validate the pre-existing semantic-collapse hypothesis on disjoint inputs if
+  the same loop returns.
+
+## 2026-08-13T23:02:00Z - EXP-133--136 source-window method completed
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-13T22:42:59Z.
+- End: 2026-08-13T23:02:00Z.
+- Dependencies: commits `ee9f3eb`, `8e69a32`, `2d69380`; gpu0; frozen
+  external7/fresh48/Hadou31; listener 8878.
+- Result: EXP-133 audited 247 training-only Hadou utterances at start, middle,
+  and end windows. Only 21 had identical ASR content at all three positions;
+  middle windows exposed 2,196 unique normalized trigrams versus 1,489 at the
+  start. EXP-134 then trained once in 322.89 seconds at 4.77 GiB peak and
+  published 35 external, 240 fresh48, and 155 Hadou31 WAV files. External7
+  improved control `0.360 -> 0.320`. Common non-loop fresh48 improved mean
+  `0.341 -> 0.321` (14/23/9); common non-loop Hadou30 improved `0.185 ->
+  0.160` (6/21/3).
+- Problems: the candidate retained control's fresh `32.4` family collapse and
+  added the same 53-count `三・四` loop on heldout `RECITATION324_138` as the
+  two previous cross-corpus teachers. Its 209 pseudo-teacher outputs contained
+  no gross loop.
+- Rework: reject a generic keeper and close further source-coverage selection.
+  Keep the broad audio unselected. Validate EXP-093's preregistered
+  `unique semantic tokens <= 5` safety hypothesis on disjoint fresh48/Hadou31;
+  if it misses the failures, move to a different training objective rather
+  than another coverage point.
