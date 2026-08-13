@@ -120,14 +120,20 @@ Loss reweighting is closed. EXP-052 changes learning targets instead: adapt the
 36 source/acoustic attention+FFN linears but exclude the 33 frame-condition
 linears. Both the campaign trainer and inference route use the same zero-waveform
 condition; the test asks whether adapting its input-invariant path is unnecessary
-or overfits, while source-path adaptation is retained.
+or overfits, while source-path adaptation is retained. The complete bundle
+closed it: source36 regressed twelve changed utterances from 0.184 to 0.278
+source-relative distance and maximum 0.571 to 1.0, despite improving the frozen
+ten-condition macro from 0.153 to 0.113. No arm gross-looped. EXP-055 therefore
+changes data coverage, not another scope point: it redistributes the fixed 1,044
+updates from 87 to 275 authorized target texts and freezes 33 additional unused
+Common Voice utterances as a sentence-diversity evaluation.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Train EXP-052 source-path-only 36-linears at fixed EXP-035 data/loss/updates | parent | no | seven external rows published; no decision yet |
-| 2 | Render EXP-052 on the mandatory twelve changed utterances and ten frozen conditions | parent | no human dependency for machine reject | combined 7 + 12 + 10 corruption gate complete |
+| 1 | Train EXP-055 target275 at fixed EXP-035 donor pool/loss/scope/updates | parent | no | seven external rows published; no decision yet |
+| 2 | Render EXP-055 on twelve changed utterances, ten frozen conditions, and 33 unused local Common Voice clips | parent | no human dependency for machine reject | combined 7 + 12 + 10 + 33 corruption gate complete |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

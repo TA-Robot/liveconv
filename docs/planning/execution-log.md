@@ -2392,3 +2392,46 @@ job queue.
   zero-waveform-condition path. No held-out target audio is exposed.
 - Rework: documentation and result-policy wording only; the already-running
   one-variable source36 job remains valid.
+
+## 2026-08-13T14:52:26Z - Grok progress audit
+
+- Agent: `grok` in tmux `liveconv-grok-auditor`; read-only, no delegation.
+- Verdict: `CONTINUE`.
+- Adopted: keep one sequential GPU lane, complete the mandatory 7 + 12 + 10
+  bundle before choosing another method, discard adjacent scope and semantic
+  multiplier sweeps, and make no machine quality winner.
+- Not adopted: the audit described source36 as repairing a train/inference
+  condition mismatch. The campaign passes a zero target waveform in both
+  training and inference; the corrected input-invariant-path hypothesis is the
+  one used for interpretation.
+
+## 2026-08-13T15:00:00Z - EXP-052/053/054 combined gate closed source36
+
+- Agent: `primary-integrator`.
+- Task: Train source-path-only LoRA and screen seven external rows, twelve
+  changed utterances, and ten frozen audio conditions.
+- Result: EXP-052 completed 1,044 updates in 266.63 seconds at 5.13 GB peak and
+  published 21 candidates. Seven rows were mixed: source-relative mean improved
+  0.360 to 0.349, known-text mean regressed 0.399 to 0.409, maximum stayed
+  0.571. EXP-053 published 36 candidates in 97.93 seconds and regressed the
+  twelve-row mean 0.184 to 0.278, known-text mean 0.576 to 0.616, and maximum
+  0.571 to 1.0. EXP-054 published 30 candidates in 94.98 seconds and improved
+  the ten-condition macro 0.153 to 0.113, including clean and leading silence,
+  while noise, tempo, and pitch remained unchanged. No arm gross-looped.
+- Changed action: close source36 without an adjacent module-count point. The
+  frozen subset improvement does not survive changed sentences.
+
+## 2026-08-13T15:08:00Z - EXP-055 target-text breadth prepared
+
+- Agent: `primary-integrator`.
+- Task: Replace the 87-target-text distribution with 275 authorized Amitaro
+  first-active windows while holding the 1,044 updates, twelve-donor pool,
+  control69 scope, loss, LR, seed, target voice, and zero condition fixed.
+- Result: the manifest has 334 train rows; 275 have at least 1.8 seconds active
+  speech. The deterministic schedule gives 219 targets four exposures, 56
+  targets three, and every donor 87. Ruff, two focused tests, exact archive and
+  manifest admission, and `git diff --check` passed. All 33 locally present
+  Common Voice clips unused by EXP-035/039 are frozen before training as an
+  additional sentence-diversity set.
+- Changed action: commit before the sole GPU run. Judge only after the complete
+  7 + 12 + 10 + 33 corruption bundle; do not sweep target counts.

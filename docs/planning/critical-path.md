@@ -169,7 +169,9 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-046 eleven synthetic + one authentic source per target (seven-row regression)
         -> EXP-047 twelve changed utterances + EXP-048 ten conditions (method closed)
         -> EXP-049 semantic SSL loss 2x (changed-utterance regression; closed)
-        -> EXP-052 source-path-only 36-linears (gpu0; then mandatory 12 + 10 gate)
+        -> EXP-052 source-path-only 36-linears (changed-utterance regression; closed)
+        -> EXP-055 275 target texts at fixed 1,044 updates (gpu0)
+        -> mandatory 7 + 12 + 10 + 33 sentence-diversity gate
         -> operator hearing when available
 ```
 

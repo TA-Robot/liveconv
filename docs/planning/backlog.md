@@ -87,13 +87,14 @@ name one owner and ownership zone below.
 | LV-076 | Done | P0 | MS-3 | Preserve target alignment while training X-VC on varied audio limitations | EXP-044 improved seven external rows, but EXP-045 regressed on twelve changed utterances; aligned augmentation is closed without a fixed-condition render |
 | LV-077 | Done | P0 | MS-3 | Anchor synthetic X-VC diversity with authentic aligned sources | EXP-047 regressed on twelve changed utterances and EXP-048 changed none of ten stress summaries; the authentic-anchor method is closed |
 | LV-078 | Done | P0 | MS-3 | Strengthen X-VC semantic content preservation without weakening acoustic losses | EXP-049 improved the ten-condition clean subset but regressed twelve changed utterances and no constrained row; semantic loss reweighting is closed |
-| LV-079 | In progress | P0 | MS-3 | Exclude input-invariant frame-condition modules from X-VC adaptation | EXP-052 adapts only 36 source x-branch attention/FFN linears, excluding the zero-waveform-condition path and speaker modulation while holding EXP-035 data/loss/updates fixed |
+| LV-079 | Done | P0 | MS-3 | Exclude input-invariant frame-condition modules from X-VC adaptation | EXP-052 improved the frozen condition subset but regressed twelve changed utterances; source36 is closed without an adjacent scope point |
+| LV-080 | In progress | P0 | MS-3 | Expand X-VC target-text coverage at fixed updates and strengthen sentence-diverse evaluation | EXP-055 redistributes 1,044 updates from 87 to 275 authorized Amitaro target texts and freezes 33 additional unused Common Voice utterances |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| LV-079 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-052 note, and its ignored artifacts | Train source36, publish seven external rows, then run the mandatory twelve + ten combined gate |
+| LV-080 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-055 note, and its ignored artifacts | Train target275 once, then publish and screen the complete 7 + 12 + 10 + 33 bundle |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.
