@@ -57,6 +57,12 @@ def load_repeat_runner() -> ModuleType:
     return module
 
 
+def listener_staging_path(listener_dir: Path) -> Path:
+    """Keep publication staging beside the final directory for atomic rename."""
+
+    return listener_dir.with_name(f".{listener_dir.name}.staging")
+
+
 def preprocess_rnnoise(frames: list[bytes], executable: Path) -> list[bytes]:
     if not frames or any(len(frame) != 960 * 4 for frame in frames):
         raise StableRnnoiseError("source must contain complete 20 ms float32 frames")
@@ -105,7 +111,11 @@ def validate(
     profiles = json.loads((deployment / "profiles.json").read_text())
     heldout._selected_records(manifest, "variants", (PROFILE_ID,))  # noqa: SLF001
     heldout._selected_records(profiles, "profiles", (PROFILE_ID,))  # noqa: SLF001
-    if arguments.work_dir.exists() or arguments.listener_dir.exists():
+    if (
+        arguments.work_dir.exists()
+        or arguments.listener_dir.exists()
+        or listener_staging_path(arguments.listener_dir).exists()
+    ):
         raise StableRnnoiseError("work and listener outputs must be new")
     if not os.environ.get("LIVECONV_API_TOKEN"):
         raise StableRnnoiseError("LIVECONV_API_TOKEN is required")
@@ -195,7 +205,7 @@ async def execute(
     if [label for label, _, _ in outputs] != ["raw", "rnnoise"]:
         raise StableRnnoiseError("Gateway output arms differ from the bounded plan")
 
-    staging = arguments.work_dir / "listener-staging"
+    staging = listener_staging_path(arguments.listener_dir)
     staging.mkdir()
     shutil.copyfile(arguments.actual_source_wav, staging / "00-source.wav")
     renderer.write_wav(staging / "10-stable-rvc-raw.wav", outputs[0][1])

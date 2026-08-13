@@ -16,6 +16,14 @@ sys.modules[SPEC.name] = run
 SPEC.loader.exec_module(run)
 
 
+def test_listener_staging_is_on_final_parent() -> None:
+    final = Path("/listening/ms3-stable-rvc-rnnoise-v1")
+
+    assert run.listener_staging_path(final) == Path(
+        "/listening/.ms3-stable-rvc-rnnoise-v1.staging"
+    )
+
+
 def test_preprocess_rnnoise_preserves_frame_shape(tmp_path: Path) -> None:
     helper = tmp_path / "helper.py"
     helper.write_text(
