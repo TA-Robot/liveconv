@@ -116,6 +116,15 @@ def aggregate_rows(rows: Sequence[Mapping[str, object]]) -> dict[str, object]:
                 bool(item["repetition"]["gross_repetition"]) for item in items
             ),
         }
+        known_distances = [
+            float(item["known_text_distance"])
+            for item in items
+            if item.get("known_text_distance") is not None
+        ]
+        if known_distances:
+            groups[group][variant]["mean_known_text_distance"] = sum(
+                known_distances
+            ) / len(known_distances)
     macro: dict[str, object] = {}
     for variant in VARIANTS:
         items = [row for row in rows if row["variant"] == variant]
@@ -128,6 +137,15 @@ def aggregate_rows(rows: Sequence[Mapping[str, object]]) -> dict[str, object]:
                 bool(item["repetition"]["gross_repetition"]) for item in items
             ),
         }
+        known_distances = [
+            float(item["known_text_distance"])
+            for item in items
+            if item.get("known_text_distance") is not None
+        ]
+        if known_distances:
+            macro[variant]["mean_known_text_distance"] = sum(known_distances) / len(
+                known_distances
+            )
     return {"by_group": dict(groups), "macro": macro}
 
 
@@ -188,6 +206,9 @@ def run(arguments: argparse.Namespace) -> int:
         if any(path.is_symlink() or not path.is_file() for path in expected_files):
             raise ScreenError(f"listener row is incomplete: {item['id']}")
         source_transcript = _transcribe(model, source_path)
+        known_text = item.get("text")
+        if known_text is not None and not isinstance(known_text, str):
+            raise ScreenError(f"known text is malformed: {item['id']}")
         transcripts[f"{item['id']}/source"] = source_transcript
         for variant, filename in VARIANTS.items():
             output_path = row_root / filename
@@ -208,6 +229,16 @@ def run(arguments: argparse.Namespace) -> int:
                     "output_normalized_characters": len(output_normalized),
                     "source_relative_distance": normalized_distance(
                         source_transcript, transcript
+                    ),
+                    "known_text_distance": (
+                        normalized_distance(known_text, transcript)
+                        if known_text is not None
+                        else None
+                    ),
+                    "source_known_text_distance": (
+                        normalized_distance(known_text, source_transcript)
+                        if known_text is not None
+                        else None
                     ),
                     "repetition": repetition_metrics(transcript),
                 }

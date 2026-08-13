@@ -34,6 +34,7 @@ def test_aggregate_is_groupwise_and_never_invents_quality_score() -> None:
             "variant": variant,
             "source_relative_distance": distance,
             "repetition": {"gross_repetition": repetition},
+            "known_text_distance": distance + 0.1,
         }
         for variant, distance, repetition in (
             ("base", 0.2, False),
@@ -46,4 +47,5 @@ def test_aggregate_is_groupwise_and_never_invents_quality_score() -> None:
 
     assert result["by_group"]["clean"]["base"]["mean_source_relative_distance"] == 0.2
     assert result["macro"]["human87-control69-e12"]["gross_repetition_rows"] == 1
+    assert result["macro"]["base"]["mean_known_text_distance"] == 0.30000000000000004
     assert "quality" not in str(result).lower()

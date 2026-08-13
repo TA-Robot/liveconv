@@ -1762,3 +1762,35 @@ job queue.
   and records that limitation instead of substituting untracked data.
 - Changed action: commit the plan and runner, start exactly one GPU run, then
   machine-screen corruption by evaluation group and publish all arms on 8878.
+
+## 2026-08-13T11:44:27Z - EXP-033 source-diversity audio published
+
+- Agent: `primary-integrator`.
+- Task: Generate three JVS-donor pseudo sources per Amitaro target, train the
+  fixed control69 trajectory, and publish base/legacy/new comparisons.
+- Dependencies: commit `e6558ca`; exclusive `gpu0`; fixed ten-row evaluation.
+- Result: 261 generated pairs, 1,044 updates, and 30 candidates across ten rows
+  completed in 194.24 seconds. Loss moved from 145.4782 to 115.6919; peak GPU
+  allocation was 5.13 GB. Port 8878 now exposes 511 runs / 872 candidates.
+- Machine screen: no gross repetition in any arm. Mean source-relative distance
+  was 0.153 new, 0.170 base, and 0.280 legacy. On six clean cross-speaker rows it
+  was 0.084/0.123/0.325. The new arm also improved tempo and leading-silence
+  versus base, tied pitch, but regressed the sole 20 dB-noise row to 0.375 from
+  base/legacy 0.0. These are content diagnostics, not audible quality ranks.
+- Changed action: retain EXP-033 for later hearing. Before another training
+  method, run one six-speaker Common Voice external evaluation to test whether
+  the clean result merely follows the three JVS donors.
+
+## 2026-08-13T11:52:17Z - Grok progress audit accepted EXP-033 direction
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, no tools or delegation).
+- Result: `CONTINUE`. Grok confirmed new audio within 30 minutes, the fixed
+  diverse evaluation, one-variable source-diversity hypothesis, and valid GPU
+  method pilot. It explicitly rejected rerunning EXP-033, closed-axis work,
+  system diagnostics, or automatic quality selection.
+- Adopted: yes, with one short strengthening check. The audit flagged the three
+  JVS samples as thin evidence. Six distinct Common Voice speakers are therefore
+  added as evaluation-only data before selecting the next training method.
+- Expected time saved: this sub-two-minute external render can detect donor
+  overfit before spending another 3--5 minutes on a method-level train.

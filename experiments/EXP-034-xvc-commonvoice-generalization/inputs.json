@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "kind": "liveconv-exp034-commonvoice25-ja-unseen/v1",
+  "source": {
+    "original_dataset": "Mozilla Common Voice Scripted Speech 25.0 - Japanese",
+    "official_url": "https://commonvoice.mozilla.org/en/datasets",
+    "license": "CC0-1.0",
+    "mirror": "FluidInference/cv-corpus-25.0-ja",
+    "mirror_revision": "365b7654cd582e20e8000921ef7b0e32caa1906a",
+    "mirror_metadata_path": "ja_00/test.jsonl",
+    "mirror_metadata_sha256": "6cb76803047f344a2166b7cdd93c4c6470e551af7e374694675477f1a5dbb49f"
+  },
+  "items": [
+    {
+      "id": "cv-f-teen-short",
+      "group": "commonvoice-unseen-speaker",
+      "filename": "common_voice_ja_41768939.mp3",
+      "sha256": "17e471e5e66589b0d2cc5eba9ce0d42de13dfa85f631aaa3bc81f912a43625c5",
+      "text": "もうよいかな",
+      "client_id_sha256": "ad47dfa1a6cd0cf5e70e3d54dc610b67300ca91c18c047f232b1923ccb989d9e",
+      "age": "teens",
+      "gender": "female_feminine",
+      "accent": "",
+      "up_votes": 14,
+      "down_votes": 0,
+      "duration_seconds": 2.412
+    },
+    {
+      "id": "cv-f-twenties-energetic",
+      "group": "commonvoice-unseen-speaker",
+      "filename": "common_voice_ja_38998079.mp3",
+      "sha256": "e09be0a5821a0b5a1cabfc23aebfd0385ab26245cc587e3b23fa94e49e8d1b20",
+      "text": "元気いっぱい",
+      "client_id_sha256": "e6559f3333c0923b8d5f1cc6569511c06b72151b39dec5ca85ee5efa28c6fd94",
+      "age": "twenties",
+      "gender": "female_feminine",
+      "accent": "",
+      "up_votes": 2,
+      "down_votes": 0,
+      "duration_seconds": 2.556
+    },
+    {
+      "id": "cv-m-twenties-city-a",
+      "group": "commonvoice-unseen-speaker",
+      "filename": "common_voice_ja_39076307.mp3",
+      "sha256": "f2a31697f49a1814db2080edc31f73e6b389fb516a92d787e8dec02afc0363a7",
+      "text": "岐阜県岐阜市",
+      "client_id_sha256": "9ccf190e8d595b8a9db751eeea637dbab0b12d1d3e7560df4710bae7ee34a61d",
+      "age": "twenties",
+      "gender": "male_masculine",
+      "accent": "",
+      "up_votes": 2,
+      "down_votes": 0,
+      "duration_seconds": 2.196
+    },
+    {
+      "id": "cv-f-twenties-announcer",
+      "group": "commonvoice-unseen-speaker",
+      "filename": "common_voice_ja_38987912.mp3",
+      "sha256": "33d18554c2447ebd1364c627519dbd376139569275d80815a0bcb0d9433bb21d",
+      "text": "京都府城陽市",
+      "client_id_sha256": "e0d98a0c8bc4fc45e91cd8383a79222b84ec0f6b5aef86d4d0589fb63b74d0f0",
+      "age": "twenties",
+      "gender": "female_feminine",
+      "accent": "アナウンサーに似ている",
+      "up_votes": 2,
+      "down_votes": 0,
+      "duration_seconds": 1.98
+    },
+    {
+      "id": "cv-m-twenties-city-b",
+      "group": "commonvoice-unseen-speaker",
+      "filename": "common_voice_ja_38912041.mp3",
+      "sha256": "8393ddea81758a08b98689b123d6a6542c9b2ca87a5e629fafb0a3771335d006",
+      "text": "福岡県糸田町",
+      "client_id_sha256": "eec174ceddfa8ce1d268390d10861454f78200b0facaa3c8c4602962cd3737ee",
+      "age": "twenties",
+      "gender": "male_masculine",
+      "accent": "",
+      "up_votes": 3,
+      "down_votes": 0,
+      "duration_seconds": 2.376
+    },
+    {
+      "id": "cv-f-twenties-vowels",
+      "group": "commonvoice-unseen-speaker",
+      "filename": "common_voice_ja_39022419.mp3",
+      "sha256": "d2d371312d5d9351a361a350359aabce34743515aa537f60c6a23d1754d7355b",
+      "text": "あいうえお",
+      "client_id_sha256": "95003ccfb862313356af5b516cc8e00505531d2cf1233f5e399b05cabffee4d5",
+      "age": "twenties",
+      "gender": "female_feminine",
+      "accent": "",
+      "up_votes": 3,
+      "down_votes": 0,
+      "duration_seconds": 2.52
+    }
+  ]
+}
