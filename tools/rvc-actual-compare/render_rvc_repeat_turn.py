@@ -136,6 +136,7 @@ async def execute(
             profile=profile,
             turns=[(f"repeat-{index}", frames) for index in range(1, 4)],
             timeout=arguments.timeout_seconds,
+            route_parity_qualification=(profile_id == SEEDED_PROFILE_ID),
         )
 
     if len(outputs) != REPEAT_COUNT:

@@ -172,11 +172,17 @@ async def render_profile_turns(
     profile: dict[str, Any],
     turns: list[tuple[str, list[bytes]]],
     timeout: float,
+    route_parity_qualification: bool = False,
 ) -> list[tuple[str, bytes, dict[str, Any]]]:
     profile_id = renderer.require_text(profile, "profile_id")
     headers = {"Authorization": f"Bearer {token}"}
+    session_path = (
+        "/v1/route-parity-sessions"
+        if route_parity_qualification
+        else "/v1/sessions"
+    )
     response = await client.post(
-        f"{gateway_url}/v1/sessions",
+        f"{gateway_url}{session_path}",
         headers=headers,
         json={
             "protocol_version": 1,
@@ -192,7 +198,10 @@ async def render_profile_turns(
         timeout=timeout,
     )
     if response.status_code != 201:
-        raise SessionReuseError(f"session creation returned {response.status_code}")
+        detail = response.json().get("detail", "unknown response")
+        raise SessionReuseError(
+            f"session creation returned {response.status_code}: {detail}"
+        )
     descriptor = response.json()
     session_id = renderer.require_text(descriptor, "session_id")
     ticket = renderer.require_text(descriptor, "ticket")
