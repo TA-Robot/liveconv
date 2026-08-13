@@ -81,13 +81,13 @@ name one owner and ownership zone below.
 | LV-070 | Done | P0 | MS-3 | Expand generated-source donor breadth at fixed exposure and evaluate on disjoint external speakers | EXP-035 published 21 disjoint-speaker and 30 fixed-condition candidates; CV12 removed the JVS3 gross external failure but did not beat base overall and retained the noise weakness, so donor-count expansion is closed |
 | LV-071 | Done | P0 | MS-3 | Restore X-VC's upstream training-role mixture at fixed EXP-035 exposure | EXP-036 completed 1,044 updates and 21 external candidates; it restored one empty output and worsened aggregate auxiliary content versus all-standard, so no fixed-condition expansion is admitted |
 | LV-072 | Done | P0 | MS-3 | Test content-safe target frame context before context-aware X-VC retraining | EXP-037 published 14 candidates; context did not loop but worsened external known-text distance from 0.399 to 0.505, so retraining was skipped |
-| LV-073 | In progress | P0 | MS-3 | Restrict X-VC adaptation to global-speaker modulation at fixed EXP-035 exposure | EXP-038 changes only LoRA scope from control69's 69 attention/FFN linears to seven speaker-conditioned AdaLN linears; data, 1,044 all-standard updates, LR, loss, and zero condition stay fixed |
+| LV-073 | In progress | P0 | MS-3 | Restrict X-VC adaptation to global-speaker modulation at fixed EXP-035 exposure | EXP-038 improved mean external source-relative distance from 0.360 to 0.321 but lost one control69 empty-output rescue; EXP-039 now tests twelve new utterances before a frozen-condition expansion |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| LV-073 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-038 note, and its ignored artifacts | Publish the seven-row control69/speaker7 comparison, record the corruption screen, then replan |
+| LV-073 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-038/039 notes, and their ignored artifacts | Publish twelve new-utterance control69/speaker7 comparisons, screen source-relative corruption, then replan |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.
@@ -112,8 +112,9 @@ and uses machine metrics only to reject corruption. EXP-035 closed donor-count
 expansion after improving external stability without repairing the shared
 noise weakness. EXP-036 role mixing and EXP-037 target context then regressed
 the external screen. EXP-038 isolates speaker-conditioned AdaLN adaptation
-from content attention/FFN adaptation; exact human87 epoch/LR/scope and EXP-024
-DTW retries remain closed. Do not spend this batch on hashes or receipts.
+from content attention/FFN adaptation, and EXP-039 expands it beyond one
+utterance per speaker; exact human87 epoch/LR/scope and EXP-024 DTW retries
+remain closed. Do not spend this batch on hashes or receipts.
 
 ## MS-3 dispatch plan
 
@@ -122,7 +123,7 @@ The live board is [`listen-queue.md`](listen-queue.md). Process is
 
 | Ready item | Intended ownership zone | Stop condition |
 |---|---|---|
-| LV-073 EXP-038 | `tools/xvc-source-diversity/` and fixed-port 8878 | seven-row control69/speaker7 audio plus external corruption screen, then replan |
+| LV-073 EXP-039 | `tools/xvc-source-diversity/` and fixed-port 8878 | twelve new-utterance control69/speaker7 rows plus corruption screen, then replan |
 | Unheard drain | Fixed-port 8878: EXP-033/034/035, stable public sets, EXP-023 | Operator `continue`/`rejected` when hearing returns |
 
 LV-032, LV-055, LV-056, LV-057, LV-058, and LV-068 are complete. LV-059,

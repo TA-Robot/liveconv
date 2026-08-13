@@ -156,8 +156,10 @@ claims from that artifact are superseded. The active join is now:
         -> seven disjoint speakers + frozen ten conditions (complete)
         -> EXP-036 official 40/20/40 training-role mix (external regression; stop)
         -> EXP-037 content-safe target-context render (external regression; stop)
-        -> EXP-038 speaker-conditioned AdaLN-only LoRA (gpu0)
-        -> seven disjoint-speaker content/corruption screen
+        -> EXP-038 speaker-conditioned AdaLN-only LoRA (complete)
+        -> seven disjoint-speaker screen (mean improved; one empty-output tradeoff)
+        -> EXP-039 twelve new utterances / six heldout speakers (gpu0)
+        -> source-window-relative content/corruption screen
         -> operator hearing when available
 ```
 
@@ -172,9 +174,12 @@ with a different Amitaro utterance followed by a zeroed current window; its
 external content regression closed that route before training. EXP-038 keeps
 the zero condition and all-standard data but adapts only the seven AdaLN
 linears directly driven by the global speaker embedding, rather than the 69
-attention/FFN linears that also carry content. Training donors and external
-evaluation speakers remain disjoint. This stays on the method path without
-retrying the closed human87 epoch/LR/scope or EXP-024 DTW axes.
+attention/FFN linears that also carry content. Its first external set improved
+the mean but restored one base-like empty output. EXP-039 therefore adds twelve
+new utterances from six of the same heldout speakers before any further scope
+decision. Training donors and external evaluation speakers remain disjoint.
+This stays on the method path without retrying the closed human87 epoch/LR/
+scope or EXP-024 DTW axes.
 
 ```text
  Unheard on 8878: EXP-033/034/035 / stable public RVC-XVC / EXP-023 Qwen

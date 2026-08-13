@@ -72,17 +72,20 @@ worse on both aggregate content diagnostics, so the role mix is technically
 rejected without a fixed-condition expansion. EXP-037 then tested a separate
 Amitaro context followed by a masked current window. It did not loop, but
 worsened external known-text distance from 0.399 to 0.505, so context-aware
-retraining was skipped. EXP-038 is the current lane: keep EXP-035 data, roles,
-updates, LR, loss, and zero condition fixed, and move LoRA from 69 content/
-attention/FFN linears to only seven global-speaker AdaLN modulators. This is a
-new conditioning-oriented freeze scope, not another control69/expanded79 point.
+retraining was skipped. EXP-038 kept EXP-035 data, roles, updates, LR, loss,
+and zero condition fixed while moving LoRA from 69 content/attention/FFN
+linears to only seven global-speaker AdaLN modulators. Its first seven external
+rows improved mean source-relative distance from 0.360 to 0.321 without loops,
+but lost one empty-output rescue from control69. EXP-039 is the current lane:
+twelve new utterances from six of the same external speakers test whether that
+scope result survives changed content and 2.184--9.612-second source lengths.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Train EXP-038 speaker7 on the exact EXP-035 1,044 generated pairs and zero condition | parent | no | seven-row control69/speaker7 comparison and corruption screen published |
-| 2 | If speaker7 avoids gross external regression, render it once on the frozen ten condition rows | parent | no human dependency for machine reject | fixed-condition comparison published; no automated winner |
+| 1 | Render EXP-039 base/control69/speaker7 on twelve new utterances from six heldout speakers | parent | no | 36 candidates and source-window-relative corruption screen published |
+| 2 | If speaker7's content stability survives EXP-039, render it once on the frozen ten condition rows | parent | no human dependency for machine reject | fixed-condition comparison published; no automated winner |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

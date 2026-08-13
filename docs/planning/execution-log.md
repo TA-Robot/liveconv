@@ -1988,3 +1988,35 @@ job queue.
   Ruff, all-1,044-artifact CPU admission, and `git diff --check` pass.
 - Changed action: commit before execution, run the sole `gpu0` lane, and screen
   the same seven external rows before any fixed-condition expansion.
+
+## 2026-08-13T13:06:18Z - EXP-038 speaker7 audio published
+
+- Agent: `primary-integrator`.
+- Task: Train only seven global-speaker AdaLN linears on EXP-035's exactly
+  reproduced 1,044 all-standard pairs and compare against base/control69.
+- Dependencies: commit `6b1f41a`; exclusive `gpu0`; generated inventory
+  `e909e465...`; listener `8878`.
+- Result: all 1,044 generated hashes matched. Training completed in 276.84
+  seconds with 5.13 GB peak allocation and published 21 candidates. No arm
+  gross-looped. Speaker7 improved mean source-relative distance from 0.360 to
+  0.321 and known-text distance from 0.399 to 0.393 versus control69, including
+  large recoveries on two rows. It returned one control69-rescued row to the
+  base-like empty transcript, making maximum distance 1.0.
+- Changed action: do not tune the seven-row set. Add different utterances from
+  the same heldout speakers and evaluate the existing adapters before another
+  training decision.
+
+## 2026-08-13T13:13:00Z - EXP-039 new-utterance evaluation prepared
+
+- Agent: `primary-integrator`.
+- Task: Strengthen external evaluation beyond one utterance per speaker without
+  changing an adapter.
+- Result: thirteen additional clips from the exact Common Voice revision were
+  downloaded and screened. Twelve from six prior external speakers have
+  non-empty first-window ASR of at least seven normalized characters and are
+  frozen for rendering; one three-character window was excluded. Durations
+  span 2.184--9.612 seconds. Twenty-six focused tests, Ruff, CPU admission, and
+  JSON validation pass.
+- Changed action: commit the render plan and runner, publish 36 base/control69/
+  speaker7 candidates, and judge machine corruption relative to each exact
+  2.4-second source window rather than its mostly unconsumed full sentence.
