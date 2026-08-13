@@ -160,3 +160,18 @@ def test_authentic_anchor_replaces_exactly_one_donor_per_target() -> None:
         "standard": 1_044
     }
     assert policy["experiment_id"] == "EXP-046"
+
+
+def test_semantic2x_changes_only_ssl_reconstruction_weight() -> None:
+    weights = ROLE_MIX.training_loss_weights("semantic2x")
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(training_policy="semantic2x", lora_scope="control69")
+    )
+
+    assert weights == {
+        "mse_loss": 2000.0,
+        "vq_loss": 1.0,
+        "mel_loss": 15.0,
+        "sim_mse_loss": 10.0,
+    }
+    assert policy["experiment_id"] == "EXP-049"

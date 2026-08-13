@@ -2306,3 +2306,31 @@ job queue.
 - Changed action: commit both render-only slices, execute sequentially on the
   sole GPU, screen each, then choose one loss/conditioning/learning-target
   method only from the combined 7 + 12 + 10 evidence.
+
+## 2026-08-13T14:30:34Z - EXP-047/048 combined gate closed authentic anchor
+
+- Agent: `primary-integrator`.
+- Task: Evaluate EXP-046 on twelve changed utterances and ten frozen audio
+  conditions after the seven-row gate proved unreliable.
+- Dependencies: commit `7e8604f`; sequential exclusive `gpu0`; listener `8878`.
+- Result: EXP-047 published 36 candidates in 108.94 seconds. Authentic-anchor
+  regressed control69's source-relative mean 0.184 to 0.266, known-text mean
+  0.576 to 0.607, and maximum 0.571 to 0.625. EXP-048 published 30 candidates
+  in 106.32 seconds and exactly matched control69 in every condition summary:
+  macro 0.153, noise 0.375, leading silence 0.400, tempo 0.250, pitch 0.000.
+  Neither run gross-looped.
+- Changed action: close authentic-anchor. It harms changed clean utterances and
+  does not improve any frozen limitation. Future method decisions use the full
+  7 + 12 + 10 bundle rather than staging on seven rows.
+
+## 2026-08-13T14:32:08Z - EXP-049 semantic-loss training prepared
+
+- Agent: `primary-integrator`.
+- Task: Return to EXP-035 clean synthetic training and double only semantic SSL
+  reconstruction weight from 1000 to 2000; keep mel 15, speaker 10, VQ 1, and
+  every data/optimizer control fixed.
+- Result: Ruff, 37 focused tests, exact 1,044-artifact CPU admission, explicit
+  loss-weight validation, and `git diff --check` passed.
+- Changed action: commit before training and launch one GPU lane. Seven rows are
+  published but cannot decide the method; twelve changed utterances and ten
+  conditions remain mandatory before replan.

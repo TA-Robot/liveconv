@@ -85,13 +85,14 @@ name one owner and ownership zone below.
 | LV-074 | Done | P0 | MS-3 | Add target-preserving reconstruction without reversed donor-target dilution | EXP-042 matched control69 exactly across all ten frozen conditions and did not repair noise; reconstruction20 is retained as unheard audio only and the training method is closed |
 | LV-075 | Done | P0 | MS-3 | Train X-VC against varied source-side audio limitations | EXP-043 completed but source-only temporal changes caused incoherent target supervision and regressed the seven-speaker screen; the method is closed without more renders |
 | LV-076 | Done | P0 | MS-3 | Preserve target alignment while training X-VC on varied audio limitations | EXP-044 improved seven external rows, but EXP-045 regressed on twelve changed utterances; aligned augmentation is closed without a fixed-condition render |
-| LV-077 | In progress | P0 | MS-3 | Anchor synthetic X-VC diversity with authentic aligned sources | EXP-046 regressed on the unreliable seven-row set; Grok requires EXP-047's twelve changed utterances plus EXP-048's ten frozen conditions before the method decision |
+| LV-077 | Done | P0 | MS-3 | Anchor synthetic X-VC diversity with authentic aligned sources | EXP-047 regressed on twelve changed utterances and EXP-048 changed none of ten stress summaries; the authentic-anchor method is closed |
+| LV-078 | In progress | P0 | MS-3 | Strengthen X-VC semantic content preservation without weakening acoustic losses | EXP-049 doubles only semantic SSL reconstruction weight from 1000 to 2000 at fixed EXP-035 data, roles, scope, LR, seed, and 1,044 updates |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| LV-077 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-046--048 notes, and their ignored artifacts | Publish and screen the twelve changed-utterance and ten-condition comparisons, then replan one method |
+| LV-078 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-049 note, and its ignored artifacts | Train semantic2x, publish seven external rows, then prepare the mandatory twelve + ten combined gate |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.
@@ -128,7 +129,7 @@ The live board is [`listen-queue.md`](listen-queue.md). Process is
 
 | Ready item | Intended ownership zone | Stop condition |
 |---|---|---|
-| LV-077 EXP-047/048 | `tools/xvc-source-diversity/` and fixed-port 8878 | twelve changed-utterance plus ten-condition authentic-anchor screens, then replan |
+| LV-078 EXP-049 | `tools/xvc-source-diversity/` and fixed-port 8878 | one 1,044-update semantic2x train plus seven external rows, followed by the combined gate |
 | Unheard drain | Fixed-port 8878: EXP-033/034/035, stable public sets, EXP-023 | Operator `continue`/`rejected` when hearing returns |
 
 LV-032, LV-055, LV-056, LV-057, LV-058, and LV-068 are complete. LV-059,

@@ -61,6 +61,12 @@ SOURCE_CONDITION_COUNTS = {
     "pitch": 104,
     "leading-silence": 104,
 }
+STANDARD_LOSS_WEIGHTS = {
+    "mse_loss": 1000.0,
+    "vq_loss": 1.0,
+    "mel_loss": 15.0,
+    "sim_mse_loss": 10.0,
+}
 TOTAL_UPDATES = breadth.TOTAL_UPDATES
 SPEAKER7_TARGETS = tuple(
     [
@@ -99,6 +105,7 @@ def training_modes(policy: str) -> list[str]:
         "source-augmentation",
         "paired-augmentation",
         "authentic-anchor",
+        "semantic2x",
     }:
         return ["standard"] * TOTAL_UPDATES
     if policy == "standard-reconstruction":
@@ -135,6 +142,13 @@ def target_condition_kind(policy: str, source_kind: str) -> str:
 
 def uses_authentic_anchor(policy: str, donor_index: int) -> bool:
     return policy == "authentic-anchor" and donor_index == 0
+
+
+def training_loss_weights(policy: str) -> dict[str, float]:
+    weights = dict(STANDARD_LOSS_WEIGHTS)
+    if policy == "semantic2x":
+        weights["mse_loss"] = 2000.0
+    return weights
 
 
 def authentic_pairs(
@@ -305,6 +319,26 @@ def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
                 "source construction: twelve synthetic donor exposures versus "
                 "eleven synthetic exposures plus one authentic Hadou source per "
                 "Amitaro target; target exposure and optimizer controls stay fixed"
+            ),
+        }
+    if (
+        arguments.training_policy == "semantic2x"
+        and arguments.lora_scope == "control69"
+    ):
+        return {
+            "experiment_id": "EXP-049",
+            "slug": "exp049",
+            "candidate_id": "cv12-semantic2x",
+            "candidate_name": "EXP-049 / CV12 / semantic SSL loss 2x",
+            "run_kind": "EXP-049 X-VC semantic-loss evaluation",
+            "result_kind": "liveconv-exp049-xvc-semantic2x-result/v1",
+            "question": (
+                "Does doubling semantic SSL reconstruction weight preserve "
+                "external content without weakening waveform or speaker losses?"
+            ),
+            "independent_variable": (
+                "loss weight: mse_loss 1000 to 2000; mel 15, speaker 10, VQ 1, "
+                "data, target, roles, scope, LR, seed, and updates stay fixed"
             ),
         }
     raise RoleMixError("unsupported training-policy and LoRA-scope combination")
@@ -540,6 +574,14 @@ def run(
     sample_rate = int(config["sample_rate"])
     model = method._load_xvc(arguments, XVC, device)
     base._initialize_loss(model, arguments.xvc_config)
+    observed_loss_weights = {
+        key: float(value)
+        for key, value in model.loss_config["loss_weights"].items()
+    }
+    if observed_loss_weights != STANDARD_LOSS_WEIGHTS:
+        raise RoleMixError("upstream X-VC loss weights drifted")
+    loss_weights = training_loss_weights(arguments.training_policy)
+    model.loss_config["loss_weights"] = dict(loss_weights)
 
     target_pairs = [
         base.MaterializedPair(pair_id, target, target, digest, digest)
@@ -924,7 +966,7 @@ def run(
             "learning_rate": base.LEARNING_RATE,
             "gradient_clip_norm": base.GRADIENT_CLIP_NORM,
             "target_wav_cond": "zeros",
-            "loss": "pinned X-VC composite generative loss",
+            "loss_weights": loss_weights,
         },
         "role_counts": observed_role_counts,
         "role_schedule_sha256": method._canonical_sha256(modes),
@@ -1013,6 +1055,7 @@ def _parser() -> argparse.ArgumentParser:
             "source-augmentation",
             "paired-augmentation",
             "authentic-anchor",
+            "semantic2x",
         ),
         default="role-mix",
     )
@@ -1085,6 +1128,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                             method.PAIR_COUNT
                             if arguments.training_policy == "authentic-anchor"
                             else 0
+                        ),
+                        "loss_weights": training_loss_weights(
+                            arguments.training_policy
                         ),
                         "lora_scope": arguments.lora_scope,
                     },

@@ -109,13 +109,18 @@ seven-row screen regressed from control69 0.360 to 0.430, but the same seven
 rows produced EXP-044's false positive. The 14:20 Grok audit therefore changed
 the decision gate: EXP-047's twelve changed utterances and EXP-048's ten frozen
 conditions must both be screened before another training method is selected.
+They confirmed closure: the twelve-row mean was 0.266 versus control69 0.184,
+while all ten condition summaries were exactly unchanged, including noise
+0.375. EXP-049 is the next loss-method lane. It restores EXP-035's clean
+synthetic data and changes only semantic SSL reconstruction weight from 1000
+to 2000; waveform, speaker, and VQ losses stay fixed.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Render EXP-047 authentic-anchor on twelve changed utterances | parent | no | 36 candidates and source-relative screen published |
-| 2 | Render EXP-048 authentic-anchor on the frozen ten conditions, regardless of the unreliable seven-row set | parent | no human dependency for machine reject | condition screen published; combined 7 + 12 + 10 gate complete |
+| 1 | Train EXP-049 with semantic SSL loss 1000→2000 and every other EXP-035 control fixed | parent | no | seven external rows published; no decision yet |
+| 2 | Render EXP-049 on the twelve changed utterances and ten frozen conditions regardless of seven-row result | parent | no human dependency for machine reject | combined 7 + 12 + 10 corruption gate complete |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.
