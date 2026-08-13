@@ -47,6 +47,7 @@ REAL_TEACHER_BREADTH_POLICY = "real-teacher-breadth48"
 REAL_TEACHER_OUTPUT_POLICY = "real-teacher-output48"
 REAL_TEACHER_MULTIDOMAIN_POLICY = "real-teacher-output-multidomain48"
 REAL_TEACHER_PHONETIC_POLICY = "real-teacher-output-phonetic48"
+REAL_TEACHER_WINDOW_POLICY = "real-teacher-output-window48"
 REAL_TEACHER_POOL_KIND = "liveconv-exp114-commonvoice-teacher48/v1"
 REAL_TEACHER_POOL_GROUP = "commonvoice-teacher-train-disjoint"
 REAL_TEACHER_POOL_COUNT = 48
@@ -54,6 +55,8 @@ MULTIDOMAIN_TEACHER_POOL_KIND = "liveconv-exp124-multidomain-teacher48/v1"
 MULTIDOMAIN_TEACHER_POOL_GROUP = "multidomain-teacher-train-disjoint"
 PHONETIC_TEACHER_POOL_KIND = "liveconv-exp130-phonetic-teacher48/v1"
 PHONETIC_TEACHER_POOL_GROUP = "phonetic-teacher-train-disjoint"
+WINDOW_TEACHER_POOL_KIND = "liveconv-exp134-window-teacher48/v1"
+WINDOW_TEACHER_POOL_GROUP = "window-teacher-train-disjoint"
 MULTIDOMAIN_TEACHER_COUNTS = {"commonvoice": 24, "hadou": 21, "jvs": 3}
 FRESH48_KIND = "liveconv-exp112-commonvoice-fresh48/v1"
 FRESH48_GROUP = "commonvoice-fresh-disjoint"
@@ -211,6 +214,7 @@ def training_modes(policy: str) -> list[str]:
         REAL_TEACHER_OUTPUT_POLICY,
         REAL_TEACHER_MULTIDOMAIN_POLICY,
         REAL_TEACHER_PHONETIC_POLICY,
+        REAL_TEACHER_WINDOW_POLICY,
     }:
         repeats, remainder = divmod(TOTAL_UPDATES, len(RECONSTRUCTION_CYCLE))
         tail = (
@@ -244,6 +248,7 @@ def real_teacher_pool_schedule(
         REAL_TEACHER_OUTPUT_POLICY,
         REAL_TEACHER_MULTIDOMAIN_POLICY,
         REAL_TEACHER_PHONETIC_POLICY,
+        REAL_TEACHER_WINDOW_POLICY,
     }:
         return [None] * TOTAL_UPDATES
     if pool_size != REAL_TEACHER_POOL_COUNT:
@@ -257,6 +262,7 @@ def real_teacher_pool_schedule(
             REAL_TEACHER_OUTPUT_POLICY,
             REAL_TEACHER_MULTIDOMAIN_POLICY,
             REAL_TEACHER_PHONETIC_POLICY,
+            REAL_TEACHER_WINDOW_POLICY,
         }
         else "real-donor-teacher-semantic"
     )
@@ -457,6 +463,33 @@ def training_scope(inventory: Path, name: str) -> dict[str, object]:
 def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
     peft_variant = getattr(arguments, "peft_variant", "standard")
     teacher_loss = getattr(arguments, "teacher_loss", "standard")
+    if (
+        arguments.training_policy == REAL_TEACHER_WINDOW_POLICY
+        and arguments.lora_scope == "control69"
+        and peft_variant == "standard"
+        and teacher_loss == "standard"
+    ):
+        return {
+            "experiment_id": "EXP-134",
+            "slug": "exp134",
+            "candidate_id": "cv12-real-teacher-output-window48",
+            "candidate_name": (
+                "EXP-134 / full-output teacher / audited start-middle-end windows"
+            ),
+            "run_kind": "EXP-134 X-VC model-window output teacher evaluation",
+            "result_kind": "liveconv-exp134-xvc-real-teacher-output-window48/v1",
+            "question": (
+                "Does selecting the exact 2.4-second model windows improve broad "
+                "content stability without adding repetition?"
+            ),
+            "independent_variable": (
+                "the 21 Hadou teacher inputs: EXP-130 full utterances selected by "
+                "official full-text kana versus seven unique audited start, middle, "
+                "and end 2.4-second windows selected by actual window-ASR 1/2/3-gram "
+                "coverage; CV24, JVS3, count/share, full-output objective, standard "
+                "rows, updates, control69 LoRA, LR, seed, and target stay fixed"
+            ),
+        }
     if (
         arguments.training_policy == REAL_TEACHER_PHONETIC_POLICY
         and arguments.lora_scope == "control69"
@@ -1446,6 +1479,7 @@ def validate_inputs(
         REAL_TEACHER_OUTPUT_POLICY,
         REAL_TEACHER_MULTIDOMAIN_POLICY,
         REAL_TEACHER_PHONETIC_POLICY,
+        REAL_TEACHER_WINDOW_POLICY,
     }:
         if (
             arguments.real_teacher_manifest is None
@@ -1457,18 +1491,30 @@ def validate_inputs(
             _load_fixed_multidomain_pool(
                 arguments.real_teacher_manifest,
                 kind=(
-                    PHONETIC_TEACHER_POOL_KIND
-                    if arguments.training_policy == REAL_TEACHER_PHONETIC_POLICY
-                    else MULTIDOMAIN_TEACHER_POOL_KIND
+                    WINDOW_TEACHER_POOL_KIND
+                    if arguments.training_policy == REAL_TEACHER_WINDOW_POLICY
+                    else (
+                        PHONETIC_TEACHER_POOL_KIND
+                        if arguments.training_policy == REAL_TEACHER_PHONETIC_POLICY
+                        else MULTIDOMAIN_TEACHER_POOL_KIND
+                    )
                 ),
                 group=(
-                    PHONETIC_TEACHER_POOL_GROUP
-                    if arguments.training_policy == REAL_TEACHER_PHONETIC_POLICY
-                    else MULTIDOMAIN_TEACHER_POOL_GROUP
+                    WINDOW_TEACHER_POOL_GROUP
+                    if arguments.training_policy == REAL_TEACHER_WINDOW_POLICY
+                    else (
+                        PHONETIC_TEACHER_POOL_GROUP
+                        if arguments.training_policy == REAL_TEACHER_PHONETIC_POLICY
+                        else MULTIDOMAIN_TEACHER_POOL_GROUP
+                    )
                 ),
             )
             if arguments.training_policy
-            in {REAL_TEACHER_MULTIDOMAIN_POLICY, REAL_TEACHER_PHONETIC_POLICY}
+            in {
+                REAL_TEACHER_MULTIDOMAIN_POLICY,
+                REAL_TEACHER_PHONETIC_POLICY,
+                REAL_TEACHER_WINDOW_POLICY,
+            }
             else _load_fixed_commonvoice_pool(
                 arguments.real_teacher_manifest,
                 kind=REAL_TEACHER_POOL_KIND,
@@ -1636,6 +1682,7 @@ def run_teacher_output_smoke(
             REAL_TEACHER_OUTPUT_POLICY,
             REAL_TEACHER_MULTIDOMAIN_POLICY,
             REAL_TEACHER_PHONETIC_POLICY,
+            REAL_TEACHER_WINDOW_POLICY,
         }
         or teacher_pool is None
         or arguments.real_teacher_root is None
@@ -2354,6 +2401,7 @@ def run(
                     REAL_TEACHER_OUTPUT_POLICY,
                     REAL_TEACHER_MULTIDOMAIN_POLICY,
                     REAL_TEACHER_PHONETIC_POLICY,
+                    REAL_TEACHER_WINDOW_POLICY,
                 }
                 else (
                     "frozen_base_semantic_prediction_on_real_donor_rows"
@@ -2481,6 +2529,7 @@ def _parser() -> argparse.ArgumentParser:
             REAL_TEACHER_OUTPUT_POLICY,
             REAL_TEACHER_MULTIDOMAIN_POLICY,
             REAL_TEACHER_PHONETIC_POLICY,
+            REAL_TEACHER_WINDOW_POLICY,
             "real-reconstruction20",
         ),
         default="role-mix",
@@ -2599,6 +2648,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 REAL_TEACHER_OUTPUT_POLICY,
                                 REAL_TEACHER_MULTIDOMAIN_POLICY,
                                 REAL_TEACHER_PHONETIC_POLICY,
+                                REAL_TEACHER_WINDOW_POLICY,
                             }
                             else (
                                 "frozen_base_semantic_prediction_on_real_donor_rows"
