@@ -594,3 +594,24 @@ job queue.
 - Changed action: move EXP-025 from `Next listen-now to render` to `Unheard
   now`. Start no further X-VC trajectory until the operator records `keep` or
   `rejected` for this set.
+
+## 2026-08-13T01:43:55Z - Grok hearing-loop progress audit
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only snapshot; no tools or subagents).
+- Result: `REDIRECT`. The audit observed the new EXP-025 WAVs at 01:35 and no
+  observable operator decision. It identified operator listening, rather than
+  another render or evidence pass, as the critical path.
+- Adopted: Yes for the decision. Stop new X-VC trajectories and hand the four
+  Ready rows to the operator on `8878`. The listener and Ready board already
+  include EXP-025 as three runs and six candidates.
+- Rejected as stale input: the audit described the parent as still editing the
+  old banner and treated EXP-025 publication as unknown. Both were already
+  complete. The static auditor prompt caused that discrepancy.
+- Changed action: replaced the tmux loop with a dynamic snapshot of the Ready
+  board, execution-log tail, recent commits and WAVs, listener collections,
+  running jobs, and GPU state. The next audit starts 1,800 seconds after the
+  prior start; subsequent starts use the same 1,800-second cadence rather than
+  adding Grok response time to the interval. Raw first/second audits remain in
+  `/tmp/liveconv-grok-progress-auditor-v2.log`; the corrected loop writes
+  `/tmp/liveconv-grok-progress-auditor-v3.log`.
