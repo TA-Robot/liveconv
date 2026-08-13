@@ -1,6 +1,6 @@
 # EXP-114: X-VC real-teacher breadth48
 
-Status: method preparation
+Status: admitted for one gpu0 run
 
 ## Question
 
@@ -25,3 +25,12 @@ Train once on gpu0. The built-in external seven-row render is only an early
 screen. Next render frozen fresh48; stop on adapter-added gross repetition or a
 broad non-loop regression. Only a surviving checkpoint may enter the balanced
 stress screen. Machine metrics cannot select naturalness or target voice.
+
+## Frozen input
+
+Commit `07d7a0d` selected and materialized 48 unique training speakers. The
+ignored manifest SHA-256 is
+`cd093f43c52f79294cd5c5d9d17b8932845cedd03d17530885eff1711c2a8eab`.
+Focused tests passed 53 cases. Exact CPU admission confirmed 835 standard plus
+209 teacher-semantic roles, 48 teacher sources, 87 target texts, and 1,044
+updates without CUDA.

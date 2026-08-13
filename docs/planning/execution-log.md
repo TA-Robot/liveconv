@@ -3110,9 +3110,13 @@ job queue.
   optimization setting fixed.
 - Dependencies: EXP-112 rejection; pinned Common Voice metadata; frozen
   fresh48 exclusion; EXP-035 pseudo sources/control69; one gpu0 lane.
-- Result: deterministic selection, disjoint-pool admission, balanced 209-slot
-  cycling, training policy, and focused tests prepared. Seventeen training
-  speakers receive five teacher exposures and 31 receive four.
+- Result: commit `07d7a0d` fixed deterministic selection, disjoint-pool
+  admission, balanced 209-slot cycling, and the training policy. Focused tests
+  passed 53 cases. Materialization produced 48 unique files/speakers with
+  manifest SHA `cd093f43c52f79294cd5c5d9d17b8932845cedd03d17530885eff1711c2a8eab`.
+  Exact CPU admission confirmed 835 standard plus 209 teacher roles, 87 target
+  texts, 48 real teacher sources, and 1,044 updates. Seventeen training speakers
+  receive five teacher exposures and 31 receive four.
 - Problems: none so far.
 - Changed action: commit before acquisition, materialize the training pool,
   then train one point. Do not add 24/96-source or teacher-share variants.
