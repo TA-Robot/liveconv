@@ -28,5 +28,7 @@ def test_recovery_control_is_the_exact_fresh_generalization_output() -> None:
 
 def test_runner_closes_the_local_output_gate_before_cancel() -> None:
     source = RUNNER.read_text(encoding="utf-8")
+    assert "from liveconv_protocol import GenerationCancel" in source
+    assert "renderer.GenerationCancel(" not in source
     assert '"local_output_gate_closed_before_cancel": True' in source
     assert '"stale_output_frames_after_ack"' in source

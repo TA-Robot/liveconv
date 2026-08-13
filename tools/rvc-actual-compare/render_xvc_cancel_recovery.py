@@ -22,6 +22,7 @@ from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
+from liveconv_protocol import GenerationCancel, GenerationCanceledEvent
 from websockets.asyncio.client import connect
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -314,7 +315,7 @@ async def execute(
             cancel_sent_ns = time.monotonic_ns()
             await websocket.send(
                 renderer.encode_control_message(
-                    renderer.GenerationCancel(
+                    GenerationCancel(
                         protocol_version=1,
                         request_id="ms3.cancel-recovery.cancel-1",
                         session_id=session_id,
@@ -334,7 +335,7 @@ async def execute(
                     excluded_before_ack += 1
                     continue
                 event = parse_event(renderer, message)
-                if isinstance(event, renderer.GenerationCanceledEvent):
+                if isinstance(event, GenerationCanceledEvent):
                     if event.generation_id != 1 or event.pipeline_id != pipeline_id:
                         raise CancelRecoveryError("cancel acknowledgment differs")
                     break
