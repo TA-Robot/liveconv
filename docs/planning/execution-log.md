@@ -814,3 +814,24 @@ job queue.
   input. Admit a system-path run only if that coarse screen generalizes.
 - GPU: peak allocation 3,552,147,968 bytes; returned idle after publication and
   auxiliary ASR.
+
+## 2026-08-13T04:56:00Z - EXP-026 scopes screened on actual input
+
+- Agent: `primary-integrator`.
+- Task: Reuse the exact base, expanded79 epoch-12, and control69 epoch-12
+  states on the existing 8.17-second actual ChatGPT input.
+- Dependencies: commit `fefbc4f`, fixed source/target/adapter hashes, no new
+  training, and exclusive `gpu0`.
+- Result: three outputs completed in 80.11 seconds and published as
+  `exp026-actual-scope-offline-v1`; peak allocation was 2,845,547,520 bytes.
+- Machine screen: source-relative auxiliary ASR character distance was 0.317
+  for base, 0.463 for expanded79 epoch 12, and 0.439 for control69 epoch 12.
+  Control69 retained a small relative content advantage over expanded79 and
+  showed no gross loop, but neither adaptation beat base. No audible quality,
+  naturalness, or speaker-identity claim is made.
+- Problems: the evidence STT wrapper rejected X-VC float WAV input; the same
+  pinned local faster-whisper model accepted the files directly. No audio was
+  regenerated and the failed wrapper attempt did not publish evidence.
+- Changed action: admit one control69 epoch-12/future-120 worker/cancellation
+  probe. A stale frame, queue failure, gross repetition, or content collapse
+  closes this branch; do not add another training point.

@@ -78,6 +78,16 @@ def test_future_geometry_rejects_subframe_values() -> None:
         raise AssertionError("125 ms must not enter the 20 ms worker contract")
 
 
+def test_candidate_profiles_bind_distinct_exact_adapters() -> None:
+    expanded = MODULE.CANDIDATE_PROFILES["expanded79-e08"]
+    control = MODULE.CANDIDATE_PROFILES["control69-e12"]
+
+    assert expanded.adapter_sha256 == MODULE.EXPECTED_ADAPTER_SHA256
+    assert control.adapter_sha256 == MODULE.CONTROL69_E12_ADAPTER_SHA256
+    assert expanded.adapter_sha256 != control.adapter_sha256
+    assert control.output_file == "10-xvc-control69-e12-future-120-system.wav"
+
+
 def test_gateway_credit_waits_for_output_before_accepting_frame_26() -> None:
     capture = MODULE.Capture()
 

@@ -60,6 +60,12 @@ EXPECTED_ADAPTER_SHA256 = (
 EXPECTED_ADAPTER_CONFIG_SHA256 = (
     "7b9df8ad7832d589ae4129c9da7fa052610379b7d4a4168ce381eb83fd08f12d"
 )
+CONTROL69_E12_ADAPTER_SHA256 = (
+    "efa63bdec33bcfd2816bd267c9bfa7dfd42d6a39b5c872b720db74cff01fbffe"
+)
+CONTROL69_E12_ADAPTER_CONFIG_SHA256 = (
+    "74611b93bbbe556b328aec6ec8ecc6cc1a029ee8307d98e35165523e4f24af07"
+)
 EXPECTED_CONFIG_SHA256 = backend_module.CONFIG_SHA256
 EXPECTED_CHECKPOINT_SHA256 = backend_module.CHECKPOINT_SHA256
 EXPECTED_UPSTREAM_STREAM_SHA256 = (
@@ -88,6 +94,39 @@ class GeometrySnapshot:
     worker_history_ms: int
     worker_lookahead_frames: int
     worker_history_frames: int
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateProfile:
+    candidate_id: str
+    adapter_sha256: str
+    adapter_config_sha256: str
+    adapter_name: str
+    display_name: str
+    output_file: str
+    profile_id: str
+
+
+CANDIDATE_PROFILES = {
+    "expanded79-e08": CandidateProfile(
+        candidate_id="expanded79-e08",
+        adapter_sha256=EXPECTED_ADAPTER_SHA256,
+        adapter_config_sha256=EXPECTED_ADAPTER_CONFIG_SHA256,
+        adapter_name="expanded79-e08",
+        display_name="X-VC human87 expanded79 epoch 8 / future 120 ms / worker",
+        output_file="10-xvc-e08-future-120-system.wav",
+        profile_id="xvc.exp032.e08.future-120.system-path.listen-now",
+    ),
+    "control69-e12": CandidateProfile(
+        candidate_id="control69-e12",
+        adapter_sha256=CONTROL69_E12_ADAPTER_SHA256,
+        adapter_config_sha256=CONTROL69_E12_ADAPTER_CONFIG_SHA256,
+        adapter_name="control69-e12",
+        display_name="X-VC human87 control69 epoch 12 / future 120 ms / worker",
+        output_file="10-xvc-control69-e12-future-120-system.wav",
+        profile_id="xvc.exp026.control69.e12.future-120.system-path.listen-now",
+    ),
+}
 
 
 @contextlib.contextmanager
@@ -198,7 +237,7 @@ def frame_audio(samples: np.ndarray) -> tuple[list[np.ndarray], int]:
 
 
 class CandidateBackend(backend_module.OfficialXvcBackend):
-    """Real epoch-8 backend using the official per-window conversion code."""
+    """One exact adapter using the official per-window conversion code."""
 
     def __init__(
         self,
@@ -209,6 +248,7 @@ class CandidateBackend(backend_module.OfficialXvcBackend):
         adapter_dir: Path,
         target_reference: Path,
         device_name: str,
+        profile: CandidateProfile,
     ) -> None:
         require_non_unix_socket_denial()
         self._closed = False
@@ -236,9 +276,12 @@ class CandidateBackend(backend_module.OfficialXvcBackend):
             str(xvc_config), str(checkpoint), device, ema_load=False
         )
         model = PeftModel.from_pretrained(
-            model, adapter_dir, adapter_name="e08", is_trainable=False
+            model,
+            adapter_dir,
+            adapter_name=profile.adapter_name,
+            is_trainable=False,
         )
-        model.set_adapter("e08")
+        model.set_adapter(profile.adapter_name)
         model.eval()
         target = np.asarray(
             process_audio(
@@ -253,14 +296,16 @@ class CandidateBackend(backend_module.OfficialXvcBackend):
             )
 
         self.configuration = None
-        self.implementation_revision = "x-vc-human87-system-path-probe-v1"
-        self.weight_revision = "sha256:" + EXPECTED_ADAPTER_SHA256
+        self.implementation_revision = (
+            "x-vc-human87-system-path-probe-v1/" + profile.candidate_id
+        )
+        self.weight_revision = "sha256:" + profile.adapter_sha256
         self.configuration_hash = (
             "sha256:"
             + hashlib.sha256(
                 json.dumps(
                     {
-                        "adapter_sha256": EXPECTED_ADAPTER_SHA256,
+                        "adapter_sha256": profile.adapter_sha256,
                         "current_ms": CURRENT_MS,
                         "future_ms": FUTURE_MS,
                         "smooth_ms": SMOOTH_MS,
@@ -424,19 +469,19 @@ def write_pcm16(path: Path, samples: np.ndarray) -> str:
     return sha256_file(path)
 
 
-def validate_inputs(args: argparse.Namespace) -> None:
+def validate_inputs(args: argparse.Namespace, profile: CandidateProfile) -> None:
     checks = (
         (args.actual_source, EXPECTED_SOURCE_SHA256, "actual source"),
         (args.target_reference, EXPECTED_TARGET_SHA256, "target reference"),
         (
             args.adapter_dir / "adapter_model.safetensors",
-            EXPECTED_ADAPTER_SHA256,
-            "epoch-8 adapter",
+            profile.adapter_sha256,
+            f"{profile.candidate_id} adapter",
         ),
         (
             args.adapter_dir / "adapter_config.json",
-            EXPECTED_ADAPTER_CONFIG_SHA256,
-            "epoch-8 adapter config",
+            profile.adapter_config_sha256,
+            f"{profile.candidate_id} adapter config",
         ),
         (args.xvc_config, EXPECTED_CONFIG_SHA256, "X-VC config"),
         (args.checkpoint, EXPECTED_CHECKPOINT_SHA256, "X-VC checkpoint"),
@@ -459,7 +504,8 @@ def validate_inputs(args: argparse.Namespace) -> None:
 
 
 def run(args: argparse.Namespace) -> int:
-    validate_inputs(args)
+    profile = CANDIDATE_PROFILES[args.candidate]
+    validate_inputs(args, profile)
     started = time.perf_counter()
     args.work_dir.mkdir(parents=True)
     source = decode_pcm24_wav(args.actual_source)
@@ -486,6 +532,7 @@ def run(args: argparse.Namespace) -> int:
             adapter_dir=args.adapter_dir,
             target_reference=args.target_reference,
             device_name=args.device,
+            profile=profile,
         )
         capture = Capture()
         fatal = threading.Event()
@@ -526,7 +573,7 @@ def run(args: argparse.Namespace) -> int:
     staging = args.work_dir / "listener-staging"
     staging.mkdir()
     shutil.copyfile(args.actual_source, staging / "00-native-source.wav")
-    output_sha256 = write_pcm16(staging / "10-xvc-e08-future-120-system.wav", retained)
+    output_sha256 = write_pcm16(staging / profile.output_file, retained)
     chunk_ms = np.asarray(backend.chunk_compute_ms, dtype=np.float64)
     timing = {
         "chunk_count": int(chunk_ms.size),
@@ -537,21 +584,21 @@ def run(args: argparse.Namespace) -> int:
     }
     index = {
         "schema_version": 1,
-        "run_kind": "EXP-032 epoch-8 future-120 candidate system-path probe",
+        "run_kind": (
+            f"{profile.candidate_id} future-120 candidate system-path probe"
+        ),
         "status": "completed-listen-now-unselected",
         "source_file": "Native / 変換前のChatGPTタブ音声（2026-08-11収録）",
         "source_output_file": "00-native-source.wav",
         "source_duration_seconds": original_samples / INPUT_SAMPLE_RATE,
         "variants": [
             {
-                "variant_id": "xvc-e08-future-120-system-path",
-                "display_name": (
-                    "X-VC human87 epoch 8 / future 120 ms / worker state machine"
-                ),
+                "variant_id": f"xvc-{profile.candidate_id}-future-120-system-path",
+                "display_name": profile.display_name,
                 "display_order": 1,
-                "output_file": "10-xvc-e08-future-120-system.wav",
+                "output_file": profile.output_file,
                 "status": "passed",
-                "profile_id": "xvc.exp032.e08.future-120.system-path.listen-now",
+                "profile_id": profile.profile_id,
                 "family_id": "x-vc",
                 "output_sha256": output_sha256,
                 "parameters": {
@@ -581,7 +628,8 @@ def run(args: argparse.Namespace) -> int:
         ).stdout.strip(),
         "source_sha256": EXPECTED_SOURCE_SHA256,
         "target_reference_sha256": EXPECTED_TARGET_SHA256,
-        "adapter_sha256": EXPECTED_ADAPTER_SHA256,
+        "candidate_id": profile.candidate_id,
+        "adapter_sha256": profile.adapter_sha256,
         "stream_window": {
             "window_ms": WINDOW_MS,
             "current_ms": CURRENT_MS,
@@ -620,6 +668,11 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--xvc-config", type=Path, required=True)
     value.add_argument("--checkpoint", type=Path, required=True)
     value.add_argument("--adapter-dir", type=Path, required=True)
+    value.add_argument(
+        "--candidate",
+        choices=tuple(CANDIDATE_PROFILES),
+        default="expanded79-e08",
+    )
     value.add_argument("--target-reference", type=Path, required=True)
     value.add_argument("--actual-source", type=Path, required=True)
     value.add_argument("--work-dir", type=Path, required=True)

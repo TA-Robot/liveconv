@@ -45,7 +45,7 @@ authorize promote claims or several speculative sweeps in parallel.
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
 | 1 | Help the operator finish the six rows above; EXP-027--031 are superseded diagnostics and do not need separate draining | parent | n/a | decisions recorded |
-| 2 | Compare base / expanded79 epoch 12 / control69 epoch 12 on the actual 8.17 s ChatGPT input | parent | no: reuses completed exact adapters and tests heldout generalization | one completed offline collection and coarse content screen |
+| 2 | Run control69 epoch 12 through the established future-120 worker/cancellation path | parent | no: actual-input offline screen completed without gross repetition | one system WAV with zero stale frames, or a technical stop |
 | 3 | If EXP-032 receives a `keep`, bind that exact candidate to the formal Gateway profile and exercise native fallback/Extension playout | parent | yes: EXP-032 `keep` | one route-qualified system listen or a recorded integration blocker |
 | 4 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
 
@@ -64,6 +64,13 @@ existing exact epoch-12 adapters on the actual input next; only a candidate
 that passes coarse content/repetition screening may enter one bounded worker
 system-path run. A recorded `keep` is still required before formal
 Gateway/Extension binding or any quality claim.
+
+The actual-input offline screen is complete. Source-relative auxiliary ASR
+distance was 0.317 for base, 0.463 for expanded79 epoch 12, and 0.439 for
+control69 epoch 12. Control69 did not beat base, but preserved its small
+relative advantage over expanded79 and showed no gross loop. Admit only the
+single control69 epoch-12/future-120 system-path probe now; do not interpret
+its admission as a model selection.
 
 ## Keepers
 

@@ -57,6 +57,16 @@ reuses the existing exact adapters on the 8.17-second actual ChatGPT input,
 with no new training, to check whether control69's heldout content advantage
 generalizes before spending a system-path run on it.
 
+That actual-input comparison completed in 80.11 seconds and published the
+source plus three offline outputs. Against the source's own auxiliary ASR
+transcript, normalized character distance was `0.317` for base, `0.463` for
+expanded79 epoch 12, and `0.439` for control69 epoch 12. Neither adapted state
+beats base on content and neither is a machine-selected quality winner.
+Control69 did retain its small relative advantage over expanded79 without the
+gross repetition seen in shorter-lookahead streaming runs. This admits exactly
+one reuse of control69 epoch 12 through the established future-120 worker and
+cancellation probe; failure there closes this machine-screened branch.
+
 ## Goal and stop condition
 
 Use the otherwise-idle GPU to answer one audible question: with the exact
@@ -130,6 +140,24 @@ HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
   --checkpoint-epochs 12,18,24 \
   --work-dir artifacts/xvc-human-paired/listen-now/exp026-human87-horizon-extended-v1 \
   --listener-dir artifacts/ms3/listening/exp026-human87-horizon-extended-v1 \
+  --confirm-gpu-lease gpu0 --device cuda:0
+```
+
+## Control69 actual-input system-path command
+
+```bash
+HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
+  artifacts/exp007/peft-resolve-20260811/runtime-1e52ef9ab8f1/bin/python \
+  tools/xvc-human-paired/system_path_smoke.py \
+  --candidate control69-e12 \
+  --xvc-source-root artifacts/x-vc/source \
+  --xvc-config artifacts/x-vc/xvc-local.yaml \
+  --checkpoint artifacts/x-vc/checkpoint/xvc.pt \
+  --adapter-dir artifacts/xvc-human-paired/listen-now/exp026-human87-control69-v1/adapter-1044 \
+  --target-reference artifacts/xvc-human-paired/listen-now/exp026-human87-control69-v1/train-pairs/EMOTION100_003/target-48k.wav \
+  --actual-source artifacts/ms3/listening/exp020-human-rvc-smoke-8s-plain-20260812/00-native-source.wav \
+  --work-dir artifacts/xvc-human-paired/listen-now/exp026-control69-e12-system-path-v1 \
+  --listener-dir artifacts/ms3/listening/exp026-control69-e12-system-path-v1 \
   --confirm-gpu-lease gpu0 --device cuda:0
 ```
 
