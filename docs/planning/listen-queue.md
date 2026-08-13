@@ -190,6 +190,13 @@ defect relevant to realtime conversation, not a model winner. Investigate one
 root-cause control before widening voices or inputs; do not rerender the same
 split unchanged.
 
+The one latent-noise root-cause control is complete. An isolated direct-backend
+standard control reproduced the Gateway baseline transcript and 0.417 CER even
+though its waveform correlation was only 0.606. Setting posterior latent noise
+from 0.66666 to zero worsened CER to 0.500 without gross repetition. Retain
+`ms3-rvc-zero-latent-noise-v3` only as diagnosis and close noise-scale points;
+the turn-boundary defect remains a context/state question.
+
 ## Keepers
 
 None yet. A `keep` here is the only ticket into a promote pass.

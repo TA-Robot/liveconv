@@ -1428,3 +1428,29 @@ job queue.
   distinguish latent-noise restart, cold context, or overlap state.
 - Changed action: prioritize one root-cause control at the RVC generation
   boundary before another voice, gain, denoise, input, or training lane.
+
+## 2026-08-13T09:13:00Z - zero-latent-noise RVC control rejected
+
+- Agent: `primary-integrator`.
+- Task: Compare the pinned RVC posterior latent-noise scale 0.66666 with zero
+  on exact actual input, holding checkpoint, index, seed, settings, and direct
+  backend path fixed; retain the stable Gateway output as a path control.
+- Dependencies: commits `92e8950`, `5a5d98e`, and `8ff8275`; isolated upstream
+  revision `9b61903`; sealed seed-0 worker runtime; listener `8878`;
+  exclusive `gpu0`.
+- Result: standard and zero-noise direct runs completed in 90.745/88.640
+  seconds and published as `ms3-rvc-zero-latent-noise-v3`. Direct output
+  SHA-256 values are `9f03703b8fe88c02bde39c5527179931bab8f88f7a825e654ce82fd5f0280a10`
+  and `d2d36ee13afe63c3762cafb91a377e4b5c841ff3ca7f10df7641d48a46122f15`.
+- Machine screen: Gateway standard and direct standard had only 0.606 waveform
+  correlation but identical fixed transcripts and 0.417 CER. Zero latent noise
+  worsened CER to 0.500. No arm gross-looped. The direct A/B is valid for the
+  changed source line, but it is not a Gateway qualification.
+- Problems/rework: two attempts stopped before GPU execution. The first used
+  the repository venv instead of the retained worker wheel; the second resolved
+  the worker venv symlink to system Python and lost its site-packages. The final
+  runner preserves the sealed launcher path. No partial listener collection
+  was published.
+- Changed action: reject zero latent noise and close noise-scale expansion.
+  Keep the generation-boundary defect open as context/state behavior rather
+  than another seed or stochastic-latent sweep.
