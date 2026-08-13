@@ -2435,3 +2435,39 @@ job queue.
   additional sentence-diversity set.
 - Changed action: commit before the sole GPU run. Judge only after the complete
   7 + 12 + 10 + 33 corruption bundle; do not sweep target counts.
+
+## 2026-08-13T15:22:05Z - Grok progress audit
+
+- Agent: `grok` in tmux `liveconv-grok-auditor`; read-only, no delegation.
+- Verdict: `CONTINUE`.
+- Adopted: keep the frozen 7 + 12 + 10 + 33 evaluation bundle, reject another
+  target-count or exposure-ratio point, keep one sequential GPU lane, and make
+  no machine quality winner while operator hearing is unavailable.
+- Not adopted: the snapshot interpreted EXP-055 as not yet started and gpu0 as
+  idle. At verdict time EXP-055 training plus the 7 + 12 + 10 renders had
+  already completed; EXP-058 was in its CPU-heavy model-load phase with an
+  active process and 498 MiB allocated on gpu0. No job or plan change followed
+  from that stale observation.
+
+## 2026-08-13T15:25:00Z - EXP-055/056/057/058 combined gate closed target breadth
+
+- Agent: `primary-integrator`.
+- Task: Train at fixed 1,044 updates over 275 target texts, then screen seven
+  external rows, twelve changed utterances, ten frozen conditions, and 33
+  additional locally available Common Voice sentences.
+- Result: EXP-055 completed in 270.50 seconds at 5.13 GB peak and published 21
+  candidates; loss moved 144.22 to 88.42. Seven rows regressed 0.360 to 0.389
+  source-relative and 0.399 to 0.457 known-text. EXP-056 published 36 candidates
+  in 96.09 seconds and matched control69 source-relative at 0.184 while known
+  text improved 0.576 to 0.559. EXP-057 published 30 candidates in 96.04 seconds
+  and matched every control69 condition. EXP-058 published 99 candidates in
+  106.39 seconds. Its raw mean improved 1.084 to 0.762, but one still-gross-loop
+  row and two empty-source-ASR rows dominated that aggregate. Removing the
+  gross-loop row left six wins, nineteen ties, seven losses, means 0.732 versus
+  0.736, and equal 0.600 medians; known-text summaries regressed. No quality or
+  naturalness winner was inferred.
+- Problems: starting a separate process for each 12, 10, and 33-row render paid
+  three redundant loads of the large X-VC models while gpu0 appeared idle.
+- Changed action: retain all audio as unheard on 8878, close target-count and
+  exposure-ratio sweeps, and make the next method about generated pseudo-source
+  content quality. The next runner should load models once for its full bundle.

@@ -88,13 +88,14 @@ name one owner and ownership zone below.
 | LV-077 | Done | P0 | MS-3 | Anchor synthetic X-VC diversity with authentic aligned sources | EXP-047 regressed on twelve changed utterances and EXP-048 changed none of ten stress summaries; the authentic-anchor method is closed |
 | LV-078 | Done | P0 | MS-3 | Strengthen X-VC semantic content preservation without weakening acoustic losses | EXP-049 improved the ten-condition clean subset but regressed twelve changed utterances and no constrained row; semantic loss reweighting is closed |
 | LV-079 | Done | P0 | MS-3 | Exclude input-invariant frame-condition modules from X-VC adaptation | EXP-052 improved the frozen condition subset but regressed twelve changed utterances; source36 is closed without an adjacent scope point |
-| LV-080 | In progress | P0 | MS-3 | Expand X-VC target-text coverage at fixed updates and strengthen sentence-diverse evaluation | EXP-055 redistributes 1,044 updates from 87 to 275 authorized Amitaro target texts and freezes 33 additional unused Common Voice utterances |
+| LV-080 | Done | P0 | MS-3 | Expand X-VC target-text coverage at fixed updates and strengthen sentence-diverse evaluation | EXP-055 completed the 7 + 12 + 10 + 33 bundle; the apparent 33-row mean gain was outlier-driven, so target breadth is closed without a count sweep and remains unheard audio only |
+| LV-081 | In progress | P0 | MS-3 | Improve X-VC retraining data quality without another breadth or horizon sweep | Design one content-quality filter for the existing generated pseudo sources, hold total updates fixed, and use a clean sentence-diverse evaluation rather than the historical tongue twister |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| LV-080 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-055 note, and its ignored artifacts | Train target275 once, then publish and screen the complete 7 + 12 + 10 + 33 bundle |
+| LV-081 | `primary-integrator` | `tools/xvc-source-diversity/`, one new experiment note, and its ignored artifacts | Commit one pseudo-source-quality method or reject it before GPU admission |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.

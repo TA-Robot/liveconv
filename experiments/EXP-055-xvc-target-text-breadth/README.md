@@ -1,6 +1,6 @@
 # EXP-055: broader target-text coverage at fixed updates
 
-Status: ready method pilot; operator hearing deferred
+Status: completed listen-now; mixed machine screen; operator hearing deferred
 
 ## Goal
 
@@ -37,6 +37,27 @@ The 33-row sentence expansion is frozen in
 disjoint from the existing donors and evaluation rows. Speaker overlap with the
 older sets is permitted and recorded; this is a sentence-diversity set, not an
 unseen-speaker claim.
+
+## Result
+
+The single admitted run completed all 1,044 updates in 270.50 seconds with
+5.13 GB peak GPU allocation, and published 21 comparison files. Loss moved from
+144.22 to 88.42. The seven-row external screen regressed control69 from 0.360
+to 0.389 source-relative distance and from 0.399 to 0.457 known-text distance.
+
+EXP-056's twelve changed utterances were source-relative identical to control69
+at 0.184 and slightly better on known text, 0.576 to 0.559. EXP-057's ten
+condition rows were identical to control69 in every aggregate and condition.
+EXP-058 initially appeared to improve 33-row source-relative mean from 1.084 to
+0.762, but that average was dominated by one gross-loop row and two rows whose
+source ASR was empty. Excluding the gross-loop row produced six wins, nineteen
+ties, seven losses, means 0.732 versus 0.736, and equal 0.600 medians. Known-text
+mean and median also regressed after that exclusion. Both arms gross-looped the
+same one row.
+
+Target breadth therefore remains an unheard candidate, not a robust machine
+content advancement. The method is closed without a target-count or exposure
+ratio sweep. ASR did not judge naturalness, speaker identity, or voice quality.
 
 ## Command
 

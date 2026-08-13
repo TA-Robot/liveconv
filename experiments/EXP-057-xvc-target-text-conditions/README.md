@@ -1,10 +1,15 @@
 # EXP-057: target275 on frozen audio conditions
 
-Status: ready evaluation render; operator hearing deferred
+Status: completed listen-now; operator hearing deferred
 
 Render EXP-055 on the frozen six clean plus tempo, pitch, 20 dB noise, and
 leading-silence conditions. Base, EXP-035 control69, sources, target, and seeds
 stay fixed. Machine diagnostics are content/corruption evidence only.
+
+The render completed ten rows and published 30 candidates in 96.04 seconds.
+Target275 and control69 were identical on every machine aggregate and condition:
+macro 0.153, noise 0.375, leading silence 0.400, tempo 0.250, and pitch 0.000.
+No arm gross-looped.
 
 ```bash
 HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \

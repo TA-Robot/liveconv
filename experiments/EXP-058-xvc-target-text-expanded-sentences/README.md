@@ -1,6 +1,6 @@
 # EXP-058: target275 on 33 additional sentences
 
-Status: ready evaluation render; operator hearing deferred
+Status: completed listen-now; mixed machine screen; operator hearing deferred
 
 Render all rows in EXP-055's `expanded-evaluation.json`. The selection was
 frozen before training and contains every locally materialized Common Voice
@@ -12,6 +12,16 @@ Base, EXP-035 control69, source files, target reference, and seeds stay fixed;
 only the EXP-055 candidate adapter changes. The machine screen transcribes the
 source reference itself, so long clips are compared against the same consumed
 first 2.4-second window. No naturalness or identity winner is inferred.
+
+The render completed 33 rows and published 99 candidates in 106.39 seconds.
+Raw source-relative mean moved from control69 1.084 to target275 0.762, but the
+mean is not a robust advancement: one gross-loop row improved from 12.333 to
+1.583 while remaining gross-looped, and two empty-source-ASR rows produced
+opposing extreme distances. Excluding the gross-loop row left six target275
+wins, nineteen ties, seven losses, means 0.732 versus 0.736, and identical
+0.600 medians. Excluded-row known-text mean and median regressed. This set
+exposed evaluation outliers and supplied listening audio; it did not select a
+method or quality winner.
 
 ```bash
 HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \

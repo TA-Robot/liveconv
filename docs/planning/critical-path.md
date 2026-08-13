@@ -170,8 +170,9 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-047 twelve changed utterances + EXP-048 ten conditions (method closed)
         -> EXP-049 semantic SSL loss 2x (changed-utterance regression; closed)
         -> EXP-052 source-path-only 36-linears (changed-utterance regression; closed)
-        -> EXP-055 275 target texts at fixed 1,044 updates (gpu0)
-        -> mandatory 7 + 12 + 10 + 33 sentence-diversity gate
+        -> EXP-055 275 target texts at fixed 1,044 updates (closed: mixed/no robust gain)
+        -> mandatory 7 + 12 + 10 + 33 sentence-diversity gate (complete)
+        -> one pseudo-source content-quality method at fixed 1,044 updates
         -> operator hearing when available
 ```
 

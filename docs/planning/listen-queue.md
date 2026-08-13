@@ -124,16 +124,22 @@ or overfits, while source-path adaptation is retained. The complete bundle
 closed it: source36 regressed twelve changed utterances from 0.184 to 0.278
 source-relative distance and maximum 0.571 to 1.0, despite improving the frozen
 ten-condition macro from 0.153 to 0.113. No arm gross-looped. EXP-055 therefore
-changes data coverage, not another scope point: it redistributes the fixed 1,044
-updates from 87 to 275 authorized target texts and freezes 33 additional unused
-Common Voice utterances as a sentence-diversity evaluation.
+changed data coverage, not another scope point: it redistributed the fixed 1,044
+updates from 87 to 275 authorized target texts and froze 33 additional unused
+Common Voice utterances as a sentence-diversity evaluation. The full bundle did
+not establish robust content improvement. Seven external rows regressed, twelve
+changed utterances were source-relative identical, and all ten condition rows
+were identical. The apparent 33-row mean improvement disappeared after removing
+one shared gross-loop outlier: the remaining rows were six wins, nineteen ties,
+seven losses with equal medians. Target275 stays unheard on 8878, but target-text
+count and exposure-ratio sweeps are closed.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Train EXP-055 target275 at fixed EXP-035 donor pool/loss/scope/updates | parent | no | seven external rows published; no decision yet |
-| 2 | Render EXP-055 on twelve changed utterances, ten frozen conditions, and 33 unused local Common Voice clips | parent | no human dependency for machine reject | combined 7 + 12 + 10 + 33 corruption gate complete |
+| 1 | Design one pseudo-source content-quality filtering method at fixed updates, with a stronger clean sentence-diverse evaluation | parent | no | one-variable plan committed or rejected before GPU |
+| 2 | Run only that admitted X-VC retraining method and publish its combined evaluation bundle | parent | no human dependency for machine reject | corruption screen complete and next method decision recorded |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

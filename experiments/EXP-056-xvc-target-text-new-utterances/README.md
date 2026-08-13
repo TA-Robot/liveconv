@@ -1,12 +1,17 @@
 # EXP-056: target275 on changed utterances
 
-Status: ready evaluation render; operator hearing deferred
+Status: completed listen-now; operator hearing deferred
 
 Render EXP-055 against the frozen twelve changed Common Voice utterances. Base,
 EXP-035 control69, sources, target reference, and seeds stay fixed. Only the
 candidate adapter changes. Machine ASR may reject corruption; it cannot select
 naturalness, target identity, or a winner. EXP-057 and EXP-058 remain mandatory
 regardless of this result.
+
+The render completed twelve rows and published 36 candidates in 96.09 seconds.
+No arm gross-looped. Target275 exactly matched control69's 0.184 source-relative
+mean and 0.571 maximum; known-text mean moved from 0.576 to 0.559. This is coarse
+content evidence only and does not select a quality winner.
 
 ```bash
 HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
