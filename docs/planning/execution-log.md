@@ -2150,3 +2150,27 @@ job queue.
 - Changed action: commit before execution and launch EXP-043 as the sole GPU
   lane. The first decision remains a seven-speaker corruption screen; no
   naturalness selection occurs without hearing.
+
+## 2026-08-13T13:44:40Z - EXP-043 v1 stopped before training
+
+- Agent: `primary-integrator`.
+- Task: Execute the committed robust-source schedule on `gpu0`.
+- Result: fail closed after six generated files and before every optimizer
+  update. Tempo 1.2 shortened an exact 2.4-second pseudo-source to about 2.0
+  seconds, while the reusable transform path correctly rejected inputs shorter
+  than one model window.
+- Problems: the earlier evaluation sources were longer than 2.4 seconds, so
+  this transform-boundary case had not been exercised by the fixed-condition
+  render.
+- Rework: add a deterministic FFmpeg `apad` minimum of 2.4 seconds after
+  tempo/pitch transforms, test the exact filter, and use fresh v2 output paths.
+  The partial v1 directory is neither resumed nor evaluated.
+
+## 2026-08-13T13:47:11Z - EXP-043 v2 admitted after transform fix
+
+- Agent: `primary-integrator`.
+- Result: Ruff, 31 focused tests, all-1,044-artifact CPU admission, and an
+  actual tempo1.2 FFmpeg probe passed. The probe output was exactly 2.400
+  seconds. No v1 output is reused.
+- Changed action: commit the preprocessing fix, then restart the same frozen
+  source-condition schedule at update zero in fresh v2 directories.

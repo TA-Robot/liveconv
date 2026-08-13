@@ -254,6 +254,14 @@ def _write_model_window(path: Path, values: np.ndarray) -> None:
     base._write_pcm16(path, pcm, rate=16_000)
 
 
+def _rubberband_filter(kind: str, amount: float) -> str:
+    filter_name = "tempo" if kind == "tempo" else "pitch"
+    return (
+        f"rubberband={filter_name}={amount:.9f},"
+        f"apad=whole_dur={base.MODEL_SAMPLES / 16_000:.9f}"
+    )
+
+
 def transform_window(
     source: Path,
     transform: Mapping[str, object],
@@ -268,7 +276,6 @@ def transform_window(
     temporary = destination.with_suffix(".transform.wav")
     if kind in {"tempo", "pitch"}:
         amount = float(transform["factor"])
-        filter_name = "tempo" if kind == "tempo" else "pitch"
         try:
             subprocess.run(
                 [
@@ -280,7 +287,7 @@ def transform_window(
                     "-i",
                     str(source),
                     "-af",
-                    f"rubberband={filter_name}={amount:.9f}",
+                    _rubberband_filter(kind, amount),
                     "-ac",
                     "1",
                     "-ar",

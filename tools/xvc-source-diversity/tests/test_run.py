@@ -83,6 +83,12 @@ def test_training_schedule_matches_old_target_exposure_and_updates() -> None:
     ]
 
 
+def test_tempo_filter_pads_a_shortened_model_window() -> None:
+    assert RUN._rubberband_filter("tempo", 1.2) == (
+        "rubberband=tempo=1.200000000,apad=whole_dur=2.400000000"
+    )
+
+
 def test_listening_index_never_claims_a_winner() -> None:
     source = RUN.base.RenderSource(Path("x").name, "JVS / noise / 20 dB", Path("x.wav"))
 

@@ -44,7 +44,13 @@ HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
   --xvc-source-root artifacts/x-vc/source \
   --xvc-config artifacts/x-vc/xvc-local.yaml \
   --checkpoint artifacts/x-vc/checkpoint/xvc.pt \
-  --work-dir artifacts/xvc-source-diversity/exp043-source-augmentation-v1 \
-  --listener-dir artifacts/ms3/listening/exp043-xvc-source-augmentation-v1 \
+  --work-dir artifacts/xvc-source-diversity/exp043-source-augmentation-v2 \
+  --listener-dir artifacts/ms3/listening/exp043-xvc-source-augmentation-v2 \
   --confirm-gpu-lease gpu0 --device cuda:0
 ```
+
+The first execution attempt stopped after six generated files, before any
+optimizer update, because tempo 1.2 shortened an exact 2.4-second generated
+window below the model input requirement. Version 2 pads transformed audio to
+the 2.4-second minimum with trailing silence. The failed v1 artifact is not
+resumed or used as evidence.
