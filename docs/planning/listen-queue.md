@@ -225,9 +225,10 @@ evaluation-only and may not be fitted or moved into training.
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Prepare one new X-VC retraining method using a training-only real-speech pool disjoint from fresh48; keep fresh48 frozen | parent | no | one-variable method and CPU admission committed before gpu0 |
-| 2 | Render fresh48 first after training, then only expand the gate if it avoids adapter-added loops and broad regression | parent | no human dependency for machine reject | technical stop or retained unheard audio recorded |
-| 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
+| 1 | Render the unchanged EXP-064 waveform-adversarial checkpoint on frozen fresh48 while the next training method is prepared | parent | no | 144 outputs and coarse loop/content screen published once |
+| 2 | Prepare one new X-VC retraining method using a training-only real-speech pool disjoint from fresh48; keep fresh48 frozen | parent | no | one-variable method and CPU admission committed before gpu0 |
+| 3 | Render fresh48 first after new training, then only expand the gate if it avoids adapter-added loops and broad regression | parent | no human dependency for machine reject | technical stop or retained unheard audio recorded |
+| 4 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.
 EXP-032 closes the lookahead sweep at a 120-ms auxiliary-ASR floor; do not open

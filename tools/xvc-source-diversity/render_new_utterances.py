@@ -211,6 +211,17 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "33 locally unused Common Voice speakers and utterances?"
             ),
         }
+    if kind == "wave-adversarial-fresh48":
+        return {
+            "experiment_id": "EXP-113",
+            "variant_id": "cv12-wave-adversarial",
+            "display_name": "EXP-064 / CV12 / pretrained waveform adversarial",
+            "result_kind": "liveconv-exp113-xvc-wave-adversarial-fresh48/v1",
+            "question": (
+                "Does the frozen waveform-adversarial adapter avoid corruption "
+                "and preserve content on 48 fresh Common Voice speakers?"
+            ),
+        }
     if kind == "output2":
         return {
             "experiment_id": "EXP-069",
@@ -908,6 +919,7 @@ def _parser() -> argparse.ArgumentParser:
             "wave-adversarial",
             "wave-adversarial-hadou",
             "wave-adversarial-expanded",
+            "wave-adversarial-fresh48",
             "output2",
             "output2-hadou",
             "real-reconstruction20",

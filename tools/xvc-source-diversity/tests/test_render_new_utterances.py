@@ -148,6 +148,19 @@ def test_wave_adversarial_expanded_policy_uses_exp076() -> None:
     assert "wave-adversarial-expanded" in choices
 
 
+def test_wave_adversarial_fresh48_policy_uses_exp113() -> None:
+    policy = NEW.candidate_policy("wave-adversarial-fresh48")
+
+    assert policy["experiment_id"] == "EXP-113"
+    assert policy["variant_id"] == "cv12-wave-adversarial"
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert "wave-adversarial-fresh48" in choices
+
+
 def test_output2_policies_cover_changed_and_hadou_sets() -> None:
     changed = NEW.candidate_policy("output2")
     hadou = NEW.candidate_policy("output2-hadou")

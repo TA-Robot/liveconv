@@ -3070,3 +3070,17 @@ job queue.
 - Rework: none after admission. Close EXP-106 as a generic method without
   teacher-share, loss-weight, or fresh48 row tuning. Keep all audio unheard and
   unselected on 8878.
+
+## 2026-08-13T19:58:00Z - EXP-113 adversarial fresh48 screen prepared
+
+- Agent: `primary-integrator`.
+- Task: use the now-frozen fresh48 set to test the retained EXP-064
+  waveform-adversarial checkpoint while the next training-only data method is
+  prepared.
+- Dependencies: completed EXP-112; unchanged EXP-064 adapter; gpu0; base and
+  control69; listener 8878.
+- Result: one fixed-checkpoint render policy and focused regression test added.
+- Problems: none.
+- Changed action: run one 48-row comparison without retraining or objective
+  tuning. This fills the otherwise idle GPU and supplies cross-method evidence
+  from new data; it does not reuse fresh48 for fitting.
