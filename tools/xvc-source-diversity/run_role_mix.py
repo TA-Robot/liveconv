@@ -39,6 +39,10 @@ REAL_RECONSTRUCTION_COUNTS = {
     "standard": 835,
     "real-donor-reconstruction": 209,
 }
+REAL_TEACHER_SEMANTIC_COUNTS = {
+    "standard": 835,
+    "real-donor-teacher-semantic": 209,
+}
 RECONSTRUCTION_CYCLE = (
     "standard",
     "standard",
@@ -161,6 +165,27 @@ def training_modes(policy: str) -> list[str]:
         schedule = list(cycle) * repeats + list(tail)
         if Counter(schedule) != REAL_RECONSTRUCTION_COUNTS:
             raise RoleMixError("real-reconstruction schedule proportions drifted")
+        return schedule
+    if policy == "real-teacher-semantic20":
+        repeats, remainder = divmod(TOTAL_UPDATES, len(RECONSTRUCTION_CYCLE))
+        tail = (
+            "standard",
+            "standard",
+            "real-donor-teacher-semantic",
+            "standard",
+        )
+        if remainder != len(tail):
+            raise RoleMixError("real-teacher-semantic schedule tail drifted")
+        cycle = (
+            "standard",
+            "standard",
+            "real-donor-teacher-semantic",
+            "standard",
+            "standard",
+        )
+        schedule = list(cycle) * repeats + list(tail)
+        if Counter(schedule) != REAL_TEACHER_SEMANTIC_COUNTS:
+            raise RoleMixError("real-teacher-semantic proportions drifted")
         return schedule
     raise RoleMixError(f"unknown training policy: {policy}")
 
@@ -326,6 +351,32 @@ def training_scope(inventory: Path, name: str) -> dict[str, object]:
 
 
 def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
+    if (
+        arguments.training_policy == "real-teacher-semantic20"
+        and arguments.lora_scope == "control69"
+    ):
+        return {
+            "experiment_id": "EXP-106",
+            "slug": "exp106",
+            "candidate_id": "cv12-real-teacher-semantic20",
+            "candidate_name": (
+                "EXP-106 / 80% target conversion + 20% real-source teacher semantic"
+            ),
+            "run_kind": "EXP-106 X-VC real-source teacher-semantic evaluation",
+            "result_kind": "liveconv-exp106-xvc-real-teacher-semantic-result/v1",
+            "question": (
+                "Can frozen-base semantic rehearsal on real Japanese donor inputs "
+                "preserve off-distribution content without teaching donor identity?"
+            ),
+            "independent_variable": (
+                "training method: 835 standard generated-source-to-Amitaro updates "
+                "plus 209 real Common Voice source rows supervised only by the "
+                "frozen base model's semantic prediction under the Amitaro target "
+                "speaker; total updates, real donors and 80/20 positions from "
+                "EXP-072, target-specific rows, control69, LR, seed, zero frame "
+                "condition, and standard loss weights stay fixed"
+            ),
+        }
     if (
         arguments.training_policy == "semantic-token-hold"
         and arguments.lora_scope == "control69"
@@ -686,6 +737,15 @@ def assigned_tensors(
             "target_wav": real_donor["target_wav"],
             "ssl_feat": real_donor["ssl_feat"],
         }
+    if role == "real-donor-teacher-semantic":
+        if real_donor is None:
+            raise RoleMixError("real donor tensors are required for teacher rehearsal")
+        return {
+            "source_wav": real_donor["source_wav"],
+            "semantic_tokens": real_donor["semantic_tokens"],
+            "target_wav": target["target_wav"],
+            "ssl_feat": target["ssl_feat"],
+        }
     if role == "standard":
         source, reference = generated, target
     elif role == "reconstruction":
@@ -706,6 +766,51 @@ def assigned_tensors(
             else reference["ssl_feat"]
         ),
     }
+
+
+def teacher_semantic_target(
+    model: Any,
+    tensors: Mapping[str, Any],
+    *,
+    torch: Any,
+    device: Any,
+) -> Any:
+    """Freeze the base prediction for one real-source, target-speaker row."""
+    batch = base._gpu_batch(tensors, torch=torch, device=device)
+    model.eval()
+    with torch.inference_mode(), torch.autocast(
+        device_type="cuda", dtype=torch.bfloat16
+    ):
+        outputs = model(dict(batch))
+    prediction = outputs.get("pred") if isinstance(outputs, dict) else None
+    if (
+        prediction is None
+        or prediction.shape != batch["ssl_feat"].shape
+        or not bool(torch.isfinite(prediction).all())
+    ):
+        raise RoleMixError("frozen teacher semantic prediction drifted")
+    return prediction.detach().cpu().to(torch.float32).contiguous()
+
+
+def training_loss(
+    model: Any,
+    batch: Mapping[str, Any],
+    role: str,
+    *,
+    torch: Any,
+) -> tuple[Any, float]:
+    """Use semantic-only distillation on the bounded real-source teacher rows."""
+    if role != "real-donor-teacher-semantic":
+        return base._composite_loss(model, batch, torch)
+    outputs = model(dict(batch))
+    prediction = outputs.get("pred") if isinstance(outputs, dict) else None
+    if prediction is None or not bool(torch.isfinite(prediction).all()):
+        raise RoleMixError("teacher-semantic training output is malformed")
+    semantic = model.compute_mse_loss(prediction, batch["ssl_feat"])
+    loss = STANDARD_LOSS_WEIGHTS["mse_loss"] * semantic
+    if not bool(torch.isfinite(loss)):
+        raise RoleMixError("teacher-semantic loss is non-finite")
+    return loss, float(loss.detach().cpu())
 
 
 def conditioned_inference(
@@ -1266,6 +1371,13 @@ def run(
                     else "reference"
                 ),
             )
+            if modes[row_index] == "real-donor-teacher-semantic":
+                assigned["ssl_feat"] = teacher_semantic_target(
+                    model,
+                    assigned,
+                    torch=torch,
+                    device=device,
+                )
             frame_condition_index = frame_condition_target_index(
                 arguments.training_policy, target_index, len(target_tensors)
             )
@@ -1359,7 +1471,7 @@ def run(
                 device=device, dtype=torch.float32
             )
         with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
-            loss, numeric = base._composite_loss(trained, batch, torch)
+            loss, numeric = training_loss(trained, batch, role, torch=torch)
         loss.backward()
         gradient_norm = torch.nn.utils.clip_grad_norm_(
             trainable, base.GRADIENT_CLIP_NORM
@@ -1451,12 +1563,16 @@ def run(
                 else "zeros"
             ),
             "semantic_supervision": (
-                "clean_source_whisper_hidden_states_50hz"
-                if arguments.training_policy == "denoise-semantic"
+                "frozen_base_semantic_prediction_on_real_donor_rows"
+                if arguments.training_policy == "real-teacher-semantic20"
                 else (
-                    "source_whisper_hidden_states_50hz"
-                    if arguments.training_policy == "source-semantic"
-                    else "target_whisper_hidden_states_50hz"
+                    "clean_source_whisper_hidden_states_50hz"
+                    if arguments.training_policy == "denoise-semantic"
+                    else (
+                        "source_whisper_hidden_states_50hz"
+                        if arguments.training_policy == "source-semantic"
+                        else "target_whisper_hidden_states_50hz"
+                    )
                 )
             ),
             "loss_weights": loss_weights,
@@ -1557,6 +1673,7 @@ def _parser() -> argparse.ArgumentParser:
             "denoise-semantic",
             "cross-target-condition",
             "semantic-token-hold",
+            "real-teacher-semantic20",
             "real-reconstruction20",
         ),
         default="role-mix",
@@ -1642,12 +1759,17 @@ def main(argv: Sequence[str] | None = None) -> int:
                             arguments.training_policy
                         ),
                         "semantic_supervision": (
-                            "clean_source_whisper_hidden_states_50hz"
-                            if arguments.training_policy == "denoise-semantic"
+                            "frozen_base_semantic_prediction_on_real_donor_rows"
+                            if arguments.training_policy
+                            == "real-teacher-semantic20"
                             else (
-                                "source_whisper_hidden_states_50hz"
-                                if arguments.training_policy == "source-semantic"
-                                else "target_whisper_hidden_states_50hz"
+                                "clean_source_whisper_hidden_states_50hz"
+                                if arguments.training_policy == "denoise-semantic"
+                                else (
+                                    "source_whisper_hidden_states_50hz"
+                                    if arguments.training_policy == "source-semantic"
+                                    else "target_whisper_hidden_states_50hz"
+                                )
                             )
                         ),
                         "frame_condition_rows": sum(

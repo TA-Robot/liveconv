@@ -281,6 +281,26 @@ def test_semantic_token_hold_policies_cover_all_followup_sets() -> None:
     }
 
 
+def test_real_teacher_semantic_policies_cover_all_followup_sets() -> None:
+    kinds = (
+        "real-teacher-semantic20",
+        "real-teacher-semantic20-hadou",
+        "real-teacher-semantic20-expanded",
+        "real-teacher-semantic20-stress",
+    )
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-107",
+        "EXP-109",
+        "EXP-110",
+        "EXP-111",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "cv12-real-teacher-semantic20"
+    }
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"

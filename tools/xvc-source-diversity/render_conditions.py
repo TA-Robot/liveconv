@@ -271,6 +271,22 @@ def candidate_policy(kind: str) -> dict[str, Any]:
                 "30-xvc-cv12-semantic-token-hold.wav",
             ),
         }
+    if kind == "real-teacher-semantic20":
+        return {
+            "experiment_id": "EXP-108",
+            "result_kind": "liveconv-exp108-xvc-real-teacher-semantic/v1",
+            "run_kind": "EXP-108 X-VC real-teacher semantic condition evaluation",
+            "control": (
+                "cv12-control69",
+                "EXP-035 / generated-source target conversion",
+                "20-xvc-cv12-control69.wav",
+            ),
+            "candidate": (
+                "cv12-real-teacher-semantic20",
+                "EXP-106 / real-source frozen-teacher semantic rehearsal",
+                "30-xvc-cv12-real-teacher-semantic20.wav",
+            ),
+        }
     raise ConditionRenderError(f"unknown candidate kind: {kind}")
 
 
@@ -588,6 +604,7 @@ def _parser() -> argparse.ArgumentParser:
             "denoise-semantic",
             "cross-target-condition",
             "semantic-token-hold",
+            "real-teacher-semantic20",
         ),
         default="donor-breadth",
     )

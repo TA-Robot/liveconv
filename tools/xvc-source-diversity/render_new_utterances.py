@@ -411,6 +411,38 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "corruption on this frozen evaluation set?"
             ),
         }
+    real_teacher_policies = {
+        "real-teacher-semantic20": (
+            "EXP-107",
+            "liveconv-exp107-xvc-real-teacher-semantic-new/v1",
+        ),
+        "real-teacher-semantic20-hadou": (
+            "EXP-109",
+            "liveconv-exp109-xvc-real-teacher-semantic-hadou/v1",
+        ),
+        "real-teacher-semantic20-expanded": (
+            "EXP-110",
+            "liveconv-exp110-xvc-real-teacher-semantic-expanded/v1",
+        ),
+        "real-teacher-semantic20-stress": (
+            "EXP-111",
+            "liveconv-exp111-xvc-real-teacher-semantic-stress/v1",
+        ),
+    }
+    if kind in real_teacher_policies:
+        experiment_id, result_kind = real_teacher_policies[kind]
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "cv12-real-teacher-semantic20",
+            "display_name": (
+                "EXP-106 / real-source frozen-teacher semantic rehearsal"
+            ),
+            "result_kind": result_kind,
+            "question": (
+                "Does real-source frozen-teacher semantic rehearsal preserve "
+                "content and avoid corruption on this frozen evaluation set?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -866,6 +898,10 @@ def _parser() -> argparse.ArgumentParser:
             "semantic-token-hold-hadou",
             "semantic-token-hold-expanded",
             "semantic-token-hold-stress",
+            "real-teacher-semantic20",
+            "real-teacher-semantic20-hadou",
+            "real-teacher-semantic20-expanded",
+            "real-teacher-semantic20-stress",
         ),
         default="speaker7",
     )

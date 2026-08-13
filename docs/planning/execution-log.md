@@ -2962,3 +2962,36 @@ job queue.
 - Problems: the corruption objective destabilized training. The broader gate
   prevented the superficially improved Hadou mean from becoming a false pass.
 - Rework: none. Close block-size and corruption-ratio sweeps.
+
+## 2026-08-13T19:19:38Z - EXP-106--111 real-source teacher method prepared
+
+- Agent: `primary-integrator`.
+- Task: replace EXP-072's donor-voice self-reconstruction rows with semantic-only
+  distillation from immutable base X-VC on the same real Common Voice inputs
+  under Amitaro target-speaker context.
+- Dependencies: EXP-100--105 rejection; exact EXP-072 835/209 schedule
+  positions; EXP-035 donors/control69/LR/seed/zero frame condition.
+- Result: implementation and six frozen evaluation policies prepared. Focused
+  tests passed 60 cases; exact CPU admissions passed 7 + 12 + 10 + 31 + 33 +
+  60 rows. A runtime Torch smoke confirmed the teacher-only branch computes
+  only `1000 * semantic MSE`.
+- Problems: the configured Luna subagent runtime was unavailable in this client
+  on two start attempts, so the parent completed the bounded design directly
+  instead of retrying orchestration.
+- Rework: the first CPU admission used `/tmp` outputs and correctly failed the
+  artifact-root safety rule; rerunning with the intended artifact paths passed.
+- Changed action: wait for the scheduled 19:20 Grok audit, then commit and run
+  exactly one EXP-106 lane if the audit does not identify a stop or redirect.
+
+## 2026-08-13T19:20:25Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux `liveconv-grok-auditor`; independent, read-only,
+  no tools or delegation.
+- Verdict: `CONTINUE`.
+- Adopted: the fixed 7 + 12 + 10 + 31 + 33 + 60 gate correctly prevented the
+  Hadou mean from becoming a false pass; close all token-hold sweeps. Grok
+  accepted EXP-106 as a one-variable method comparison against EXP-072's exact
+  real-input schedule positions and instructed one committed gpu0 lane followed
+  by the same coarse corruption/content gate and 8878 publication.
+- Not adopted: none. Its warning about 155 dirty entries is handled by staging
+  only the EXP-106 method slice and leaving unrelated user changes untouched.

@@ -161,6 +161,59 @@ def test_real_reconstruction_rehearsal_is_exact_and_exp072() -> None:
     assert "real-reconstruction20" in choices
 
 
+def test_real_teacher_semantic_rehearsal_is_exact_and_keeps_target_voice() -> None:
+    schedule = ROLE_MIX.training_modes("real-teacher-semantic20")
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(
+            training_policy="real-teacher-semantic20", lora_scope="control69"
+        )
+    )
+    target = {
+        "source_wav": "target-source",
+        "semantic_tokens": "target-token",
+        "target_wav": "amitaro-wave",
+        "ssl_feat": "target-hidden",
+    }
+    generated = {
+        "source_wav": "generated-wave",
+        "semantic_tokens": "generated-token",
+        "target_wav": "generated-wave",
+        "ssl_feat": "generated-hidden",
+    }
+    real = {
+        "source_wav": "real-commonvoice-wave",
+        "semantic_tokens": "real-commonvoice-token",
+        "target_wav": "real-commonvoice-wave",
+        "ssl_feat": "real-commonvoice-hidden",
+    }
+
+    assert Counter(schedule) == {
+        "standard": 835,
+        "real-donor-teacher-semantic": 209,
+    }
+    assert ROLE_MIX.assigned_tensors(
+        target,
+        generated,
+        "real-donor-teacher-semantic",
+        real_donor=real,
+    ) == {
+        "source_wav": "real-commonvoice-wave",
+        "semantic_tokens": "real-commonvoice-token",
+        "target_wav": "amitaro-wave",
+        "ssl_feat": "target-hidden",
+    }
+    assert policy["experiment_id"] == "EXP-106"
+    assert ROLE_MIX.training_loss_weights("real-teacher-semantic20") == (
+        ROLE_MIX.STANDARD_LOSS_WEIGHTS
+    )
+    choices = next(
+        action.choices
+        for action in ROLE_MIX._parser()._actions
+        if action.dest == "training_policy"
+    )
+    assert "real-teacher-semantic20" in choices
+
+
 def test_source_augmentation_is_exact_and_keeps_standard_roles() -> None:
     conditions = ROLE_MIX.source_condition_schedule("source-augmentation")
     policy = ROLE_MIX.experiment_policy(

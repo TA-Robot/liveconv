@@ -157,3 +157,10 @@ def test_semantic_token_hold_uses_exp102_policy() -> None:
 
     assert policy["experiment_id"] == "EXP-102"
     assert policy["candidate"][0] == "cv12-semantic-token-hold"
+
+
+def test_real_teacher_semantic_uses_exp108_policy() -> None:
+    policy = RENDER.candidate_policy("real-teacher-semantic20")
+
+    assert policy["experiment_id"] == "EXP-108"
+    assert policy["candidate"][0] == "cv12-real-teacher-semantic20"
