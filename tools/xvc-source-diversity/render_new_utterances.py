@@ -624,6 +624,30 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "and generalize on frozen fresh48?"
             ),
         }
+    if kind in {
+        "real-teacher-output-window201-fresh48",
+        "real-teacher-output-window201-hadou",
+    }:
+        hadou = kind.endswith("-hadou")
+        return {
+            "experiment_id": "EXP-140" if hadou else "EXP-139",
+            "variant_id": "cv12-real-teacher-output-window201",
+            "display_name": (
+                "EXP-138 / full-output teacher / 201 near-one-pass real windows"
+            ),
+            "result_kind": (
+                "liveconv-exp140-xvc-real-teacher-window201-hadou31/v1"
+                if hadou
+                else "liveconv-exp139-xvc-real-teacher-window201-fresh48/v1"
+            ),
+            "question": (
+                "Does near-one-pass real-window breadth preserve content on 31 "
+                "disjoint clean Hadou utterances?"
+                if hadou
+                else "Does near-one-pass real-window breadth avoid corruption "
+                "and generalize on frozen fresh48?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1122,6 +1146,8 @@ def _parser() -> argparse.ArgumentParser:
             "real-teacher-output-phonetic48-hadou",
             "real-teacher-output-window48-fresh48",
             "real-teacher-output-window48-hadou",
+            "real-teacher-output-window201-fresh48",
+            "real-teacher-output-window201-hadou",
         ),
         default="speaker7",
     )

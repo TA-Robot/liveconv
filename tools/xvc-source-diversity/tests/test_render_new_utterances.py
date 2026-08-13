@@ -463,6 +463,22 @@ def test_real_teacher_window48_policies_are_exp135_and_exp136() -> None:
     assert "real-teacher-output-window48-hadou" in choices
 
 
+def test_real_teacher_window201_policies_are_exp139_and_exp140() -> None:
+    fresh = NEW.candidate_policy("real-teacher-output-window201-fresh48")
+    hadou = NEW.candidate_policy("real-teacher-output-window201-hadou")
+
+    assert fresh["experiment_id"] == "EXP-139"
+    assert hadou["experiment_id"] == "EXP-140"
+    assert fresh["variant_id"] == hadou["variant_id"]
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert "real-teacher-output-window201-fresh48" in choices
+    assert "real-teacher-output-window201-hadou" in choices
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"
