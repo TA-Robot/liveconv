@@ -45,7 +45,7 @@ authorize promote claims or several speculative sweeps in parallel.
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
 | 1 | Help the operator finish the six rows above; EXP-027--031 are superseded diagnostics and do not need separate draining | parent | n/a | decisions recorded |
-| 2 | Extend the content-preserving human87 control69 trajectory to epochs 12/18/24; require its epoch-12 WAV controls before publication | parent | no: control69 epoch 12 reduced auxiliary content error from 0.568 to 0.198 versus expanded79 | one completed comparison collection or technical stop |
+| 2 | Halve learning rate for human87 control69 and compare epochs 12/18/24 after both 1e-4 scopes degraded beyond epoch 12 | parent | no: directly follows two reproduced horizon failures | one completed comparison collection or technical stop |
 | 3 | If EXP-032 receives a `keep`, bind that exact candidate to the formal Gateway profile and exercise native fallback/Extension playout | parent | yes: EXP-032 `keep` | one route-qualified system listen or a recorded integration blocker |
 | 4 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
 
@@ -53,13 +53,12 @@ The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.
 EXP-032 closes the lookahead sweep at a 120-ms auxiliary-ASR floor; do not open
 another lookahead point. Its bounded worker/cancellation probe also completed
 and published one actual-input system WAV. While hearing is unavailable, GPU
-work returns to bounded quality-candidate generation, starting with the one-axis
-EXP-026 horizon extension. That extension reproduced its controls but degraded
-content at epochs 18/24, so no longer horizon is admitted. The next one-axis
-job narrows LoRA scope from expanded79 to control69. A recorded `keep` is still
-required before formal Gateway/Extension binding. Control69 epoch 12 preserved
-content substantially better in the auxiliary screen, so exactly one
-control69-only horizon extension is now admitted.
+work returns to bounded quality-candidate generation. Expanded79 degraded at
+epochs 18/24. Narrowing LoRA scope to control69 improved epoch-12 auxiliary
+content error from 0.568 to 0.198, but control69 also degraded at epochs 18/24.
+Longer 1e-4 training is closed; the next one-axis run halves learning rate while
+holding control69 fixed. A recorded `keep` is still required before formal
+Gateway/Extension binding.
 
 ## Keepers
 

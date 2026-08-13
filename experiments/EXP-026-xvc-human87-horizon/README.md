@@ -40,6 +40,14 @@ Control69 epoch 12 preserved the short third sentence as
 This admits one control69-only 12/18/24 horizon extension; it is not an audible
 quality selection.
 
+That extension also completed and reproduced its epoch-12 controls. Loss at
+12/18/24 was `396.1591 / 373.4965 / 365.7220`, but auxiliary mean content error
+worsened from `0.198` to `0.531 / 0.496`. The short third sentence again
+collapsed to `あ!いらない!` and then `ああああああ`. Both scopes therefore
+put the useful horizon at or before epoch 12. The next bounded run keeps
+control69 and halves only AdamW learning rate from `1e-4` to `5e-5`, rendering
+epochs 12/18/24 to test whether slower adaptation preserves content longer.
+
 ## Goal and stop condition
 
 Use the otherwise-idle GPU to answer one audible question: with the exact
@@ -149,5 +157,23 @@ HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
   --lora-scope control69 --checkpoint-epochs 12,18,24 \
   --work-dir artifacts/xvc-human-paired/listen-now/exp026-human87-control69-extended-v1 \
   --listener-dir artifacts/ms3/listening/exp026-human87-control69-extended-v1 \
+  --confirm-gpu-lease gpu0 --device cuda:0
+```
+
+## Control69 half-LR command
+
+```bash
+HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
+  artifacts/exp007/peft-resolve-20260811/runtime-1e52ef9ab8f1/bin/python \
+  tools/xvc-human-paired/listen_now_horizon.py \
+  --manifest artifacts/xvc-human-paired/runrun-human-paired.manifest.json \
+  --source-root artifacts/xvc-human-paired/source-audio/hadou-ita \
+  --target-archive /tmp/liveconv-ms3-intake/amitaro-full-data/downloads/ITAcorpus_amitaro_runrun.zip \
+  --xvc-source-root artifacts/x-vc/source \
+  --xvc-config artifacts/x-vc/xvc-local.yaml \
+  --checkpoint artifacts/x-vc/checkpoint/xvc.pt \
+  --lora-scope control69 --learning-rate 5e-5 --checkpoint-epochs 12,18,24 \
+  --work-dir artifacts/xvc-human-paired/listen-now/exp026-human87-control69-half-lr-v1 \
+  --listener-dir artifacts/ms3/listening/exp026-human87-control69-half-lr-v1 \
   --confirm-gpu-lease gpu0 --device cuda:0
 ```

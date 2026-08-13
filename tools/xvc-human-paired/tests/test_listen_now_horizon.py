@@ -53,9 +53,12 @@ def test_listener_index_exposes_base_and_three_plain_horizons(
     variants = document["variants"]
     assert [item["display_name"] for item in variants] == [
         "X-VC base / human input / adapterなし",
-        "X-VC / 人間whole-short 87ペア / expanded79 / 4 epochs / 348 updates",
-        "X-VC / 人間whole-short 87ペア / expanded79 / 8 epochs / 696 updates",
-        "X-VC / 人間whole-short 87ペア / expanded79 / 12 epochs / 1044 updates",
+        "X-VC / 人間whole-short 87ペア / expanded79 / LR 0.0001 / "
+        "4 epochs / 348 updates",
+        "X-VC / 人間whole-short 87ペア / expanded79 / LR 0.0001 / "
+        "8 epochs / 696 updates",
+        "X-VC / 人間whole-short 87ペア / expanded79 / LR 0.0001 / "
+        "12 epochs / 1044 updates",
     ]
     assert [item["output_sha256"] for item in variants] == list(hashes.values())
 
@@ -92,9 +95,12 @@ def test_extended_listener_and_epoch12_control_are_fail_closed(tmp_path: Path) -
     )
     assert [item["display_name"] for item in document["variants"]] == [
         "X-VC base / human input / adapterなし",
-        "X-VC / 人間whole-short 87ペア / expanded79 / 12 epochs / 1044 updates",
-        "X-VC / 人間whole-short 87ペア / expanded79 / 18 epochs / 1566 updates",
-        "X-VC / 人間whole-short 87ペア / expanded79 / 24 epochs / 2088 updates",
+        "X-VC / 人間whole-short 87ペア / expanded79 / LR 0.0001 / "
+        "12 epochs / 1044 updates",
+        "X-VC / 人間whole-short 87ペア / expanded79 / LR 0.0001 / "
+        "18 epochs / 1566 updates",
+        "X-VC / 人間whole-short 87ペア / expanded79 / LR 0.0001 / "
+        "24 epochs / 2088 updates",
     ]
     HORIZON.assert_extended_control(
         source_id,

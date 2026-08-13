@@ -26,6 +26,7 @@ import listen_now as base
 CHECKPOINT_EPOCHS = (4, 8, 12)
 EXTENDED_CHECKPOINT_EPOCHS = (12, 18, 24)
 ALLOWED_CHECKPOINT_EPOCHS = (CHECKPOINT_EPOCHS, EXTENDED_CHECKPOINT_EPOCHS)
+ALLOWED_LEARNING_RATES = (1e-4, 5e-5)
 FINAL_EPOCH = CHECKPOINT_EPOCHS[-1]
 TOTAL_UPDATES = base.EXPECTED_TRAIN_PAIRS * FINAL_EPOCH
 CONTROL69_TARGET_COUNT = 69
@@ -86,6 +87,7 @@ def listening_index(
     hashes: Mapping[int, str],
     checkpoint_epochs: Sequence[int] = CHECKPOINT_EPOCHS,
     scope_name: str = "expanded79",
+    learning_rate: float = base.LEARNING_RATE,
 ) -> dict[str, object]:
     variants: list[dict[str, object]] = [
         {
@@ -106,7 +108,8 @@ def listening_index(
                 "variant_id": f"xvc-human87-epoch{epoch:02d}",
                 "display_name": (
                     "X-VC / 人間whole-short 87ペア / "
-                    f"{scope_name} / {epoch} epochs / {updates} updates"
+                    f"{scope_name} / LR {learning_rate:g} / "
+                    f"{epoch} epochs / {updates} updates"
                 ),
                 "display_order": order,
                 "output_file": f"{order}0-xvc-human87-e{epoch:02d}.wav",
@@ -342,7 +345,7 @@ def run(
         scope["trainable_parameter_count"]
     ):
         raise base.ListenNowError("LoRA trainable parameter count drifted")
-    optimizer = torch.optim.AdamW(trainable, lr=base.LEARNING_RATE)
+    optimizer = torch.optim.AdamW(trainable, lr=arguments.learning_rate)
     losses: list[float] = []
     for epoch in range(1, final_epoch + 1):
         for tensors in train_tensors:
@@ -399,7 +402,8 @@ def run(
                 sample_rate,
             )
         if (
-            arguments.lora_scope == "expanded79"
+            arguments.learning_rate == base.LEARNING_RATE
+            and arguments.lora_scope == "expanded79"
             and checkpoint_epochs == CHECKPOINT_EPOCHS
         ):
             assert_epoch4_control(
@@ -407,20 +411,28 @@ def run(
                 base_sha256=hashes[0],
                 epoch4_sha256=hashes[4],
             )
-        elif arguments.lora_scope == "expanded79":
+        elif (
+            arguments.learning_rate == base.LEARNING_RATE
+            and arguments.lora_scope == "expanded79"
+        ):
             assert_extended_control(
                 source.pair_id,
                 base_sha256=hashes[0],
                 epoch12_sha256=hashes[12],
             )
-        elif checkpoint_epochs == CHECKPOINT_EPOCHS:
+        elif (
+            arguments.learning_rate == base.LEARNING_RATE
+            and checkpoint_epochs == CHECKPOINT_EPOCHS
+        ):
             assert_base_control(source.pair_id, base_sha256=hashes[0])
-        else:
+        elif arguments.learning_rate == base.LEARNING_RATE:
             assert_control69_extended_control(
                 source.pair_id,
                 base_sha256=hashes[0],
                 epoch12_sha256=hashes[12],
             )
+        else:
+            assert_base_control(source.pair_id, base_sha256=hashes[0])
         base._write_json(
             row_dir / "index.json",
             listening_index(
@@ -429,6 +441,7 @@ def run(
                 hashes=hashes,
                 checkpoint_epochs=checkpoint_epochs,
                 scope_name=arguments.lora_scope,
+                learning_rate=arguments.learning_rate,
             ),
         )
         listener_rows.append(
@@ -455,7 +468,7 @@ def run(
         "lora_target_count": len(targets),
         "checkpoint_epochs": list(checkpoint_epochs),
         "updates": len(losses),
-        "learning_rate": base.LEARNING_RATE,
+        "learning_rate": arguments.learning_rate,
         "gradient_clip_norm": base.GRADIENT_CLIP_NORM,
         "loss_first": losses[0],
         "loss_at_checkpoints": {
@@ -467,16 +480,23 @@ def run(
         "heldout_target_access_count": 0,
         "control_epoch": (
             checkpoint_epochs[0]
-            if arguments.lora_scope == "expanded79"
-            or checkpoint_epochs == EXTENDED_CHECKPOINT_EPOCHS
+            if arguments.learning_rate == base.LEARNING_RATE
+            and (
+                arguments.lora_scope == "expanded79"
+                or checkpoint_epochs == EXTENDED_CHECKPOINT_EPOCHS
+            )
             else None
         ),
         "control_epoch_reproduced": (
-            arguments.lora_scope == "expanded79"
-            or checkpoint_epochs == EXTENDED_CHECKPOINT_EPOCHS
+            arguments.learning_rate == base.LEARNING_RATE
+            and (
+                arguments.lora_scope == "expanded79"
+                or checkpoint_epochs == EXTENDED_CHECKPOINT_EPOCHS
+            )
         ),
         "epoch4_control_reproduced": (
-            arguments.lora_scope == "expanded79"
+            arguments.learning_rate == base.LEARNING_RATE
+            and arguments.lora_scope == "expanded79"
             and checkpoint_epochs == CHECKPOINT_EPOCHS
         ),
         "elapsed_seconds": time.monotonic() - started,
@@ -538,6 +558,12 @@ def _parser() -> argparse.ArgumentParser:
         choices=("expanded79", "control69"),
         default="expanded79",
     )
+    parser.add_argument(
+        "--learning-rate",
+        type=float,
+        choices=ALLOWED_LEARNING_RATES,
+        default=base.LEARNING_RATE,
+    )
     parser.add_argument("--confirm-gpu-lease", choices=("gpu0",))
     parser.add_argument("--device", choices=("cuda:0",), default="cuda:0")
     return parser
@@ -557,6 +583,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "expected_train_pair_count": base.EXPECTED_TRAIN_PAIRS,
                         "checkpoint_epochs": list(arguments.checkpoint_epochs),
                         "lora_scope": arguments.lora_scope,
+                        "learning_rate": arguments.learning_rate,
                     },
                     ensure_ascii=False,
                     sort_keys=True,

@@ -759,3 +759,22 @@ job queue.
   repeats the expanded79 degeneration.
 - GPU: peak allocation 3,552,147,968 bytes; returned idle after publication and
   the auxiliary ASR batch.
+
+## 2026-08-13T04:37:08Z - human87 control69 horizon closed
+
+- Agent: `primary-integrator`.
+- Task: Extend only the content-preserving control69 trajectory from epoch 12
+  through epochs 18/24.
+- Dependencies: commit `5536538`, exact control69 epoch-12 WAV controls, the
+  same human87 inputs, and exclusive `gpu0`.
+- Result: 2,088 updates completed in 244.85 seconds; loss at 12/18/24 was
+  396.1591/373.4965/365.7220; controls reproduced; 12 candidates published.
+- Machine screen: mean normalized content error worsened from 0.198 at epoch 12
+  to 0.531/0.496 at epochs 18/24. The short sentence degraded to
+  `あ!いらない!` and `ああああああ`.
+- Changed action: stop all 1e-4 horizon extension. An independent ECAPA speaker
+  metric exists, but the exact human reference is not in that evaluator's
+  reviewed-target registry; do not block GPU work on authorization plumbing.
+  Instead, keep control69 and halve only LR to 5e-5 at epochs 12/18/24.
+- GPU: peak allocation 3,552,147,968 bytes; returned idle after publication and
+  auxiliary ASR.
