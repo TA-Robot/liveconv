@@ -27,6 +27,7 @@ class Engine:
         self.torch = Torch()
         self.input_wav = Buffer([1.0, 2.0])
         self.input_wav_res = Buffer([3.0])
+        self.rvc = Rvc()
 
 
 class Buffer:
@@ -38,6 +39,12 @@ class Buffer:
 
     def copy_(self, other: Buffer) -> None:
         self.values = other.values.copy()
+
+
+class Rvc:
+    def __init__(self) -> None:
+        self.cache_pitch = Buffer([4.0])
+        self.cache_pitchf = Buffer([5.0])
 
 
 class Backend:
@@ -59,6 +66,8 @@ class Backend:
         self.full_reset_count += 1
         self._engine.input_wav.values = [0.0, 0.0]
         self._engine.input_wav_res.values = [0.0]
+        self._engine.rvc.cache_pitch.values = [0.0]
+        self._engine.rvc.cache_pitchf.values = [0.0]
 
 
 def test_silence_prime_resets_then_reseeds_before_second_turn() -> None:
@@ -85,4 +94,22 @@ def test_input_context_control_restores_only_input_buffers() -> None:
     assert backend.input_sizes == [1, 1]
     assert backend._engine.input_wav.values == [1.0, 2.0]
     assert backend._engine.input_wav_res.values == [3.0]
+    assert backend._engine.rvc.cache_pitch.values == [0.0]
+    assert backend._engine.rvc.cache_pitchf.values == [0.0]
+    assert output.tolist() == second.tolist()
+
+
+def test_pitch_cache_control_restores_only_pitch_buffers() -> None:
+    backend = Backend()
+    first = np.asarray([0.1], dtype=np.float32)
+    second = np.asarray([0.2], dtype=np.float32)
+
+    output = MODULE.convert_with_pitch_cache(backend, first, second)
+
+    assert backend.reset_count == 1
+    assert backend.full_reset_count == 1
+    assert backend._engine.input_wav.values == [0.0, 0.0]
+    assert backend._engine.input_wav_res.values == [0.0]
+    assert backend._engine.rvc.cache_pitch.values == [4.0]
+    assert backend._engine.rvc.cache_pitchf.values == [5.0]
     assert output.tolist() == second.tolist()

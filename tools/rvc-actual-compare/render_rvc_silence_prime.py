@@ -80,6 +80,23 @@ def convert_with_input_context(
     return np.asarray(backend.convert(second.tolist(), SAMPLE_RATE), dtype="<f4")
 
 
+def convert_with_pitch_cache(
+    backend: Any, first: np.ndarray, second: np.ndarray
+) -> np.ndarray:
+    backend.reset()
+    first_output = np.asarray(
+        backend.convert(first.tolist(), SAMPLE_RATE), dtype=np.float32
+    )
+    if first_output.size != first.size or not np.isfinite(first_output).all():
+        raise SilencePrimeError("pitch-source turn output is invalid")
+    cache_pitch = backend._engine.rvc.cache_pitch.clone()  # noqa: SLF001
+    cache_pitchf = backend._engine.rvc.cache_pitchf.clone()  # noqa: SLF001
+    backend._reset_state()  # noqa: SLF001
+    backend._engine.rvc.cache_pitch.copy_(cache_pitch)  # noqa: SLF001
+    backend._engine.rvc.cache_pitchf.copy_(cache_pitchf)  # noqa: SLF001
+    return np.asarray(backend.convert(second.tolist(), SAMPLE_RATE), dtype="<f4")
+
+
 def internal_render(arguments: argparse.Namespace) -> int:
     source_root = arguments.internal_source_root.absolute()
     os.environ["LIVECONV_RVC_SOURCE_ROOT"] = str(source_root)
@@ -99,7 +116,9 @@ def internal_render(arguments: argparse.Namespace) -> int:
     deny_non_unix_sockets()
     backend = UpstreamRvcBackend(configuration)
     try:
-        if arguments.internal_context_carry:
+        if arguments.internal_pitch_cache_carry:
+            output = convert_with_pitch_cache(backend, first, second)
+        elif arguments.internal_context_carry:
             output = convert_with_input_context(backend, first, second)
         else:
             output = convert_with_silence_prime(
@@ -160,7 +179,13 @@ def execute(
         raise SilencePrimeError("stable RVC worker Python is unavailable")
     arguments.work_dir.mkdir(parents=True)
     context_carry = arguments.context_carry
-    mode = "input-context-carry" if context_carry else "silence-prime"
+    pitch_cache_carry = arguments.pitch_cache_carry
+    if pitch_cache_carry:
+        mode = "pitch-cache-carry"
+    elif context_carry:
+        mode = "input-context-carry"
+    else:
+        mode = "silence-prime"
     second_output = arguments.work_dir / f"{mode}-turn-2.f32le"
     command = [
         str(worker_python),
@@ -173,7 +198,9 @@ def execute(
         "--internal-source-root",
         str(arguments.source_root.resolve()),
     ]
-    if context_carry:
+    if pitch_cache_carry:
+        command.append("--internal-pitch-cache-carry")
+    elif context_carry:
         command.append("--internal-context-carry")
     started = time.perf_counter()
     subprocess.run(
@@ -202,14 +229,15 @@ def execute(
     shutil.copyfile(arguments.direct_reset_wav, staging / "10-direct-reset.wav")
     candidate_file = f"20-direct-{mode}.wav"
     support.write_wav(staging / candidate_file, candidate_pcm)
-    candidate_id = (
-        "direct-input-context-carry" if context_carry else "direct-silence-prime"
-    )
-    candidate_name = (
-        "Stable seed-0 RVC / reset + prior input context only"
-        if context_carry
-        else "Stable seed-0 RVC / reset + 3.5 s silence prime"
-    )
+    if pitch_cache_carry:
+        candidate_id = "direct-pitch-cache-carry"
+        candidate_name = "Stable seed-0 RVC / reset + prior RMVPE pitch cache only"
+    elif context_carry:
+        candidate_id = "direct-input-context-carry"
+        candidate_name = "Stable seed-0 RVC / reset + prior input context only"
+    else:
+        candidate_id = "direct-silence-prime"
+        candidate_name = "Stable seed-0 RVC / reset + 3.5 s silence prime"
     variants = [
         {
             "variant_id": "direct-reset",
@@ -232,7 +260,20 @@ def execute(
         },
     ]
     comparison = support.signal_comparison(baseline_pcm, candidate_pcm)
-    if context_carry:
+    if pitch_cache_carry:
+        title = "RVC turn 2: full reset vs prior RMVPE pitch cache only"
+        changed_variable = "prior RMVPE pitch/pitchf cache after otherwise full reset"
+        question = "Can prior pitch cache recover turn 2 with other state cleared?"
+        control = {
+            "pitch_cache_carried": True,
+            "pitchf_cache_carried": True,
+            "rng_reset": True,
+            "input_context_reset": True,
+            "rms_reset": True,
+            "sola_reset": True,
+            "must_clear_on_interrupt": True,
+        }
+    elif context_carry:
         title = "RVC turn 2: full reset vs prior input context only"
         changed_variable = "prior input context buffers after otherwise full reset"
         question = "Can prior input context recover turn 2 with other state cleared?"
@@ -286,9 +327,13 @@ def execute(
     result = {
         "schema_version": 1,
         "kind": (
-            "liveconv-ms3-rvc-input-context-result"
-            if context_carry
-            else "liveconv-ms3-rvc-silence-prime-result"
+            "liveconv-ms3-rvc-pitch-cache-result"
+            if pitch_cache_carry
+            else (
+                "liveconv-ms3-rvc-input-context-result"
+                if context_carry
+                else "liveconv-ms3-rvc-silence-prime-result"
+            )
         ),
         "status": "completed-listen-now-unselected",
         "git_commit": subprocess.run(
@@ -325,7 +370,9 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--direct-reset-wav", type=Path, required=True)
     value.add_argument("--work-dir", type=Path, required=True)
     value.add_argument("--listener-dir", type=Path, required=True)
-    value.add_argument("--context-carry", action="store_true")
+    context = value.add_mutually_exclusive_group()
+    context.add_argument("--context-carry", action="store_true")
+    context.add_argument("--pitch-cache-carry", action="store_true")
     return value
 
 
@@ -336,6 +383,7 @@ def internal_parser() -> argparse.ArgumentParser:
     value.add_argument("--internal-output", type=Path, required=True)
     value.add_argument("--internal-source-root", type=Path, required=True)
     value.add_argument("--internal-context-carry", action="store_true")
+    value.add_argument("--internal-pitch-cache-carry", action="store_true")
     return value
 
 
@@ -347,11 +395,12 @@ def main() -> int:
         state = load_state_runner()
         profile, environment, support = validate(arguments, state)
         if arguments.check:
-            control = (
-                "input-context carry"
-                if arguments.context_carry
-                else "silence-only prime"
-            )
+            if arguments.pitch_cache_carry:
+                control = "pitch-cache carry"
+            elif arguments.context_carry:
+                control = "input-context carry"
+            else:
+                control = "silence-only prime"
             print(f"ok   RVC {control} CPU admission complete")
             return 0
         execute(arguments, profile, environment, support)
