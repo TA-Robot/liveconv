@@ -211,6 +211,10 @@ def _measured_stream(
     sample_rate: int,
     torch: Any,
     device: Any,
+    chunk_ms: int = CHUNK_MS,
+    current_ms: int = CURRENT_MS,
+    future_ms: int = FUTURE_MS,
+    smooth_ms: int = SMOOTH_MS,
 ) -> tuple[Any, list[float], float, float]:
     torch.cuda.synchronize(device)
     condition_started = time.perf_counter()
@@ -241,10 +245,10 @@ def _measured_stream(
             speaker_condition=speaker_condition,
             frame_condition=frame_condition,
             sample_rate=sample_rate,
-            chunk_ms=CHUNK_MS,
-            current_ms=CURRENT_MS,
-            future_ms=FUTURE_MS,
-            smooth_ms=SMOOTH_MS,
+            chunk_ms=chunk_ms,
+            current_ms=current_ms,
+            future_ms=future_ms,
+            smooth_ms=smooth_ms,
         )
         torch.cuda.synchronize(device)
     finally:

@@ -68,3 +68,4 @@ def test_measurement_wraps_the_pinned_upstream_stream_function() -> None:
     assert "torch.cuda.synchronize(device)" in source
     assert "PeftModel.from_pretrained" in source
     assert '"conversational_latency_measured": False' in source
+    assert "future_ms: int = FUTURE_MS" in source
