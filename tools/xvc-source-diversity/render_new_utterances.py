@@ -60,6 +60,19 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "speakers?"
             ),
         }
+    if kind == "aligned-conditions":
+        return {
+            "experiment_id": "EXP-045",
+            "variant_id": "cv12-aligned-conditions",
+            "display_name": (
+                "EXP-044 / CV12 / alignment-preserving varied conditions"
+            ),
+            "result_kind": "liveconv-exp045-xvc-aligned-new-utterance/v1",
+            "question": (
+                "Does aligned-condition augmentation generalize to new utterances "
+                "from heldout speakers?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -399,7 +412,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--check", action="store_true")
     parser.add_argument(
         "--candidate-kind",
-        choices=("speaker7", "reconstruction20"),
+        choices=("speaker7", "reconstruction20", "aligned-conditions"),
         default="speaker7",
     )
     parser.add_argument("--evaluation-set", type=Path, required=True)

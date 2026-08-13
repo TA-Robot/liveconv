@@ -64,3 +64,10 @@ def test_reconstruction_candidate_is_exp041() -> None:
 
     assert policy["experiment_id"] == "EXP-041"
     assert policy["variant_id"] == "cv12-reconstruction20"
+
+
+def test_aligned_condition_candidate_is_exp045() -> None:
+    policy = NEW.candidate_policy("aligned-conditions")
+
+    assert policy["experiment_id"] == "EXP-045"
+    assert policy["variant_id"] == "cv12-aligned-conditions"

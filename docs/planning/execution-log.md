@@ -2218,3 +2218,27 @@ job queue.
   loss, seed, and zero target conditioning remain fixed.
 - Changed action: commit before execution and start EXP-044 as the only GPU
   lane. Screen seven external speakers before any follow-up render.
+
+## 2026-08-13T14:05:38Z - EXP-044 external audio published and survived
+
+- Agent: `primary-integrator`.
+- Task: Train alignment-preserving varied conditions and screen seven disjoint
+  Common Voice speakers.
+- Dependencies: commit `0324358`; exclusive `gpu0`; listener `8878`.
+- Result: all 1,044 updates completed in 405.25 seconds with 4.77 GB peak
+  allocation and 21 published candidates. The final tempo-row loss fell from
+  EXP-043's 800.78 to 208.90. No arm gross-looped. Against control69, the
+  aligned candidate improved source-relative mean 0.360 to 0.278, known-text
+  mean 0.399 to 0.362, and maximum source-relative distance 0.571 to 0.556.
+- Changed action: do not select from seven rows. Commit a render-only EXP-045
+  on the twelve changed utterances, then replan before fixed conditions.
+
+## 2026-08-13T14:07:06Z - EXP-045 changed-utterance render prepared
+
+- Agent: `primary-integrator`.
+- Task: Replace EXP-041's reconstruction arm with the EXP-044 adapter while
+  holding all twelve sources, base, control69, target, and seeds fixed.
+- Result: Ruff, 33 focused tests, exact twelve-row CPU admission, and
+  `git diff --check` passed. No training update is scheduled.
+- Changed action: commit before execution, publish 36 candidates, then run the
+  source-window-relative corruption screen as the sole GPU lane.
