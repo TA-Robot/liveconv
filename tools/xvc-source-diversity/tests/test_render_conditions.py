@@ -142,3 +142,11 @@ def test_denoise_semantic_uses_exp089_condition_policy() -> None:
 
     assert policy["experiment_id"] == "EXP-089"
     assert policy["candidate"][0] == "cv12-denoise-semantic"
+
+
+def test_cross_target_condition_uses_exp096_policy() -> None:
+    policy = RENDER.candidate_policy("cross-target-condition")
+
+    assert policy["experiment_id"] == "EXP-096"
+    assert policy["candidate"][0] == "cv12-cross-target-condition"
+    assert policy["conditioned_inference"] is True

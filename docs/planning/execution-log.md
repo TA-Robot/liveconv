@@ -2876,3 +2876,20 @@ job queue.
   Preserve low token diversity for disjoint safety validation. Since failures
   remain model-dependent, admit a distinct X-VC method that replaces the
   always-zero target frame condition with same-speaker cross-utterance context.
+
+## 2026-08-13T18:40:00Z - EXP-094--099 cross-target conditioning prepared
+
+- Agent: `primary-integrator`.
+- Task: exercise X-VC's previously zeroed frame-condition path with
+  same-speaker, content-disjoint target context.
+- Dependencies: exact EXP-035 generated inventory; 87 Amitaro target windows;
+  fixed control69, target waveform/speaker/semantic losses, LR, seed, clean
+  sources, and 1,044 updates.
+- Result: every target rotates deterministically to the next different target
+  window; inference fixes `EMOTION100_009` as frame condition while retaining
+  `EMOTION100_003` as the target/speaker reference. EXP-095--099 reuse the
+  frozen 12 + 10 + 31 + 33 + 60 sets in addition to the seven-row pilot.
+- Changed action: after focused tests and CPU admission, commit and run one GPU
+  lane. Do not sweep condition ratio, identity, strength, scope, or LR. Reject
+  content copy/corruption mechanically but leave naturalness and voice quality
+  for hearing.

@@ -290,6 +290,38 @@ def test_denoise_semantic_alternates_clean_and_noise_with_fixed_objective() -> N
     assert policy["experiment_id"] == "EXP-087"
 
 
+def test_cross_target_condition_rotates_without_self_conditioning() -> None:
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(
+            training_policy="cross-target-condition", lora_scope="control69"
+        )
+    )
+    indices = [
+        ROLE_MIX.frame_condition_target_index("cross-target-condition", index, 87)
+        for index in range(87)
+    ]
+
+    assert indices == list(range(1, 87)) + [0]
+    assert all(index != condition for index, condition in enumerate(indices))
+    assert Counter(ROLE_MIX.training_modes("cross-target-condition")) == {
+        "standard": 1_044
+    }
+    assert ROLE_MIX.source_condition_schedule("cross-target-condition") == [
+        {"kind": "clean"}
+    ] * 1_044
+    assert ROLE_MIX.training_loss_weights("cross-target-condition") == (
+        ROLE_MIX.STANDARD_LOSS_WEIGHTS
+    )
+    assert policy["experiment_id"] == "EXP-094"
+    assert policy["conditioned_inference"] is True
+    choices = next(
+        action.choices
+        for action in ROLE_MIX._parser()._actions
+        if action.dest == "training_policy"
+    )
+    assert "cross-target-condition" in choices
+
+
 def test_source36_excludes_frame_condition_and_speaker_modulators() -> None:
     inventory = (
         ROLE_MIX.REPO_ROOT

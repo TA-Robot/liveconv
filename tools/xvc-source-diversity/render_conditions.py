@@ -22,6 +22,7 @@ for import_root in (TOOL_ROOT, HUMAN_TOOL_ROOT):
 
 import listen_now as base  # noqa: E402
 import run as method  # noqa: E402
+import run_role_mix as role_mix  # noqa: E402
 
 
 class ConditionRenderError(RuntimeError):
@@ -237,6 +238,23 @@ def candidate_policy(kind: str) -> dict[str, Any]:
                 "30-xvc-cv12-denoise-semantic.wav",
             ),
         }
+    if kind == "cross-target-condition":
+        return {
+            "experiment_id": "EXP-096",
+            "result_kind": "liveconv-exp096-xvc-cross-target-condition/v1",
+            "run_kind": "EXP-096 X-VC cross-target condition evaluation",
+            "control": (
+                "cv12-control69",
+                "EXP-035 / target frame condition zeros",
+                "20-xvc-cv12-control69.wav",
+            ),
+            "candidate": (
+                "cv12-cross-target-condition",
+                "EXP-094 / cross-utterance target frame condition",
+                "30-xvc-cv12-cross-target-condition.wav",
+            ),
+            "conditioned_inference": True,
+        }
     raise ConditionRenderError(f"unknown candidate kind: {kind}")
 
 
@@ -373,6 +391,25 @@ def run(
         torch=torch,
         device=device,
     )
+    target_by_id = {pair_id: (path, digest) for pair_id, path, digest in target_rows}
+    condition_path, condition_digest = target_by_id[
+        role_mix.FRAME_CONDITION_REFERENCE_ID
+    ]
+    condition_pair = base.MaterializedPair(
+        role_mix.FRAME_CONDITION_REFERENCE_ID,
+        condition_path,
+        condition_path,
+        condition_digest,
+        condition_digest,
+    )
+    frame_condition_tensor = base._extract_pair_tensors(
+        model,
+        condition_pair,
+        process_audio=process_audio,
+        config=config,
+        torch=torch,
+        device=device,
+    )
     sources = method.materialize_evaluation_sources(
         evaluation,
         output_root=arguments.work_dir / "evaluation-sources",
@@ -419,7 +456,24 @@ def run(
         adapted = PeftModel.from_pretrained(
             adapted_base, str(adapter), is_trainable=False
         )
-        outputs[label] = render(adapted)
+        outputs[label] = (
+            [
+                role_mix.conditioned_inference(
+                    adapted,
+                    source,
+                    target_tensor,
+                    frame_condition_tensor,
+                    seed=base.SEED + index,
+                    torch=torch,
+                    device=device,
+                )
+                .detach()
+                .cpu()
+                for index, source in enumerate(source_tensors)
+            ]
+            if label == candidate_id and policy.get("conditioned_inference")
+            else render(adapted)
+        )
         del adapted, adapted_base
         torch.cuda.empty_cache()
 
@@ -516,6 +570,7 @@ def _parser() -> argparse.ArgumentParser:
             "decoder-final",
             "source-semantic",
             "denoise-semantic",
+            "cross-target-condition",
         ),
         default="donor-breadth",
     )

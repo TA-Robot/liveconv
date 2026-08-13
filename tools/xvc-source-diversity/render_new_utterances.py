@@ -23,6 +23,7 @@ for import_root in (TOOL_ROOT, HUMAN_TOOL_ROOT):
 import listen_now as base  # noqa: E402
 import run as method  # noqa: E402
 import run_breadth as breadth  # noqa: E402
+import run_role_mix as role_mix  # noqa: E402
 import screen  # noqa: E402
 
 KIND = "liveconv-exp039-commonvoice-same-speaker-new-utterances/v1"
@@ -345,6 +346,39 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 f"{evaluation_name}?"
             ),
         }
+    condition_policies = {
+        "cross-target-condition": (
+            "EXP-095",
+            "liveconv-exp095-xvc-cross-target-condition-new/v1",
+        ),
+        "cross-target-condition-hadou": (
+            "EXP-097",
+            "liveconv-exp097-xvc-cross-target-condition-hadou/v1",
+        ),
+        "cross-target-condition-expanded": (
+            "EXP-098",
+            "liveconv-exp098-xvc-cross-target-condition-expanded/v1",
+        ),
+        "cross-target-condition-stress": (
+            "EXP-099",
+            "liveconv-exp099-xvc-cross-target-condition-stress/v1",
+        ),
+    }
+    if kind in condition_policies:
+        experiment_id, result_kind = condition_policies[kind]
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "cv12-cross-target-condition",
+            "display_name": (
+                "EXP-094 / same-speaker cross-utterance frame condition"
+            ),
+            "result_kind": result_kind,
+            "question": (
+                "Does cross-utterance target-frame conditioning preserve content "
+                "and avoid corruption on this frozen evaluation set?"
+            ),
+            "conditioned_inference": True,
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -615,6 +649,22 @@ def run(
         torch=torch,
         device=device,
     )
+    condition_path, condition_digest = by_id[role_mix.FRAME_CONDITION_REFERENCE_ID]
+    condition_pair = base.MaterializedPair(
+        role_mix.FRAME_CONDITION_REFERENCE_ID,
+        condition_path,
+        condition_path,
+        condition_digest,
+        condition_digest,
+    )
+    frame_condition_tensor = base._extract_pair_tensors(
+        model,
+        condition_pair,
+        process_audio=process_audio,
+        config=config,
+        torch=torch,
+        device=device,
+    )
     evaluation_pairs: list[base.MaterializedPair] = []
     evaluation_tensors: list[dict[str, Any]] = []
     for item in evaluation["items"]:
@@ -655,7 +705,25 @@ def run(
         adapted = PeftModel.from_pretrained(
             adapted_base, str(adapter), is_trainable=False
         )
-        outputs[label] = render(adapted)
+        outputs[label] = (
+            [
+                role_mix.conditioned_inference(
+                    adapted,
+                    source,
+                    target_tensor,
+                    frame_condition_tensor,
+                    seed=base.SEED + index,
+                    torch=torch,
+                    device=device,
+                )
+                .detach()
+                .cpu()
+                for index, source in enumerate(evaluation_tensors)
+            ]
+            if label == policy["variant_id"]
+            and policy.get("conditioned_inference")
+            else render(adapted)
+        )
         del adapted, adapted_base
         torch.cuda.empty_cache()
 
@@ -758,6 +826,10 @@ def _parser() -> argparse.ArgumentParser:
             "denoise-semantic-hadou",
             "denoise-semantic-expanded",
             "denoise-semantic-stress",
+            "cross-target-condition",
+            "cross-target-condition-hadou",
+            "cross-target-condition-expanded",
+            "cross-target-condition-stress",
         ),
         default="speaker7",
     )

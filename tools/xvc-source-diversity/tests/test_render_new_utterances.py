@@ -240,6 +240,27 @@ def test_denoise_semantic_policies_cover_all_followup_sets() -> None:
     }
 
 
+def test_cross_target_condition_policies_cover_all_followup_sets() -> None:
+    kinds = (
+        "cross-target-condition",
+        "cross-target-condition-hadou",
+        "cross-target-condition-expanded",
+        "cross-target-condition-stress",
+    )
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-095",
+        "EXP-097",
+        "EXP-098",
+        "EXP-099",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "cv12-cross-target-condition"
+    }
+    assert all(policy["conditioned_inference"] for policy in policies)
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"

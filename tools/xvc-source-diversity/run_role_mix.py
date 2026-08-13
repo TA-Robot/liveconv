@@ -70,6 +70,7 @@ DENOISE_CONDITION_CYCLE = (
     {"kind": "noise", "snr_db": 20.0},
 )
 DENOISE_CONDITION_COUNTS = {"clean": 522, "noise": 522}
+FRAME_CONDITION_REFERENCE_ID = "EMOTION100_009"
 STANDARD_LOSS_WEIGHTS = {
     "mse_loss": 1000.0,
     "vq_loss": 1.0,
@@ -129,6 +130,7 @@ def training_modes(policy: str) -> list[str]:
         "semantic2x",
         "source-semantic",
         "denoise-semantic",
+        "cross-target-condition",
     }:
         return ["standard"] * TOTAL_UPDATES
     if policy == "standard-reconstruction":
@@ -185,6 +187,16 @@ def target_condition_kind(policy: str, source_kind: str) -> str:
     if source_kind not in {"tempo", "pitch", "leading-silence"}:
         raise RoleMixError(f"unknown source condition: {source_kind}")
     return source_kind
+
+
+def frame_condition_target_index(
+    policy: str, target_index: int, target_count: int
+) -> int | None:
+    if policy != "cross-target-condition":
+        return None
+    if target_count < 2 or not 0 <= target_index < target_count:
+        raise RoleMixError("cross-target frame-condition index drifted")
+    return (target_index + 1) % target_count
 
 
 def uses_authentic_anchor(policy: str, donor_index: int) -> bool:
@@ -277,6 +289,33 @@ def training_scope(inventory: Path, name: str) -> dict[str, object]:
 
 
 def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
+    if (
+        arguments.training_policy == "cross-target-condition"
+        and arguments.lora_scope == "control69"
+    ):
+        return {
+            "experiment_id": "EXP-094",
+            "slug": "exp094",
+            "candidate_id": "cv12-cross-target-condition",
+            "candidate_name": (
+                "EXP-094 / CV12 / same-speaker cross-utterance frame condition"
+            ),
+            "run_kind": "EXP-094 X-VC cross-target-condition evaluation",
+            "result_kind": "liveconv-exp094-xvc-cross-target-condition-result/v1",
+            "question": (
+                "Does training and inference with a same-speaker, different-"
+                "utterance frame condition stabilize X-VC content and waveform "
+                "generation compared with the always-zero condition contract?"
+            ),
+            "independent_variable": (
+                "target_wav_cond contract: zeros versus deterministic next-"
+                "Amitaro-utterance waveform for every training target and fixed "
+                f"{FRAME_CONDITION_REFERENCE_ID} at inference; generated source/"
+                "target pairs, target speaker path, semantic target, loss weights, "
+                "control69, LR, seed, and 1,044 updates stay fixed"
+            ),
+            "conditioned_inference": True,
+        }
     if (
         arguments.training_policy == "denoise-semantic"
         and arguments.lora_scope == "control69"
@@ -608,6 +647,46 @@ def assigned_tensors(
     }
 
 
+def conditioned_inference(
+    model: Any,
+    source: Mapping[str, Any],
+    reference: Mapping[str, Any],
+    frame_condition: Mapping[str, Any],
+    *,
+    seed: int,
+    torch: Any,
+    device: Any,
+) -> Any:
+    index = device.index
+    if index is None:
+        raise RoleMixError("conditioned render requires numbered cuda:0")
+    batch = {
+        "source_wav": source["source_wav"].to(device=device, dtype=torch.float32),
+        "target_wav": reference["target_wav"].to(
+            device=device, dtype=torch.float32
+        ),
+        "target_wav_cond": frame_condition["target_wav"].to(
+            device=device, dtype=torch.float32
+        ),
+        "semantic_tokens": source["semantic_tokens"].to(
+            device=device, dtype=torch.int64
+        ),
+        "ssl_feat": reference["ssl_feat"].to(device=device, dtype=torch.float32),
+    }
+    model.eval()
+    with torch.random.fork_rng(devices=[index], enabled=True), torch.no_grad():
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        rendered = model.inference(batch).get("recons")
+    if (
+        rendered is None
+        or rendered.shape != (1, 1, base.MODEL_SAMPLES)
+        or not bool(torch.isfinite(rendered).all())
+    ):
+        raise RoleMixError("conditioned render is not finite 2.4-second mono")
+    return rendered
+
+
 def _set_scope_training_only(model: Any, scope: Mapping[str, object]) -> list[Any]:
     modules = tuple(str(item) for item in scope.get("modules_to_save", []))
     if not modules:
@@ -911,6 +990,13 @@ def run(
 
     target_reference = target_tensors[0]
     target_reference_pair = target_pairs[0]
+    target_by_id = {
+        pair.pair_id: tensor
+        for pair, tensor in zip(target_pairs, target_tensors, strict=True)
+    }
+    if FRAME_CONDITION_REFERENCE_ID not in target_by_id:
+        raise RoleMixError("fixed frame-condition reference is unavailable")
+    frame_condition_reference = target_by_id[FRAME_CONDITION_REFERENCE_ID]
 
     def render(current: Any) -> list[Any]:
         return [
@@ -1098,20 +1184,28 @@ def run(
                 .to(torch.float32)
                 .contiguous(),
             }
-            training_rows.append(
-                assigned_tensors(
-                    training_target,
-                    generated,
-                    modes[row_index],
-                    real_donor=donor_tensor,
-                    semantic_target=(
-                        "source"
-                        if arguments.training_policy
-                        in {"source-semantic", "denoise-semantic"}
-                        else "reference"
-                    ),
-                )
+            assigned = assigned_tensors(
+                training_target,
+                generated,
+                modes[row_index],
+                real_donor=donor_tensor,
+                semantic_target=(
+                    "source"
+                    if arguments.training_policy
+                    in {"source-semantic", "denoise-semantic"}
+                    else "reference"
+                ),
             )
+            frame_condition_index = frame_condition_target_index(
+                arguments.training_policy, target_index, len(target_tensors)
+            )
+            frame_condition_pair = None
+            if frame_condition_index is not None:
+                frame_condition_pair = target_pairs[frame_condition_index]
+                assigned["target_wav_cond"] = target_tensors[
+                    frame_condition_index
+                ]["target_wav"]
+            training_rows.append(assigned)
             generated_inventory.append(
                 {
                     "target_id": target_pair.pair_id,
@@ -1133,6 +1227,14 @@ def run(
                     "target_id": target_pair.pair_id,
                     "condition": target_condition,
                     "target_sha256": target_source_digest,
+                    "frame_condition_target_id": (
+                        frame_condition_pair.pair_id if frame_condition_pair else None
+                    ),
+                    "frame_condition_target_sha256": (
+                        frame_condition_pair.target_sha256
+                        if frame_condition_pair
+                        else None
+                    ),
                 }
             )
             row_index += 1
@@ -1181,6 +1283,10 @@ def run(
         _set_scope_training_only(trained, scope)
         optimizer.zero_grad(set_to_none=True)
         batch = base._gpu_batch(tensors, torch=torch, device=device)
+        if "target_wav_cond" in tensors:
+            batch["target_wav_cond"] = tensors["target_wav_cond"].to(
+                device=device, dtype=torch.float32
+            )
         with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
             loss, numeric = base._composite_loss(trained, batch, torch)
         loss.backward()
@@ -1196,7 +1302,24 @@ def run(
         raise RoleMixError(f"{policy['experiment_id']} update count drifted")
     adapter_dir = arguments.work_dir / "adapter-1044"
     trained.save_pretrained(adapter_dir, safe_serialization=True)
-    candidate_outputs = render(trained)
+    candidate_outputs = (
+        [
+            conditioned_inference(
+                trained,
+                source,
+                target_reference,
+                frame_condition_reference,
+                seed=base.SEED + index,
+                torch=torch,
+                device=device,
+            )
+            .detach()
+            .cpu()
+            for index, source in enumerate(evaluation_tensors)
+        ]
+        if policy.get("conditioned_inference")
+        else render(trained)
+    )
 
     staging = arguments.work_dir / "listener-staging"
     staging.mkdir()
@@ -1250,7 +1373,12 @@ def run(
             "lora_scope": arguments.lora_scope,
             "learning_rate": base.LEARNING_RATE,
             "gradient_clip_norm": base.GRADIENT_CLIP_NORM,
-            "target_wav_cond": "zeros",
+            "target_wav_cond": (
+                "same-speaker-next-utterance-training/fixed-"
+                f"{FRAME_CONDITION_REFERENCE_ID}-inference"
+                if arguments.training_policy == "cross-target-condition"
+                else "zeros"
+            ),
             "semantic_supervision": (
                 "clean_source_whisper_hidden_states_50hz"
                 if arguments.training_policy == "denoise-semantic"
@@ -1352,6 +1480,7 @@ def _parser() -> argparse.ArgumentParser:
             "semantic2x",
             "source-semantic",
             "denoise-semantic",
+            "cross-target-condition",
             "real-reconstruction20",
         ),
         default="role-mix",
@@ -1440,6 +1569,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 else "target_whisper_hidden_states_50hz"
                             )
                         ),
+                        "frame_condition_rows": sum(
+                            frame_condition_target_index(
+                                arguments.training_policy, index, len(targets)
+                            )
+                            is not None
+                            for index in range(len(targets))
+                        )
+                        * len(donors["items"]),
                         "lora_scope": arguments.lora_scope,
                     },
                     sort_keys=True,

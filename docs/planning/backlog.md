@@ -98,13 +98,13 @@ name one owner and ownership zone below.
 | LV-087 | Done | P0 | MS-3 | Replace one-row audio limitations with a multi-speaker Common Voice stress matrix | EXP-086 found source-semantic regressed the 60-row macro from 0.320 to 0.484 and added a noise loop; the one-row robustness signal did not generalize |
 | LV-088 | Done | P0 | MS-3 | Train X-VC with denoising semantic consistency | EXP-087--092 improved noise20 and tempo in the balanced stress matrix, but regressed changed utterances and pitch and gross-looped one ASR-empty expanded input; retain unheard audio and close ratio/SNR/blend sweeps |
 | LV-089 | Done | P0 | MS-3 | Isolate X-VC loop-prone source representations | EXP-093 found no useful universal rule: the best all-loop rule flagged 8/30 non-loop rows; low token diversity captured the two adapter-added loops but also three non-loop rows, so retain it only as a disjoint-validation hypothesis |
-| LV-090 | Planned | P0 | MS-3 | Train X-VC with cross-utterance target-frame conditioning | Replace the always-zero frame-condition waveform with a deterministic same-Amitaro, different-utterance window while keeping source/target pairs, control69, losses, LR, seed, and 1,044 updates fixed |
+| LV-090 | In progress | P0 | MS-3 | Train X-VC with cross-utterance target-frame conditioning | EXP-094 rotates each target to the next same-Amitaro utterance and uses fixed EMOTION100_009 at inference; source/target pairs, control69, losses, LR, seed, and 1,044 updates stay fixed |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| None | - | - | Admit LV-090 only after its exact cross-utterance condition binding and varied render contract are committed |
+| LV-090 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-094--099 notes, and ignored artifacts | Commit exact training/inference condition bindings and all 7+12+10+31+33+60 policies before one GPU lane |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.
