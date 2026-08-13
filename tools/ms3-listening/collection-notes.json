@@ -1,12 +1,39 @@
 {
   "schema_version": 1,
   "top_status": {
-    "updated_at": "2026-08-13T06:45:00Z",
+    "updated_at": "2026-08-13T07:25:00Z",
     "current": "MS-3の最優先は、3発話×2方式だけに絞った『VC heldout shortlist』の判定です。RVC Sasayaki clean-brightとX-VC Yofukashi Q034は、同じ公開入力・同じlive Gateway経路で粗いcontent screenを通過しています。旧EXP群は比較根拠として残しますが、先に消化しません。",
     "hold": "履歴のX-VC比較、EXP-027〜031、370本の発音確認は今回の判定を止めません。EXP-024のDTW pilotやlookahead sweepは再開せず、RVC再学習、TTSの人間VC corpusへの混入、keep前のpromote作業も行いません。",
     "next": "VC heldout shortlistの各3行でRVCかX-VCを選ぶ、または両方rejectedにしてください。明瞭さ、自然さ、目標声への近さを耳で判断します。補助CER 0.184/0.166はgross corruption除外だけで、音質順位ではありません。結果は次のlisten-now routeを1本に絞るだけで、製品採用ではありません。固定ポート: 8878。"
   },
   "collections": [
+    {
+      "match_all": ["ms3-rvc-seed0-cudagraph-repeat-v1"],
+      "display_title": "RVC会話ターン安定化: seed 0（統合候補）",
+      "purpose": "同じ公開発話を同じRVC設定で3回変換し、generation境界で乱数状態を固定したときのターン間変動を確認",
+      "data": "3反復。相関は0.999998以上、最大差0.00134以下。3本とも補助ASRは『いや、ベルがなってる』。内容破損screenであり、自然さの勝者ではありません。",
+      "status": "未seedのrepeat-turn診断と聴き比べ、ターンごとの声色・明瞭さの変化が消えたかだけ確認してください。seed総当たりは行いません。",
+      "review_priority": "normal",
+      "review_mode": "gross_reject_only"
+    },
+    {
+      "match_all": ["ms3-rvc-seed34"],
+      "display_title": "RVC会話ターン安定化: seed 34（対照）",
+      "purpose": "明示seedによるRVCターン安定化の対照。CUDA Graph有無の微小数値差も含む",
+      "data": "両実行とも相関0.999997以上。補助ASRは全て『ヴェルがなってる』。Graphなしでもbit一致しないため、残差の深追いは終了。",
+      "status": "seed 0との聴覚対照として保持。seed 34を製品選定したものではありません。",
+      "review_priority": "normal",
+      "review_mode": "gross_reject_only"
+    },
+    {
+      "match_all": ["ms3-rvc-repeat-turn-v1"],
+      "display_title": "RVC同一入力3ターン診断（未seed）",
+      "purpose": "同じ入力・同じRVCプロファイルでも会話ターンごとに出力が大きく変わることを再現",
+      "data": "turn 2/3の相関は-0.283/-0.083、最大差0.502/0.429。内部の確率的latent samplingが主因。",
+      "status": "seed 0との比較用。未seed挙動を追加生成する必要はありません。",
+      "review_priority": "normal",
+      "review_mode": "gross_reject_only"
+    },
     {
       "match_all": ["ms3-vc-heldout-shortlist-v1"],
       "display_title": "最優先: VC heldout shortlist（RVC vs X-VC）",

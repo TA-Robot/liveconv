@@ -1095,3 +1095,99 @@ job queue.
   not require navigating the full archive.
 - GPU: X-VC route generation and both fixed STT screens completed; `gpu0` is
   idle pending the next audited system-path job.
+
+## 2026-08-13T06:43:55Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, no tools or delegation).
+- Result: `REDIRECT`. Grok accepted the new X-VC live-route audio and compact
+  shortlist, closed the exhausted model axes, and asked for one missing live
+  X-VC Q034 render on the existing 8.17-second ChatGPT input.
+- Adopted: yes for moving from model tuning to a conversation-system boundary.
+- Not adopted literally: the requested exact source/profile/render already
+  exists in `20260811-114251-32-variants`; its source hash, live Gateway
+  profile, configuration hash, and output were verified. A rerender would have
+  been a duplicate.
+- Changed action: compare fresh versus persistent Gateway sessions for the two
+  surviving RVC/X-VC profiles, using the same three public heldout inputs.
+
+## 2026-08-13T06:54:00Z - persistent VC session comparison completed
+
+- Agent: `primary-integrator`.
+- Task: Send three sequential generations through one live Gateway session for
+  RVC Sasayaki clean-bright and X-VC Yofukashi Q034, then compare each output
+  with its existing fresh-session control.
+- Dependencies: commit `c5a883c`, sealed deployment, live Gateway `8877`,
+  fixed listener `8878`, and one profile/worker at a time on `gpu0`.
+- Result: twelve unselected comparison WAVs were published as
+  `ms3-vc-session-reuse-v1`. Once loaded, both workers completed a generation
+  in about 2.4 seconds; the old fresh RVC path had paid roughly 82 seconds of
+  startup per source.
+- Signal screen: X-VC fresh/persistent correlation was at least 0.999999988.
+  RVC was 0.601, 0.680, and -0.134, with the third row at -3.55 dB SNR. Fixed
+  Whisper content CER changed from 0.184 fresh to 0.314 persistent for RVC;
+  X-VC stayed at 0.166.
+- Changed action: keep persistent workers for latency, but diagnose RVC's
+  generation-boundary variability before treating its conversation output as
+  stable.
+
+## 2026-08-13T06:59:41Z - RVC same-input drift reproduced
+
+- Agent: `primary-integrator`.
+- Task: Repeat exact public input `EMOTION100_017` three times within one RVC
+  clean-bright Gateway session.
+- Dependencies: commit `c6c7b5b`; identical source bytes and profile settings;
+  only generation position changed.
+- Result: three new unselected WAVs were published as
+  `ms3-rvc-repeat-turn-v1`. Generation 2/3 correlation to generation 1 was
+  -0.283/-0.083, maximum difference was 0.502/0.429, and fixed Whisper CER
+  changed from 0.222 to 0.444/0.444. This is reproducible turn-to-turn output
+  drift, not an input-row effect.
+- Root cause: the pinned RVC synthesizer samples its latent representation with
+  `torch.randn_like()` on every block. The existing generation reset cleared
+  audio, pitch, RMS, and SOLA buffers but did not reset the model RNG.
+
+## 2026-08-13T07:13:55Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, no tools or delegation).
+- Result: `SIMPLIFY`. Grok required the new session diagnostics to be visible
+  on `8878`, rejected further seed/runtime ceremony and broad model-knob work,
+  and requested immediate publish, coarse screen, and replan.
+- Adopted: yes. The session-reuse and repeat-turn collections were confirmed
+  in the live listener; no new hash, receipt, review, or model-family lane was
+  opened. Seed/runtime repairs stopped once audio was produced.
+- Not adopted literally: the audit snapshot preceded the first seeded audio.
+  Because one explicit seed could make output consistently bad, one standard
+  seed-0 control was admitted after seed 34; no further seed points are
+  allowed before hearing.
+
+## 2026-08-13T07:22:35Z - RVC generation seed control closed
+
+- Agent: `primary-integrator`.
+- Task: Bind an explicit inference seed at generation reset and compare three
+  repeats of exact public input `EMOTION100_017`; change CUDA Graph once only to
+  locate any residual numeric difference, then compare seed 34 with seed 0.
+- Dependencies: commits `c9a52ba`, `4d4ada5`, `f6067ac`, `f1114c3`, and
+  `3d6d4c7`; retained isolated RVC runtime and public source; listener `8878`.
+- Result: seed 34 with CUDA Graph improved repeat correlations from
+  -0.283/-0.083 to 0.999997/0.999998 and reduced maximum difference from about
+  0.5 to at most 0.00138. Disabling CUDA Graph left the same tiny residual, so
+  graph-specific work is closed. Seed 0 reproduced the same stability at
+  0.999998 correlation and at most 0.00134 maximum difference.
+- Content screen: all seed-34 files transcribed as `ヴェルがなってる` (CER
+  0.444); all seed-0 files transcribed as `いや、ベルがなってる` (CER
+  0.333). Both passed gross corruption/repetition screening. Seed 0 is the
+  lower-content-error integration candidate, not a perceptual winner; seed 34
+  remains a hearing control. No further seed search is admitted.
+- Problems/rework: three attempts stopped before useful publication on sealed
+  environment, installed-runtime, OS-isolation, and upstream-cwd safety gates.
+  Each was repaired narrowly and retained recoverably under `/tmp`; no partial
+  listener collection appeared. The fourth attempt generated the first audio.
+- Validation: 25 focused RVC/Gateway/runner tests and focused Ruff checks pass.
+  `make check` completed its repository/control checks, then the lint phase
+  failed on 272 pre-existing errors in unrelated dirty/untracked EXP-007 and
+  X-VC files. Those files were not changed as part of this slice.
+- Changed action: integrate seed 0 through the bounded worker/Gateway profile
+  and rerun the three-turn conversation comparison; do not widen training,
+  model, F0, lookahead, or seed axes.

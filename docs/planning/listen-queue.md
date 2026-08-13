@@ -30,6 +30,7 @@ each result. Accumulated candidates remain unselected until human hearing.
 | EXP-026 horizon | The same three X-VC rows at base / epoch 4 / epoch 8 / epoch 12 | nominate one horizon only if it is clearly preferable across the set; otherwise `rejected` | a nomination chooses the next listen-now model state only; it is not a route or product decision |
 | EXP-032 stream floor + system path | Actual 8.17 s input at epoch 8 with future 100 / 110 / 120 / 125 ms, followed by the future-120 candidate through the bounded worker/cancellation path | hear 120 and 125 ms, then compare the source/system pair; record the lowest acceptable arm, or `rejected` | 100/110 have auxiliary-ASR repetition; the worker probe completed with zero stale frames but is not Gateway-, Extension-, or route-qualified |
 | MS-3 VC heldout shortlist | The same three public utterances through live RVC Sasayaki clean-bright and live X-VC Yofukashi Q034 | per row prefer one arm, or reject both; judge clarity, naturalness, and target-voice fit by ear | a consistent preference admits one next listen-now route; it is not promotion or product selection |
+| RVC turn-consistency diagnostic | `ms3-rvc-repeat-turn-v1` versus the explicit seed-0/seed-34 repeat collections | compare whether the seeded output removes audible turn-to-turn voice changes; do not choose by auxiliary CER alone | seed 0 is the system integration candidate only; a later audible preference may change it |
 
 Historical X-VC synthetic blinds (EXP-010–019) stay on the listener as
 archives. They do not gate the current queue.
@@ -115,6 +116,15 @@ Q034 control also completed at 0.166 without gross repetition. Machine evidence
 cannot distinguish perceptual quality between 0.166 and 0.184. Both surviving
 routes are therefore collected, still unselected, in
 `ms3-vc-heldout-shortlist-v1`; do not widen this comparison before hearing.
+
+The persistent-session diagnostic found a separate conversation-system issue:
+unseeded RVC repeated the exact same input with correlation -0.283/-0.083 on
+turns 2/3, while X-VC was numerically stable. Explicit RVC generation seeds 34
+and 0 raised repeat correlation above 0.999997 and removed turn-dependent
+auxiliary-ASR changes. Seed 0 had lower coarse CER than seed 34 on the single
+diagnostic sentence (0.333 versus 0.444), so it is the sole integration
+candidate. This is not a perceptual selection. Do not add another seed point;
+route the seed-0 behavior through the bounded worker/Gateway session next.
 
 ## Keepers
 
