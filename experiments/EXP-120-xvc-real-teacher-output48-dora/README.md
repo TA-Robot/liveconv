@@ -1,6 +1,6 @@
 # EXP-120: X-VC full-output teacher with DoRA
 
-Status: prepared; one bounded gpu0 lane
+Status: admitted; one bounded gpu0 lane
 
 ## Question
 
@@ -24,3 +24,11 @@ Commit method and focused tests before gpu0. Pass one real-model full-output
 backward smoke, then train once. Render external7 and frozen fresh48. Stop before
 stress60 on any added gross loop or broad common-non-loop regression. Machine
 metrics cannot select naturalness, target voice, or a winner.
+
+## Runtime admission
+
+Commit `4606474` passed 54 focused tests and exact CPU admission. Its committed
+real-model smoke exposed all 69 DoRA magnitude vectors and exactly 887,808
+trainable parameters, produced a 38,400-sample teacher target, full composite
+loss `161.0455`, finite pre-clip gradient norm `32.0441`, and 3.34 GiB peak GPU
+allocation with exit status zero.

@@ -3261,3 +3261,17 @@ job queue.
   points. Return to EXP-116's stronger control69 signal and test one materially
   different PEFT parameterization, DoRA, before considering conditioning or
   data-construction changes.
+
+## 2026-08-13T21:14:12Z - EXP-120 DoRA output-teacher smoke passed
+
+- Agent: `primary-integrator`.
+- Dependencies: commit `4606474`; exact train48/fresh48 bindings; gpu0.
+- Result: 54 focused tests passed. CPU admission retained the exact 69
+  control69 targets and added 52,224 magnitude parameters for 887,808 trainable
+  parameters total. One real-model backward smoke produced a 38,400-sample
+  target, loss `161.0455`, finite pre-clip gradient norm `32.0441`, and 3.34
+  GiB peak GPU allocation; exit status zero.
+- Problems: none. The larger pre-clip norm is diagnostic only; the unchanged
+  norm-5 clipping contract remains active during training.
+- Rework: runtime evidence only. Admit exactly one 1,044-update EXP-120 lane,
+  external7, and frozen fresh48. Do not open another PEFT variant.
