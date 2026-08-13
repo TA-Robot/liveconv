@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test safe silence-only RVC context priming after a generation reset."""
+"""Test bounded RVC context controls after a generation reset."""
 
 from __future__ import annotations
 
@@ -63,6 +63,23 @@ def convert_with_silence_prime(
     return np.asarray(backend.convert(second.tolist(), SAMPLE_RATE), dtype="<f4")
 
 
+def convert_with_input_context(
+    backend: Any, first: np.ndarray, second: np.ndarray
+) -> np.ndarray:
+    backend.reset()
+    first_output = np.asarray(
+        backend.convert(first.tolist(), SAMPLE_RATE), dtype=np.float32
+    )
+    if first_output.size != first.size or not np.isfinite(first_output).all():
+        raise SilencePrimeError("context-source turn output is invalid")
+    input_wav = backend._engine.input_wav.clone()  # noqa: SLF001
+    input_wav_res = backend._engine.input_wav_res.clone()  # noqa: SLF001
+    backend._reset_state()  # noqa: SLF001
+    backend._engine.input_wav.copy_(input_wav)  # noqa: SLF001
+    backend._engine.input_wav_res.copy_(input_wav_res)  # noqa: SLF001
+    return np.asarray(backend.convert(second.tolist(), SAMPLE_RATE), dtype="<f4")
+
+
 def internal_render(arguments: argparse.Namespace) -> int:
     source_root = arguments.internal_source_root.absolute()
     os.environ["LIVECONV_RVC_SOURCE_ROOT"] = str(source_root)
@@ -74,16 +91,20 @@ def internal_render(arguments: argparse.Namespace) -> int:
     if samples.size > EXPECTED_SAMPLES or not np.isfinite(samples).all():
         raise SilencePrimeError("exact source PCM is invalid")
     samples = np.pad(samples, (0, EXPECTED_SAMPLES - samples.size))
-    second = samples[SPLIT_FRAME * FRAME_SAMPLES :]
+    split_sample = SPLIT_FRAME * FRAME_SAMPLES
+    first, second = samples[:split_sample], samples[split_sample:]
     configuration = RvcConfiguration.from_environment()
     if configuration.inference_seed is None:
         raise SilencePrimeError("silence prime requires an explicit inference seed")
     deny_non_unix_sockets()
     backend = UpstreamRvcBackend(configuration)
     try:
-        output = convert_with_silence_prime(
-            backend, second, seed=configuration.inference_seed
-        )
+        if arguments.internal_context_carry:
+            output = convert_with_input_context(backend, first, second)
+        else:
+            output = convert_with_silence_prime(
+                backend, second, seed=configuration.inference_seed
+            )
     finally:
         backend.close()
     if output.size != second.size or not np.isfinite(output).all():
@@ -138,20 +159,25 @@ def execute(
     if not worker_python.is_file():
         raise SilencePrimeError("stable RVC worker Python is unavailable")
     arguments.work_dir.mkdir(parents=True)
-    second_output = arguments.work_dir / "silence-primed-turn-2.f32le"
+    context_carry = arguments.context_carry
+    mode = "input-context-carry" if context_carry else "silence-prime"
+    second_output = arguments.work_dir / f"{mode}-turn-2.f32le"
+    command = [
+        str(worker_python),
+        str(Path(__file__).resolve()),
+        "--internal-render",
+        "--internal-source-f32",
+        str(arguments.source_f32.resolve()),
+        "--internal-output",
+        str(second_output.resolve()),
+        "--internal-source-root",
+        str(arguments.source_root.resolve()),
+    ]
+    if context_carry:
+        command.append("--internal-context-carry")
     started = time.perf_counter()
     subprocess.run(
-        [
-            str(worker_python),
-            str(Path(__file__).resolve()),
-            "--internal-render",
-            "--internal-source-f32",
-            str(arguments.source_f32.resolve()),
-            "--internal-output",
-            str(second_output.resolve()),
-            "--internal-source-root",
-            str(arguments.source_root.resolve()),
-        ],
+        command,
         env={**os.environ, **environment},
         check=True,
     )
@@ -164,7 +190,7 @@ def execute(
         or len(second_pcm) != (EXPECTED_SAMPLES - SPLIT_FRAME * FRAME_SAMPLES) * 4
     ):
         raise SilencePrimeError("comparison PCM length drifted")
-    primed_pcm = baseline_pcm[:split_bytes] + second_pcm
+    candidate_pcm = baseline_pcm[:split_bytes] + second_pcm
 
     staging = arguments.listener_dir.with_name(
         f".{arguments.listener_dir.name}.staging"
@@ -174,7 +200,16 @@ def execute(
     staging.mkdir()
     shutil.copyfile(arguments.source_wav, staging / "00-source.wav")
     shutil.copyfile(arguments.direct_reset_wav, staging / "10-direct-reset.wav")
-    support.write_wav(staging / "20-direct-silence-prime.wav", primed_pcm)
+    candidate_file = f"20-direct-{mode}.wav"
+    support.write_wav(staging / candidate_file, candidate_pcm)
+    candidate_id = (
+        "direct-input-context-carry" if context_carry else "direct-silence-prime"
+    )
+    candidate_name = (
+        "Stable seed-0 RVC / reset + prior input context only"
+        if context_carry
+        else "Stable seed-0 RVC / reset + 3.5 s silence prime"
+    )
     variants = [
         {
             "variant_id": "direct-reset",
@@ -187,39 +222,56 @@ def execute(
             "reused_by_exact_hash": True,
         },
         {
-            "variant_id": "direct-silence-prime",
-            "display_name": "Stable seed-0 RVC / reset + 3.5 s silence prime",
+            "variant_id": candidate_id,
+            "display_name": candidate_name,
             "display_order": 2,
-            "output_file": "20-direct-silence-prime.wav",
-            "output_sha256": "sha256:"
-            + support.sha256_file(staging / "20-direct-silence-prime.wav"),
+            "output_file": candidate_file,
+            "output_sha256": "sha256:" + support.sha256_file(staging / candidate_file),
             "status": "passed",
             "operator_judgment": "unreviewed",
         },
     ]
-    comparison = support.signal_comparison(baseline_pcm, primed_pcm)
-    index = {
-        "schema_version": 1,
-        "title": "RVC turn 2: full reset vs silence-only context prime",
-        "run_kind": "MS-3 safe RVC generation-context root-cause control",
-        "status": "completed-listen-now-unselected",
-        "source_id": SOURCE_ID,
-        "source_file": "Native / actual ChatGPT-tab input (2026-08-11)",
-        "source_output_file": "00-source.wav",
-        "comparison_scope": {
-            "changed_variable": "3.5 seconds of zero PCM after full reset",
-            "fixed": ["input", "split", "checkpoint", "seed", "RVC settings"],
-            "machine_selection_allowed": False,
-            "question": "Can silence-only priming safely recover turn-2 content?",
-        },
-        "prime": {
+    comparison = support.signal_comparison(baseline_pcm, candidate_pcm)
+    if context_carry:
+        title = "RVC turn 2: full reset vs prior input context only"
+        changed_variable = "prior input context buffers after otherwise full reset"
+        question = "Can prior input context recover turn 2 with other state cleared?"
+        control = {
+            "input_wav_carried": True,
+            "input_wav_res_carried": True,
+            "rng_reset": True,
+            "pitch_cache_reset": True,
+            "rms_reset": True,
+            "sola_reset": True,
+            "must_clear_on_interrupt": True,
+        }
+    else:
+        title = "RVC turn 2: full reset vs silence-only context prime"
+        changed_variable = "3.5 seconds of zero PCM after full reset"
+        question = "Can silence-only priming safely recover turn-2 content?"
+        control = {
             "seconds": PRIME_SECONDS,
             "samples": PRIME_SAMPLES,
             "audio": "zero PCM",
             "output": "discarded",
             "seed_reapplied_after_prime": True,
             "prior_generation_audio_used": False,
+        }
+    index = {
+        "schema_version": 1,
+        "title": title,
+        "run_kind": "MS-3 safe RVC generation-context root-cause control",
+        "status": "completed-listen-now-unselected",
+        "source_id": SOURCE_ID,
+        "source_file": "Native / actual ChatGPT-tab input (2026-08-11)",
+        "source_output_file": "00-source.wav",
+        "comparison_scope": {
+            "changed_variable": changed_variable,
+            "fixed": ["input", "split", "checkpoint", "seed", "RVC settings"],
+            "machine_selection_allowed": False,
+            "question": question,
         },
+        "context_control": control,
         "runtime": {
             "source_revision": SOURCE_REVISION,
             "wall_seconds": wall_seconds,
@@ -233,7 +285,11 @@ def execute(
     staging.rename(arguments.listener_dir)
     result = {
         "schema_version": 1,
-        "kind": "liveconv-ms3-rvc-silence-prime-result",
+        "kind": (
+            "liveconv-ms3-rvc-input-context-result"
+            if context_carry
+            else "liveconv-ms3-rvc-silence-prime-result"
+        ),
         "status": "completed-listen-now-unselected",
         "git_commit": subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -269,6 +325,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--direct-reset-wav", type=Path, required=True)
     value.add_argument("--work-dir", type=Path, required=True)
     value.add_argument("--listener-dir", type=Path, required=True)
+    value.add_argument("--context-carry", action="store_true")
     return value
 
 
@@ -278,6 +335,7 @@ def internal_parser() -> argparse.ArgumentParser:
     value.add_argument("--internal-source-f32", type=Path, required=True)
     value.add_argument("--internal-output", type=Path, required=True)
     value.add_argument("--internal-source-root", type=Path, required=True)
+    value.add_argument("--internal-context-carry", action="store_true")
     return value
 
 
@@ -289,7 +347,12 @@ def main() -> int:
         state = load_state_runner()
         profile, environment, support = validate(arguments, state)
         if arguments.check:
-            print("ok   RVC silence-only prime CPU admission complete")
+            control = (
+                "input-context carry"
+                if arguments.context_carry
+                else "silence-only prime"
+            )
+            print(f"ok   RVC {control} CPU admission complete")
             return 0
         execute(arguments, profile, environment, support)
         return 0

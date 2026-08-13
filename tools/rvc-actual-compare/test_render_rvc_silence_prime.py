@@ -25,6 +25,19 @@ class Torch:
 class Engine:
     def __init__(self) -> None:
         self.torch = Torch()
+        self.input_wav = Buffer([1.0, 2.0])
+        self.input_wav_res = Buffer([3.0])
+
+
+class Buffer:
+    def __init__(self, values: list[float]) -> None:
+        self.values = values
+
+    def clone(self) -> Buffer:
+        return Buffer(self.values.copy())
+
+    def copy_(self, other: Buffer) -> None:
+        self.values = other.values.copy()
 
 
 class Backend:
@@ -32,6 +45,7 @@ class Backend:
         self._engine = Engine()
         self.reset_count = 0
         self.input_sizes: list[int] = []
+        self.full_reset_count = 0
 
     def reset(self) -> None:
         self.reset_count += 1
@@ -40,6 +54,11 @@ class Backend:
         assert sample_rate == MODULE.SAMPLE_RATE
         self.input_sizes.append(len(samples))
         return samples
+
+    def _reset_state(self) -> None:
+        self.full_reset_count += 1
+        self._engine.input_wav.values = [0.0, 0.0]
+        self._engine.input_wav_res.values = [0.0]
 
 
 def test_silence_prime_resets_then_reseeds_before_second_turn() -> None:
@@ -51,4 +70,19 @@ def test_silence_prime_resets_then_reseeds_before_second_turn() -> None:
     assert backend.reset_count == 1
     assert backend.input_sizes == [MODULE.PRIME_SAMPLES, 2]
     assert backend._engine.torch.seeds == [0]
+    assert output.tolist() == second.tolist()
+
+
+def test_input_context_control_restores_only_input_buffers() -> None:
+    backend = Backend()
+    first = np.asarray([0.1], dtype=np.float32)
+    second = np.asarray([0.2], dtype=np.float32)
+
+    output = MODULE.convert_with_input_context(backend, first, second)
+
+    assert backend.reset_count == 1
+    assert backend.full_reset_count == 1
+    assert backend.input_sizes == [1, 1]
+    assert backend._engine.input_wav.values == [1.0, 2.0]
+    assert backend._engine.input_wav_res.values == [3.0]
     assert output.tolist() == second.tolist()
