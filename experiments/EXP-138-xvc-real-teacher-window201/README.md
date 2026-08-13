@@ -1,6 +1,6 @@
 # EXP-138: X-VC near-one-pass real-window teacher breadth
 
-Status: admitted; one bounded gpu0 lane
+Status: completed; rejected on teacher contamination and heldout loops
 
 ## Goal
 
@@ -35,3 +35,18 @@ Bind and commit the pool, pass one backward smoke, train once, then render the
 same external7, frozen fresh48, and frozen Hadou31. Reject on an adapter-added
 gross loop or broad common-non-loop regression. Machine ASR cannot select
 naturalness, target identity, or a winner.
+
+## Result
+
+The 1,044-update run completed in 310.55 seconds at 4.77 GiB peak. Standard
+loss moved `144.22 -> 131.19` and teacher loss `161.02 -> 50.80`. External7
+source-relative distance tied control69 at `0.360`, while known-text distance
+regressed `0.399 -> 0.467`.
+
+The frozen pseudo-teacher screen found two gross loops among the 209 actual
+training targets and 33 rows at source-relative distance at least `0.5`.
+EXP-139 then found a candidate-only 109-character repeated-vowel failure in
+addition to the inherited control collapse. EXP-140 repeated the heldout
+`RECITATION324_138` numeric loop. Reject this adapter and close further source
+coverage/breadth points. The common non-loop improvement remains an unheard
+technical signal, not a keeper.

@@ -3395,3 +3395,41 @@ job queue.
   Replace repeated exposure to 48 teacher sources with a near-one-pass pool of
   about 201 disjoint training sources/windows while keeping teacher positions,
   standard rows, loss, LR, target, and evaluation fixed.
+
+## 2026-08-13T23:22:33Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux `liveconv-grok-auditor`; independent, read-only,
+  no tools or delegation.
+- Verdict: `CONTINUE`.
+- Adopted: run the already admitted 201-source near-one-pass teacher lane, then
+  screen only frozen external7/fresh48/Hadou31 and publish its audio on 8878.
+  Treat EXP-138 as the final coverage/breadth point; if either known heldout
+  repetition failure remains, move to objective, conditioning, or trainable
+  target changes instead of adding another source-count or window point.
+- Not adopted: the audit snapshot could not confirm GPU activity during model
+  load. Direct inspection immediately afterward showed EXP-138 active at 34%
+  GPU utilization and 3.8 GiB process memory.
+- Changed action: close threshold refitting, stress60-before-survival, and all
+  further coverage neighbors. Preserve the no-adapter-added-loop stop and do
+  not treat auxiliary ASR as a keep or promote decision.
+
+## 2026-08-13T23:32:00Z - EXP-138--140 window breadth rejected
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-13T23:17:36Z.
+- End: 2026-08-13T23:31:00Z.
+- Dependencies: commits `cced615` and `a6f8727`; frozen external7/fresh48/
+  Hadou31; gpu0; listener 8878.
+- Result: EXP-138 trained 1,044 updates in 310.55 seconds at 4.77 GiB peak and
+  published 35 external, 240 fresh48, and 155 Hadou31 WAVs. On the 45 common
+  non-loop fresh rows it improved control69 mean `0.326 -> 0.289`, median
+  `0.250 -> 0.200`, known-text mean `0.610 -> 0.594`, and W/T/L `15/24/6`.
+- Problems: the candidate added a 109-character repeated-vowel failure on
+  fresh48 and repeated the heldout `RECITATION324_138` numeric loop. More
+  importantly, the actual 209 frozen-base teacher targets contained two gross
+  loops and 33 rows at source-relative distance at least `0.5`; increasing
+  source breadth had admitted broken converted targets as supervision.
+- Rework: reject EXP-138 and close source-count/window coverage. Bind the
+  existing `<0.5`, no-gross diagnostic before training, deduplicate to 170
+  real teacher IDs, and test one materially different two-stage optimization:
+  start from control69 and make one clean teacher-only rehearsal pass.
