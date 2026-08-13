@@ -1,6 +1,6 @@
 # EXP-025: X-VC whole-short human-paired adaptation
 
-Status: **draft; 87-pair inventory may be used as listen-now**.
+Status: **listen-now rendered; operator decision pending**.
 
 EXP-025 is a separate post-failure draft. It does not retry EXP-024 or alter
 its gates. It does not train RVC or mix external TTS into the human corpus.
@@ -82,6 +82,14 @@ because the runner imported `process_audio` from `utils.audio`; pinned X-VC
 exports it from `models.codec.sac.utils`. The `v2` launch changes only that
 import boundary and the fresh output locator. All scientific conditions and
 the one-run quality question remain unchanged.
+
+Result: the `v2` run from commit
+`db0390710ac6b4d3c69d99f2b532dc8183529958` completed all 87 train pairs,
+four epochs, and 348 updates in 124.49 seconds. It published exactly three
+base/adapted comparisons (six candidates) to the fixed listener. All six
+candidate WAV hashes match their indexes; the generated candidates are mono
+PCM16 at 16 kHz, their copied source/reference WAVs are mono PCM16 at 48 kHz,
+and the heldout-target access counter is zero. The decision remains unselected.
 
 ## Question and hypothesis
 

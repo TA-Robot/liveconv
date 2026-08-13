@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "top_status": {
-    "updated_at": "2026-08-13T01:12:00Z",
-    "current": "MS-3の最優先は、すでに聴ける実入力候補の判定です。EXP-020の人間学習済みRVC 3候補、EXP-021のゼロショットVC 2候補、EXP-023のQwen3-TTS 12候補をこの順で確認します。",
+    "updated_at": "2026-08-13T01:38:42Z",
+    "current": "MS-3の最優先は、すでに聴ける候補の判定です。EXP-020の人間学習済みRVC 3候補、EXP-021のゼロショットVC 2候補、EXP-023のQwen3-TTS 12候補、EXP-025のX-VC base/adapted 3比較をこの順で確認します。",
     "hold": "履歴のX-VC比較と370本の発音確認は今回の判定を止めません。EXP-024のDTW pilotは再実行せず、RVC再学習、TTSの人間VC corpusへの混入、keep前のpromote作業も行いません。",
-    "next": "各候補は、明らかな欠損・反復・不明瞭さがあれば理由つきでrejected、それ以外はcontinueを記録してください。continueは次の大きなlistenを許可するだけで、製品採用ではありません。固定ポート: 8878。"
+    "next": "EXP-020/021/023は、明らかな欠損・反復・不明瞭さがあれば理由つきでrejected、それ以外はcontinueを記録してください。EXP-025はadaptedがbaseより明確に良い場合だけkeep、それ以外はrejectedです。continue/keepは次の検証を許可するだけで、製品採用ではありません。固定ポート: 8878。"
   },
   "collections": [
     {

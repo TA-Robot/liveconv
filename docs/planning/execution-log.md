@@ -570,3 +570,27 @@ job queue.
 - Cadence: tmux repeats the same read-only Grok audit every 1,800 seconds and
   appends its raw verdict to
   `/tmp/liveconv-grok-progress-auditor-v2.log`.
+
+## 2026-08-13T01:38:42Z - EXP-025 whole-short listen-now published
+
+- Agent: `primary-integrator`.
+- Task: Produce the independent Ready-board X-VC render without waiting for
+  operator decisions on EXP-020/021/023.
+- Start: after the 01:12 Grok audit; end: 01:38 UTC.
+- Dependencies: committed runner/note, the inventoried 87 eligible train pairs,
+  pinned X-VC base/runtime, authorized Amitaro runrun target archive, fixed
+  listener on `8878`, and idle `gpu0`.
+- Result: the first launch stopped before model load or any update because of
+  one incorrect upstream import. Commit `db03907` repaired only that boundary.
+  The condition-identical `v2` launch then completed 348 updates in 124.49
+  seconds and published three plain-label base/adapted comparisons. Six
+  candidate hashes match their indexes, audio formats are valid, and the
+  heldout-target access counter is zero.
+- Problems: one Repair-tier import failure; no scientific retry and no partial
+  listener publication. The unused `v1` work directory is retained as failure
+  evidence.
+- Rework: one import-line repair, one regression assertion, and a fresh output
+  locator. No corpus, schedule, rank, learning rate, or render-source change.
+- Changed action: move EXP-025 from `Next listen-now to render` to `Unheard
+  now`. Start no further X-VC trajectory until the operator records `keep` or
+  `rejected` for this set.
