@@ -189,6 +189,7 @@ async def render_profile(
     arguments: argparse.Namespace,
     *,
     spec: dict[str, str],
+    session: ModuleType,
     heldout: ModuleType,
     renderer: ModuleType,
     row_state: dict[str, dict[str, Any]],
@@ -232,15 +233,20 @@ async def render_profile(
             state = row_state[source_id]
             print(f"rendering {profile_id} / {source_id}", flush=True)
             started = time.monotonic()
-            pcm, generation = await renderer.render_profile(
+            outputs = await session.render_profile_turns(
                 client,
+                renderer=renderer,
                 gateway_url=gateway_url,
                 token=token,
                 origin=origin,
                 profile=profile,
-                input_frames=state["input_frames"],
-                timeout_seconds=arguments.timeout_seconds,
+                turns=[(source_id, state["input_frames"])],
+                timeout=arguments.timeout_seconds,
+                route_parity_qualification=True,
             )
+            if len(outputs) != 1 or outputs[0][0] != source_id:
+                raise StableGeneralizationError("Gateway output row drifted")
+            _, pcm, generation = outputs[0]
             output_path = state["directory"] / spec["output_file"]
             renderer.write_wav(output_path, pcm)
             state["variants"].append(
@@ -264,6 +270,7 @@ async def render_profile(
 async def execute(
     arguments: argparse.Namespace,
     *,
+    session: ModuleType,
     heldout: ModuleType,
     renderer: ModuleType,
 ) -> dict[str, Any]:
@@ -299,6 +306,7 @@ async def execute(
         await render_profile(
             arguments,
             spec=spec,
+            session=session,
             heldout=heldout,
             renderer=renderer,
             row_state=row_state,
@@ -377,11 +385,13 @@ async def execute(
 
 
 async def run(arguments: argparse.Namespace) -> int:
-    _session, heldout, renderer = validate(arguments)
+    session, heldout, renderer = validate(arguments)
     if arguments.check:
         print("ok   stable VC public-validation CPU admission complete")
         return 0
-    await execute(arguments, heldout=heldout, renderer=renderer)
+    await execute(
+        arguments, session=session, heldout=heldout, renderer=renderer
+    )
     return 0
 
 

@@ -33,6 +33,9 @@ def test_batch_uses_only_the_two_stable_profiles_in_serial_order() -> None:
         "10-stable-rvc-seed0.wav",
         "20-stable-xvc-q34.wav",
     ]
+    source = RUNNER.read_text(encoding="utf-8")
+    assert "session.render_profile_turns(" in source
+    assert "renderer.render_profile(" not in source
 
 
 def test_listener_publication_uses_hidden_staging_sibling() -> None:
