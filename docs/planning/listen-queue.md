@@ -173,6 +173,14 @@ and 0.833 for X-VC, with no gross repetition. Keep the stable public heldout
 shortlist first and this actual-input pair second for human hearing. Do not
 rerender either arm or turn the machine screen into a quality selection.
 
+The recovered raw PCM was exactly 3.0103 dB above the later PCM24 re-decode,
+and stable RVC coarse CER improved across that natural pair from 0.636 to
+0.417. One bounded extrapolation raised the exact raw input another 3.0103 dB
+without clipping. Its CER worsened to 0.472, again without gross repetition.
+This brackets the useful level near the recovered original on this input.
+Retain `ms3-stable-rvc-input-gain-v1` for optional hearing and close finer gain
+search; do not turn a single-input ASR minimum into an automatic normalizer.
+
 ## Keepers
 
 None yet. A `keep` here is the only ticket into a promote pass.

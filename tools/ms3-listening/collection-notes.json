@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "top_status": {
-    "updated_at": "2026-08-13T08:42:00Z",
+    "updated_at": "2026-08-13T08:51:00Z",
     "current": "MS-3の最優先は、会話ターン安定化済みRVC seed 0と数値安定なX-VC Yofukashi Q034のstable shortlistです。公開3発話のheldout比較に加え、過去比較と完全一致する実ChatGPT入力PCMでの2候補比較も公開しました。",
     "hold": "履歴のX-VC比較、EXP-027〜031、370本の発音確認は今回の判定を止めません。EXP-024のDTW pilotやlookahead sweepは再開せず、RVC再学習、TTSの人間VC corpusへの混入、keep前のpromote作業も行いません。",
     "next": "人間が戻ったら、まずstable VC heldout shortlistの3行、次にexact actual-input shortlistを聴いてください。実入力の補助CERはRVC 0.417、X-VC 0.833ですが、これは内容崩壊の粗いscreenで音質順位ではありません。明瞭さ、自然さ、目標声への近さを耳で判断します。固定ポート: 8878。"
@@ -23,6 +23,15 @@
       "data": "同一入力2候補。RVCは新規live Gateway出力、X-VCは同じ生PCMから作られた既存出力をhash一致で再利用。補助CERはRVC 0.417、X-VC 0.833。gross repetitionなし。",
       "status": "明瞭さ・自然さ・目標声への近さを聴き、RVC、X-VC、または両方rejectedを記録してください。機械値は内容screenのみで、声質選定ではありません。",
       "review_priority": "priority",
+      "review_mode": "gross_reject_only"
+    },
+    {
+      "match_all": ["ms3-stable-rvc-input-gain-v1"],
+      "display_title": "RVC stable seed 0: 原入力レベル vs +3.01 dB",
+      "purpose": "過去の2入力が正確に3.0103 dB違い、RVCの粗い内容保持も変わったため、同じ原PCM・profile・Gatewayでさらに1段だけ入力ゲインを上げて反転点を確認",
+      "data": "入力peakは0.229から0.324でclipなし。source-relative補助CERは原レベル0.417、+3.01 dB 0.472。gross repetitionなし。-3/0/+3 dBの観測では原レベルが最低でした。",
+      "status": "任意の聴覚確認用。追加の細粒度ゲイン探索は終了しています。補助CERは音質順位ではありません。",
+      "review_priority": "low",
       "review_mode": "gross_reject_only"
     },
     {

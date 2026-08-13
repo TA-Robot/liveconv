@@ -1372,3 +1372,38 @@ job queue.
 - Changed action: the earlier actual-input comparison confound is removed.
   Keep the public heldout shortlist first and this exact actual-input shortlist
   second for operator hearing; do not rerender either arm.
+
+## 2026-08-13T08:45:51Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, no tools or delegation).
+- Result: `CONTINUE`. Grok accepted the three new comparisons and exact-input
+  repair as direct MS-3 progress, required the idle GPU to take one next
+  committed single-variable lane, and kept RNNoise, training, horizon, LR,
+  lookahead, rerenders, promote work, and machine quality selection closed.
+- Adopted: yes. The suggested additional pre-VC capture was not available.
+  Instead, the parent used the newly measured exact 3.0103 dB source-level
+  difference and its correlated RVC content change to admit one safe +3.0103 dB
+  point. The runner was CPU-admitted and committed before taking `gpu0`.
+- Expected time saved: the next 30-minute window produces a bounded result
+  instead of waiting for hearing or reopening a closed model/training axis.
+
+## 2026-08-13T08:51:00Z - stable RVC input-gain probe closed
+
+- Agent: `primary-integrator`.
+- Task: Hold the exact actual waveform, stable seed-0 RVC profile, and Gateway
+  fixed; increase input gain exactly 3.0103 dB once, derived from the recovered
+  raw-versus-PCM24 level difference.
+- Dependencies: commit `e78a818`; raw source SHA-256 `b114aed...`; retained
+  exact-level RVC output SHA-256 `e00b7f6...`; evaluation Gateway `8881`;
+  listener `8878`; exclusive `gpu0`.
+- Result: input peak rose from 0.229 to 0.324 without clipping. The new arm
+  completed 409 contiguous finite frames in 8.192 seconds with echoed
+  timestamps and published as `ms3-stable-rvc-input-gain-v1`. Output SHA-256
+  is `3c690e0b08720caa830873bbab4b37593ce08953704e93da092e9c812a0c550e`.
+- Machine screen: source-relative faster-whisper CER was 0.417 at the recovered
+  original level and 0.472 at +3.0103 dB. Neither gross-looped. Combined with
+  the earlier -3.0103 dB result at 0.636, the coarse minimum is bracketed near
+  the recovered original level on this input; no perceptual winner is claimed.
+- Changed action: close finer gain search and retain the A/B for optional
+  hearing. Do not infer a production normalizer from one actual input.
