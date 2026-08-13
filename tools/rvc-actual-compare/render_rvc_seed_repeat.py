@@ -27,6 +27,9 @@ from workers.adapters.rvc_v2.backend import (  # noqa: E402
     RvcConfiguration,
     UpstreamRvcBackend,
 )
+from workers.adapters.rvc_v2.network_isolation import (  # noqa: E402
+    deny_non_unix_sockets,
+)
 
 PROFILE_ID = "vc.rvc-v2.amitaro-sasayaki-clean-bright.v1"
 SOURCE_ID = "EMOTION100_017"
@@ -253,6 +256,7 @@ def execute(arguments: argparse.Namespace) -> dict[str, Any]:
     os.environ["RVC_CUDA_GRAPH"] = "1" if arguments.cuda_graph else "0"
     configuration = RvcConfiguration.from_environment()
 
+    deny_non_unix_sockets()
     backend = UpstreamRvcBackend(configuration)
     outputs: list[bytes] = []
     durations: list[float] = []
