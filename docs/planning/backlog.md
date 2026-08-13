@@ -106,13 +106,14 @@ name one owner and ownership zone below.
 | LV-095 | Done | P0 | MS-3 | Expand real semantic-teacher training-source diversity without contaminating fresh48 | EXP-114/115 trained on 48 disjoint speakers but added two fresh48 failures and regressed common non-loop median with 10/22/12 W/T/L; reject and close source-count/share/weight sweeps |
 | LV-096 | Done | P0 | MS-3 | Distill frozen X-VC's complete converted output on varied real sources | EXP-116/117 improved external7 and fresh48 raw mean/max substantially, but added one short repeated-ぷ failure; retain as strongest unheard signal, stop before stress60, and test attention freeze once |
 | LV-097 | Done | P0 | MS-3 | Freeze attention adaptation under full-output teacher training | EXP-118/119 retained control's catastrophic loop and added a 110-character repeated-ぃ failure; reject FFN-only, stop the scope branch, and keep EXP-116 as the stronger unheard signal |
-| LV-098 | In progress | P0 | MS-3 | Test direction/magnitude-decoupled DoRA under the retained full-output objective | EXP-120 changes only standard LoRA to DoRA on EXP-116's control69 scope; same train48/fresh48, objective, updates, LR, rank, seed, target, and one lane; no PEFT sweep |
+| LV-098 | Done | P0 | MS-3 | Test direction/magnitude-decoupled DoRA under the retained full-output objective | EXP-120/121 improved common non-loop content but retained control's catastrophic loop and added EXP-116's repeated-ぷ failure; reject and close PEFT neighbors |
+| LV-099 | In progress | P0 | MS-3 | Add aligned temporal-difference loss to full-output teacher rows | EXP-122 changes only the 209 full-output teacher-row objective by adding fixed-weight waveform first-difference matching; EXP-116 data/control69/standard LoRA/updates remain fixed; one point, no weight sweep |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| LV-098 / EXP-120--121 | primary-integrator | `run_role_mix.py`, `render_new_utterances.py`, focused tests, `experiments/EXP-120-*`/`EXP-121-*`, and planning records | one DoRA lane and frozen fresh48 disposition; stop without PEFT neighbors |
+| LV-099 / EXP-122--123 | primary-integrator | `run_role_mix.py`, `render_new_utterances.py`, focused tests, `experiments/EXP-122-*`/`EXP-123-*`, and planning records | one temporal-loss lane and frozen fresh48 disposition; stop without weight neighbors |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.

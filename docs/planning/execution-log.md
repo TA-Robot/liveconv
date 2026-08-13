@@ -3275,3 +3275,22 @@ job queue.
   norm-5 clipping contract remains active during training.
 - Rework: runtime evidence only. Admit exactly one 1,044-update EXP-120 lane,
   external7, and frozen fresh48. Do not open another PEFT variant.
+
+## 2026-08-13T21:24:21Z - EXP-120/121 DoRA teacher rejected
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-13T21:14:43Z.
+- End: 2026-08-13T21:24:21Z.
+- Dependencies: commits `4606474` and `effa73d`; train48; frozen fresh48;
+  gpu0; listener 8878.
+- Result: 1,044 updates completed in 337.18 seconds at 4.77 GiB peak.
+  External7 improved control source-relative `0.360 -> 0.270` and known-text
+  `0.399 -> 0.359`, without a loop. EXP-121 produced 144 outputs. On the 45
+  common non-loop rows DoRA improved control mean `0.319 -> 0.296`, median
+  `0.250 -> 0.200`, and known-text mean `0.610 -> 0.581`; W/T/L was 12/23/10.
+- Problems: DoRA retained control69's catastrophic `32.4` repeated-family row
+  and added the separate 12-character repeated-`ぷ` failure seen in EXP-116.
+  Counting the naturally repetitive source, candidate had three flagged rows.
+- Rework: reject and stop before stress60. Close PEFT neighbors. Keep the
+  non-loop content signal as evidence and change the learning objective next:
+  add direct temporal first-difference matching to aligned teacher outputs.

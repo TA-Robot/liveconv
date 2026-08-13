@@ -253,13 +253,21 @@ avoid its own short loop. Close the scope branch. The next one-axis point return
 to EXP-116's control69 topology and changes only PEFT parameterization from
 standard LoRA to DoRA. Do not open LoRA+, rsLoRA, rank, or DoRA-parameter sweeps
 beside it.
+EXP-120/121 also failed the no-added-loop gate. DoRA gave the strongest
+external7 and common-non-loop content numbers, but retained control69's
+catastrophic loop and reproduced EXP-116's short repeated-`ぷ` failure. This
+closes PEFT parameterization as the next lever. The next one-axis method returns
+to EXP-116 standard LoRA and adds aligned waveform first-difference matching on
+only the existing 209 full-output teacher rows. Unlike the earlier pretrained
+waveform discriminator, this directly penalizes local temporal collapse against
+the exact frozen teacher output. Use one preregistered weight; do not sweep it.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Keep EXP-116's data/objective/control69 fixed and change only standard LoRA to DoRA in EXP-120 | parent | no | one committed backward smoke and one 1,044-update lane, or technical failure |
-| 2 | Render EXP-121 on frozen fresh48 and stop on an added loop or broad common-non-loop regression | parent | no human dependency for machine reject | technical disposition recorded before any downstream matrix |
+| 1 | Keep EXP-116's data/control69/standard LoRA fixed and add one temporal first-difference loss to teacher rows in EXP-122 | parent | no | one committed backward smoke and one 1,044-update lane, or technical failure |
+| 2 | Render EXP-123 on frozen fresh48 and stop on an added loop or broad common-non-loop regression | parent | no human dependency for machine reject | technical disposition recorded before any downstream matrix |
 | 3 | On survival only, cross recording domains rather than adding more Common Voice: frozen stress60 plus existing JVS/Hadou sources | parent | no | separate speaker/content/condition/domain summaries; no combined automatic winner |
 | 4 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
