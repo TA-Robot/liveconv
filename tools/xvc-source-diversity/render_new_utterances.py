@@ -576,6 +576,30 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "across frozen clean, noise, silence, tempo, and pitch inputs?"
             ),
         }
+    if kind in {
+        "real-teacher-output-phonetic48-fresh48",
+        "real-teacher-output-phonetic48-hadou",
+    }:
+        hadou = kind.endswith("-hadou")
+        return {
+            "experiment_id": "EXP-132" if hadou else "EXP-131",
+            "variant_id": "cv12-real-teacher-output-phonetic48",
+            "display_name": (
+                "EXP-130 / full-output teacher / quality + kana coverage"
+            ),
+            "result_kind": (
+                "liveconv-exp132-xvc-real-teacher-output-phonetic48-hadou31/v1"
+                if hadou
+                else "liveconv-exp131-xvc-real-teacher-output-phonetic48-fresh48/v1"
+            ),
+            "question": (
+                "Does quality-filtered kana and length coverage preserve content "
+                "on 31 disjoint clean Hadou utterances?"
+                if hadou
+                else "Does quality-filtered kana and length coverage avoid "
+                "corruption and generalize on frozen fresh48?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1070,6 +1094,8 @@ def _parser() -> argparse.ArgumentParser:
             "real-teacher-output-multidomain48-fresh48",
             "real-teacher-output-multidomain48-hadou",
             "real-teacher-output-multidomain48-stress",
+            "real-teacher-output-phonetic48-fresh48",
+            "real-teacher-output-phonetic48-hadou",
         ),
         default="speaker7",
     )
