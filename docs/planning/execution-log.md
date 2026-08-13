@@ -1454,3 +1454,38 @@ job queue.
 - Changed action: reject zero latent noise and close noise-scale expansion.
   Keep the generation-boundary defect open as context/state behavior rather
   than another seed or stochastic-latent sweep.
+
+## 2026-08-13T09:16:06Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, no tools or delegation).
+- Result: `CONTINUE`. Grok judged the natural turn-split defect directly
+  relevant to realtime conversation, accepted the zero-latent rejection, and
+  directed one committed context/state variable before any new voice or sweep.
+- Adopted: yes. The parent changed only whether the backend reset runs before
+  turn 2, retained a Gateway reset baseline, and kept the diagnostic off any
+  product route.
+- Expected time saved: one root-cause lane within 30 minutes versus reopening
+  seed, gain, latent-noise, training, or promote work.
+
+## 2026-08-13T09:24:00Z - RVC turn-state cause localized
+
+- Agent: `primary-integrator`.
+- Task: Hold the exact two-turn input, split, standard latent behavior,
+  checkpoint, seed, and direct backend fixed; change only whether `reset()` is
+  called before turn 2.
+- Dependencies: commit `6b5916d`; sealed seed-0 runtime; existing Gateway
+  reset output; listener `8878`; exclusive `gpu0`.
+- Result: reset and preserve-state direct arms completed in 88.267/86.504
+  seconds and published as `ms3-rvc-turn-state-v1`. Their output SHA-256 values
+  are `4e1f08c38b4e367004e10c7b12627ff99533b2b527c7cb4fd7c79cc9a76b426f`
+  and `32f157015bb55e1204dd472d20fb0f0d677d55a1295df3ee90556208b0b55610`.
+- Machine screen: Gateway and direct reset had 0.9993 waveform correlation and
+  identical transcripts. Turn 1 stayed at CER 0.577. Omitting only the turn-2
+  reset restored turn-2 CER from 0.500 to 0.167. No arm gross-looped.
+- Safety limit: state carryover is diagnostic only. It violates the invariant
+  that interrupted older-generation audio/state must not contaminate a new
+  generation, so it cannot be bound or shipped.
+- Changed action: run one fully reset, silence-only context prime before turn 2.
+  If that fails to recover content, stop priming and inspect individual reset
+  buffers without broad GPU expansion.

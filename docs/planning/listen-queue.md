@@ -197,6 +197,14 @@ from 0.66666 to zero worsened CER to 0.500 without gross repetition. Retain
 `ms3-rvc-zero-latent-noise-v3` only as diagnosis and close noise-scale points;
 the turn-boundary defect remains a context/state question.
 
+That context/state control is now positive. Gateway reset and direct reset
+matched at 0.999 waveform correlation and identical per-turn transcripts. On
+the same direct backend, omitting only the reset before turn 2 restored its CER
+from 0.500 to 0.167, while turn 1 stayed fixed at 0.577. State carryover is not
+a product fix because an interrupted older generation must not contaminate a
+new one. Admit one fully reset, silence-only context priming control next; stop
+if it does not recover turn 2.
+
 ## Keepers
 
 None yet. A `keep` here is the only ticket into a promote pass.
