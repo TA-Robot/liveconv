@@ -124,3 +124,22 @@ def test_source_augmentation_is_exact_and_keeps_standard_roles() -> None:
         "standard": 1_044
     }
     assert policy["experiment_id"] == "EXP-043"
+
+
+def test_paired_augmentation_preserves_time_condition_alignment() -> None:
+    conditions = ROLE_MIX.source_condition_schedule("paired-augmentation")
+    target_conditions = Counter(
+        ROLE_MIX.target_condition_kind("paired-augmentation", str(row["kind"]))
+        for row in conditions
+    )
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(training_policy="paired-augmentation", lora_scope="control69")
+    )
+
+    assert target_conditions == {
+        "clean": 731,
+        "tempo": 105,
+        "pitch": 104,
+        "leading-silence": 104,
+    }
+    assert policy["experiment_id"] == "EXP-044"

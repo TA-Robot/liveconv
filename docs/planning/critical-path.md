@@ -163,7 +163,8 @@ claims from that artifact are superseded. The active join is now:
         -> seven disjoint-speaker screen (non-corrupt; mixed small changes)
         -> EXP-041 twelve new utterances / six heldout speakers (non-corrupt; mixed)
         -> EXP-042 ten frozen audio conditions (identical to control69; closed)
-        -> EXP-043 60% clean / 40% varied source-condition training (gpu0)
+        -> EXP-043 source-only varied conditions (external regression; closed)
+        -> EXP-044 alignment-preserving varied conditions (gpu0)
         -> seven external speakers, then only if safe 12 new utterances + 10 conditions
         -> operator hearing when available
 ```

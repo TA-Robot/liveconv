@@ -95,7 +95,7 @@ def training_modes(policy: str) -> list[str]:
         return role_schedule()
     if policy == "all-standard":
         return ["standard"] * TOTAL_UPDATES
-    if policy == "source-augmentation":
+    if policy in {"source-augmentation", "paired-augmentation"}:
         return ["standard"] * TOTAL_UPDATES
     if policy == "standard-reconstruction":
         repeats, remainder = divmod(TOTAL_UPDATES, len(RECONSTRUCTION_CYCLE))
@@ -110,7 +110,7 @@ def training_modes(policy: str) -> list[str]:
 
 
 def source_condition_schedule(policy: str) -> list[dict[str, object]]:
-    if policy != "source-augmentation":
+    if policy not in {"source-augmentation", "paired-augmentation"}:
         return [{"kind": "clean"} for _ in range(TOTAL_UPDATES)]
     repeats, remainder = divmod(TOTAL_UPDATES, len(SOURCE_CONDITION_CYCLE))
     schedule = [dict(item) for item in SOURCE_CONDITION_CYCLE] * repeats
@@ -119,6 +119,14 @@ def source_condition_schedule(policy: str) -> list[dict[str, object]]:
     if len(schedule) != TOTAL_UPDATES or observed != SOURCE_CONDITION_COUNTS:
         raise RoleMixError("source-condition schedule proportions drifted")
     return schedule
+
+
+def target_condition_kind(policy: str, source_kind: str) -> str:
+    if policy != "paired-augmentation" or source_kind in {"clean", "noise"}:
+        return "clean"
+    if source_kind not in {"tempo", "pitch", "leading-silence"}:
+        raise RoleMixError(f"unknown source condition: {source_kind}")
+    return source_kind
 
 
 def training_scope(inventory: Path, name: str) -> dict[str, object]:
@@ -220,6 +228,30 @@ def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
                 "source acoustics: all-clean versus deterministic 626 clean, "
                 "105 noise20, 105 tempo1.2, 104 pitch+3, and 104 leading300ms "
                 "updates; target audio and all optimizer settings stay fixed"
+            ),
+        }
+    if (
+        arguments.training_policy == "paired-augmentation"
+        and arguments.lora_scope == "control69"
+    ):
+        return {
+            "experiment_id": "EXP-044",
+            "slug": "exp044",
+            "candidate_id": "cv12-aligned-conditions",
+            "candidate_name": (
+                "EXP-044 / CV12 / alignment-preserving source conditions"
+            ),
+            "run_kind": "EXP-044 X-VC aligned-condition evaluation",
+            "result_kind": "liveconv-exp044-xvc-aligned-condition-result/v1",
+            "question": (
+                "Does alignment-preserving paired augmentation improve X-VC "
+                "robustness without corrupting clean unseen speech?"
+            ),
+            "independent_variable": (
+                "supervision alignment: tempo, pitch, and leading silence are "
+                "applied to both pseudo-source and clean target while noise is "
+                "source-only; the 626/418 schedule and optimizer controls match "
+                "the rejected source-only augmentation"
             ),
         }
     raise RoleMixError("unsupported training-policy and LoRA-scope combination")
@@ -532,6 +564,8 @@ def run(
     training_rows: list[dict[str, Any]] = []
     generated_inventory: list[dict[str, str]] = []
     training_source_inventory: list[dict[str, object]] = []
+    training_target_inventory: list[dict[str, object]] = []
+    aligned_target_cache: dict[tuple[str, str], tuple[dict[str, Any], str]] = {}
     row_index = 0
     for target_index, (target_pair, target_tensor) in enumerate(
         zip(target_pairs, target_tensors, strict=True)
@@ -585,6 +619,55 @@ def run(
                     .reshape(1, 1, -1)
                     .to(device=device, dtype=torch.float32)
                 )
+            target_condition = target_condition_kind(
+                arguments.training_policy, condition_kind
+            )
+            training_target = target_tensor
+            target_source_digest = target_pair.target_sha256
+            if target_condition != "clean":
+                cache_key = (target_pair.pair_id, target_condition)
+                cached = aligned_target_cache.get(cache_key)
+                if cached is None:
+                    clean_target_path = pair_root / "target-clean-window-16k.wav"
+                    if not clean_target_path.exists():
+                        base._write_float_wav(
+                            clean_target_path,
+                            target_tensor["target_wav"],
+                            sample_rate,
+                        )
+                    aligned_target_path = (
+                        pair_root / f"target-{target_condition}-16k.wav"
+                    )
+                    method.transform_window(
+                        clean_target_path,
+                        condition,
+                        destination=aligned_target_path,
+                        process_audio=process_audio,
+                        config=config,
+                        seed=base.SEED + row_index,
+                    )
+                    target_source_digest = base.sha256_file(aligned_target_path)
+                    aligned_pair = base.MaterializedPair(
+                        f"{target_pair.pair_id}-{target_condition}",
+                        aligned_target_path,
+                        aligned_target_path,
+                        target_source_digest,
+                        target_source_digest,
+                    )
+                    training_target = base._extract_pair_tensors(
+                        model,
+                        aligned_pair,
+                        process_audio=process_audio,
+                        config=config,
+                        torch=torch,
+                        device=device,
+                    )
+                    aligned_target_cache[cache_key] = (
+                        training_target,
+                        target_source_digest,
+                    )
+                else:
+                    training_target, target_source_digest = cached
             with torch.inference_mode():
                 features = model.semantic_encoder.extract_and_encode(
                     training_source.squeeze(1)
@@ -618,7 +701,7 @@ def run(
                 .contiguous(),
             }
             training_rows.append(
-                assigned_tensors(target_tensor, generated, modes[row_index])
+                assigned_tensors(training_target, generated, modes[row_index])
             )
             generated_inventory.append(
                 {
@@ -633,6 +716,13 @@ def run(
                     "donor_id": donor_pair.pair_id,
                     "condition": condition,
                     "source_sha256": base.sha256_file(training_source_path),
+                }
+            )
+            training_target_inventory.append(
+                {
+                    "target_id": target_pair.pair_id,
+                    "condition": target_condition,
+                    "target_sha256": target_source_digest,
                 }
             )
             row_index += 1
@@ -760,6 +850,12 @@ def run(
         "training_source_inventory_sha256": method._canonical_sha256(
             training_source_inventory
         ),
+        "target_condition_counts": dict(
+            Counter(item["condition"] for item in training_target_inventory)
+        ),
+        "training_target_inventory_sha256": method._canonical_sha256(
+            training_target_inventory
+        ),
         "donor_manifest_sha256": base.sha256_file(arguments.donors),
         "evaluation_set_sha256": base.sha256_file(arguments.evaluation_set),
         "generated_pair_count": len(training_rows),
@@ -811,6 +907,7 @@ def _parser() -> argparse.ArgumentParser:
             "all-standard",
             "standard-reconstruction",
             "source-augmentation",
+            "paired-augmentation",
         ),
         default="role-mix",
     )
@@ -864,6 +961,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "source_condition_counts": dict(
                             Counter(
                                 item["kind"]
+                                for item in source_condition_schedule(
+                                    arguments.training_policy
+                                )
+                            )
+                        ),
+                        "target_condition_counts": dict(
+                            Counter(
+                                target_condition_kind(
+                                    arguments.training_policy, str(item["kind"])
+                                )
                                 for item in source_condition_schedule(
                                     arguments.training_policy
                                 )

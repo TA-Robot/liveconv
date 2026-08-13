@@ -91,16 +91,19 @@ control69, but its mean moved slightly from 0.184 to 0.198 while the secondary
 full-text reference moved from 0.576 to 0.565. This is neither a clear reject
 nor a machine-selected win. EXP-042 then produced the exact same auxiliary
 result as control69 in all ten clean/tempo/F0/noise/silence rows, including the
-unchanged 0.375 noise regression. Target reconstruction is closed. EXP-043 is
-the current method lane: return to all-standard training and apply a fixed
-60/40 clean/source-condition schedule to the generated source side only.
+unchanged 0.375 noise regression. Target reconstruction is closed. EXP-043
+then showed that source-only temporal augmentation made supervision incoherent:
+its seven-speaker screen regressed from control69 0.360 to 0.389 and maximum
+distance rose from 0.571 to 1.0. EXP-044 keeps the same varied schedule but
+applies tempo, F0, and leading silence to both source and target windows so
+alignment is preserved; noise remains source-only with a clean target.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Train EXP-043 with 626 clean plus 418 noise/tempo/F0/silence source updates at fixed targets/exposure/scope | parent | no | seven-row external comparison and corruption screen published |
-| 2 | If EXP-043 survives, render the already-frozen twelve new utterances and ten condition rows | parent | no human dependency for machine reject | generalization and stress screens published; no automated winner |
+| 1 | Train EXP-044 with alignment-preserving varied conditions at fixed 626/418 schedule and optimizer controls | parent | no | seven-row external comparison and corruption screen published |
+| 2 | If EXP-044 survives, render the already-frozen twelve new utterances and ten condition rows | parent | no human dependency for machine reject | generalization and stress screens published; no automated winner |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

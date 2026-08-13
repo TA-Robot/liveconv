@@ -83,13 +83,14 @@ name one owner and ownership zone below.
 | LV-072 | Done | P0 | MS-3 | Test content-safe target frame context before context-aware X-VC retraining | EXP-037 published 14 candidates; context did not loop but worsened external known-text distance from 0.399 to 0.505, so retraining was skipped |
 | LV-073 | Done | P0 | MS-3 | Restrict X-VC adaptation to global-speaker modulation at fixed EXP-035 exposure | EXP-038 improved the first seven-row mean, but EXP-039's twelve new utterances regressed from control69 0.184 to speaker7 0.345 source-relative distance; speaker7 is closed |
 | LV-074 | Done | P0 | MS-3 | Add target-preserving reconstruction without reversed donor-target dilution | EXP-042 matched control69 exactly across all ten frozen conditions and did not repair noise; reconstruction20 is retained as unheard audio only and the training method is closed |
-| LV-075 | In progress | P0 | MS-3 | Train X-VC against varied source-side audio limitations | EXP-043 fixes the 1,044 targets/donors/updates and assigns 626 clean plus 418 noise/tempo/F0/leading-silence source windows before the seven-speaker external screen |
+| LV-075 | Done | P0 | MS-3 | Train X-VC against varied source-side audio limitations | EXP-043 completed but source-only temporal changes caused incoherent target supervision and regressed the seven-speaker screen; the method is closed without more renders |
+| LV-076 | In progress | P0 | MS-3 | Preserve target alignment while training X-VC on varied audio limitations | EXP-044 applies tempo/F0/silence to both source and target, keeps noise source-only, and otherwise retains EXP-043's exact 626/418 schedule and training controls |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| LV-075 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-043 note, and its ignored artifacts | Publish seven external control69/source-augmentation comparisons, screen corruption, then replan |
+| LV-076 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-044 note, and its ignored artifacts | Publish seven external control69/aligned-augmentation comparisons, screen corruption, then replan |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.
@@ -126,7 +127,7 @@ The live board is [`listen-queue.md`](listen-queue.md). Process is
 
 | Ready item | Intended ownership zone | Stop condition |
 |---|---|---|
-| LV-075 EXP-043 | `tools/xvc-source-diversity/` and fixed-port 8878 | one 1,044-update robust-source training plus seven external rows and corruption screen, then replan |
+| LV-076 EXP-044 | `tools/xvc-source-diversity/` and fixed-port 8878 | one 1,044-update aligned-condition training plus seven external rows and corruption screen, then replan |
 | Unheard drain | Fixed-port 8878: EXP-033/034/035, stable public sets, EXP-023 | Operator `continue`/`rejected` when hearing returns |
 
 LV-032, LV-055, LV-056, LV-057, LV-058, and LV-068 are complete. LV-059,

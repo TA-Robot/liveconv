@@ -2174,3 +2174,47 @@ job queue.
   seconds. No v1 output is reused.
 - Changed action: commit the preprocessing fix, then restart the same frozen
   source-condition schedule at update zero in fresh v2 directories.
+
+## 2026-08-13T13:52:50Z - Grok progress audit continued robust-source training
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, exact 1,800-second cadence).
+- Result: `CONTINUE`. Grok judged the frozen multi-condition evaluation,
+  one-variable source-side hypothesis, commit-before-run, and sole GPU lane to
+  be on the shortest quality path. It required completing EXP-043, screening
+  before another lane, and avoiding reconstruction ratios or closed axes.
+- Adopted: yes. The auditor sampled a transient 0% utilization point during an
+  active one-job process; EXP-043 was already training and was not interrupted.
+- Changed action: screen seven speakers immediately after publication, reject
+  on clear content regression, and choose only one explanatory next method.
+
+## 2026-08-13T13:53:42Z - EXP-043 completed and was technically rejected
+
+- Agent: `primary-integrator`.
+- Task: Train 626 clean plus 418 source-only noise/tempo/F0/silence updates and
+  publish seven disjoint-speaker comparisons.
+- Dependencies: commits `6107471` and `0355ed0`; exclusive `gpu0`; listener
+  `8878`.
+- Result: all 1,044 updates completed in 310.96 seconds with 4.77 GB peak
+  allocation and 21 published candidates. The final tempo-row loss was 800.78.
+  No arm gross-looped, but source augmentation regressed control69's
+  source-relative mean 0.360 to 0.389, known-text distance 0.399 to 0.433, and
+  maximum source-relative distance 0.571 to 1.0.
+- Changed action: close source-only temporal augmentation without rendering the
+  twelve new utterances or ten conditions. The failure is consistent with
+  tempo/silence/F0 source changes being supervised against an unmodified target
+  window, not evidence for another mixture-ratio sweep.
+
+## 2026-08-13T13:56:04Z - EXP-044 aligned-condition training prepared
+
+- Agent: `primary-integrator`.
+- Task: Keep EXP-043's exact source-condition schedule, but apply tempo, F0,
+  and leading silence to both the pseudo-source and its exact 2.4-second target
+  window; recompute target SSL features. Noise stays source-only with a clean
+  target.
+- Result: the target schedule is 731 clean, 105 tempo, 104 pitch, and 104
+  leading-silence rows. Ruff, 32 focused tests, exact all-artifact CPU
+  admission, and `git diff --check` passed. Targets, donors, updates, scope, LR,
+  loss, seed, and zero target conditioning remain fixed.
+- Changed action: commit before execution and start EXP-044 as the only GPU
+  lane. Screen seven external speakers before any follow-up render.
