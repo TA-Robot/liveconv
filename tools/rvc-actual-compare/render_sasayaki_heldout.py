@@ -39,6 +39,28 @@ PROFILE_IDS = (
     "vc.rvc-v2.amitaro-sasayaki.v1",
     "vc.rvc-v2.amitaro-sasayaki-clean-bright.v1",
 )
+XVC_PROFILE_IDS = ("vc.x-vc.amitaro-yofukashi-q34.v1",)
+PROFILE_SETS = {
+    "sasayaki": {
+        "profile_ids": PROFILE_IDS,
+        "title": "RVC Sasayaki heldout",
+        "run_kind": "EXP-020 Sasayaki preset heldout generalization",
+        "question": "Does clean-bright generalize beyond one actual input?",
+        "single_changed_variable": "deployed Sasayaki preset",
+        "result_kind": "liveconv-exp020-rvc-sasayaki-heldout-result",
+    },
+    "xvc-yofukashi-q34": {
+        "profile_ids": XVC_PROFILE_IDS,
+        "title": "X-VC Yofukashi Q034 heldout system route",
+        "run_kind": "EXP-026 X-VC deployed heldout route control",
+        "question": (
+            "Does the surviving deployed X-VC profile preserve heldout content "
+            "through the live Gateway route?"
+        ),
+        "single_changed_variable": "VC family and deployed route profile",
+        "result_kind": "liveconv-exp026-xvc-heldout-route-result",
+    },
+}
 SOURCES = (
     {
         "source_id": "EMOTION100_002",
@@ -103,16 +125,20 @@ def _checked_file(path: Path, expected: str, label: str) -> Path:
     return path
 
 
-def _selected_records(document: dict[str, Any], field: str) -> list[dict[str, Any]]:
+def _selected_records(
+    document: dict[str, Any],
+    field: str,
+    profile_ids: tuple[str, ...] = PROFILE_IDS,
+) -> list[dict[str, Any]]:
     values = document.get(field)
     if not isinstance(values, list):
         raise HeldoutRenderError(f"deployment has no {field}")
     selected = [
         item
         for item in values
-        if isinstance(item, dict) and item.get("profile_id") in PROFILE_IDS
+        if isinstance(item, dict) and item.get("profile_id") in profile_ids
     ]
-    if {item.get("profile_id") for item in selected} != set(PROFILE_IDS):
+    if {item.get("profile_id") for item in selected} != set(profile_ids):
         raise HeldoutRenderError(f"deployment {field} profile set drifted")
     return selected
 
@@ -145,6 +171,9 @@ def wav_to_f32le(source: Path, destination: Path) -> int:
 
 
 def validate_inputs(arguments: argparse.Namespace) -> tuple[Path, ModuleType]:
+    profile_ids = PROFILE_SETS[arguments.profile_set]["profile_ids"]
+    if not isinstance(profile_ids, tuple):
+        raise HeldoutRenderError("profile set is malformed")
     deployment = arguments.deployment.resolve(strict=True)
     _checked_file(
         deployment / "manifest.json", EXPECTED_MANIFEST_SHA256, "deployment manifest"
@@ -154,8 +183,8 @@ def validate_inputs(arguments: argparse.Namespace) -> tuple[Path, ModuleType]:
     )
     manifest = json.loads((deployment / "manifest.json").read_text(encoding="utf-8"))
     profiles = json.loads((deployment / "profiles.json").read_text(encoding="utf-8"))
-    _selected_records(manifest, "variants")
-    _selected_records(profiles, "profiles")
+    _selected_records(manifest, "variants", profile_ids)
+    _selected_records(profiles, "profiles", profile_ids)
     for source in SOURCES:
         _checked_file(source["path"], source["sha256"], source["source_id"])
     if arguments.work_dir.exists() or arguments.listener_dir.exists():
@@ -170,6 +199,10 @@ def validate_inputs(arguments: argparse.Namespace) -> tuple[Path, ModuleType]:
 async def execute(
     arguments: argparse.Namespace, deployment: Path, renderer: ModuleType
 ) -> dict[str, Any]:
+    profile_set = PROFILE_SETS[arguments.profile_set]
+    profile_ids = profile_set["profile_ids"]
+    if not isinstance(profile_ids, tuple):
+        raise HeldoutRenderError("profile set is malformed")
     arguments.work_dir.mkdir(parents=True)
     staging = arguments.work_dir / "listener-staging"
     staging.mkdir()
@@ -178,8 +211,8 @@ async def execute(
 
     manifest = renderer.read_json(deployment / "manifest.json")
     profile_document = renderer.read_json(deployment / "profiles.json")
-    variants = _selected_records(manifest, "variants")
-    profiles = _selected_records(profile_document, "profiles")
+    variants = _selected_records(manifest, "variants", profile_ids)
+    profiles = _selected_records(profile_document, "profiles", profile_ids)
     variants_by_id = {str(item["profile_id"]): item for item in variants}
     profiles_by_id = {str(item["profile_id"]): item for item in profiles}
 
@@ -224,7 +257,7 @@ async def execute(
             for item in catalog_response.json().get("profiles", [])
             if isinstance(item, dict)
         }
-        for profile_order, profile_id in enumerate(PROFILE_IDS, start=1):
+        for profile_order, profile_id in enumerate(profile_ids, start=1):
             variant = variants_by_id[profile_id]
             sealed_profile = profiles_by_id[profile_id]
             current = advertised.get(profile_id)
@@ -280,8 +313,8 @@ async def execute(
         state = row_state[source["source_id"]]
         index = {
             "schema_version": 1,
-            "title": f"RVC Sasayaki heldout / {source['source_id']}",
-            "run_kind": "EXP-020 Sasayaki preset heldout generalization",
+            "title": f"{profile_set['title']} / {source['source_id']}",
+            "run_kind": profile_set["run_kind"],
             "status": "completed-listen-now-unselected",
             "source_file": f"Hadou public heldout / {source['source_id']}",
             "source_text": source["display_text"],
@@ -291,8 +324,8 @@ async def execute(
             "source_samples": state["samples"],
             "source_levels": state["source_stats"],
             "comparison_scope": {
-                "question": "Does clean-bright generalize beyond one actual input?",
-                "single_changed_variable": "deployed Sasayaki preset",
+                "question": profile_set["question"],
+                "single_changed_variable": profile_set["single_changed_variable"],
                 "human_hearing_pending": True,
                 "machine_selection_allowed": False,
             },
@@ -309,7 +342,7 @@ async def execute(
 
     result = {
         "schema_version": 1,
-        "kind": "liveconv-exp020-rvc-sasayaki-heldout-result",
+        "kind": profile_set["result_kind"],
         "status": "completed-listen-now-unselected",
         "git_commit": subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -318,7 +351,7 @@ async def execute(
             capture_output=True,
             text=True,
         ).stdout.strip(),
-        "profile_ids": list(PROFILE_IDS),
+        "profile_ids": list(profile_ids),
         "source_ids": [source["source_id"] for source in SOURCES],
         "output_sha256": output_hashes,
         "claims": {
@@ -350,6 +383,9 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--check", action="store_true")
     value.add_argument("--execute", action="store_true")
     value.add_argument("--deployment", type=Path, required=True)
+    value.add_argument(
+        "--profile-set", choices=tuple(PROFILE_SETS), default="sasayaki"
+    )
     value.add_argument("--work-dir", type=Path, required=True)
     value.add_argument("--listener-dir", type=Path, required=True)
     value.add_argument("--gateway-url", default="http://127.0.0.1:8877")

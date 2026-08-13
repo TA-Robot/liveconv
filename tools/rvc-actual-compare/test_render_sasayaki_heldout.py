@@ -28,6 +28,13 @@ def test_comparison_is_bounded_to_two_sasayaki_profiles() -> None:
     ]
 
 
+def test_xvc_route_control_is_bounded_to_one_surviving_profile() -> None:
+    assert run.XVC_PROFILE_IDS == ("vc.x-vc.amitaro-yofukashi-q34.v1",)
+    assert run.PROFILE_SETS["xvc-yofukashi-q34"]["profile_ids"] == (
+        "vc.x-vc.amitaro-yofukashi-q34.v1",
+    )
+
+
 def test_wav_to_f32le_preserves_pcm16_scale(tmp_path: Path) -> None:
     source = tmp_path / "source.wav"
     output = tmp_path / "source.f32le"
@@ -58,3 +65,8 @@ def test_selected_records_rejects_incomplete_profile_set() -> None:
         assert "profile set" in str(error)
     else:
         raise AssertionError("incomplete profile set was accepted")
+
+    xvc = {
+        "variants": [{"profile_id": profile_id} for profile_id in run.XVC_PROFILE_IDS]
+    }
+    assert run._selected_records(xvc, "variants", run.XVC_PROFILE_IDS) == xvc["variants"]
