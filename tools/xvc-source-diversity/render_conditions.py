@@ -287,6 +287,24 @@ def candidate_policy(kind: str) -> dict[str, Any]:
                 "30-xvc-cv12-real-teacher-semantic20.wav",
             ),
         }
+    if kind == "real-teacher-output-multidomain48":
+        return {
+            "experiment_id": "EXP-126",
+            "result_kind": (
+                "liveconv-exp126-xvc-real-teacher-output-multidomain48-conditions/v1"
+            ),
+            "run_kind": "EXP-126 X-VC multi-domain teacher condition evaluation",
+            "control": (
+                "cv12-control69",
+                "EXP-035 / CV12 / all-standard control69",
+                "20-xvc-cv12-control69.wav",
+            ),
+            "candidate": (
+                "cv12-real-teacher-output-multidomain48",
+                "EXP-124 / full-output teacher / CV24 + Hadou21 + JVS3",
+                "30-xvc-cv12-real-teacher-output-multidomain48.wav",
+            ),
+        }
     raise ConditionRenderError(f"unknown candidate kind: {kind}")
 
 
@@ -605,6 +623,7 @@ def _parser() -> argparse.ArgumentParser:
             "cross-target-condition",
             "semantic-token-hold",
             "real-teacher-semantic20",
+            "real-teacher-output-multidomain48",
         ),
         default="donor-breadth",
     )

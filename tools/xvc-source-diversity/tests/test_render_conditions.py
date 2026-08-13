@@ -164,3 +164,17 @@ def test_real_teacher_semantic_uses_exp108_policy() -> None:
 
     assert policy["experiment_id"] == "EXP-108"
     assert policy["candidate"][0] == "cv12-real-teacher-semantic20"
+
+
+def test_multidomain_output_teacher_uses_exp126_policy() -> None:
+    policy = RENDER.candidate_policy("real-teacher-output-multidomain48")
+
+    assert policy["experiment_id"] == "EXP-126"
+    assert policy["control"][0] == "cv12-control69"
+    assert policy["candidate"][0] == "cv12-real-teacher-output-multidomain48"
+    choices = next(
+        action.choices
+        for action in RENDER._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert "real-teacher-output-multidomain48" in choices

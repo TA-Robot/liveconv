@@ -45,9 +45,13 @@ REAL_TEACHER_SEMANTIC_COUNTS = {
 }
 REAL_TEACHER_BREADTH_POLICY = "real-teacher-breadth48"
 REAL_TEACHER_OUTPUT_POLICY = "real-teacher-output48"
+REAL_TEACHER_MULTIDOMAIN_POLICY = "real-teacher-output-multidomain48"
 REAL_TEACHER_POOL_KIND = "liveconv-exp114-commonvoice-teacher48/v1"
 REAL_TEACHER_POOL_GROUP = "commonvoice-teacher-train-disjoint"
 REAL_TEACHER_POOL_COUNT = 48
+MULTIDOMAIN_TEACHER_POOL_KIND = "liveconv-exp124-multidomain-teacher48/v1"
+MULTIDOMAIN_TEACHER_POOL_GROUP = "multidomain-teacher-train-disjoint"
+MULTIDOMAIN_TEACHER_COUNTS = {"commonvoice": 24, "hadou": 21, "jvs": 3}
 FRESH48_KIND = "liveconv-exp112-commonvoice-fresh48/v1"
 FRESH48_GROUP = "commonvoice-fresh-disjoint"
 RECONSTRUCTION_CYCLE = (
@@ -200,7 +204,7 @@ def training_modes(policy: str) -> list[str]:
         if Counter(schedule) != REAL_TEACHER_SEMANTIC_COUNTS:
             raise RoleMixError("real-teacher-semantic proportions drifted")
         return schedule
-    if policy == REAL_TEACHER_OUTPUT_POLICY:
+    if policy in {REAL_TEACHER_OUTPUT_POLICY, REAL_TEACHER_MULTIDOMAIN_POLICY}:
         repeats, remainder = divmod(TOTAL_UPDATES, len(RECONSTRUCTION_CYCLE))
         tail = (
             "standard",
@@ -228,7 +232,11 @@ def training_modes(policy: str) -> list[str]:
 def real_teacher_pool_schedule(
     policy: str, pool_size: int
 ) -> list[int | None]:
-    if policy not in {REAL_TEACHER_BREADTH_POLICY, REAL_TEACHER_OUTPUT_POLICY}:
+    if policy not in {
+        REAL_TEACHER_BREADTH_POLICY,
+        REAL_TEACHER_OUTPUT_POLICY,
+        REAL_TEACHER_MULTIDOMAIN_POLICY,
+    }:
         return [None] * TOTAL_UPDATES
     if pool_size != REAL_TEACHER_POOL_COUNT:
         raise RoleMixError("real-teacher pool size drifted")
@@ -236,7 +244,7 @@ def real_teacher_pool_schedule(
     teacher_index = 0
     teacher_role = (
         "real-donor-teacher-output"
-        if policy == REAL_TEACHER_OUTPUT_POLICY
+        if policy in {REAL_TEACHER_OUTPUT_POLICY, REAL_TEACHER_MULTIDOMAIN_POLICY}
         else "real-donor-teacher-semantic"
     )
     for role in training_modes(policy):
@@ -436,6 +444,34 @@ def training_scope(inventory: Path, name: str) -> dict[str, object]:
 def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
     peft_variant = getattr(arguments, "peft_variant", "standard")
     teacher_loss = getattr(arguments, "teacher_loss", "standard")
+    if (
+        arguments.training_policy == REAL_TEACHER_MULTIDOMAIN_POLICY
+        and arguments.lora_scope == "control69"
+        and peft_variant == "standard"
+        and teacher_loss == "standard"
+    ):
+        return {
+            "experiment_id": "EXP-124",
+            "slug": "exp124",
+            "candidate_id": "cv12-real-teacher-output-multidomain48",
+            "candidate_name": (
+                "EXP-124 / full-output teacher / CV24 + Hadou21 + JVS3"
+            ),
+            "run_kind": "EXP-124 X-VC multi-domain output teacher evaluation",
+            "result_kind": (
+                "liveconv-exp124-xvc-real-teacher-output-multidomain48/v1"
+            ),
+            "question": (
+                "Does cross-corpus teacher-source composition improve robust "
+                "generalization without changing source count or teacher share?"
+            ),
+            "independent_variable": (
+                "48-source teacher pool composition: EXP-116 Common Voice 48 "
+                "versus Common Voice 24, disjoint Hadou 21, and official JVS 3; "
+                "209 teacher positions, full-output objective, 835 standard rows, "
+                "updates, control69 standard LoRA, LR, seed, and target stay fixed"
+            ),
+        }
     if (
         arguments.training_policy == REAL_TEACHER_OUTPUT_POLICY
         and arguments.lora_scope == "control69"
@@ -1281,6 +1317,57 @@ def _load_fixed_commonvoice_pool(
     return value
 
 
+def _load_fixed_multidomain_pool(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise RoleMixError("fixed multi-domain pool is not valid JSON") from error
+    items = value.get("items") if isinstance(value, dict) else None
+    if (
+        not isinstance(value, dict)
+        or value.get("kind") != MULTIDOMAIN_TEACHER_POOL_KIND
+        or value.get("composition") != MULTIDOMAIN_TEACHER_COUNTS
+        or not isinstance(items, list)
+        or len(items) != REAL_TEACHER_POOL_COUNT
+    ):
+        raise RoleMixError("fixed multi-domain pool schema drifted")
+    ids: set[str] = set()
+    files: set[str] = set()
+    domains: Counter[str] = Counter()
+    cv_clients: set[str] = set()
+    for item in items:
+        identifier = item.get("id") if isinstance(item, dict) else None
+        filename = item.get("filename") if isinstance(item, dict) else None
+        domain = item.get("domain") if isinstance(item, dict) else None
+        client = item.get("client_id_sha256") if isinstance(item, dict) else None
+        transcript = item.get("source_transcript") if isinstance(item, dict) else None
+        if (
+            not isinstance(identifier, str)
+            or not identifier
+            or identifier in ids
+            or not isinstance(filename, str)
+            or Path(filename).name != filename
+            or filename in files
+            or domain not in MULTIDOMAIN_TEACHER_COUNTS
+            or not base._is_sha256(item.get("sha256"))
+            or not base._is_sha256(client)
+            or item.get("group") != MULTIDOMAIN_TEACHER_POOL_GROUP
+            or (domain != "jvs" and (not isinstance(transcript, str) or not transcript))
+            or (domain == "jvs" and transcript is not None)
+        ):
+            raise RoleMixError("fixed multi-domain pool row drifted")
+        if domain == "commonvoice":
+            if client in cv_clients:
+                raise RoleMixError("multi-domain Common Voice speaker repeated")
+            cv_clients.add(client)
+        ids.add(identifier)
+        files.add(filename)
+        domains[domain] += 1
+    if dict(domains) != MULTIDOMAIN_TEACHER_COUNTS:
+        raise RoleMixError("fixed multi-domain composition drifted")
+    return value
+
+
 def validate_inputs(
     arguments: argparse.Namespace,
 ) -> tuple[
@@ -1315,6 +1402,7 @@ def validate_inputs(
     if arguments.training_policy in {
         REAL_TEACHER_BREADTH_POLICY,
         REAL_TEACHER_OUTPUT_POLICY,
+        REAL_TEACHER_MULTIDOMAIN_POLICY,
     }:
         if (
             arguments.real_teacher_manifest is None
@@ -1322,11 +1410,15 @@ def validate_inputs(
             or arguments.frozen_fresh_evaluation is None
         ):
             raise RoleMixError("real-teacher breadth inputs are required")
-        teacher_pool = _load_fixed_commonvoice_pool(
-            arguments.real_teacher_manifest,
-            kind=REAL_TEACHER_POOL_KIND,
-            group=REAL_TEACHER_POOL_GROUP,
-            count=REAL_TEACHER_POOL_COUNT,
+        teacher_pool = (
+            _load_fixed_multidomain_pool(arguments.real_teacher_manifest)
+            if arguments.training_policy == REAL_TEACHER_MULTIDOMAIN_POLICY
+            else _load_fixed_commonvoice_pool(
+                arguments.real_teacher_manifest,
+                kind=REAL_TEACHER_POOL_KIND,
+                group=REAL_TEACHER_POOL_GROUP,
+                count=REAL_TEACHER_POOL_COUNT,
+            )
         )
         fresh = _load_fixed_commonvoice_pool(
             arguments.frozen_fresh_evaluation,
@@ -1335,7 +1427,9 @@ def validate_inputs(
             count=REAL_TEACHER_POOL_COUNT,
         )
         teacher_clients = {
-            item["client_id_sha256"] for item in teacher_pool["items"]
+            item["client_id_sha256"]
+            for item in teacher_pool["items"]
+            if item.get("domain", "commonvoice") == "commonvoice"
         }
         frozen_clients = {item["client_id_sha256"] for item in fresh["items"]}
         if teacher_clients & (donor_clients | evaluation_clients | frozen_clients):
@@ -1481,7 +1575,8 @@ def run_teacher_output_smoke(
 ) -> int:
     """Run one full-output teacher row through LoRA backward without saving it."""
     if (
-        arguments.training_policy != REAL_TEACHER_OUTPUT_POLICY
+        arguments.training_policy
+        not in {REAL_TEACHER_OUTPUT_POLICY, REAL_TEACHER_MULTIDOMAIN_POLICY}
         or teacher_pool is None
         or arguments.real_teacher_root is None
     ):
@@ -2194,7 +2289,8 @@ def run(
             ),
             "semantic_supervision": (
                 "frozen_base_full_converted_output_on_real_donor_rows"
-                if arguments.training_policy == REAL_TEACHER_OUTPUT_POLICY
+                if arguments.training_policy
+                in {REAL_TEACHER_OUTPUT_POLICY, REAL_TEACHER_MULTIDOMAIN_POLICY}
                 else (
                     "frozen_base_semantic_prediction_on_real_donor_rows"
                     if arguments.training_policy
@@ -2319,6 +2415,7 @@ def _parser() -> argparse.ArgumentParser:
             "real-teacher-semantic20",
             REAL_TEACHER_BREADTH_POLICY,
             REAL_TEACHER_OUTPUT_POLICY,
+            REAL_TEACHER_MULTIDOMAIN_POLICY,
             "real-reconstruction20",
         ),
         default="role-mix",
@@ -2433,7 +2530,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "semantic_supervision": (
                             "frozen_base_full_converted_output_on_real_donor_rows"
                             if arguments.training_policy
-                            == REAL_TEACHER_OUTPUT_POLICY
+                            in {
+                                REAL_TEACHER_OUTPUT_POLICY,
+                                REAL_TEACHER_MULTIDOMAIN_POLICY,
+                            }
                             else (
                                 "frozen_base_semantic_prediction_on_real_donor_rows"
                                 if arguments.training_policy

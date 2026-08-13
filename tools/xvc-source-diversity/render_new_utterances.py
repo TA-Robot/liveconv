@@ -531,6 +531,36 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "corruption on frozen fresh48?"
             ),
         }
+    if kind == "real-teacher-output-multidomain48-fresh48":
+        return {
+            "experiment_id": "EXP-125",
+            "variant_id": "cv12-real-teacher-output-multidomain48",
+            "display_name": (
+                "EXP-124 / full-output teacher / CV24 + Hadou21 + JVS3"
+            ),
+            "result_kind": (
+                "liveconv-exp125-xvc-real-teacher-output-multidomain48-fresh48/v1"
+            ),
+            "question": (
+                "Does cross-corpus teacher-source composition avoid corruption "
+                "and generalize on frozen fresh48?"
+            ),
+        }
+    if kind == "real-teacher-output-multidomain48-hadou":
+        return {
+            "experiment_id": "EXP-127",
+            "variant_id": "cv12-real-teacher-output-multidomain48",
+            "display_name": (
+                "EXP-124 / full-output teacher / CV24 + Hadou21 + JVS3"
+            ),
+            "result_kind": (
+                "liveconv-exp127-xvc-real-teacher-output-multidomain48-hadou31/v1"
+            ),
+            "question": (
+                "Does cross-corpus teacher-source composition preserve content "
+                "on 31 disjoint clean Hadou utterances?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1022,6 +1052,8 @@ def _parser() -> argparse.ArgumentParser:
             "real-teacher-output48-ffn22-fresh48",
             "real-teacher-output48-dora-fresh48",
             "real-teacher-output48-temporal-fresh48",
+            "real-teacher-output-multidomain48-fresh48",
+            "real-teacher-output-multidomain48-hadou",
         ),
         default="speaker7",
     )

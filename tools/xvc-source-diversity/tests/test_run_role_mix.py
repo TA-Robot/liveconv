@@ -393,6 +393,31 @@ def test_temporal_difference_loss_is_aligned_and_zero_for_equal_motion() -> None
     assert value.values == (0.0, 0.0)
 
 
+def test_real_teacher_multidomain48_keeps_output_role_and_count() -> None:
+    policy_name = ROLE_MIX.REAL_TEACHER_MULTIDOMAIN_POLICY
+    modes = ROLE_MIX.training_modes(policy_name)
+    schedule = ROLE_MIX.real_teacher_pool_schedule(policy_name, 48)
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(
+            training_policy=policy_name,
+            lora_scope="control69",
+            peft_variant="standard",
+            teacher_loss="standard",
+        )
+    )
+
+    assert Counter(modes) == {
+        "standard": 835,
+        "real-donor-teacher-output": 209,
+    }
+    assert sum(index is not None for index in schedule) == 209
+    assert sorted(Counter(index for index in schedule if index is not None).values()) == (
+        [4] * 31 + [5] * 17
+    )
+    assert policy["experiment_id"] == "EXP-124"
+    assert policy["candidate_id"] == "cv12-real-teacher-output-multidomain48"
+
+
 def test_source_augmentation_is_exact_and_keeps_standard_roles() -> None:
     conditions = ROLE_MIX.source_condition_schedule("source-augmentation")
     policy = ROLE_MIX.experiment_policy(
