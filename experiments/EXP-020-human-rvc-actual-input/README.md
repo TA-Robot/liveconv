@@ -47,6 +47,14 @@ adding another preset or rerendering the same 8.17-second source. The fixed
 Japanese STT screen may close a profile for gross corruption, but cannot select
 sound quality. The six outputs remain unselected until human hearing.
 
+Clean-bright preserved auxiliary content on all three rows. One next offline
+diagnostic therefore holds its checkpoint, pitch, index, RMS mix, protection,
+and source rows fixed and changes only F0 extraction from RMVPE to PM. Existing
+full-utterance evidence improved content only slightly over the Gateway anchor,
+so block-size points are not admitted first. PM is closed on a gross/content
+regression; an improvement only admits later human hearing and does not qualify
+a Gateway profile.
+
 ## The quantity split
 
 Target-data quantity and source/evaluation-data quantity are separate facts:
