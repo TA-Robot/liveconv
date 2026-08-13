@@ -110,6 +110,13 @@ def test_content_filtered_candidate_is_exp061() -> None:
     assert policy["variant_id"] == "cv12-content-filtered6x2"
 
 
+def test_content_filtered_hadou_candidate_is_exp063() -> None:
+    policy = NEW.candidate_policy("content-filtered6x2-hadou")
+
+    assert policy["experiment_id"] == "EXP-063"
+    assert policy["variant_id"] == "cv12-content-filtered6x2"
+
+
 def test_expanded_manifest_uses_all_33_unique_local_files() -> None:
     path = (
         Path(__file__).resolve().parents[3]

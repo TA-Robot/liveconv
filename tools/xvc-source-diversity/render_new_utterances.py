@@ -27,10 +27,13 @@ import screen  # noqa: E402
 
 KIND = "liveconv-exp039-commonvoice-same-speaker-new-utterances/v1"
 EXPANDED_KIND = "liveconv-exp055-commonvoice-local-unused/v1"
+HADOU_KIND = "liveconv-exp060-hadou-clean-heldout/v1"
 EXPECTED_ROWS = 12
 EXPECTED_SPEAKERS = 6
 EXPANDED_ROWS = 33
 EXPANDED_SPEAKERS = 33
+HADOU_ROWS = 31
+HADOU_SPEAKERS = 1
 TARGET_ID = "EMOTION100_003"
 TARGET_SHA256 = "76f5a4a9b989ed692a55343a7681623fa4f18e354ca04026f022e3e449195ca2"
 
@@ -145,6 +148,19 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "Does pseudo-source content filtering preserve changed utterances?"
             ),
         }
+    if kind == "content-filtered6x2-hadou":
+        return {
+            "experiment_id": "EXP-063",
+            "variant_id": "cv12-content-filtered6x2",
+            "display_name": (
+                "EXP-060 / best 6 pseudo donors x 2 / fixed 1,044 updates"
+            ),
+            "result_kind": "liveconv-exp063-xvc-filtered-hadou-result/v1",
+            "question": (
+                "Does pseudo-source content filtering preserve clean Hadou "
+                "heldout sentences?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -156,13 +172,17 @@ def load_evaluation(path: Path) -> dict[str, Any]:
     items = value.get("items") if isinstance(value, dict) else None
     source = value.get("source") if isinstance(value, dict) else None
     kind = value.get("kind") if isinstance(value, dict) else None
-    expected_rows = EXPANDED_ROWS if kind == EXPANDED_KIND else EXPECTED_ROWS
-    expected_speakers = (
-        EXPANDED_SPEAKERS if kind == EXPANDED_KIND else EXPECTED_SPEAKERS
-    )
+    expected_rows = {
+        EXPANDED_KIND: EXPANDED_ROWS,
+        HADOU_KIND: HADOU_ROWS,
+    }.get(kind, EXPECTED_ROWS)
+    expected_speakers = {
+        EXPANDED_KIND: EXPANDED_SPEAKERS,
+        HADOU_KIND: HADOU_SPEAKERS,
+    }.get(kind, EXPECTED_SPEAKERS)
     if (
         not isinstance(value, dict)
-        or kind not in {KIND, EXPANDED_KIND}
+        or kind not in {KIND, EXPANDED_KIND, HADOU_KIND}
         or not isinstance(source, dict)
         or source.get("license") != "CC0-1.0"
         or not isinstance(items, list)
@@ -209,6 +229,14 @@ def load_evaluation(path: Path) -> dict[str, Any]:
             or item.get("down_votes") != 0
         ):
             raise NewUtteranceError("expanded-evaluation row identity drifted")
+        if kind == HADOU_KIND and (
+            item.get("group") != "hadou-clean-heldout"
+            or item.get("window_policy")
+            != "first-endpoint-complete-2.4s-right-pad-if-short"
+            or not isinstance(item.get("full_utterance_audit_cer"), (int, float))
+            or float(item["full_utterance_audit_cer"]) > 0.15
+        ):
+            raise NewUtteranceError("Hadou evaluation row identity drifted")
         identifiers.add(identifier)
         filenames.add(filename)
         clients.add(client)
@@ -237,7 +265,7 @@ def validate_inputs(
     if evaluation["kind"] == KIND:
         if not clients < original_clients or clients & donor_clients:
             raise NewUtteranceError("evaluation speaker binding drifted")
-    elif any(
+    elif evaluation["kind"] == EXPANDED_KIND and any(
         item["filename"] in original_files | donor_files
         for item in evaluation["items"]
     ):
@@ -282,6 +310,11 @@ def listening_index(
     hashes: Mapping[str, str],
     policy: Mapping[str, str],
 ) -> dict[str, object]:
+    source_name = (
+        "Hadou ITA"
+        if item["group"] == "hadou-clean-heldout"
+        else "Common Voice 25.0"
+    )
     variants = (
         ("base", "X-VC base", "10-xvc-base.wav", 1),
         (
@@ -299,11 +332,9 @@ def listening_index(
     )
     return {
         "schema_version": 1,
-        "run_kind": f"{policy['experiment_id']} X-VC Common Voice evaluation",
+        "run_kind": f"{policy['experiment_id']} X-VC heldout evaluation",
         "status": "completed-listen-now-unselected",
-        "source_file": (
-            f"Common Voice 25.0 / {item['duration_seconds']} s / {item['text']}"
-        ),
+        "source_file": f"{source_name} / {item['duration_seconds']} s / {item['text']}",
         "source_output_file": "00-source-reference.wav",
         "target_reference_output_file": "01-target-reference.wav",
         "reference_audio": [
@@ -515,6 +546,7 @@ def _parser() -> argparse.ArgumentParser:
             "target275",
             "target275-expanded",
             "content-filtered6x2",
+            "content-filtered6x2-hadou",
         ),
         default="speaker7",
     )
