@@ -57,8 +57,8 @@ HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
   --xvc-source-root artifacts/x-vc/source \
   --xvc-config artifacts/x-vc/xvc-local.yaml \
   --checkpoint artifacts/x-vc/checkpoint/xvc.pt \
-  --work-dir artifacts/xvc-human-paired/listen-now/exp025-whole-short-87-v1 \
-  --listener-dir artifacts/ms3/listening/exp025-whole-short-87-listen-now-v1 \
+  --work-dir artifacts/xvc-human-paired/listen-now/exp025-whole-short-87-v2 \
+  --listener-dir artifacts/ms3/listening/exp025-whole-short-87-listen-now-v2 \
   --confirm-gpu-lease gpu0 --device cuda:0
 ```
 
@@ -76,6 +76,12 @@ rank, learning rate, or render sources.
 
 Not claimed: serious 334/36/54 adaptation, heldout evaluation, model selection,
 route qualification, realtime suitability, or product readiness.
+
+Repair note: the original `v1` launch stopped before model load or any update
+because the runner imported `process_audio` from `utils.audio`; pinned X-VC
+exports it from `models.codec.sac.utils`. The `v2` launch changes only that
+import boundary and the fresh output locator. All scientific conditions and
+the one-run quality question remain unchanged.
 
 ## Question and hypothesis
 

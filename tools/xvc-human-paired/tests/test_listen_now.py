@@ -109,3 +109,10 @@ def test_listen_now_scope_is_one_fixed_short_trajectory() -> None:
     assert LISTEN.TOTAL_UPDATES == 348
     assert LISTEN.LEARNING_RATE == 1e-4
     assert LISTEN.RENDER_COUNT == 3
+
+
+def test_runner_imports_process_audio_from_the_pinned_sac_boundary() -> None:
+    source = MODULE_PATH.read_text(encoding="utf-8")
+
+    assert "from models.codec.sac.utils import process_audio" in source
+    assert "from utils.audio import process_audio" not in source

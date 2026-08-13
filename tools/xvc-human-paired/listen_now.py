@@ -1026,7 +1026,7 @@ def run(
     if source_root not in sys.path:
         sys.path.insert(0, source_root)
     from models.codec.sac.model import XVC
-    from utils.audio import process_audio
+    from models.codec.sac.utils import process_audio
     from utils.file import load_config
 
     config = load_config(str(arguments.xvc_config))
