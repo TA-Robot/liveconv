@@ -1,6 +1,6 @@
 # EXP-130: X-VC quality-filtered kana-coverage teacher pool
 
-Status: prepared; one bounded gpu0 lane
+Status: admitted; one bounded gpu0 lane
 
 ## Question
 
@@ -19,6 +19,14 @@ greedily maximize new official-katakana unigram, bigram, and trigram coverage.
 
 This does not retry teacher count, share, horizon, LR, LoRA scope, or EXP-024
 DTW. It does not fit the selection to any downstream evaluation row.
+
+## Bound input
+
+- Manifest: `artifacts/xvc-source-diversity/exp130-phonetic-teacher48-inputs-v1/training.json`
+- SHA-256: `52879c2cfd492f075400913c9ee377d7b4347343eba520cf495fc11daecceb6b`
+- Composition: Common Voice 24, Hadou 21, JVS 3
+- Hadou bins: short 7, medium 7, long 7; maximum admitted audit CER `0.148148`
+- Method commit: `94fb2d1`
 
 ## Stop
 
