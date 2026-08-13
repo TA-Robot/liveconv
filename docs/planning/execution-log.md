@@ -1557,3 +1557,32 @@ job queue.
   combinations, another seed, or another split. Apply the fixed natural split
   once to stable X-VC Q034 to distinguish RVC-specific from system-common
   generation-boundary behavior.
+
+## 2026-08-13T09:46:00Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, no tools or delegation).
+- Result: `CONTINUE`. Grok accepted the bounded RVC state rejections and their
+  closure, explicitly selected committed X-VC split commit `d648145` as the
+  last model-boundary diagnostic, and prohibited more RVC state, seed, split,
+  training, promote, or multi-lane work.
+- Adopted: yes. The X-VC job was already running in parallel with the audit;
+  no additional diagnostic lane was opened.
+- Expected time saved: about 15--20 minutes versus continuing RVC internals.
+
+## 2026-08-13T09:49:00Z - X-VC confirms short-generation quality weakness
+
+- Agent: `primary-integrator`.
+- Task: Reuse the exact actual input and 4.24-second natural split on stable
+  X-VC Yofukashi Q034, changing only one versus two Gateway generations.
+- Dependencies: commit `d648145`; exact retained one-generation X-VC output;
+  evaluation Gateway `8882`; listener `8878`; exclusive `gpu0`.
+- Result: both generations completed and published as
+  `ms3-stable-xvc-turn-split-v1`; the two-generation SHA-256 is
+  `c6b704cceb38fba6faec9297d86e3e88555432ed629882b6717bae3d3fb3231f`.
+- Machine screen: full CER remained 0.833, while per-turn CER worsened from
+  0.577/0.333 for one generation to 0.731/0.500 for two. Neither arm
+  gross-looped. The effect is not RVC-only and is not a perceptual comparison.
+- Changed action: close generation-boundary model diagnostics. Find a distinct
+  retained actual pre-VC input by source identity; otherwise return to one
+  bounded public known-text generalization batch.

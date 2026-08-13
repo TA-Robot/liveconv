@@ -232,6 +232,14 @@ Apply the already-fixed natural split once to stable X-VC Q034. That determines
 whether the defect is RVC-specific or common to the conversation boundary
 without widening model, training, or quality axes.
 
+The stable X-VC Q034 control also degraded across the same natural split. Full
+CER stayed 0.833, but per-turn CER moved from 0.577/0.333 in one generation to
+0.731/0.500 in two, without gross repetition. The short-generation weakness is
+therefore not RVC-only. Close generation-boundary model diagnostics and retain
+both A/Bs for hearing. Search retained artifacts for a distinct actual pre-VC
+input next; if none exists, use public known-text rows for one bounded
+generalization batch rather than another boundary or parameter point.
+
 ## Keepers
 
 None yet. A `keep` here is the only ticket into a promote pass.
