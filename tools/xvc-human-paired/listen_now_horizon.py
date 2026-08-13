@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Run the EXP-026 human-pair X-VC training-horizon listen-now comparison.
+"""Run an EXP-026 human-pair X-VC training-horizon listen-now comparison.
 
 The run repeats the EXP-025 four-epoch arm as an exact deterministic control,
-then changes only training duration to render epochs 8 and 12.  It publishes
-plain labels on the fixed listener and never opens a heldout target.  The
-result is operator screening material, not promote or product evidence.
+or the completed EXP-026 twelve-epoch arm for the extended plan, then changes
+only training duration. It publishes plain labels on the fixed listener and
+never opens a heldout target. The result is operator screening material, not
+promote or product evidence.
 """
 
 from __future__ import annotations
@@ -23,6 +24,8 @@ from typing import Any
 import listen_now as base
 
 CHECKPOINT_EPOCHS = (4, 8, 12)
+EXTENDED_CHECKPOINT_EPOCHS = (12, 18, 24)
+ALLOWED_CHECKPOINT_EPOCHS = (CHECKPOINT_EPOCHS, EXTENDED_CHECKPOINT_EPOCHS)
 FINAL_EPOCH = CHECKPOINT_EPOCHS[-1]
 TOTAL_UPDATES = base.EXPECTED_TRAIN_PAIRS * FINAL_EPOCH
 EXPECTED_BASE_HASHES = {
@@ -47,6 +50,17 @@ EXPECTED_EPOCH4_HASHES = {
         "4a1cf0a0363fcaf81633226881e03896c3051064db8437f0fa083d60a987ba55"
     ),
 }
+EXPECTED_EPOCH12_HASHES = {
+    "EMOTION100_002": (
+        "7d5aa1917f6833ce4190060a81fe0d76368bf978574ded444b8bd3193cbe3e83"
+    ),
+    "EMOTION100_004": (
+        "3c0e471d2368cc9e9cda12d953688f56443ef9bad6c53c37dfd61d4cec51b6af"
+    ),
+    "EMOTION100_017": (
+        "968d43157cff15c316252d229394f9a6528412018e9c7996297b78da9b1fd9ed"
+    ),
+}
 
 
 def listening_index(
@@ -54,6 +68,7 @@ def listening_index(
     *,
     target_reference_id: str,
     hashes: Mapping[int, str],
+    checkpoint_epochs: Sequence[int] = CHECKPOINT_EPOCHS,
 ) -> dict[str, object]:
     variants: list[dict[str, object]] = [
         {
@@ -67,7 +82,7 @@ def listening_index(
             "output_sha256": hashes[0],
         }
     ]
-    for order, epoch in enumerate(CHECKPOINT_EPOCHS, start=2):
+    for order, epoch in enumerate(checkpoint_epochs, start=2):
         updates = epoch * base.EXPECTED_TRAIN_PAIRS
         variants.append(
             {
@@ -127,12 +142,44 @@ def assert_epoch4_control(
         )
 
 
+def assert_extended_control(
+    source_id: str, *, base_sha256: str, epoch12_sha256: str
+) -> None:
+    if EXPECTED_BASE_HASHES.get(source_id) != base_sha256:
+        raise base.ListenNowError(
+            f"EXP-026 extended base control drifted for {source_id}"
+        )
+    if EXPECTED_EPOCH12_HASHES.get(source_id) != epoch12_sha256:
+        raise base.ListenNowError(
+            f"EXP-026 extended epoch-12 control drifted for {source_id}"
+        )
+
+
+def parse_checkpoint_epochs(value: str) -> tuple[int, ...]:
+    try:
+        epochs = tuple(int(item) for item in value.split(","))
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            "checkpoint epochs must be comma-separated integers"
+        ) from error
+    if epochs not in ALLOWED_CHECKPOINT_EPOCHS:
+        allowed = " or ".join(
+            ",".join(str(epoch) for epoch in plan)
+            for plan in ALLOWED_CHECKPOINT_EPOCHS
+        )
+        raise argparse.ArgumentTypeError(f"checkpoint epochs must be {allowed}")
+    return epochs
+
+
 def run(
     arguments: argparse.Namespace,
     manifest: Mapping[str, Any],
     rows: list[dict[str, Any]],
 ) -> int:
     del manifest
+    checkpoint_epochs = arguments.checkpoint_epochs
+    final_epoch = checkpoint_epochs[-1]
+    total_updates = base.EXPECTED_TRAIN_PAIRS * final_epoch
     for name in ("HF_DATASETS_OFFLINE", "HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"):
         if os.environ.get(name) != "1":
             raise base.ListenNowError(f"{name}=1 is required before model import")
@@ -241,7 +288,7 @@ def run(
         raise base.ListenNowError("LoRA trainable parameter count drifted")
     optimizer = torch.optim.AdamW(trainable, lr=base.LEARNING_RATE)
     losses: list[float] = []
-    for epoch in range(1, FINAL_EPOCH + 1):
+    for epoch in range(1, final_epoch + 1):
         for tensors in train_tensors:
             base._set_adapter_training_only(model)
             optimizer.zero_grad(set_to_none=True)
@@ -256,7 +303,7 @@ def run(
                 raise base.ListenNowError("X-VC gradient norm is non-finite")
             optimizer.step()
             losses.append(numeric)
-        if epoch in CHECKPOINT_EPOCHS:
+        if epoch in checkpoint_epochs:
             updates = epoch * base.EXPECTED_TRAIN_PAIRS
             adapter_dir = arguments.work_dir / f"adapter-{updates:04d}"
             model.save_pretrained(adapter_dir, safe_serialization=True)
@@ -271,7 +318,7 @@ def run(
                 ).detach().cpu()
                 for index, source in enumerate(render_tensors)
             ]
-    if len(losses) != TOTAL_UPDATES or set(outputs) != {0, *CHECKPOINT_EPOCHS}:
+    if len(losses) != total_updates or set(outputs) != {0, *checkpoint_epochs}:
         raise base.ListenNowError("EXP-026 update or checkpoint count drifted")
 
     staging = arguments.work_dir / "listener-staging"
@@ -289,23 +336,31 @@ def run(
                 row_dir / "10-xvc-base.wav", outputs[0][index - 1], sample_rate
             )
         }
-        for order, epoch in enumerate(CHECKPOINT_EPOCHS, start=2):
+        for order, epoch in enumerate(checkpoint_epochs, start=2):
             hashes[epoch] = base._write_float_wav(
                 row_dir / f"{order}0-xvc-human87-e{epoch:02d}.wav",
                 outputs[epoch][index - 1],
                 sample_rate,
             )
-        assert_epoch4_control(
-            source.pair_id,
-            base_sha256=hashes[0],
-            epoch4_sha256=hashes[4],
-        )
+        if checkpoint_epochs == CHECKPOINT_EPOCHS:
+            assert_epoch4_control(
+                source.pair_id,
+                base_sha256=hashes[0],
+                epoch4_sha256=hashes[4],
+            )
+        else:
+            assert_extended_control(
+                source.pair_id,
+                base_sha256=hashes[0],
+                epoch12_sha256=hashes[12],
+            )
         base._write_json(
             row_dir / "index.json",
             listening_index(
                 source,
                 target_reference_id=target_reference_pair.pair_id,
                 hashes=hashes,
+                checkpoint_epochs=checkpoint_epochs,
             ),
         )
         listener_rows.append(
@@ -317,29 +372,36 @@ def run(
 
     receipt = {
         "schema_version": 1,
-        "kind": "liveconv-exp026-human87-horizon-listen-now-result",
+        "kind": (
+            "liveconv-exp026-human87-horizon-listen-now-result"
+            if checkpoint_epochs == CHECKPOINT_EPOCHS
+            else "liveconv-exp026-human87-extended-horizon-listen-now-result"
+        ),
         "status": "completed-listen-now-unselected",
         "git_commit": base._git_output(
             ["git", "rev-parse", "HEAD"], "repository commit"
         ),
         "question": (
-            "Does extending the exact human87 trajectory from 4 to 8 or 12 "
-            "epochs audibly improve X-VC?"
+            "Does extending the exact human87 trajectory across epochs "
+            f"{', '.join(str(epoch) for epoch in checkpoint_epochs)} audibly "
+            "improve X-VC?"
         ),
         "train_pair_count": len(materialized),
-        "checkpoint_epochs": list(CHECKPOINT_EPOCHS),
+        "checkpoint_epochs": list(checkpoint_epochs),
         "updates": len(losses),
         "learning_rate": base.LEARNING_RATE,
         "gradient_clip_norm": base.GRADIENT_CLIP_NORM,
         "loss_first": losses[0],
         "loss_at_checkpoints": {
             str(epoch): losses[epoch * base.EXPECTED_TRAIN_PAIRS - 1]
-            for epoch in CHECKPOINT_EPOCHS
+            for epoch in checkpoint_epochs
         },
         "render_sources": listener_rows,
         "target_reference_id": target_reference_pair.pair_id,
         "heldout_target_access_count": 0,
-        "epoch4_control_reproduced": True,
+        "control_epoch": checkpoint_epochs[0],
+        "control_epoch_reproduced": True,
+        "epoch4_control_reproduced": checkpoint_epochs == CHECKPOINT_EPOCHS,
         "elapsed_seconds": time.monotonic() - started,
         "peak_gpu_bytes": int(torch.cuda.max_memory_allocated(device)),
         "claims": {
@@ -387,6 +449,13 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--listener-dir", type=Path, required=True)
+    parser.add_argument(
+        "--checkpoint-epochs",
+        type=parse_checkpoint_epochs,
+        default=CHECKPOINT_EPOCHS,
+        metavar="EPOCHS",
+        help="exactly 4,8,12 or 12,18,24",
+    )
     parser.add_argument("--confirm-gpu-lease", choices=("gpu0",))
     parser.add_argument("--device", choices=("cuda:0",), default="cuda:0")
     return parser
@@ -404,7 +473,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "manifest_sha256": manifest["manifest_sha256"],
                         "row_count": len(rows),
                         "expected_train_pair_count": base.EXPECTED_TRAIN_PAIRS,
-                        "checkpoint_epochs": list(CHECKPOINT_EPOCHS),
+                        "checkpoint_epochs": list(arguments.checkpoint_epochs),
                     },
                     ensure_ascii=False,
                     sort_keys=True,

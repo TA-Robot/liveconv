@@ -15,6 +15,12 @@ Operator work. Agents do not start a new quality experiment until they have
 made this list shorter or the next render is independent and would otherwise
 leave the GPU idle.
 
+Active instruction update (2026-08-13): the operator cannot listen during the
+current work window. Do not block GPU quality search on this queue. Run one
+committed, single-variable job at a time, publish its comparison on 8878, apply
+only coarse machine rejection for corruption/content failure, and replan after
+each result. Accumulated candidates remain unselected until human hearing.
+
 | Item | What to hear | Action | Afterward |
 |---|---|---|---|
 | EXP-020 Stage 0 | Native vs existing human RVC `hakihaki` / `runrun` / `yofukashi` on the 8.17 s actual ChatGPT input | per profile: `rejected` if grossly dead, else `continue` | all rejected → skip more RVC-on-actual and go to the 87-pair X-VC listen-now; any `continue` → that profile may enter a larger actual-input listen |
@@ -39,15 +45,17 @@ authorize promote claims or several speculative sweeps in parallel.
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
 | 1 | Help the operator finish the six rows above; EXP-027--031 are superseded diagnostics and do not need separate draining | parent | n/a | decisions recorded |
-| 2 | If EXP-032 receives a `keep`, bind that exact candidate to the formal Gateway profile and exercise native fallback/Extension playout | parent | yes: EXP-032 `keep` | one route-qualified system listen or a recorded integration blocker |
-| 3 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
+| 2 | Extend the exact EXP-026 human87 trajectory to epochs 12/18/24; require epoch-12 WAV control reproduction, then machine-screen and publish | parent | no: operator unavailable and GPU would otherwise idle | one completed comparison collection or technical stop |
+| 3 | If EXP-032 receives a `keep`, bind that exact candidate to the formal Gateway profile and exercise native fallback/Extension playout | parent | yes: EXP-032 `keep` | one route-qualified system listen or a recorded integration blocker |
+| 4 | Existing human RVC on more actual pre-VC ChatGPT input (EXP-020 beyond the 8 s smoke) | audio worker | yes: drop any Stage 0 `rejected` profile | published `dev` set or a recorded reason that source capture is the blocker |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.
 EXP-032 closes the lookahead sweep at a 120-ms auxiliary-ASR floor; do not open
 another lookahead point. Its bounded worker/cancellation probe also completed
-and published one actual-input system WAV. The next decision is hearing, not
-another GPU lane. A recorded `keep` may admit formal Gateway/Extension work;
-without it, do not spend GPU time polishing the same candidate.
+and published one actual-input system WAV. While hearing is unavailable, GPU
+work returns to bounded quality-candidate generation, starting with the one-axis
+EXP-026 horizon extension. A recorded `keep` is still required before formal
+Gateway/Extension binding.
 
 ## Keepers
 

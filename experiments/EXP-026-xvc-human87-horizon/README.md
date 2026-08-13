@@ -7,6 +7,13 @@ The committed run completed 1,044 updates in 181.74 seconds. Loss at epochs
 heldout-target access remained zero, and 12 labeled candidates were published.
 Loss is not a quality verdict, so the operator still chooses or rejects by ear.
 
+Operator availability update (2026-08-13): listening cannot happen during the
+current work window, and the active instruction is to keep the GPU producing
+comparison candidates. Because the original curve is still decreasing, one
+bounded extension reruns the exact trajectory through epochs 12/18/24. Epoch
+12 must reproduce all three completed EXP-026 WAV hashes before the new
+collection can publish. No other training variable changes.
+
 ## Goal and stop condition
 
 Use the otherwise-idle GPU to answer one audible question: with the exact
@@ -57,6 +64,28 @@ HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
   --confirm-gpu-lease gpu0 --device cuda:0
 ```
 
-Not in scope: more than 12 epochs, a second learning rate or rank, a new model
-family, serious 334/36/54 evidence, route qualification, realtime suitability,
-or product readiness.
+The original v1 did not include more than 12 epochs. Neither v1 nor the bounded
+extension includes a second learning rate or rank, a new model family, serious
+334/36/54 evidence, route qualification, realtime suitability, or product
+readiness.
+
+## Extended horizon command
+
+This is the sole exception to the original 12-epoch scope, authorized by the
+active instruction above. It remains listen-now and unselected.
+
+```bash
+HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
+  artifacts/exp007/peft-resolve-20260811/runtime-1e52ef9ab8f1/bin/python \
+  tools/xvc-human-paired/listen_now_horizon.py \
+  --manifest artifacts/xvc-human-paired/runrun-human-paired.manifest.json \
+  --source-root artifacts/xvc-human-paired/source-audio/hadou-ita \
+  --target-archive /tmp/liveconv-ms3-intake/amitaro-full-data/downloads/ITAcorpus_amitaro_runrun.zip \
+  --xvc-source-root artifacts/x-vc/source \
+  --xvc-config artifacts/x-vc/xvc-local.yaml \
+  --checkpoint artifacts/x-vc/checkpoint/xvc.pt \
+  --checkpoint-epochs 12,18,24 \
+  --work-dir artifacts/xvc-human-paired/listen-now/exp026-human87-horizon-extended-v1 \
+  --listener-dir artifacts/ms3/listening/exp026-human87-horizon-extended-v1 \
+  --confirm-gpu-lease gpu0 --device cuda:0
+```

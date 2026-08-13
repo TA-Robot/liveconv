@@ -698,3 +698,23 @@ job queue.
   EXP-032 `keep`.
 - Expected saving: avoids at least one additional diagnostic/GPU cycle and
   moves directly to the decision that can kill or admit the candidate.
+
+## 2026-08-13T04:13:55Z - Grok audit superseded by operator availability
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, no tools or delegation).
+- Result: `SIMPLIFY`. Its snapshot correctly observed no new audio, commit, or
+  operator decision in the preceding 30 minutes and repeated the hearing-first
+  recommendation.
+- Adopted: No after the audit started. The operator then explicitly stated that
+  human hearing is unavailable during the current work window and directed the
+  project to keep stacking bounded validation comparisons so the GPU is not
+  wasted. The audit did not have that new premise; active user instruction
+  therefore supersedes its stop recommendation.
+- Changed action: keep listen-now/promote boundaries and one GPU lane, but make
+  machine-screened candidate generation the temporary critical path. Start with
+  the exact human87 trajectory at epochs 12/18/24 because loss was still
+  decreasing through epoch 12. Require the completed epoch-12 WAVs as exact
+  controls before publishing the extension.
+- Not admitted: concurrent GPU sweeps, another lookahead point, RVC retraining,
+  TTS-to-VC corpus mixing, EXP-024 retry, or any model/route selection claim.

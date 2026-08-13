@@ -25,6 +25,13 @@ def test_horizon_changes_only_training_duration() -> None:
     assert HORIZON.base.EXPECTED_TRAIN_PAIRS == 87
     assert HORIZON.base.LEARNING_RATE == 1e-4
     assert HORIZON.base.GRADIENT_CLIP_NORM == 5.0
+    assert HORIZON.EXTENDED_CHECKPOINT_EPOCHS == (12, 18, 24)
+    assert HORIZON.parse_checkpoint_epochs("12,18,24") == (12, 18, 24)
+
+
+def test_checkpoint_plan_rejects_arbitrary_sweeps() -> None:
+    with pytest.raises(Exception, match="checkpoint epochs must be"):
+        HORIZON.parse_checkpoint_epochs("12,16,20")
 
 
 def test_listener_index_exposes_base_and_three_plain_horizons(
@@ -66,6 +73,39 @@ def test_epoch4_control_is_fail_closed() -> None:
             source_id,
             base_sha256=HORIZON.EXPECTED_BASE_HASHES[source_id],
             epoch4_sha256="0" * 64,
+        )
+
+
+def test_extended_listener_and_epoch12_control_are_fail_closed(tmp_path: Path) -> None:
+    source_id = "EMOTION100_002"
+    source = HORIZON.base.RenderSource(
+        pair_id=source_id,
+        display_text="これは公開sourceです。",
+        source_path=tmp_path / "source.wav",
+    )
+    hashes = {0: "a" * 64, 12: "b" * 64, 18: "c" * 64, 24: "d" * 64}
+    document = HORIZON.listening_index(
+        source,
+        target_reference_id="EMOTION100_003",
+        hashes=hashes,
+        checkpoint_epochs=HORIZON.EXTENDED_CHECKPOINT_EPOCHS,
+    )
+    assert [item["display_name"] for item in document["variants"]] == [
+        "X-VC base / human input / adapterなし",
+        "X-VC / 人間whole-short 87ペア / 12 epochs / 1044 updates",
+        "X-VC / 人間whole-short 87ペア / 18 epochs / 1566 updates",
+        "X-VC / 人間whole-short 87ペア / 24 epochs / 2088 updates",
+    ]
+    HORIZON.assert_extended_control(
+        source_id,
+        base_sha256=HORIZON.EXPECTED_BASE_HASHES[source_id],
+        epoch12_sha256=HORIZON.EXPECTED_EPOCH12_HASHES[source_id],
+    )
+    with pytest.raises(HORIZON.base.ListenNowError, match="epoch-12 control"):
+        HORIZON.assert_extended_control(
+            source_id,
+            base_sha256=HORIZON.EXPECTED_BASE_HASHES[source_id],
+            epoch12_sha256="0" * 64,
         )
 
 
