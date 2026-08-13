@@ -17,9 +17,28 @@ SPEC.loader.exec_module(MODULE)
 class Torch:
     def __init__(self) -> None:
         self.seeds: list[int] = []
+        self.state = Buffer([6.0])
+        self.cuda = Cuda()
 
     def manual_seed(self, seed: int) -> None:
         self.seeds.append(seed)
+
+    def get_rng_state(self) -> Buffer:
+        return self.state
+
+    def set_rng_state(self, state: Buffer) -> None:
+        self.state = state.clone()
+
+
+class Cuda:
+    def __init__(self) -> None:
+        self.states = [Buffer([7.0])]
+
+    def get_rng_state_all(self) -> list[Buffer]:
+        return self.states
+
+    def set_rng_state_all(self, states: list[Buffer]) -> None:
+        self.states = [state.clone() for state in states]
 
 
 class Engine:
@@ -68,6 +87,8 @@ class Backend:
         self._engine.input_wav_res.values = [0.0]
         self._engine.rvc.cache_pitch.values = [0.0]
         self._engine.rvc.cache_pitchf.values = [0.0]
+        self._engine.torch.state.values = [0.0]
+        self._engine.torch.cuda.states[0].values = [0.0]
 
 
 def test_silence_prime_resets_then_reseeds_before_second_turn() -> None:
@@ -112,4 +133,21 @@ def test_pitch_cache_control_restores_only_pitch_buffers() -> None:
     assert backend._engine.input_wav_res.values == [0.0]
     assert backend._engine.rvc.cache_pitch.values == [4.0]
     assert backend._engine.rvc.cache_pitchf.values == [5.0]
+    assert backend._engine.torch.state.values == [0.0]
+    assert backend._engine.torch.cuda.states[0].values == [0.0]
+    assert output.tolist() == second.tolist()
+
+
+def test_rng_control_restores_only_rng_state() -> None:
+    backend = Backend()
+    first = np.asarray([0.1], dtype=np.float32)
+    second = np.asarray([0.2], dtype=np.float32)
+
+    output = MODULE.convert_with_rng_state(backend, first, second)
+
+    assert backend.full_reset_count == 1
+    assert backend._engine.input_wav.values == [0.0, 0.0]
+    assert backend._engine.rvc.cache_pitch.values == [0.0]
+    assert backend._engine.torch.state.values == [6.0]
+    assert backend._engine.torch.cuda.states[0].values == [7.0]
     assert output.tolist() == second.tolist()

@@ -97,6 +97,24 @@ def convert_with_pitch_cache(
     return np.asarray(backend.convert(second.tolist(), SAMPLE_RATE), dtype="<f4")
 
 
+def convert_with_rng_state(
+    backend: Any, first: np.ndarray, second: np.ndarray
+) -> np.ndarray:
+    backend.reset()
+    first_output = np.asarray(
+        backend.convert(first.tolist(), SAMPLE_RATE), dtype=np.float32
+    )
+    if first_output.size != first.size or not np.isfinite(first_output).all():
+        raise SilencePrimeError("RNG-source turn output is invalid")
+    torch = backend._engine.torch  # noqa: SLF001
+    cpu_rng = torch.get_rng_state().clone()
+    cuda_rng = [state.clone() for state in torch.cuda.get_rng_state_all()]
+    backend._reset_state()  # noqa: SLF001
+    torch.set_rng_state(cpu_rng)
+    torch.cuda.set_rng_state_all(cuda_rng)
+    return np.asarray(backend.convert(second.tolist(), SAMPLE_RATE), dtype="<f4")
+
+
 def internal_render(arguments: argparse.Namespace) -> int:
     source_root = arguments.internal_source_root.absolute()
     os.environ["LIVECONV_RVC_SOURCE_ROOT"] = str(source_root)
@@ -116,7 +134,9 @@ def internal_render(arguments: argparse.Namespace) -> int:
     deny_non_unix_sockets()
     backend = UpstreamRvcBackend(configuration)
     try:
-        if arguments.internal_pitch_cache_carry:
+        if arguments.internal_rng_state_carry:
+            output = convert_with_rng_state(backend, first, second)
+        elif arguments.internal_pitch_cache_carry:
             output = convert_with_pitch_cache(backend, first, second)
         elif arguments.internal_context_carry:
             output = convert_with_input_context(backend, first, second)
@@ -180,7 +200,10 @@ def execute(
     arguments.work_dir.mkdir(parents=True)
     context_carry = arguments.context_carry
     pitch_cache_carry = arguments.pitch_cache_carry
-    if pitch_cache_carry:
+    rng_state_carry = arguments.rng_state_carry
+    if rng_state_carry:
+        mode = "rng-state-carry"
+    elif pitch_cache_carry:
         mode = "pitch-cache-carry"
     elif context_carry:
         mode = "input-context-carry"
@@ -198,7 +221,9 @@ def execute(
         "--internal-source-root",
         str(arguments.source_root.resolve()),
     ]
-    if pitch_cache_carry:
+    if rng_state_carry:
+        command.append("--internal-rng-state-carry")
+    elif pitch_cache_carry:
         command.append("--internal-pitch-cache-carry")
     elif context_carry:
         command.append("--internal-context-carry")
@@ -229,7 +254,10 @@ def execute(
     shutil.copyfile(arguments.direct_reset_wav, staging / "10-direct-reset.wav")
     candidate_file = f"20-direct-{mode}.wav"
     support.write_wav(staging / candidate_file, candidate_pcm)
-    if pitch_cache_carry:
+    if rng_state_carry:
+        candidate_id = "direct-rng-state-carry"
+        candidate_name = "Stable seed-0 RVC / reset buffers + continue RNG state"
+    elif pitch_cache_carry:
         candidate_id = "direct-pitch-cache-carry"
         candidate_name = "Stable seed-0 RVC / reset + prior RMVPE pitch cache only"
     elif context_carry:
@@ -260,7 +288,20 @@ def execute(
         },
     ]
     comparison = support.signal_comparison(baseline_pcm, candidate_pcm)
-    if pitch_cache_carry:
+    if rng_state_carry:
+        title = "RVC turn 2: reseed vs continue RNG state"
+        changed_variable = "RNG continuation point after otherwise full reset"
+        question = "Does RNG continuation explain recovered turn-2 content?"
+        control = {
+            "cpu_rng_carried": True,
+            "cuda_rng_carried": True,
+            "input_context_reset": True,
+            "pitch_cache_reset": True,
+            "rms_reset": True,
+            "sola_reset": True,
+            "shipping_candidate": False,
+        }
+    elif pitch_cache_carry:
         title = "RVC turn 2: full reset vs prior RMVPE pitch cache only"
         changed_variable = "prior RMVPE pitch/pitchf cache after otherwise full reset"
         question = "Can prior pitch cache recover turn 2 with other state cleared?"
@@ -327,12 +368,16 @@ def execute(
     result = {
         "schema_version": 1,
         "kind": (
-            "liveconv-ms3-rvc-pitch-cache-result"
-            if pitch_cache_carry
+            "liveconv-ms3-rvc-rng-state-result"
+            if rng_state_carry
             else (
-                "liveconv-ms3-rvc-input-context-result"
-                if context_carry
-                else "liveconv-ms3-rvc-silence-prime-result"
+                "liveconv-ms3-rvc-pitch-cache-result"
+                if pitch_cache_carry
+                else (
+                    "liveconv-ms3-rvc-input-context-result"
+                    if context_carry
+                    else "liveconv-ms3-rvc-silence-prime-result"
+                )
             )
         ),
         "status": "completed-listen-now-unselected",
@@ -373,6 +418,7 @@ def parser() -> argparse.ArgumentParser:
     context = value.add_mutually_exclusive_group()
     context.add_argument("--context-carry", action="store_true")
     context.add_argument("--pitch-cache-carry", action="store_true")
+    context.add_argument("--rng-state-carry", action="store_true")
     return value
 
 
@@ -384,6 +430,7 @@ def internal_parser() -> argparse.ArgumentParser:
     value.add_argument("--internal-source-root", type=Path, required=True)
     value.add_argument("--internal-context-carry", action="store_true")
     value.add_argument("--internal-pitch-cache-carry", action="store_true")
+    value.add_argument("--internal-rng-state-carry", action="store_true")
     return value
 
 
@@ -395,7 +442,9 @@ def main() -> int:
         state = load_state_runner()
         profile, environment, support = validate(arguments, state)
         if arguments.check:
-            if arguments.pitch_cache_carry:
+            if arguments.rng_state_carry:
+                control = "RNG-state carry"
+            elif arguments.pitch_cache_carry:
                 control = "pitch-cache carry"
             elif arguments.context_carry:
                 control = "input-context carry"
