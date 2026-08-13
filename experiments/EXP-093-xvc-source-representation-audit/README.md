@@ -1,6 +1,6 @@
 # EXP-093: X-VC loop-source representation audit
 
-Status: ready exploratory diagnostic
+Status: completed; universal input gate rejected; narrower hypothesis retained
 
 ## Question
 
@@ -30,3 +30,23 @@ do not claim naturalness, target-voice quality, or a causal explanation.
 
 No adapter training, threshold sweep, new ASR pass, human quality decision,
 hash/receipt promotion work, or retry of closed human87/EXP-024 axes.
+
+## Result
+
+All 33 rows completed in 75.56 seconds at 2.58 GB peak after a report-key fix.
+The best single one-sided statistic that covered all three historically
+loop-prone sources was high waveform active-sample fraction; it flagged eleven
+rows, eight of them non-loop. Frozen Whisper-hidden rules were weaker. No
+single semantic-token rule separated all three because `cv41748688u`, which
+loops in base/control69, had 30 unique tokens across 30 frames.
+
+A narrower exploratory signal remains: the two inputs on which retrained
+adapters introduced a new loop had only 4 and 5 unique tokens and token runs of
+27 and 13 frames. A `unique_tokens <= 5` rule would also flag three non-loop
+rows in this same set. This in-sample observation does not authorize a runtime
+threshold. Validate it on disjoint failure data before any bypass binding.
+
+Decision: reject a universal pre-VC input-validity gate from this evidence.
+Retain low token diversity as a separate safety hypothesis. Because the three
+failures are model-dependent, move the next training point to the still-open
+X-VC conditioning contract rather than training against this fitted gate.

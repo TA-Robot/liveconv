@@ -185,14 +185,21 @@ the unheard audio but reject the method as a generic keeper. Noise ratio, SNR,
 condition level, and semantic blend sweeps are closed. The next shortest step
 is to test whether source semantic-token or acoustic statistics identify the
 low-information inputs that trigger different adapter loops before admitting
-another retraining objective.
+another retraining objective. EXP-093 found no universal separator: covering
+all three loop-prone sources required flagging at least eight of thirty non-loop
+rows. Low semantic-token diversity did isolate both adapter-added loop sources,
+but also flagged three non-loop sources and missed the base/control loop source.
+It remains a disjoint-validation safety hypothesis, not a fitted runtime gate.
+The next distinct training method addresses the still-open conditioning
+contract: supply each training row with a deterministic same-Amitaro,
+different-utterance frame condition instead of the always-zero waveform.
 
 ## Next listen-now to render
 
 | Priority | Idea | Owner | Depends on unheard? | Stop |
 |---|---|---|---|---|
-| 1 | Measure frozen source semantic-token and acoustic statistics on the existing varied sets, with known loop rows labelled only after extraction | parent | no | decide whether a simple input-validity signal separates loop-prone low-information rows |
-| 2 | Admit one distinct retraining or safe-bypass slice only if that diagnostic names a causal, testable change | parent | no | commit one method and its fixed varied screen before GPU |
+| 1 | Train one cross-utterance target-frame-conditioned control69 adapter with all data, loss, LR, seed, and update controls fixed | parent | no | exact condition rotation and inference reference committed before GPU |
+| 2 | Publish zero-condition and matching conditioned candidate arms on the existing varied screens | parent | no human dependency for machine reject | content/corruption screen complete; naturalness left unheard |
 | 3 | After hearing returns, hear external/generalization sets before any historical 8.17 s diagnostic | parent | yes | operator keep/continue/rejected recorded |
 
 The EXP-026 horizon and EXP-027--032 actual-input diagnostics are complete.

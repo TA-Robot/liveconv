@@ -2856,3 +2856,23 @@ job queue.
 - Rework: qualify every metric by section, add a regression asserting all
   homonymous paths remain distinct, and regenerate the deterministic report.
   This reporting fix does not change model inference or add a threshold sweep.
+
+## 2026-08-13T18:33:00Z - EXP-093 completed; universal source gate rejected
+
+- Agent: `primary-integrator`.
+- Dependencies: fix commit `802e983`; frozen base X-VC encoder; 33 expanded
+  sources; existing loop labels only; exclusive `gpu0`.
+- Result: corrected extraction completed in 75.56 seconds at 2.58 GB peak. The
+  best one-sided rule covering all three loop-prone sources flagged eleven
+  rows, including eight of thirty non-loop rows. Whisper-hidden rules were
+  weaker. The base/control loop source had 30 unique tokens in 30 frames, so
+  token collapse is not a universal explanation. The two sources on which
+  retrained adapters introduced new loops did have only 4/5 unique tokens and
+  27/13-frame runs; the same in-sample cutoff also flagged three non-loop rows.
+- Problems: the first generated report was moved recoverably to
+  `/tmp/liveconv-exp093-report-key-collision-20260813T1831Z.json`; no source,
+  model, or user data was deleted.
+- Changed action: do not bind a universal gate or tune a threshold on EXP-093.
+  Preserve low token diversity for disjoint safety validation. Since failures
+  remain model-dependent, admit a distinct X-VC method that replaces the
+  always-zero target frame condition with same-speaker cross-utterance context.
