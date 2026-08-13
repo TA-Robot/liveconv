@@ -204,6 +204,15 @@ the training rows. The broad gate rejected it: external and changed-utterance
 means regressed, stress60 moved `0.320` to `0.362`, and expanded33 produced
 seven candidate gross loops. Noise and tempo improved only locally. Close block
 size and corruption-ratio sweeps; all audio remains unheard and unselected.
+EXP-106--111 then replaced EXP-072's donor-voice reconstruction with 209
+semantic-only frozen-base teacher rows under Amitaro speaker context. This is
+the first method to improve all five balanced stress means: macro `0.320 ->
+0.254`, changed utterances `0.184 -> 0.146`, with no stress or expanded-set
+candidate loop. It still added one gross repeated-number loop on pathological
+Hadou input `RECITATION324_138`, and expanded33's raw mean gain was driven by
+three known failure sources. Retain it as the strongest unheard technical
+candidate, not a winner. Do not sweep share or loss weight; validate this exact
+checkpoint on genuinely fresh speakers and sentences.
 
 ## Next listen-now to render
 

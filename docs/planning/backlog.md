@@ -100,13 +100,12 @@ name one owner and ownership zone below.
 | LV-089 | Done | P0 | MS-3 | Isolate X-VC loop-prone source representations | EXP-093 found no useful universal rule: the best all-loop rule flagged 8/30 non-loop rows; low token diversity captured the two adapter-added loops but also three non-loop rows, so retain it only as a disjoint-validation hypothesis |
 | LV-090 | Done | P0 | MS-3 | Train X-VC with cross-utterance target-frame conditioning | EXP-094--099 improved noise20 and slightly improved Hadou, but regressed changed utterances, the balanced stress macro, and expanded33 while adding one loop; close reference/strength/ratio sweeps |
 | LV-091 | Done | P0 | MS-3 | Train X-VC to tolerate collapsed semantic tokens | EXP-100--105 regressed external, changed-content, and balanced-stress means and added eight gross loops, including seven of 33 expanded-speaker rows; reject the method and prohibit block-size/ratio sweeps |
-| LV-092 | In progress | P0 | MS-3 | Rehearse frozen-base semantic behavior on real Japanese source inputs without teaching donor identity | EXP-106 keeps EXP-072's fixed 835/209 positions but makes the 209 real Common Voice rows semantic-only teacher distillation under Amitaro target-speaker context; EXP-107--111 reuse the full varied gate |
+| LV-092 | Done | P0 | MS-3 | Rehearse frozen-base semantic behavior on real Japanese source inputs without teaching donor identity | EXP-106--111 improved changed utterances and all five balanced-stress means without stress/expanded loops, but added one pathological Hadou number loop and had outlier-driven expanded mean; retain unheard and validate the same checkpoint on fresh speakers without ratio/weight sweeps |
 
 ## Active ownership
 
 | Item | Owner | Exclusive write scope | Stop condition |
 |---|---|---|---|
-| LV-092 | `primary-integrator` | `tools/xvc-source-diversity/`, EXP-106--111 notes, and ignored artifacts | Commit exact teacher target/objective, focused tests, and all frozen render policies before one GPU lane |
 
 Read-only Sol reviewers are not owners and do not block writers in disjoint
 zones. Completed writers are removed from this table immediately.

@@ -2995,3 +2995,23 @@ job queue.
   by the same coarse corruption/content gate and 8878 publication.
 - Not adopted: none. Its warning about 155 dirty entries is handled by staging
   only the EXP-106 method slice and leaving unrelated user changes untouched.
+
+## 2026-08-13T19:39:38Z - EXP-106--111 teacher-semantic bundle completed
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-13T19:23:47Z.
+- End: 2026-08-13T19:39:38Z.
+- Dependencies: method commit `871ee2b`; gpu0; exact EXP-035 control69 and
+  EXP-072 835/209 positions; listener 8878.
+- Result: training completed 1,044 updates in 270.33 seconds at 4.77 GiB peak,
+  with loss `144.22 -> 134.13`. External7 was 2/4/1 (`0.360 -> 0.367`),
+  changed12 4/5/3 (`0.184 -> 0.146`), conditions10 3/6/1 (`0.153 -> 0.060`),
+  Hadou31 7/19/5 (`0.210 -> 0.184`) with one number loop, expanded33 12/8/13
+  (`1.084 -> 0.620`) with no candidate loops, and stress60 27/18/15 (`0.320 ->
+  0.254`) with every condition mean improved and no loop.
+- Problems: expanded33's aggregate gain was outlier-driven. Excluding the three
+  previously known loop sources, the mean regressed `0.514 -> 0.607` and the
+  candidate was 9/8/13. The Hadou loop prevents a clean technical pass.
+- Rework: none. Keep the audio unheard and unselected. Do not tune the 20%
+  teacher share or semantic weight; acquire a genuinely fresh disjoint source
+  set from the already-pinned Common Voice revision for the next check.

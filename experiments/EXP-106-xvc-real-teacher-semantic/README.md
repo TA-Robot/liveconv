@@ -1,6 +1,6 @@
 # EXP-106: real-source frozen-teacher semantic rehearsal
 
-Status: ready method pilot; waiting for EXP-100--105 closure
+Status: completed; strongest broad robustness signal, one pathological loop
 
 ## Question
 
@@ -32,3 +32,17 @@ sweep the 20% share or the teacher weight.
   source-relative ASR regression. They cannot rank naturalness or target voice.
 - A new loop or robust changed-utterance/stress regression rejects the method.
 
+## Result
+
+Training completed 1,044 updates in 270.33 seconds at 4.77 GiB peak; loss moved
+`144.22 -> 134.13`. External7 was 2/4/1 with mean `0.360 -> 0.367` and no loop.
+Changed12 improved `0.184 -> 0.146` (4/5/3). Conditions10 improved `0.153 ->
+0.060` (3/6/1). Stress60 improved every group mean and macro `0.320 -> 0.254`
+(27/18/15), with no loop. Expanded33 removed the control's loop and reduced
+the raw mean `1.084 -> 0.620`, but that mean was driven by three known failure
+sources; excluding them regressed `0.514 -> 0.607`. Hadou31 added one gross
+number-loop on `RECITATION324_138` despite improving its mean.
+
+Retain this as an unheard, technically promising candidate. It is not a clean
+technical pass or perceptual winner. Do not sweep the teacher share or weight;
+test the same checkpoint on fresh disjoint speakers next.
