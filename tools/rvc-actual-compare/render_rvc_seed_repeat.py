@@ -219,6 +219,13 @@ def write_wav(path: Path, pcm: bytes) -> None:
 
 
 def execute(arguments: argparse.Namespace) -> dict[str, Any]:
+    # Upstream RVC owns process cwd while loaded, so all runner paths must be
+    # absolute before model startup.
+    arguments.deployment = arguments.deployment.resolve(strict=True)
+    arguments.work_dir = arguments.work_dir.resolve()
+    arguments.listener_dir = arguments.listener_dir.resolve()
+    if arguments.identity_env is not None:
+        arguments.identity_env = arguments.identity_env.resolve(strict=True)
     if arguments.work_dir.exists() or arguments.listener_dir.exists():
         raise SeedRepeatError("work and listener outputs must be new")
     document = json.loads((arguments.deployment / "profiles.json").read_text())
