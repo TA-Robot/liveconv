@@ -189,6 +189,22 @@ def candidate_policy(kind: str) -> dict[str, Any]:
                 "30-xvc-cv12-real-reconstruction20.wav",
             ),
         }
+    if kind == "decoder-final":
+        return {
+            "experiment_id": "EXP-079",
+            "result_kind": "liveconv-exp079-xvc-decoder-final-condition/v1",
+            "run_kind": "EXP-079 X-VC final decoder-stage condition evaluation",
+            "control": (
+                "cv12-control69",
+                "EXP-035 / control69 converter LoRA",
+                "20-xvc-cv12-control69.wav",
+            ),
+            "candidate": (
+                "cv12-decoder-final",
+                "EXP-077 / final waveform decoder stage",
+                "30-xvc-cv12-decoder-final.wav",
+            ),
+        }
     raise ConditionRenderError(f"unknown candidate kind: {kind}")
 
 
@@ -465,6 +481,7 @@ def _parser() -> argparse.ArgumentParser:
             "wave-adversarial",
             "output2",
             "real-reconstruction20",
+            "decoder-final",
         ),
         default="donor-breadth",
     )

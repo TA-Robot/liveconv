@@ -1,10 +1,14 @@
 # EXP-073: real-speech rehearsal on changed Common Voice utterances
 
-Status: frozen; waiting for EXP-072
+Status: completed; mixed worst-case reduction but mean regression
 
 Render EXP-072 on the existing twelve changed utterances from six heldout
 Common Voice speakers against EXP-035. None of these speakers is one of the
 twelve real rehearsal donors. This is a content/corruption screen only.
+
+No gross loop occurred. Against control69 the candidate had two wins, four
+ties, and six losses; mean distance worsened `0.184` to `0.232`, while the
+maximum improved `0.571` to `0.455`. This is not a robust rehearsal win.
 
 ```bash
 HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \

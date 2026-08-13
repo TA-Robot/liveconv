@@ -182,6 +182,14 @@ def test_real_rehearsal_policies_cover_changed_and_hadou_sets() -> None:
     assert "real-reconstruction20-hadou" in choices
 
 
+def test_decoder_final_policies_cover_changed_and_hadou_sets() -> None:
+    changed = NEW.candidate_policy("decoder-final")
+    hadou = NEW.candidate_policy("decoder-final-hadou")
+    assert changed["experiment_id"] == "EXP-078"
+    assert hadou["experiment_id"] == "EXP-080"
+    assert changed["variant_id"] == hadou["variant_id"] == "cv12-decoder-final"
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"

@@ -1,6 +1,6 @@
 # EXP-076: waveform-adversarial X-VC on 33 unused Common Voice speakers
 
-Status: committed evaluation; waiting for one render
+Status: completed; one adversarial gross loop found
 
 ## Question
 
@@ -15,6 +15,15 @@ This adds speaker and sentence diversity to the 7 + 12 + 10 + 31 gate without
 changing or retraining the candidate. Render base, EXP-035 control69, and
 EXP-064 once. Auxiliary ASR may identify empty output, drift, or gross loops;
 it cannot rank naturalness, target identity, or select a winner.
+
+## Result
+
+The 33-speaker render found one gross loop in every arm, but on different
+inputs. EXP-064 looped on `cv45113065u`, whose source ASR was empty, repeating
+`フッ` and reaching source-relative distance `223`. Base and control69 looped
+on `cv41748688u`. This expanded set therefore revokes the earlier claim that
+EXP-064 had no observed gross corruption. Retain audio for diagnosis, but do
+not treat the adversarial adapter as a technically clean candidate.
 
 ## Command
 

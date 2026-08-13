@@ -241,6 +241,22 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "sentences?"
             ),
         }
+    if kind == "decoder-final":
+        return {
+            "experiment_id": "EXP-078",
+            "variant_id": "cv12-decoder-final",
+            "display_name": "EXP-077 / final waveform decoder stage",
+            "result_kind": "liveconv-exp078-xvc-decoder-final-new/v1",
+            "question": "Does decoder-final preserve changed heldout utterances?",
+        }
+    if kind == "decoder-final-hadou":
+        return {
+            "experiment_id": "EXP-080",
+            "variant_id": "cv12-decoder-final",
+            "display_name": "EXP-077 / final waveform decoder stage",
+            "result_kind": "liveconv-exp080-xvc-decoder-final-hadou/v1",
+            "question": "Does decoder-final preserve 31 clean Hadou sentences?",
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -635,6 +651,8 @@ def _parser() -> argparse.ArgumentParser:
             "output2-hadou",
             "real-reconstruction20",
             "real-reconstruction20-hadou",
+            "decoder-final",
+            "decoder-final-hadou",
         ),
         default="speaker7",
     )

@@ -275,3 +275,15 @@ def test_output2_is_exact_decoder_interface_scope_and_exp068() -> None:
         if action.dest == "lora_scope"
     )
     assert "output2" in choices
+
+
+def test_decoder_final_scope_is_exact_and_exp077() -> None:
+    inventory = ROLE_MIX.REPO_ROOT / "artifacts/exp007/phase0-inputs-v1/inventory.json"
+    scope = ROLE_MIX.training_scope(inventory, "decoder-final")
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(training_policy="all-standard", lora_scope="decoder-final")
+    )
+
+    assert tuple(scope["modules_to_save"]) == ROLE_MIX.DECODER_FINAL_MODULES
+    assert scope["trainable_parameter_count"] == 297_890
+    assert policy["experiment_id"] == "EXP-077"

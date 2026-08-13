@@ -175,7 +175,9 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-059--063 pseudo-source content filter (closed: changed-row regression + Hadou loop)
         -> EXP-064--067 upstream waveform-adversarial method (viable unheard candidate)
         -> EXP-068--071 decoder-interface output2 (rejected: changed-row regression + loop)
-        -> one real-speech rehearsal data point at fixed control69/loss/updates
+        -> EXP-072--075 real-speech rehearsal (rejected: changed regression + loop)
+        -> EXP-076 adversarial 33-speaker expansion (one gross loop found)
+        -> one final waveform-decoder stage at fixed data/loss/updates
         -> operator hearing when available
 ```
 

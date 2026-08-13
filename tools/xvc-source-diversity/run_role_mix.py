@@ -86,6 +86,12 @@ OUTPUT2_TARGETS = (
     "acoustic_converter.proj_out",
 )
 OUTPUT2_TRAINABLE_PARAMETERS = 22_016
+DECODER_FINAL_MODULES = (
+    "acoustic_decoder.model.4",
+    "acoustic_decoder.model.5",
+    "acoustic_decoder.model.6",
+)
+DECODER_FINAL_TRAINABLE_PARAMETERS = 297_890
 
 
 class RoleMixError(RuntimeError):
@@ -232,6 +238,15 @@ def training_scope(inventory: Path, name: str) -> dict[str, object]:
             "target_modules": list(observed),
             "trainable_parameter_count": OUTPUT2_TRAINABLE_PARAMETERS,
         }
+    if name == "decoder-final":
+        expanded = horizon.lora_scope(inventory, "expanded79")
+        if "acoustic_converter.proj_out" not in expanded["target_modules"]:
+            raise RoleMixError("decoder-final serialization sentinel drifted")
+        return {
+            "target_modules": ["acoustic_converter.proj_out"],
+            "modules_to_save": list(DECODER_FINAL_MODULES),
+            "trainable_parameter_count": DECODER_FINAL_TRAINABLE_PARAMETERS,
+        }
     if name != "speaker7":
         raise RoleMixError(f"unknown LoRA scope: {name}")
     expanded = horizon.lora_scope(inventory, "expanded79")
@@ -247,6 +262,27 @@ def training_scope(inventory: Path, name: str) -> dict[str, object]:
 
 
 def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
+    if (
+        arguments.training_policy == "all-standard"
+        and arguments.lora_scope == "decoder-final"
+    ):
+        return {
+            "experiment_id": "EXP-077",
+            "slug": "exp077",
+            "candidate_id": "cv12-decoder-final",
+            "candidate_name": "EXP-077 / CV12 / final waveform decoder stage",
+            "run_kind": "EXP-077 X-VC final decoder-stage evaluation",
+            "result_kind": "liveconv-exp077-xvc-decoder-final-result/v1",
+            "question": (
+                "Can adapting only the final waveform upsampling stage improve "
+                "the decoder path without changing converter content modules?"
+            ),
+            "independent_variable": (
+                "trainable function: control69 converter LoRA versus 297,890 full "
+                "parameters in acoustic_decoder.model.4--6; data, generative loss, "
+                "LR, seed, condition, and 1,044 updates stay fixed"
+            ),
+        }
     if (
         arguments.training_policy == "real-reconstruction20"
         and arguments.lora_scope == "control69"
@@ -499,6 +535,26 @@ def assigned_tensors(
         "target_wav": reference["target_wav"],
         "ssl_feat": reference["ssl_feat"],
     }
+
+
+def _set_scope_training_only(model: Any, scope: Mapping[str, object]) -> list[Any]:
+    modules = tuple(str(item) for item in scope.get("modules_to_save", []))
+    if not modules:
+        return base._set_adapter_training_only(model)
+    model.eval()
+    trainable: list[Any] = []
+    for name, parameter in model.named_parameters():
+        selected = ".modules_to_save.default." in name and any(
+            f".{module}." in name for module in modules
+        )
+        parameter.requires_grad_(selected)
+        if selected:
+            trainable.append(parameter)
+    if sum(parameter.numel() for parameter in trainable) != int(
+        scope["trainable_parameter_count"]
+    ):
+        raise RoleMixError("decoder-final trainable parameter count drifted")
+    return trainable
 
 
 def _load_predecessor(path: Path) -> dict[str, Any]:
@@ -1006,6 +1062,9 @@ def run(
 
     scope = training_scope(arguments.inventory, arguments.lora_scope)
     target_modules = list(scope["target_modules"])
+    lora_options: dict[str, Any] = {}
+    if scope.get("modules_to_save"):
+        lora_options["modules_to_save"] = list(scope["modules_to_save"])
     trained = get_peft_model(
         model,
         LoraConfig(
@@ -1016,12 +1075,13 @@ def run(
             use_dora=False,
             use_rslora=False,
             target_modules=target_modules,
+            **lora_options,
         ),
     )
     observed = getattr(trained, "targeted_module_names", None)
     if not isinstance(observed, (list, tuple)) or set(observed) != set(target_modules):
         raise RoleMixError(f"{arguments.lora_scope} target set drifted")
-    trainable = base._set_adapter_training_only(trained)
+    trainable = _set_scope_training_only(trained, scope)
     if sum(parameter.numel() for parameter in trainable) != int(
         scope["trainable_parameter_count"]
     ):
@@ -1035,7 +1095,7 @@ def run(
         role: [] for role in observed_role_counts
     }
     for role, tensors in zip(modes, training_rows, strict=True):
-        base._set_adapter_training_only(trained)
+        _set_scope_training_only(trained, scope)
         optimizer.zero_grad(set_to_none=True)
         batch = base._gpu_batch(tensors, torch=torch, device=device)
         with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
@@ -1204,7 +1264,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--lora-scope",
-        choices=("control69", "speaker7", "source36", "output2"),
+        choices=("control69", "speaker7", "source36", "output2", "decoder-final"),
         default="control69",
     )
     parser.add_argument("--donors", type=Path, required=True)

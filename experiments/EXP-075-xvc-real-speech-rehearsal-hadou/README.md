@@ -1,11 +1,14 @@
 # EXP-075: real-speech rehearsal on 31 clean Hadou sentences
 
-Status: frozen; waiting for EXP-072
+Status: completed; one gross repeated-number loop
 
 Render EXP-072 on the same pre-training-frozen 31 Hadou 2.4-second windows.
 These files are evaluation-only and never enter rehearsal. Compare ASR with the
 exact source windows; full-sentence text is listening context only. This is not
 the misidentified local tongue-twister or ChatGPT browser audio.
+
+The candidate had four wins, 21 ties, and six losses against control69, with
+one gross loop on `RECITATION324_138`. This rejects the parent method.
 
 ```bash
 HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \

@@ -122,3 +122,9 @@ def test_real_rehearsal_uses_exp074_condition_policy() -> None:
         if action.dest == "candidate_kind"
     )
     assert "real-reconstruction20" in choices
+
+
+def test_decoder_final_uses_exp079_condition_policy() -> None:
+    policy = RENDER.candidate_policy("decoder-final")
+    assert policy["experiment_id"] == "EXP-079"
+    assert policy["candidate"][0] == "cv12-decoder-final"

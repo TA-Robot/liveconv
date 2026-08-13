@@ -2654,3 +2654,13 @@ job queue.
 - Not adopted: the audit snapshot reported gpu0 idle and EXP-072 unlaunched.
   The committed job started at 16:52 while the audit was generating its answer.
   No running work was stopped or redirected.
+
+## 2026-08-13T17:04:00Z - EXP-072--075 closed; EXP-076 broadened EXP-064
+
+- Agent: `primary-integrator`.
+- Result: real rehearsal regressed changed utterances (2/4/6) and added one
+  Hadou gross loop (4/21/6), so the method and ratio sweep are closed. A
+  separate 33-speaker Common Voice render then found an EXP-064 repeated-`フッ`
+  loop with distance 223, revoking its prior no-loop observation.
+- Changed action: adapt one bounded final waveform decoder stage rather than
+  another converter/output scope or data ratio.

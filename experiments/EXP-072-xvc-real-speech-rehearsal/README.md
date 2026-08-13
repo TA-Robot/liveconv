@@ -1,6 +1,6 @@
 # EXP-072: real-speech rehearsal during X-VC target adaptation
 
-Status: committed listen-now method; waiting for one GPU run
+Status: completed; rejected for changed-content regression and one gross loop
 
 ## Question
 
@@ -30,6 +30,15 @@ ten conditions, and 31 Hadou sentences. Machine ASR only screens empty output,
 content drift, and repetition. It cannot rank naturalness or target identity.
 A gross loop or robust changed-utterance regression rejects the method. Do not
 sweep the rehearsal ratio.
+
+## Result
+
+Training completed 1,044 updates in 286.81 seconds at 5.13 GB peak; loss moved
+from 144.22 to 131.44. Seven external rows worsened from control69 mean `0.360`
+to `0.411`. Twelve changed utterances were two wins, four ties, six losses and
+mean `0.232` versus `0.184`, despite a lower worst case. Ten conditions were one
+win and nine ties. Hadou was four wins, 21 ties, six losses and added one gross
+number-loop. Reject the method and do not sweep its ratio.
 
 ## Command
 

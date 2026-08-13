@@ -1,9 +1,12 @@
 # EXP-074: real-speech rehearsal on frozen audio conditions
 
-Status: frozen; waiting for EXP-072
+Status: completed; one improvement and nine ties
 
 Render EXP-072 on the existing ten clean/noise/leading-silence/tempo/pitch rows
 against EXP-035. Machine results only screen content corruption and repetition.
+
+Leading silence improved; the other nine rows tied control69 and none looped.
+The parent method is nevertheless rejected by changed utterances and Hadou.
 
 ```bash
 HF_DATASETS_OFFLINE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
