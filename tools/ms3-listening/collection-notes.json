@@ -1,12 +1,21 @@
 {
   "schema_version": 1,
   "top_status": {
-    "updated_at": "2026-08-13T03:15:39Z",
-    "current": "MS-3の最優先は、すでに聴ける候補の判定です。EXP-020、EXP-021、EXP-023、EXP-025、EXP-026、EXP-032、最後にEXP-032 system-pathの順で確認します。EXP-027〜031は最終診断EXP-032へ畳み込んだため、個別に消化しません。",
+    "updated_at": "2026-08-13T06:45:00Z",
+    "current": "MS-3の最優先は、3発話×2方式だけに絞った『VC heldout shortlist』の判定です。RVC Sasayaki clean-brightとX-VC Yofukashi Q034は、同じ公開入力・同じlive Gateway経路で粗いcontent screenを通過しています。旧EXP群は比較根拠として残しますが、先に消化しません。",
     "hold": "履歴のX-VC比較、EXP-027〜031、370本の発音確認は今回の判定を止めません。EXP-024のDTW pilotやlookahead sweepは再開せず、RVC再学習、TTSの人間VC corpusへの混入、keep前のpromote作業も行いません。",
-    "next": "EXP-020/021/023は粗い失敗をcontinue/rejected、EXP-025/026は明確な改善だけkeepまたは候補指定、EXP-032は120/125msとsource/system pairを聴いて最低許容値またはrejectedを記録してください。continue/keepは次の検証を許可するだけで、製品採用ではありません。固定ポート: 8878。"
+    "next": "VC heldout shortlistの各3行でRVCかX-VCを選ぶ、または両方rejectedにしてください。明瞭さ、自然さ、目標声への近さを耳で判断します。補助CER 0.184/0.166はgross corruption除外だけで、音質順位ではありません。結果は次のlisten-now routeを1本に絞るだけで、製品採用ではありません。固定ポート: 8878。"
   },
   "collections": [
+    {
+      "match_all": ["ms3-vc-heldout-shortlist-v1"],
+      "display_title": "最優先: VC heldout shortlist（RVC vs X-VC）",
+      "purpose": "同じ公開3発話を、機械screenで残ったRVC Sasayaki clean-brightとX-VC Yofukashi Q034のlive Gateway出力だけで比較",
+      "data": "3発話×2候補。両方とも20 ms realtime Gateway経路を完走し、補助CERはRVC 0.184、X-VC 0.166。これは内容崩壊の粗いscreenで、声質順位ではありません。",
+      "status": "各行で明瞭さ・自然さ・目標声への近さを聴き、RVC、X-VC、または両方rejectedを記録してください。ここでの選択は次のlisten-nowを許可するだけです。",
+      "review_priority": "highest",
+      "review_mode": "gross_reject_only"
+    },
     {
       "match_all": ["exp032-system-path-v4"],
       "display_title": "EXP-032: future-120候補のworker system-path",
