@@ -1279,3 +1279,41 @@ job queue.
   hearing surface. The prior `ms3-vc-heldout-shortlist-v1` remains historical
   because its RVC arm predates the generation-boundary fix. Do not add another
   seed or model knob before hearing.
+
+## 2026-08-13T08:15:38Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux session `liveconv-grok-auditor` (independent,
+  read-only, no tools or delegation).
+- Result: `CONTINUE`. Grok accepted the stable shortlist and actual-input
+  output as new listening audio, classified RNNoise as a valid one-variable
+  actual-input comparison rather than a closed training-axis retry, and told
+  the parent to start the committed job immediately.
+- Adopted: yes. Commit `b6a5eac` was already CPU-admitted; the parent launched
+  exactly one raw-versus-RNNoise stable-RVC job. No second GPU lane, training,
+  seed, F0, lookahead, receipt, or formal route-bind work was opened.
+- Expected time saved: 10--20 minutes versus continued idle/planning and
+  30--60 minutes versus reopening a closed training axis.
+
+## 2026-08-13T08:22:00Z - stable RVC RNNoise comparison closed
+
+- Agent: `primary-integrator`.
+- Task: Hold the 8.17-second actual input, stable seed-0 RVC profile, Gateway,
+  and persistent session fixed; change only stateful RNNoise preprocessing.
+- Dependencies: commits `b6a5eac` and `40fdf7b`; fixed source, RNNoise helper,
+  RNNoise manifest, and seeded deployment identities; evaluation Gateway
+  `8881`; listener `8878`; exclusive `gpu0`.
+- Result: raw and RNNoise arms both completed 409 contiguous finite frames in
+  8.192/8.194 seconds with echoed timestamps. They are published as
+  `ms3-stable-rvc-rnnoise-v1`; output SHA-256 values are `bc6bbe26fea62bd605a91089d80a6b706a5593c7b8937fc1134bc36d151e2128`
+  and `12745c7fd4eeaffbe0e12608377f643ea5043d46efbbd092b10ecec324726828`.
+- Machine screen: source-relative faster-whisper CER was 0.636 for raw and
+  0.682 for RNNoise. Neither gross-looped. This closes RNNoise expansion on
+  the stable RVC arm; it does not rank perceptual quality.
+- Problems/rework: model inference completed, but publication first failed on
+  a cross-filesystem atomic rename from `/tmp` into the repository. Generated
+  audio was retained. Commit `40fdf7b` moved future staging beside the final
+  listener directory. The completed files were copied to same-filesystem
+  hidden staging, hash-verified, and atomically published without rerunning
+  GPU inference.
+- Changed action: keep the stable cross-family shortlist at highest hearing
+  priority and do not add another RVC denoise point.

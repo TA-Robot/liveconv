@@ -145,6 +145,14 @@ X-VC was 0.166, with no gross repetition. Machine evidence does not select
 perceptual quality. The predecessor `ms3-vc-heldout-shortlist-v1` remains an
 archive because its RVC arm predates the generation-stability fix.
 
+One actual-input preprocessing comparison also completed as
+`ms3-stable-rvc-rnnoise-v1`. Raw and stateful-RNNoise input used the same
+stable seed-0 RVC profile and Gateway session. Source-relative auxiliary CER
+was 0.636 without RNNoise and 0.682 with RNNoise; neither arm gross-looped.
+Keep the A/B for optional hearing, but close RNNoise expansion because it did
+not improve coarse content retention. It does not displace the stable
+cross-family shortlist.
+
 ## Keepers
 
 None yet. A `keep` here is the only ticket into a promote pass.
