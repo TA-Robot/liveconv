@@ -2591,3 +2591,19 @@ job queue.
   effect cannot be judged by ASR; prohibit adjacent adversarial sweeps. The next
   distinct method tests only the final normalization and converter-to-decoder
   projection, rather than revisiting attention count or the human87 scope.
+
+## 2026-08-13T16:35:00Z - EXP-068--071 decoder-interface method prepared
+
+- Agent: `primary-integrator`.
+- Task: Test one function-aware X-VC adaptation scope at the boundary between
+  the acoustic converter and frozen decoder.
+- Dependencies: exact EXP-035 generated inventory digest `e909e465`; fixed
+  all-standard loss, LR, seed, target87, zero condition, and 1,044 updates.
+- Result: the scope contains only final `norm_out.linear` and `proj_out`, for
+  22,016 trainable rank-8 LoRA parameters. Thirty-six focused tests, Ruff, all
+  four CPU admissions, and `git diff --check` passed. EXP-069--071 freeze the
+  twelve changed utterances, ten conditions, and 31 Hadou windows before
+  training, in addition to EXP-068's seven external rows.
+- Changed action: commit and admit one GPU run. Do not sweep output layers,
+  rank, LR, or adjacent scope counts. Machine ASR can reject corruption but
+  cannot decide the naturalness hypothesis or select a winner.

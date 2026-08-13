@@ -186,6 +186,28 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "heldout sentences?"
             ),
         }
+    if kind == "output2":
+        return {
+            "experiment_id": "EXP-069",
+            "variant_id": "cv12-output2",
+            "display_name": "EXP-068 / CV12 / decoder-interface output2 LoRA",
+            "result_kind": "liveconv-exp069-xvc-output2-new-utterance/v1",
+            "question": (
+                "Does decoder-interface output2 remain content-viable on changed "
+                "utterances from heldout speakers?"
+            ),
+        }
+    if kind == "output2-hadou":
+        return {
+            "experiment_id": "EXP-071",
+            "variant_id": "cv12-output2",
+            "display_name": "EXP-068 / CV12 / decoder-interface output2 LoRA",
+            "result_kind": "liveconv-exp071-xvc-output2-hadou/v1",
+            "question": (
+                "Does decoder-interface output2 remain content-viable on 31 clean "
+                "Hadou heldout sentences?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -575,6 +597,8 @@ def _parser() -> argparse.ArgumentParser:
             "content-filtered6x2-hadou",
             "wave-adversarial",
             "wave-adversarial-hadou",
+            "output2",
+            "output2-hadou",
         ),
         default="speaker7",
     )

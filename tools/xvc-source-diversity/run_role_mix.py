@@ -77,6 +77,11 @@ SPEAKER7_TARGETS = tuple(
 )
 SPEAKER7_TRAINABLE_PARAMETERS = 166_400
 SOURCE36_TRAINABLE_PARAMETERS = 442_368
+OUTPUT2_TARGETS = (
+    "acoustic_converter.norm_out.linear",
+    "acoustic_converter.proj_out",
+)
+OUTPUT2_TRAINABLE_PARAMETERS = 22_016
 
 
 class RoleMixError(RuntimeError):
@@ -196,6 +201,17 @@ def training_scope(inventory: Path, name: str) -> dict[str, object]:
             "target_modules": list(observed),
             "trainable_parameter_count": SOURCE36_TRAINABLE_PARAMETERS,
         }
+    if name == "output2":
+        expanded = horizon.lora_scope(inventory, "expanded79")
+        observed = tuple(
+            item for item in expanded["target_modules"] if item in OUTPUT2_TARGETS
+        )
+        if observed != OUTPUT2_TARGETS:
+            raise RoleMixError("output2 target topology drifted")
+        return {
+            "target_modules": list(observed),
+            "trainable_parameter_count": OUTPUT2_TRAINABLE_PARAMETERS,
+        }
     if name != "speaker7":
         raise RoleMixError(f"unknown LoRA scope: {name}")
     expanded = horizon.lora_scope(inventory, "expanded79")
@@ -211,6 +227,29 @@ def training_scope(inventory: Path, name: str) -> dict[str, object]:
 
 
 def experiment_policy(arguments: argparse.Namespace) -> dict[str, Any]:
+    if (
+        arguments.training_policy == "all-standard"
+        and arguments.lora_scope == "output2"
+    ):
+        return {
+            "experiment_id": "EXP-068",
+            "slug": "exp068",
+            "candidate_id": "cv12-output2",
+            "candidate_name": (
+                "EXP-068 / CV12 / decoder-interface output2 LoRA / 1,044 updates"
+            ),
+            "run_kind": "EXP-068 X-VC decoder-interface scope evaluation",
+            "result_kind": "liveconv-exp068-xvc-decoder-interface-result/v1",
+            "question": (
+                "Does adapting only X-VC's final speaker-conditioned normalization "
+                "and decoder-facing projection produce a viable hearing candidate?"
+            ),
+            "independent_variable": (
+                "LoRA target: control69 joint attention/FFN linears versus only "
+                "the final norm_out.linear and decoder-facing proj_out; data, loss, "
+                "LR, roles, seed, target, condition, and updates stay fixed"
+            ),
+        }
     if arguments.training_policy == "role-mix" and arguments.lora_scope == "control69":
         return {
             "experiment_id": "EXP-036",
@@ -1102,7 +1141,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--lora-scope",
-        choices=("control69", "speaker7", "source36"),
+        choices=("control69", "speaker7", "source36", "output2"),
         default="control69",
     )
     parser.add_argument("--donors", type=Path, required=True)

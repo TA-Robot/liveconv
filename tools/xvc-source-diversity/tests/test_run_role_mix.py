@@ -199,3 +199,28 @@ def test_source36_excludes_frame_condition_and_speaker_modulators() -> None:
     assert all(".ff_c." not in name for name in scope["target_modules"])
     assert all("norm" not in name for name in scope["target_modules"])
     assert policy["experiment_id"] == "EXP-052"
+
+
+def test_output2_is_exact_decoder_interface_scope_and_exp068() -> None:
+    inventory = (
+        ROLE_MIX.REPO_ROOT
+        / "artifacts"
+        / "exp007"
+        / "phase0-inputs-v1"
+        / "inventory.json"
+    )
+
+    scope = ROLE_MIX.training_scope(inventory, "output2")
+    policy = ROLE_MIX.experiment_policy(
+        SimpleNamespace(training_policy="all-standard", lora_scope="output2")
+    )
+
+    assert tuple(scope["target_modules"]) == ROLE_MIX.OUTPUT2_TARGETS
+    assert scope["trainable_parameter_count"] == 22_016
+    assert policy["experiment_id"] == "EXP-068"
+    choices = next(
+        action.choices
+        for action in ROLE_MIX._parser()._actions
+        if action.dest == "lora_scope"
+    )
+    assert "output2" in choices
