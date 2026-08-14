@@ -1,6 +1,6 @@
 # EXP-169: disjoint category-balanced JSUT retention sources
 
-Status: source construction ready
+Status: target render ready
 
 ## Goal
 
@@ -19,3 +19,8 @@ The next GPU preparation renders control69 on these 85 sources. Any gross
 control output stops before training; no output-dependent replacement is
 allowed. If all survive, only the easy retention source/teacher domain changes
 in the next training lane. Raw JSUT audio remains ignored and uncommitted.
+
+The committed target renderer reads every row exactly once, uses the frozen
+control69 adapter and existing target assignment, and writes a training-only
+pool plus target identities. The generated targets must pass the existing
+source-relative ASR/gross-repetition screen before a curriculum is admitted.

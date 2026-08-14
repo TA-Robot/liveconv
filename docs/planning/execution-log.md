@@ -3813,3 +3813,18 @@ job queue.
 - Rework: focused tests and real archive check, commit, materialize ignored
   audio, then render control69 retention targets once. Stop before training if
   any generated target gross-loops; do not replace or cherry-pick rows.
+
+## 2026-08-14T01:46:00Z - EXP-170 JSUT retention target render prepared
+
+- Agent: `primary-integrator`.
+- Task: make the shortest committed GPU path from frozen JSUT85 sources to
+  control69 retention targets without changing the historical EXP-145 runner.
+- Dependencies: EXP-169 source manifest; frozen control69 adapter; existing 74
+  target inventory and base X-VC checkpoint.
+- Result: add a dedicated 85-row renderer that validates all source hashes and
+  category counts, caches target tensors, and emits one output per committed
+  row plus a training-only pool. No evaluation input is consumed.
+- Problems: generated teachers can themselves collapse; this is why training
+  admission remains conditional on the existing source-relative ASR and gross
+  repetition screen.
+- Rework: focused tests, no-CUDA real-input check, commit, then one GPU render.
