@@ -6419,3 +6419,27 @@ job queue.
 - Rework: render only the six frozen broad surfaces and apply coarse
   corruption/content gates. Do not add another data arm or sweep GRL weight,
   classifier shape, loss, scope, LR, or horizon.
+
+## 2026-08-14T21:18:00Z - EXP-327 matched fresh48 broad surface
+
+- Agent: `primary-integrator`; one bounded implementation owner added the six
+  EXP-325 control render policies while the already-committed EXP-326 arm ran.
+- Task: compare EXP-325 and EXP-326 on the exact same frozen disjoint-speaker
+  fresh48 inputs, isolating the training-only source-speaker GRL.
+- Dependencies: commits `7163fc6` and `4e92025`; exact EXP-325/326 EMA adapters;
+  one sequential gpu0 lease; listener 8878; fixed fresh48 input identity.
+- Result: both arms completed all 48 rows and published 480 WAVs. All 48
+  candidate hashes differ. The exact candidate join is `4W/43T/1L` for
+  source-relative ASR distance, with mean `1.219964 -> 1.192510`; auxiliary
+  known-text distance is also `4W/43T/1L`, mean `0.820993 -> 0.812166`.
+- Result: gross repetition stays `2 -> 2` with no added gross row. Decoder
+  instability changes `12 -> 10`: one new unstable row (`cv41746013f`) and
+  three recovered rows. This is a corruption/content observation only, not a
+  naturalness, identity, keep, or winner claim.
+- Problems: fresh48 is mixed rather than a uniform improvement. A strict
+  per-row instability gate would stop at the one new unstable row, while the
+  aggregate direction and three recoveries are favorable.
+- Rework: preserve the predefined six-surface characterization because no
+  added gross corruption appeared and the result is mixed, not a method win.
+  Continue the already-fixed Hadou/stress/JSUT/expanded/SRC4VC-heldout inputs;
+  do not change data, GRL weight, head, loss, scope, LR, or horizon.
