@@ -198,8 +198,8 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-176 paired hard/easy PCGrad (74/85 gradient conflicts)
         -> EXP-177 fresh48 (no candidate-added gross row)
         -> EXP-178 Hadou31 (beam-5-only repeated-number stop retracted)
-        -> v3 greedy-primary / two-decode-consensus reassessment of existing WAVs
-        -> stress60 and JSUT24 only if the v3 checkpoint gate survives
+        -> v4 two-decode-consensus / common-stable reassessment of existing WAVs
+        -> stress60 and JSUT24 only if the v4 checkpoint gate survives
         -> operator hearing when available
 ```
 

@@ -68,6 +68,28 @@ def test_aggregate_is_groupwise_and_never_invents_quality_score() -> None:
     assert "quality" not in str(result).lower()
 
 
+def test_aggregate_separates_decoder_unstable_content_rows() -> None:
+    rows = [
+        {
+            "group": "clean",
+            "variant": "candidate",
+            "source_relative_distance": distance,
+            "known_text_distance": distance,
+            "decoder_unstable": unstable,
+            "repetition": {"gross_repetition": False},
+        }
+        for distance, unstable in ((0.2, False), (20.0, True))
+    ]
+
+    result = SCREEN.aggregate_rows(rows)["macro"]["candidate"]
+
+    assert result["rows"] == 2
+    assert result["decoder_stable_rows"] == 1
+    assert result["decoder_unstable_rows"] == 1
+    assert result["stable_mean_source_relative_distance"] == 0.2
+    assert result["stable_mean_known_text_distance"] == 0.2
+
+
 def test_evaluation_loader_keeps_external_evaluation_kind(tmp_path: Path) -> None:
     path = tmp_path / "evaluation.json"
     path.write_text(

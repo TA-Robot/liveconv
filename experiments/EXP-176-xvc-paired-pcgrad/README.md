@@ -1,6 +1,6 @@
 # EXP-176: paired hard-repair and retention PCGrad
 
-Status: v2 ASR rejection retracted; committed v3 machine reassessment pending
+Status: v2 ASR rejection retracted; committed v4 machine reassessment pending
 
 ## Goal
 
@@ -70,6 +70,8 @@ literally spoke the reported sequence dozens of times.
 
 The beam-5-only gross-loop rejection is therefore retracted. The candidate is
 not accepted or selected; all 430 existing WAVs must be reassessed with the
-committed v3 screen, whose primary content transcript is greedy and whose gross
-flag requires greedy and beam-5 agreement. Only that result may open stress60
-and JSUT24. Do not tune projection, pairing, or task weights from this finding.
+committed v4 screen. Gross flags require greedy and beam-5 agreement. Content
+summaries separately count rows where the two decodes differ by normalized
+distance greater than `0.5`; cross-arm decisions use only their common stable
+rows. Only that result may open stress60 and JSUT24. Do not tune projection,
+pairing, or task weights from this finding.

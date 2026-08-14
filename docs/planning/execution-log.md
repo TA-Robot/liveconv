@@ -4062,3 +4062,22 @@ job queue.
   a v3 screen: greedy primary transcript for content, beam-5 diagnostic, and a
   gross repetition flag only when both deterministic decodes agree. Re-screen
   existing external7/fresh48/Hadou31 before opening any new GPU render.
+
+## 2026-08-14T03:03:00Z - v3 exposed symmetric decoder instability
+
+- Agent: `primary-integrator`.
+- Task: re-screen all 430 existing PCGrad WAVs without trusting beam 5 alone.
+- Dependencies: commit `3ea4a66`; no new training or render.
+- Result: the two-decode gross rule removed the false Hadou stop: candidate
+  gross rows became 0/31, source mean `0.202 -> 0.159`, known-text mean
+  `0.411 -> 0.400`. The same pass found the inverse failure on fresh48:
+  greedy alone transcribed one 2.4-second candidate as 46 repeats of
+  `あったなぁ`, while beam 5 returned a short plausible sentence.
+- Problems: replacing beam 5 with greedy as the primary transcript merely
+  moved which decoder hallucination could dominate aggregate content means.
+  Fresh48 raw candidate mean was therefore not decision-grade.
+- Rework: keep the two-decode gross consensus, but mark a row
+  `decoder_unstable` whenever source or output greedy/beam normalized distance
+  exceeds `0.5`. Report stable and all-row summaries separately; compare arms
+  only on their common decoder-stable, non-gross set. Commit as v4 and rerun the
+  same WAVs before any new render.
