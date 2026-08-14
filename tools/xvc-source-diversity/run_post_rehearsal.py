@@ -53,6 +53,12 @@ from prepare_cross_corpus_unpaired_curriculum import (  # noqa: E402
 from prepare_cross_corpus_unpaired_curriculum import (  # noqa: E402
     OUTPUT_KIND as CROSS_CORPUS_UNPAIRED_OUTPUT_KIND,
 )
+from prepare_exp305_exp306_cv32 import (  # noqa: E402
+    BREADTH_OUTPUT_KIND as CV32_BREADTH_OUTPUT_KIND,
+)
+from prepare_exp305_exp306_cv32 import (  # noqa: E402
+    REPEAT_OUTPUT_KIND as CV32_REPEAT_OUTPUT_KIND,
+)
 from prepare_hard_negative_curriculum import (  # noqa: E402
     EXPECTED_COMPOSITION as HARD_EXPECTED_DOMAINS,
 )
@@ -97,6 +103,13 @@ from render_cross_corpus_pseudoparallel_targets import (  # noqa: E402
 CANDIDATE_ID = "cv12-clean-post-rehearsal170"
 RESULT_KIND = "liveconv-exp141-xvc-clean-post-rehearsal-result/v1"
 LEARNING_RATE = 1e-4
+CV32_EXPECTED_ROWS = EXPECTED_ROWS + 32
+CV32_EXPECTED_COMPOSITION = {
+    "commonvoice-unpaired": 80,
+    "hadou-unpaired": 34,
+    "jsut-unpaired": 85,
+    "jvs-unpaired": 3,
+}
 FULL_CONVERTER_TARGET = "full-converter"
 ACOUSTIC_ENCODER_TARGET = "acoustic-encoder"
 LORA69_TARGET = "lora69"
@@ -209,11 +222,203 @@ UNPAIRED_HUMAN_KINDS = {
 PSEUDOPARALLEL_KINDS = {
     PSEUDOPARALLEL_OUTPUT_KIND,
     SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND,
+    CV32_REPEAT_OUTPUT_KIND,
+    CV32_BREADTH_OUTPUT_KIND,
+}
+CV32_PSEUDOPARALLEL_KINDS = {
+    CV32_REPEAT_OUTPUT_KIND,
+    CV32_BREADTH_OUTPUT_KIND,
 }
 
 
 class PostRehearsalError(RuntimeError):
     """The bounded clean post-adaptation rehearsal cannot safely continue."""
+
+
+def expected_training_rows(manifest_kind: str) -> int:
+    """Return the admitted horizon while preserving every legacy 170-row lane."""
+
+    return (
+        CV32_EXPECTED_ROWS
+        if manifest_kind in CV32_PSEUDOPARALLEL_KINDS
+        else EXPECTED_ROWS
+    )
+
+
+_PSEUDOPARALLEL_ROW_FIELDS = (
+    "domain",
+    "source_manifest_id",
+    "source_text",
+    "source_root",
+    "source_file",
+    "source_sha256",
+    "source_relative_distance",
+    "target_id",
+    "target_text",
+    "target_root",
+    "target_file",
+    "target_sha256",
+    "learning_target",
+    "real_target_text",
+    "real_target_root",
+    "real_target_file",
+    "real_target_sha256",
+)
+_REPEAT_ROW_FIELDS = tuple(
+    key for key in _PSEUDOPARALLEL_ROW_FIELDS if key != "source_manifest_id"
+)
+
+
+def _source_identity(row: Mapping[str, Any]) -> str | None:
+    """Extract the stable source ID without depending on a generated row ID."""
+
+    value = row.get("source_manifest_id")
+    if isinstance(value, str) and value:
+        return value.rsplit(":", 1)[-1]
+    value = row.get("source_id")
+    if isinstance(value, str) and value:
+        return value.removesuffix("-e1").removesuffix("-e2")
+    value = row.get("source_file")
+    if isinstance(value, str) and value:
+        return Path(value).stem
+    return None
+
+
+def _client_identity(row: Mapping[str, Any]) -> str | None:
+    for key in (
+        "client_id_sha256",
+        "client_sha256",
+        "source_client_id_sha256",
+    ):
+        value = row.get(key)
+        if isinstance(value, str) and value:
+            return value
+    return None
+
+
+def _same_repeat_tuple(
+    candidate: Mapping[str, Any], expected: Mapping[str, Any]
+) -> bool:
+    repeat_of_id = candidate.get("repeat_of_id")
+    if repeat_of_id is not None and repeat_of_id != expected.get("id"):
+        return False
+    if repeat_of_id is None and _source_identity(candidate) != _source_identity(
+        expected
+    ):
+        return False
+    return all(
+        candidate.get(key) == expected.get(key) for key in _REPEAT_ROW_FIELDS
+    )
+
+
+def validate_cv32_manifest(
+    manifest: Mapping[str, Any],
+    *,
+    reference_manifest: Mapping[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """Admit EXP-305/306 rows against the frozen ordered EXP-238 curriculum."""
+
+    kind = manifest.get("kind")
+    if kind not in CV32_PSEUDOPARALLEL_KINDS:
+        return None
+    items = manifest.get("items")
+    if (
+        not isinstance(items, list)
+        or len(items) != CV32_EXPECTED_ROWS
+        or manifest.get("composition") != CV32_EXPECTED_COMPOSITION
+    ):
+        raise PostRehearsalError("CV32 pseudoparallel manifest drifted")
+    reference = reference_manifest or _load_exp238_manifest()
+    reference_items = reference.get("items") if reference else None
+    if (
+        not isinstance(reference_items, list)
+        or len(reference_items) != EXPECTED_ROWS
+        or items[:EXPECTED_ROWS] != reference_items
+    ):
+        raise PostRehearsalError("CV32 manifest does not preserve EXP-238 order")
+    additions = items[EXPECTED_ROWS:]
+    if any(not isinstance(item, Mapping) for item in additions):
+        raise PostRehearsalError("CV32 appended row is malformed")
+    forbidden = {
+        "source_representation",
+        "representation_attachment",
+        "inference_attachment",
+        "inference_representation",
+    }
+    if any(
+        key in manifest and manifest.get(key) is not None for key in forbidden
+    ) or any(
+        key in item and item.get(key) is not None
+        for item in items
+        if isinstance(item, Mapping)
+        for key in forbidden
+    ):
+        raise PostRehearsalError("CV32 policy must not attach representation/inference")
+
+    old_cv = [
+        item
+        for item in reference_items
+        if isinstance(item, Mapping) and item.get("domain") == "commonvoice-unpaired"
+    ]
+    if len(old_cv) != 48:
+        raise PostRehearsalError("EXP-238 Common Voice rows drifted")
+    if kind == CV32_REPEAT_OUTPUT_KIND:
+        expected = old_cv[:32]
+        if any(
+            item.get("domain") != "commonvoice-unpaired"
+            or not _same_repeat_tuple(item, expected_row)
+            for item, expected_row in zip(additions, expected, strict=True)
+        ):
+            raise PostRehearsalError("EXP-305 repeat32 rows drifted")
+        policy = "repeat-first-32-commonvoice-tuples"
+    else:
+        source_ids = {_source_identity(item) for item in old_cv}
+        source_shas = {item.get("source_sha256") for item in old_cv}
+        source_texts = {item.get("source_text") for item in old_cv}
+        added_ids = {_source_identity(item) for item in additions}
+        added_shas = {item.get("source_sha256") for item in additions}
+        added_texts = {item.get("source_text") for item in additions}
+        added_clients = {_client_identity(item) for item in additions}
+        if (
+            any(item.get("domain") != "commonvoice-unpaired" for item in additions)
+            or any(
+                not str(item.get("source_manifest_id", "")).startswith("EXP055:")
+                for item in additions
+            )
+            or None in added_ids
+            or len(added_ids) != 32
+            or len(added_shas) != 32
+            or len(added_texts) != 32
+            or None in added_clients
+            or len(added_clients) != 32
+            or added_ids & source_ids
+            or added_shas & source_shas
+            or added_texts & source_texts
+        ):
+            raise PostRehearsalError("EXP-306 CV32 breadth identity drifted")
+        policy = "genuine-new-commonvoice-32-speaker-tuples"
+    return {
+        "manifest_kind": kind,
+        "manifest_row_count": CV32_EXPECTED_ROWS,
+        "base_row_count": EXPECTED_ROWS,
+        "additional_row_count": len(additions),
+        "first170_exact_exp238": True,
+        "addition_policy": policy,
+        "representation": None,
+        "inference_attachment": None,
+    }
+
+
+def _load_exp238_manifest() -> Mapping[str, Any] | None:
+    path = (
+        REPO_ROOT
+        / "artifacts/xvc-source-diversity/exp238-cross-corpus-control69-targets-v1"
+        / "curriculum.json"
+    )
+    if not path.is_file() or path.is_symlink():
+        return None
+    value = load_json(path)
+    return value if isinstance(value, Mapping) else None
 
 
 def listening_policy(
@@ -226,6 +431,74 @@ def listening_policy(
     source_activity_envelope: bool = False,
 ) -> dict[str, str]:
     """Return the complete shared-listener identity for the admitted method."""
+
+    if manifest_kind in CV32_PSEUDOPARALLEL_KINDS:
+        if (
+            trainable_target != LORA69_TARGET
+            or training_objective != PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE
+            or not use_adapter_ema
+            or optimizer_mode != SEQUENTIAL_OPTIMIZER
+            or parameter_anchor
+            or source_activity_envelope
+        ):
+            raise PostRehearsalError(
+                "EXP-305/306 requires the exact EXP-238 model and loss contract"
+            )
+        if manifest_kind == CV32_REPEAT_OUTPUT_KIND:
+            return {
+                "slug": "exp305",
+                "candidate_id": (
+                    "cross-corpus202-pseudoparallel-repeat32-control-real-adv-ema202"
+                ),
+                "candidate_name": (
+                    "EXP-305 / exact EXP-238 + matched Common Voice repeat32 / "
+                    "real-adversarial / EMA"
+                ),
+                "run_kind": "EXP-305 X-VC pseudoparallel repeat32 external7 evaluation",
+                "result_kind": (
+                    "liveconv-exp305-xvc-pseudoparallel-repeat32-control-real-adv-ema/v1"
+                ),
+                "question": (
+                    "Does a 202-update repeat32 control distinguish horizon from "
+                    "genuine Common Voice breadth on external7?"
+                ),
+                "independent_variable": (
+                    "relative to exact EXP-238, only 32 repeats of its first "
+                    "Common Voice rows are appended in original order; model, "
+                    "complete generator plus real-Amitaro adversarial loss, "
+                    "control69 LoRA69 initialization/scope, LR, sequential "
+                    "optimizer, norm-5 clip, zero frame condition, discriminator, "
+                    "EMA, normal quantized source acoustics, ordinary inference, "
+                    "and external7 evaluation remain fixed"
+                ),
+            }
+        return {
+            "slug": "exp306",
+            "candidate_id": (
+                "cross-corpus202-pseudoparallel-cv32-breadth-real-adv-ema202"
+            ),
+            "candidate_name": (
+                "EXP-306 / exact EXP-238 + genuine Common Voice32 breadth / "
+                "real-adversarial / EMA"
+            ),
+            "run_kind": "EXP-306 X-VC pseudoparallel CV32 external7 evaluation",
+            "result_kind": (
+                "liveconv-exp306-xvc-pseudoparallel-cv32-breadth-real-adv-ema/v1"
+            ),
+            "question": (
+                "Does adding 32 genuinely new Common Voice speakers and texts "
+                "improve broad X-VC conversion at the matched 202-update horizon?"
+            ),
+            "independent_variable": (
+                "relative to exact EXP-238, only 32 genuinely new Common Voice "
+                "source IDs, audio hashes, texts, and clients are appended after "
+                "the unchanged ordered 170 rows; model, complete generator plus "
+                "real-Amitaro adversarial loss, control69 LoRA69 initialization/"
+                "scope, LR, sequential optimizer, norm-5 clip, zero frame "
+                "condition, discriminator, EMA, normal quantized source acoustics, "
+                "ordinary inference, and external7 evaluation remain fixed"
+            ),
+        }
 
     if training_objective == PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE:
         if (
@@ -1299,6 +1572,8 @@ def load_manifest(
         expected_domains = PSEUDOPARALLEL_EXPECTED_DOMAINS
     elif kind == SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND:
         expected_domains = SRC4VC_PSEUDOPARALLEL_EXPECTED_DOMAINS
+    elif kind in CV32_PSEUDOPARALLEL_KINDS:
+        expected_domains = CV32_EXPECTED_COMPOSITION
     elif kind == COMMONVOICE_RETENTION_OUTPUT_KIND:
         expected_domains = COMMONVOICE_RETENTION_EXPECTED_DOMAINS
     elif kind == CONDITIONED_RETENTION_OUTPUT_KIND:
@@ -1307,6 +1582,7 @@ def load_manifest(
         expected_domains = HARD_EXPECTED_DOMAINS
     else:
         expected_domains = EXPECTED_DOMAINS
+    expected_rows = expected_training_rows(str(kind))
     if (
         kind
         not in {
@@ -1320,10 +1596,12 @@ def load_manifest(
             CROSS_CORPUS_UNPAIRED_OUTPUT_KIND,
             PSEUDOPARALLEL_OUTPUT_KIND,
             SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND,
+            CV32_REPEAT_OUTPUT_KIND,
+            CV32_BREADTH_OUTPUT_KIND,
         }
         or value.get("composition") != expected_domains
         or not isinstance(items, list)
-        or len(items) != EXPECTED_ROWS
+        or len(items) != expected_rows
     ):
         raise PostRehearsalError("clean rehearsal manifest drifted")
     ids: set[str] = set()
@@ -1474,6 +1752,7 @@ def load_manifest(
         domains[str(item.get("domain"))] += 1
     if dict(domains) != expected_domains:
         raise PostRehearsalError("clean rehearsal composition drifted")
+    validate_cv32_manifest(value)
     return value
 
 
@@ -3370,6 +3649,7 @@ def run(
         arguments.parameter_anchor,
         arguments.source_activity_envelope,
     )
+    expected_rows = expected_training_rows(str(manifest["kind"]))
 
     import torch
     from peft import LoraConfig, PeftModel, get_peft_model
@@ -4234,27 +4514,27 @@ def run(
         method._write_json(arguments.work_dir / "smoke.json", smoke)
         print(json.dumps(smoke, sort_keys=True))
         return 0
-    if len(losses) != EXPECTED_ROWS:
+    if len(losses) != expected_rows:
         raise PostRehearsalError("post-rehearsal update count drifted")
     if arguments.trainable_target == FULL_CONVERTER_TARGET:
         checkpoint_metadata = save_converter_checkpoint(
-            trained, arguments.work_dir / f"converter-{EXPECTED_ROWS}", torch
+            trained, arguments.work_dir / f"converter-{expected_rows}", torch
         )
     elif arguments.trainable_target == ACOUSTIC_ENCODER_TARGET:
         checkpoint_metadata = save_acoustic_encoder_checkpoint(
             trained,
-            arguments.work_dir / f"acoustic-encoder-{EXPECTED_ROWS}",
+            arguments.work_dir / f"acoustic-encoder-{expected_rows}",
             torch,
         )
     elif arguments.trainable_target == SPEAKER_CONDITION_CALIBRATOR_TARGET:
-        online_dir = arguments.work_dir / f"online-calibrator-{EXPECTED_ROWS}"
+        online_dir = arguments.work_dir / f"online-calibrator-{expected_rows}"
         online_metadata = save_speaker_condition_calibrator(
             trained, online_dir, torch=torch
         )
         if adapter_ema is None:
             raise PostRehearsalError("speaker-condition calibrator requires EMA")
         adapter_ema.copy_to()
-        calibrator_dir = arguments.work_dir / f"calibrator-{EXPECTED_ROWS}"
+        calibrator_dir = arguments.work_dir / f"calibrator-{expected_rows}"
         checkpoint_metadata = save_speaker_condition_calibrator(
             trained, calibrator_dir, torch=torch
         )
@@ -4269,11 +4549,11 @@ def run(
         checkpoint_steps = (
             optimizer_steps
             if arguments.optimizer_mode == PCGRAD_PAIRED_OPTIMIZER
-            else EXPECTED_ROWS
+            else expected_rows
         )
         adapter_dir = arguments.work_dir / f"adapter-{checkpoint_steps}"
         if adapter_ema is not None:
-            online_dir = arguments.work_dir / f"online-adapter-{EXPECTED_ROWS}"
+            online_dir = arguments.work_dir / f"online-adapter-{expected_rows}"
             trained.save_pretrained(online_dir, safe_serialization=True)
             adapter_ema.copy_to()
         trained.save_pretrained(adapter_dir, safe_serialization=True)
@@ -4281,7 +4561,7 @@ def run(
             "kind": "peft-adapter-ema" if adapter_ema is not None else "peft-adapter",
             "directory": adapter_dir.name,
             "online_directory": (
-                f"online-adapter-{EXPECTED_ROWS}" if adapter_ema is not None else None
+                f"online-adapter-{expected_rows}" if adapter_ema is not None else None
             ),
         }
 
@@ -4381,6 +4661,7 @@ def run(
         "question": policy["question"],
         "independent_variable": policy["independent_variable"],
         "training_manifest_sha256": sha256_file(arguments.training_manifest),
+        "cv32": validate_cv32_manifest(manifest),
         **source_receipt_identities(
             str(manifest.get("kind")),
             arguments.source_work,
@@ -4789,6 +5070,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                             == PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE
                             else None
                         ),
+                        "cv32": validate_cv32_manifest(manifest),
                     },
                     sort_keys=True,
                 )

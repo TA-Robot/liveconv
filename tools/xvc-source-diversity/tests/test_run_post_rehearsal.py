@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -9,6 +10,94 @@ if str(TOOL_ROOT) not in sys.path:
 
 import run_post_rehearsal as post  # noqa: E402
 import run_role_mix as role_mix  # noqa: E402
+
+
+def test_cv32_policies_bind_202_update_external7_candidates() -> None:
+    choices = post.parser()._option_string_actions["--training-objective"].choices
+    assert post.PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE in choices
+    assert post.expected_training_rows(post.CV32_REPEAT_OUTPUT_KIND) == 202
+    assert post.expected_training_rows(post.CV32_BREADTH_OUTPUT_KIND) == 202
+    assert post.expected_training_rows(post.PSEUDOPARALLEL_OUTPUT_KIND) == 170
+
+    repeat = post.listening_policy(
+        post.CV32_REPEAT_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+        True,
+    )
+    breadth = post.listening_policy(
+        post.CV32_BREADTH_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+        True,
+    )
+
+    assert repeat["slug"] == "exp305"
+    assert repeat["candidate_id"] == (
+        "cross-corpus202-pseudoparallel-repeat32-control-real-adv-ema202"
+    )
+    assert breadth["slug"] == "exp306"
+    assert breadth["candidate_id"] == (
+        "cross-corpus202-pseudoparallel-cv32-breadth-real-adv-ema202"
+    )
+    assert "external7" in repeat["run_kind"]
+    assert "external7" in breadth["run_kind"]
+
+
+def test_cv32_manifest_gate_preserves_exp238_and_distinguishes_policies() -> None:
+    reference = json.loads(
+        (
+            post.REPO_ROOT
+            / "artifacts/xvc-source-diversity/exp238-cross-corpus-control69-targets-v1"
+            / "curriculum.json"
+        ).read_text(encoding="utf-8")
+    )
+    base = reference["items"]
+    commonvoice = [
+        item for item in base if item["domain"] == "commonvoice-unpaired"
+    ]
+    repeats = [
+        {**item, "id": f"{item['id']}-repeat32-{index:02d}"}
+        for index, item in enumerate(commonvoice[:32])
+    ]
+    repeat_manifest = {
+        "kind": post.CV32_REPEAT_OUTPUT_KIND,
+        "composition": post.CV32_EXPECTED_COMPOSITION,
+        "items": [*base, *repeats],
+    }
+    repeat_receipt = post.validate_cv32_manifest(
+        repeat_manifest, reference_manifest=reference
+    )
+    assert repeat_receipt["addition_policy"] == (
+        "repeat-first-32-commonvoice-tuples"
+    )
+
+    breadth_rows = []
+    for index, item in enumerate(commonvoice[:32]):
+        breadth_rows.append(
+            {
+                **item,
+                "id": f"cv32-new-{index:02d}",
+                "teacher_id": f"commonvoice-unpaired-cv32-new-{index:02d}",
+                "source_manifest_id": f"EXP055:cv32-new-{index:02d}",
+                "source_file": f"sources/cv32-new-{index:02d}.wav",
+                "source_sha256": f"{index + 1:064x}",
+                "source_text": f"新しい発話 {index}",
+                "target_text": f"新しい発話 {index}",
+                "client_id_sha256": f"{index + 100:064x}",
+            }
+        )
+    breadth_manifest = {
+        "kind": post.CV32_BREADTH_OUTPUT_KIND,
+        "composition": post.CV32_EXPECTED_COMPOSITION,
+        "items": [*base, *breadth_rows],
+    }
+    breadth_receipt = post.validate_cv32_manifest(
+        breadth_manifest, reference_manifest=reference
+    )
+    assert breadth_receipt["addition_policy"] == (
+        "genuine-new-commonvoice-32-speaker-tuples"
+    )
 
 
 def test_listening_policy_satisfies_shared_index_contract() -> None:

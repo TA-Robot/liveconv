@@ -27,8 +27,8 @@ All seven outputs changed but the five jointly stable, non-gross rows were exact
 content ties. Acoustic representation micro-edits and simple scale-matched
 robust semantic-loss substitution are closed. The next lane must change the
 data, teacher signal, conditioning, or learnable training target rather than
-sweep EXP-297's beta, scale, or weight. Label and gradient-hook admission for
-that next method is in progress. All hearing claims remain open.
+sweep EXP-297's beta, scale, or weight. The EXP-305/306 matched CV32 data lane
+is the admitted next method. All hearing claims remain open.
 
 Identity preflight stopped EXP-303/304 before CUDA. The EXP-186 `exposure=2`
 rows are exact repeats of the same source ID/SHA/text, paired only with a

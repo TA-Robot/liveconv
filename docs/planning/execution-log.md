@@ -6110,3 +6110,24 @@ job queue.
   this data lineage, keep expanded144 as the disjoint broad surface, implement
   only the materializer, ordinary runner, and ordinary renderer, then commit
   before the sequential gpu0 teacher render and training lanes.
+
+## 2026-08-14T18:21:39Z - Grok project-progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux
+  `liveconv-grok-auditor` (read-only, no tools or delegation).
+- Task: judge whether the corrected CV32 lane remains the shortest route to
+  broadly better X-VC while the operator cannot listen.
+- Result: `SIMPLIFY`. No new audio or operator decision appeared in the last
+  30 minutes and gpu0 was idle. The auditor accepted EXP-305/306 as a valid
+  one-variable, 202-update data comparison and accepted stopping EXP-303/304
+  before CUDA, but rejected any further inventory, hook, or method design.
+- Adopted: yes. Limit the commit to the CV32 materializer, target renderer,
+  ordinary trainer, ordinary evaluation renderer, their focused tests, and
+  this required audit log. Then run teacher render, EXP-305, and EXP-306 on one
+  sequential gpu0 lane before any further design.
+- Problems: the audit's `active_audio_jobs=2` was a false positive caused by
+  its own long command line matching the process search. The tmux auditor was
+  corrected to count only Python audio jobs; the next audit is due at about
+  18:52 UTC.
+- Rework: none beyond simplifying to commit and launch. Do not re-open
+  EXP-303/304 identity work or add another admission layer.

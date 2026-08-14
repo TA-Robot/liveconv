@@ -1336,6 +1336,96 @@ def test_robust_semantic_candidate_does_not_attach_inference_wrapper(
     )
 
 
+def test_adapter202_candidates_prebind_external_and_broad_surfaces() -> None:
+    cv32_kinds = [
+        "cv32-breadth-pseudoparallel-ema-external7",
+        "cv32-breadth-pseudoparallel-ema-fresh48",
+        "cv32-breadth-pseudoparallel-ema-hadou",
+        "cv32-breadth-pseudoparallel-ema-stress",
+        "cv32-breadth-pseudoparallel-ema-jsut",
+        "cv32-breadth-pseudoparallel-ema-expanded144",
+    ]
+    repeat_kinds = [
+        "repeat-control-pseudoparallel-ema-external7",
+        "repeat-control-pseudoparallel-ema-fresh48",
+        "repeat-control-pseudoparallel-ema-hadou",
+        "repeat-control-pseudoparallel-ema-stress",
+        "repeat-control-pseudoparallel-ema-jsut",
+        "repeat-control-pseudoparallel-ema-expanded144",
+    ]
+    cv32 = [NEW.candidate_policy(kind) for kind in cv32_kinds]
+    repeat = [NEW.candidate_policy(kind) for kind in repeat_kinds]
+
+    assert [policy["experiment_id"] for policy in cv32] == [
+        "EXP-306",
+        "EXP-307",
+        "EXP-308",
+        "EXP-309",
+        "EXP-310",
+        "EXP-311",
+    ]
+    assert [policy["experiment_id"] for policy in repeat] == [
+        "EXP-305",
+        "EXP-312",
+        "EXP-313",
+        "EXP-314",
+        "EXP-315",
+        "EXP-316",
+    ]
+    assert {policy["variant_id"] for policy in cv32} == {
+        "cross-corpus202-pseudoparallel-cv32-breadth-real-adv-ema202"
+    }
+    assert {policy["variant_id"] for policy in repeat} == {
+        "cross-corpus202-pseudoparallel-repeat32-control-real-adv-ema202"
+    }
+    assert {
+        policy["display_name"] for policy in cv32
+    } == {
+        "EXP-306 / exact EXP-238 + genuine Common Voice32 breadth / "
+        "real-adversarial / EMA"
+    }
+    assert {
+        policy["display_name"] for policy in repeat
+    } == {
+        "EXP-305 / exact EXP-238 + matched Common Voice repeat32 / "
+        "real-adversarial / EMA"
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert all(kind in choices for kind in cv32_kinds + repeat_kinds)
+
+
+def test_adapter202_candidates_are_normal_peft_without_wrapper_or_attachment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail(*args: object, **kwargs: object) -> None:
+        raise AssertionError("ordinary PEFT candidate unexpectedly wrapped")
+
+    monkeypatch.setattr(
+        NEW.post, "attach_continuous_acoustic_latent", fail, raising=False
+    )
+    monkeypatch.setattr(
+        NEW.post, "attach_acoustic_temporal_jitter", fail, raising=False
+    )
+    for kind in (
+        "repeat-control-pseudoparallel-ema-external7",
+        "cv32-breadth-pseudoparallel-ema-external7",
+        "repeat-control-pseudoparallel-ema-expanded144",
+        "cv32-breadth-pseudoparallel-ema-expanded144",
+    ):
+        policy = NEW.candidate_policy(kind)
+        assert policy.get("candidate_format") is None
+        assert policy.get("candidate_attachment") is None
+        candidate = object()
+        assert (
+            NEW._attach_candidate_representation(candidate, policy, torch=object())
+            is candidate
+        )
+
+
 def test_noncontinuous_candidate_does_not_attach_wrapper(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

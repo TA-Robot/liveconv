@@ -1789,6 +1789,128 @@ def candidate_policy(kind: str) -> dict[str, str]:
             ),
         }
     if kind in {
+        "cv32-breadth-pseudoparallel-ema-external7",
+        "cv32-breadth-pseudoparallel-ema-fresh48",
+        "cv32-breadth-pseudoparallel-ema-hadou",
+        "cv32-breadth-pseudoparallel-ema-stress",
+        "cv32-breadth-pseudoparallel-ema-jsut",
+        "cv32-breadth-pseudoparallel-ema-expanded144",
+    }:
+        external = kind.endswith("-external7")
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        expanded = kind.endswith("-expanded144")
+        experiment_id = (
+            "EXP-306"
+            if external
+            else "EXP-311"
+            if expanded
+            else "EXP-310"
+            if jsut
+            else "EXP-309"
+            if stress
+            else "EXP-308"
+            if hadou
+            else "EXP-307"
+        )
+        suffix = (
+            "external7"
+            if external
+            else "expanded144"
+            if expanded
+            else "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": (
+                "cross-corpus202-pseudoparallel-cv32-breadth-real-adv-ema202"
+            ),
+            "display_name": (
+                "EXP-306 / exact EXP-238 + genuine Common Voice32 breadth / "
+                "real-adversarial / EMA"
+            ),
+            "result_kind": (
+                "liveconv-exp306-xvc-pseudoparallel-cv32-breadth-real-adv-ema/v1"
+                if external
+                else (
+                    f"liveconv-{experiment_id.lower()}-xvc-cv32-breadth-"
+                    f"pseudoparallel-ema-{suffix}/v1"
+                )
+            ),
+            "question": (
+                "Does genuinely new CV32 utterance breadth preserve content "
+                "across the fixed external and broad evaluation surfaces?"
+            ),
+        }
+    if kind in {
+        "repeat-control-pseudoparallel-ema-external7",
+        "repeat-control-pseudoparallel-ema-fresh48",
+        "repeat-control-pseudoparallel-ema-hadou",
+        "repeat-control-pseudoparallel-ema-stress",
+        "repeat-control-pseudoparallel-ema-jsut",
+        "repeat-control-pseudoparallel-ema-expanded144",
+    }:
+        external = kind.endswith("-external7")
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        expanded = kind.endswith("-expanded144")
+        experiment_id = (
+            "EXP-305"
+            if external
+            else "EXP-316"
+            if expanded
+            else "EXP-315"
+            if jsut
+            else "EXP-314"
+            if stress
+            else "EXP-313"
+            if hadou
+            else "EXP-312"
+        )
+        suffix = (
+            "external7"
+            if external
+            else "expanded144"
+            if expanded
+            else "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": (
+                "cross-corpus202-pseudoparallel-repeat32-control-real-adv-ema202"
+            ),
+            "display_name": (
+                "EXP-305 / exact EXP-238 + matched Common Voice repeat32 / "
+                "real-adversarial / EMA"
+            ),
+            "result_kind": (
+                "liveconv-exp305-xvc-pseudoparallel-repeat32-control-real-adv-ema/v1"
+                if external
+                else (
+                    f"liveconv-{experiment_id.lower()}-xvc-repeat32-"
+                    f"pseudoparallel-ema-{suffix}/v1"
+                )
+            ),
+            "question": (
+                "Does the exposure-matched repeat32 control preserve content "
+                "across the fixed external and broad evaluation surfaces?"
+            ),
+        }
+    if kind in {
         "speaker-condition-calibrator-fresh48",
         "speaker-condition-calibrator-hadou",
         "speaker-condition-calibrator-stress",
@@ -3020,6 +3142,18 @@ def _parser() -> argparse.ArgumentParser:
             "robust-semantic-pseudoparallel-ema-stress",
             "robust-semantic-pseudoparallel-ema-jsut",
             "robust-semantic-pseudoparallel-ema-expanded144",
+            "cv32-breadth-pseudoparallel-ema-external7",
+            "cv32-breadth-pseudoparallel-ema-fresh48",
+            "cv32-breadth-pseudoparallel-ema-hadou",
+            "cv32-breadth-pseudoparallel-ema-stress",
+            "cv32-breadth-pseudoparallel-ema-jsut",
+            "cv32-breadth-pseudoparallel-ema-expanded144",
+            "repeat-control-pseudoparallel-ema-external7",
+            "repeat-control-pseudoparallel-ema-fresh48",
+            "repeat-control-pseudoparallel-ema-hadou",
+            "repeat-control-pseudoparallel-ema-stress",
+            "repeat-control-pseudoparallel-ema-jsut",
+            "repeat-control-pseudoparallel-ema-expanded144",
             "speaker-condition-calibrator-fresh48",
             "speaker-condition-calibrator-hadou",
             "speaker-condition-calibrator-stress",
