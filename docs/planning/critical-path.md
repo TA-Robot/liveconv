@@ -337,7 +337,12 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-306 exact first170 + 32 new CV speakers/texts (202 updates)
         -> exclude cv27706775u; remaining clients disjoint from train and fixed eval
         -> same ordered real Amitaro assignment; render 32 new control69 teachers
-        -> commit, CUDA smoke, sequential external7, then both arms broad if safe
+        -> both complete external7; zero added gross; instability 1 -> 3 and 1 -> 2
+        -> stop EXP-307--316 broad; new32 beats repeat32 only on auxiliary known text
+        -> EXP-317 replace first 32 EXP-238 CV positions with retained CV32 rows
+        -> keep total 170, CV48/JSUT85/JVS3/Hadou34, target order, and full method fixed
+        -> commit one replacement manifest and ordinary external7 binding, then gpu0
+        -> broad fixed surfaces only if EXP-317 preserves EXP-238 external stability
         -> operator hearing when available
 ```
 
