@@ -209,6 +209,8 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-186 Common Voice 48-speaker retention data method
         -> EXP-187--190 frozen fresh48 / Hadou31 / stress60 / JSUT24 (mixed)
         -> EXP-191 condition-balanced control69 retention replay
+        -> EXP-192 frozen fresh48 gate (Ready after external7 technical pass)
+        -> EXP-193 stress60 gate (blocked on EXP-192 survival)
         -> operator hearing when available
 ```
 

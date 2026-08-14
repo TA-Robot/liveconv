@@ -4365,3 +4365,50 @@ job queue.
 - Rework: preserve EXP-186 as an unheard mixed survivor and close its training
   family. A next method may target condition retention, but must not repeat the
   closed EXP-043 source-only or EXP-044 aligned-target augmentation methods.
+
+## 2026-08-14T04:50:25Z - Grok progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux `liveconv-grok-auditor`.
+- Task: independent 30-minute direction, evidence-cost, and idle-resource audit.
+- Result: `CONTINUE`. It accepted closing EXP-186--190 after 850 diverse WAVs
+  and moving to one conditioned-retention pilot from commit `376348f`. It
+  required a coarse corruption/content screen, port-8878 publication, and a
+  stop-and-replan after the pilot rather than reserving a full render cascade.
+- Problems: the audit had not read the EXP-191 plan and therefore flagged the
+  risk that it could be a disguised repeat of EXP-043/044 or a condition sweep.
+- Rework: verdict adopted. EXP-191 keeps one five-way balanced curriculum as a
+  single data-policy change, generates each target from the already-conditioned
+  source, and otherwise holds EXP-186 fixed. Do not add another plan, method,
+  coefficient, or evaluation family before this pilot produces audio.
+
+## 2026-08-14T04:54:00Z - EXP-191 conditioned teachers completed
+
+- Agent: `primary-integrator`.
+- Task: render the frozen control69 retention target for each of 85 conditioned
+  Common Voice exposures spanning 48 training-only speakers.
+- Dependencies: commit `376348f`; 17 rows each of clean, noise15, tempo1.1,
+  pitch+2 semitones, and leading-silence150; no ASR/output selection.
+- Result: rendered 85 sources and 85 targets in 91.2 seconds at 2.49 GiB peak.
+- Problems: target existence alone does not admit training and says nothing
+  about naturalness, identity, or quality.
+- Rework: run only the frozen consensus content/corruption screen. If the
+  candidate adds no gross row, bind the 170-row curriculum and start the single
+  smoke-to-full training lane.
+
+## 2026-08-14T05:00:00Z - EXP-191 training and external7 completed
+
+- Agent: `primary-integrator`.
+- Task: run the single condition-balanced retention pilot and publish its first
+  independent comparison audio.
+- Dependencies: commit `376348f`; teacher consensus gross 0/85; frozen 170-row
+  hard85/easy85 curriculum; finite two-row smoke.
+- Result: completed 170 updates in 141.1 seconds at 5.74 GiB peak. Total loss
+  moved `298.40 -> 128.46`. Published 35 external7 WAVs to port 8878 with zero
+  gross row. Across five cross-arm common stable rows, control69 to EXP-191
+  moves source distance `0.256 -> 0.191` and known-text distance
+  `0.371 -> 0.254`; both W/T/L are `3/1/1`.
+- Problems: external7 is too small to establish generalization, naturalness,
+  identity, or a winner. ASR remains only a content/corruption diagnostic.
+- Rework: bind one frozen fresh48 identity and render the unchanged checkpoint.
+  Stop before stress60 on candidate-added gross corruption or broad common
+  stable regression.

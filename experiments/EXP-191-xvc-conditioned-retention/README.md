@@ -1,6 +1,6 @@
 # EXP-191: condition-balanced control69 retention replay
 
-Status: prepared; implementation and teacher render pending
+Status: external7 technical gate passed; fresh48 gate next
 
 ## Goal
 
@@ -52,3 +52,17 @@ then stress60 from the unchanged checkpoint. Do not tune condition counts,
 severities, schedule, objective, LR, scope, EMA, or update count. Machine ASR is
 only a content/corruption diagnostic; it cannot select naturalness, identity, a
 keeper, or promotion.
+
+## External7 result
+
+Commit `376348f` produced 85 conditioned control69 teachers with zero consensus
+gross-repetition row. The hard/easy smoke was finite. The one admitted
+170-update lane completed in 141.1 seconds at 5.74 GiB peak, with total loss
+`298.40 -> 128.46`, and published 35 WAVs at
+`artifacts/ms3/listening/exp191-xvc-conditioned-retention-ema-v1`.
+
+The external7 screen found no gross repetition. On the five rows stable under
+both control69 and EXP-191 decoders, source-relative distance moved
+`0.256 -> 0.191` and known-text distance `0.371 -> 0.254`; both comparisons had
+W/T/L `3/1/1`. This admits the unchanged checkpoint to frozen fresh48. It does
+not establish naturalness, identity, a keeper, or promotion.

@@ -1093,6 +1093,31 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "the same frozen independent gate?"
             ),
         }
+    if kind in {
+        "conditioned-retention-ema-fresh48",
+        "conditioned-retention-ema-stress",
+    }:
+        stress = kind.endswith("-stress")
+        experiment_id = "EXP-193" if stress else "EXP-192"
+        suffix = "stress60" if stress else "fresh48"
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": (
+                "cv12-conditioned-retention-real-adversarial-ema170"
+            ),
+            "display_name": (
+                "EXP-191 / condition-balanced control69 retention + "
+                "real-adversarial + EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-conditioned-"
+                f"retention-ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does condition-balanced control69 retention survive the "
+                "same frozen independent content and condition gate?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1727,6 +1752,8 @@ def _parser() -> argparse.ArgumentParser:
             "commonvoice48-retention-ema-hadou",
             "commonvoice48-retention-ema-stress",
             "commonvoice48-retention-ema-jsut",
+            "conditioned-retention-ema-fresh48",
+            "conditioned-retention-ema-stress",
         ),
         default="speaker7",
     )

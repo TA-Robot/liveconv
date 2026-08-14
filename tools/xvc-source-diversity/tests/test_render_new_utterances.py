@@ -714,6 +714,29 @@ def test_commonvoice48_retention_policy_has_distinct_gate_identity() -> None:
     assert "commonvoice48-retention-ema-stress" in choices
 
 
+def test_conditioned_retention_policy_has_distinct_gate_identity() -> None:
+    kinds = [
+        "conditioned-retention-ema-fresh48",
+        "conditioned-retention-ema-stress",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-192",
+        "EXP-193",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "cv12-conditioned-retention-real-adversarial-ema170"
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert "conditioned-retention-ema-fresh48" in choices
+    assert "conditioned-retention-ema-stress" in choices
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"
