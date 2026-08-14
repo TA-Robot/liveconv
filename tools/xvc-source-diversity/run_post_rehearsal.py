@@ -58,6 +58,12 @@ from prepare_conditioned_retention_curriculum import (  # noqa: E402
 from prepare_conditioned_retention_curriculum import (  # noqa: E402
     OUTPUT_KIND as CONDITIONED_RETENTION_OUTPUT_KIND,
 )
+from prepare_unpaired_human_curriculum import (  # noqa: E402
+    EXPECTED_COMPOSITION as UNPAIRED_HUMAN_EXPECTED_DOMAINS,
+)
+from prepare_unpaired_human_curriculum import (  # noqa: E402
+    OUTPUT_KIND as UNPAIRED_HUMAN_OUTPUT_KIND,
+)
 from prepare_selective_retention_curriculum import (  # noqa: E402
     OUTPUT_KIND as SELECTIVE_OUTPUT_KIND,
 )
@@ -83,6 +89,7 @@ ACOUSTIC_ENCODER_CHECKPOINT_KIND = (
 )
 GENERATIVE_OBJECTIVE = "generative-only"
 REAL_REFERENCE_ADVERSARIAL_OBJECTIVE = "real-reference-adversarial"
+FACTORIZED_UNPAIRED_OBJECTIVE = "factorized-unpaired-human-adversarial"
 SEQUENTIAL_OPTIMIZER = "sequential"
 PCGRAD_PAIRED_OPTIMIZER = "pcgrad-hard-easy-paired"
 EMA_IMPLEMENTATION = "ema-pytorch-0.7.7-defaults-adapter-equivalent"
@@ -219,6 +226,39 @@ def listening_policy(
     if optimizer_mode != SEQUENTIAL_OPTIMIZER:
         raise PostRehearsalError("unknown optimizer mode")
     if use_adapter_ema:
+        if manifest_kind == UNPAIRED_HUMAN_OUTPUT_KIND:
+            if (
+                trainable_target != LORA69_TARGET
+                or training_objective != FACTORIZED_UNPAIRED_OBJECTIVE
+                or optimizer_mode != SEQUENTIAL_OPTIMIZER
+                or parameter_anchor
+                or source_activity_envelope
+            ):
+                raise PostRehearsalError(
+                    "unpaired human EMA requires the exact factorized LoRA69 pilot"
+                )
+            return {
+                "slug": "exp203",
+                "candidate_id": "human170-factorized-unpaired-ema170",
+                "candidate_name": (
+                    "EXP-203 / unpaired human content-identity factorization / EMA"
+                ),
+                "run_kind": "EXP-203 X-VC unpaired-human external evaluation",
+                "result_kind": "liveconv-exp203-xvc-unpaired-human-factorized-ema/v1",
+                "question": (
+                    "Can alignment-free human source content plus unrelated real "
+                    "target identity improve broad X-VC conversion stability?"
+                ),
+                "independent_variable": (
+                    "replace aligned synthetic repair/retention targets with 170 "
+                    "speech-active Hadou source windows spread across all 334 train "
+                    "IDs; source Whisper content is supervised separately from an "
+                    "unrelated-text Amitaro speaker target and real-wave adversarial "
+                    "reference, with no waveform alignment, stretch, DTW, or target "
+                    "content loss; control69 LoRA69 initialization, 170 updates, LR, "
+                    "optimizer, clip, zero frame condition, and EMA stay fixed"
+                ),
+            }
         if trainable_target == ACOUSTIC_ENCODER_TARGET:
             if (
                 manifest_kind != SELECTIVE_OUTPUT_KIND
@@ -520,6 +560,8 @@ def load_manifest(
     kind = value.get("kind")
     if kind == JSUT_RETENTION_OUTPUT_KIND:
         expected_domains = JSUT_EXPECTED_DOMAINS
+    elif kind == UNPAIRED_HUMAN_OUTPUT_KIND:
+        expected_domains = UNPAIRED_HUMAN_EXPECTED_DOMAINS
     elif kind == COMMONVOICE_RETENTION_OUTPUT_KIND:
         expected_domains = COMMONVOICE_RETENTION_EXPECTED_DOMAINS
     elif kind == CONDITIONED_RETENTION_OUTPUT_KIND:
@@ -537,6 +579,7 @@ def load_manifest(
             JSUT_RETENTION_OUTPUT_KIND,
             COMMONVOICE_RETENTION_OUTPUT_KIND,
             CONDITIONED_RETENTION_OUTPUT_KIND,
+            UNPAIRED_HUMAN_OUTPUT_KIND,
         }
         or value.get("composition") != expected_domains
         or not isinstance(items, list)
@@ -590,6 +633,17 @@ def load_manifest(
         if source_root is None:
             raise PostRehearsalError("diverse retention work is required")
         target_root = source_work
+        if kind == UNPAIRED_HUMAN_OUTPUT_KIND:
+            if (
+                item.get("source_root") != "diverse-work"
+                or item.get("target_root") != "diverse-work"
+                or item.get("learning_target")
+                != "source-content-plus-unpaired-target-identity"
+            ):
+                raise PostRehearsalError("unpaired human target identity drifted")
+            target_root = diverse_work
+            if target_root is None:
+                raise PostRehearsalError("unpaired human work is required")
         if kind in {
             SELECTIVE_OUTPUT_KIND,
             JSUT_RETENTION_OUTPUT_KIND,
@@ -724,6 +778,7 @@ def _batch_from_item(
     config: Mapping[str, Any],
     torch: Any,
     device: Any,
+    factorized_unpaired: bool = False,
 ) -> dict[str, Any]:
     source_root = (
         diverse_work if item.get("source_root") == "diverse-work" else source_work
@@ -759,8 +814,35 @@ def _batch_from_item(
         "source_wav": source["source_wav"],
         "semantic_tokens": source["semantic_tokens"],
         "target_wav": target["target_wav"],
-        "ssl_feat": target["ssl_feat"],
+        "ssl_feat": (
+            source["ssl_feat"] if factorized_unpaired else target["ssl_feat"]
+        ),
     }
+
+
+def factorized_unpaired_generator_loss(
+    outputs: Mapping[str, Any], batch: Mapping[str, Any], *, torch: Any
+) -> dict[str, Any]:
+    """Keep source content while target identity is learned without alignment."""
+    prediction = outputs.get("pred")
+    predicted_speaker = outputs.get("pred_sim_feat")
+    target_speaker = outputs.get("sim_feat")
+    if (
+        prediction is None
+        or predicted_speaker is None
+        or target_speaker is None
+        or prediction.shape != batch["ssl_feat"].shape
+    ):
+        raise PostRehearsalError("factorized human output shape drifted")
+    semantic = torch.nn.functional.mse_loss(prediction, batch["ssl_feat"])
+    speaker = torch.nn.functional.mse_loss(predicted_speaker, target_speaker)
+    loss = (
+        role_mix.STANDARD_LOSS_WEIGHTS["mse_loss"] * semantic
+        + role_mix.STANDARD_LOSS_WEIGHTS["sim_mse_loss"] * speaker
+    )
+    if not bool(torch.isfinite(loss)):
+        raise PostRehearsalError("factorized human loss is non-finite")
+    return {"loss": loss, "semantic": semantic, "speaker": speaker}
 
 
 def _set_converter_training_only(model: Any) -> list[Any]:
@@ -1113,6 +1195,8 @@ def smoke_rows(
         return items[:2]
     if parameter_anchor:
         return items[:2]
+    if manifest.get("kind") == UNPAIRED_HUMAN_OUTPUT_KIND:
+        return items[:2]
     if (
         manifest.get("kind") not in DIVERSE_RETENTION_KINDS
         and not require_hard_easy
@@ -1374,28 +1458,32 @@ def run(
     discriminator = None
     discriminator_optimizer = None
     realism_targets: dict[str, Any] = {}
-    if arguments.training_objective == REAL_REFERENCE_ADVERSARIAL_OBJECTIVE:
+    if arguments.training_objective in {
+        REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
+        FACTORIZED_UNPAIRED_OBJECTIVE,
+    }:
         discriminator, discriminator_optimizer = breadth._load_pretrained_discriminator(
             arguments, config, torch=torch, device=device
         )
-        target_by_id = {
-            target_id: _pair(target_id, path, digest)
-            for target_id, path, digest in target_rows
-        }
-        for target_id in {str(item["target_id"]) for item in rows}:
-            pair = target_by_id.get(target_id)
-            if pair is None:
-                raise PostRehearsalError(
-                    f"real adversarial target is unavailable: {target_id}"
-                )
-            realism_targets[target_id] = base._extract_pair_tensors(
-                trained,
-                pair,
-                process_audio=process_audio,
-                config=config,
-                torch=torch,
-                device=device,
-            )["target_wav"]
+        if arguments.training_objective == REAL_REFERENCE_ADVERSARIAL_OBJECTIVE:
+            target_by_id = {
+                target_id: _pair(target_id, path, digest)
+                for target_id, path, digest in target_rows
+            }
+            for target_id in {str(item["target_id"]) for item in rows}:
+                pair = target_by_id.get(target_id)
+                if pair is None:
+                    raise PostRehearsalError(
+                        f"real adversarial target is unavailable: {target_id}"
+                    )
+                realism_targets[target_id] = base._extract_pair_tensors(
+                    trained,
+                    pair,
+                    process_audio=process_audio,
+                    config=config,
+                    torch=torch,
+                    device=device,
+                )["target_wav"]
 
     def batch_for(item: Mapping[str, Any]) -> Any:
         if arguments.trainable_target == FULL_CONVERTER_TARGET:
@@ -1416,6 +1504,9 @@ def run(
             config=config,
             torch=torch,
             device=device,
+            factorized_unpaired=(
+                manifest.get("kind") == UNPAIRED_HUMAN_OUTPUT_KIND
+            ),
         )
         return base._gpu_batch(tensors, torch=torch, device=device)
 
@@ -1476,8 +1567,13 @@ def run(
                     trainable,
                     batch,
                     torch=torch,
-                    real_audios=realism_targets[str(item["target_id"])].to(
-                        device=device, dtype=torch.float32
+                    real_audios=(
+                        realism_targets[str(item["target_id"])].to(
+                            device=device, dtype=torch.float32
+                        )
+                        if arguments.training_objective
+                        == REAL_REFERENCE_ADVERSARIAL_OBJECTIVE
+                        else None
                     ),
                     generator_regularizer=(
                         (
@@ -1517,6 +1613,20 @@ def run(
                             )
                         )
                         if arguments.source_activity_envelope
+                        else None
+                    ),
+                    generator_loss_fn=(
+                        (
+                            lambda outputs, current_batch: (
+                                factorized_unpaired_generator_loss(
+                                    outputs,
+                                    current_batch,
+                                    torch=torch,
+                                )
+                            )
+                        )
+                        if arguments.training_objective
+                        == FACTORIZED_UNPAIRED_OBJECTIVE
                         else None
                     ),
                 )
@@ -1761,7 +1871,11 @@ def run(
                 "first": adversarial_metrics[0],
                 "last": adversarial_metrics[-1],
                 "real_audio": "authorized-original-Amitaro-target",
-                "generative_audio": "selective-repair-or-retention-target",
+                "generative_audio": (
+                    "source-semantic-plus-target-speaker-factorization"
+                    if arguments.training_objective == FACTORIZED_UNPAIRED_OBJECTIVE
+                    else "selective-repair-or-retention-target"
+                ),
             }
             if adversarial_metrics
             else None
@@ -1831,7 +1945,11 @@ def parser() -> argparse.ArgumentParser:
     )
     value.add_argument(
         "--training-objective",
-        choices=(GENERATIVE_OBJECTIVE, REAL_REFERENCE_ADVERSARIAL_OBJECTIVE),
+        choices=(
+            GENERATIVE_OBJECTIVE,
+            REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
+            FACTORIZED_UNPAIRED_OBJECTIVE,
+        ),
         default=GENERATIVE_OBJECTIVE,
     )
     value.add_argument(

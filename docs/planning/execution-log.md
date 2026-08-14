@@ -4622,3 +4622,30 @@ job queue.
 - Rework: verdict adopted and already satisfied. Close EXP-198--202 using the
   complete five-surface result. Do not continue the encoder family. Commit the
   closure before admitting one genuinely different system/data mechanism.
+
+## 2026-08-14T06:31:00Z - EXP-203--207 unpaired human factorization prepared
+
+- Agent: `primary-integrator`.
+- Task: select and implement one data/objective architecture outside the
+  closed converter-retention, timing-loss, and acoustic-encoder families.
+- Dependencies: the complete EXP-198--202 five-surface rejection; existing
+  424-row human Hadou/Amitaro manifest with 334 train IDs; operator-authorized
+  Amitaro target archive; no human hearing availability.
+- Result: selected 170 Hadou source IDs spread across all 334 train rows and
+  paired each with a unique Amitaro target 167 train positions away. The
+  materializer produced 170 unique source and 170 unique target active windows,
+  zero same-text pair, no stretch, no DTW, and no heldout access; curriculum
+  SHA-256 is
+  `f191882641bbff714c4e03a247e38fdca959ca4f7bb7f6a2fd658b0f67c0d727`.
+  The new objective supervises source Whisper content separately from the
+  unrelated target speaker embedding and real-wave adversarial/feature target.
+  Control69 LoRA69, 170 updates, LR, optimizer, clip, zero frame condition, and
+  EMA stay fixed. External7/fresh48/Hadou31/stress60/JSUT24 are prebound.
+  Focused implementation tests passed `92/92`; the real-input validation passed
+  all 170 rows without CUDA.
+- Problems: factorizing aligned waveform loss may remove an important acoustic
+  anchor and permit unintelligible but target-like output. The smoke can detect
+  nonfinite execution only; machine ASR cannot judge naturalness or identity.
+- Rework: commit this exact slice, run one two-row smoke and one 170-update GPU
+  pilot, then render all five fixed surfaces and close. Do not tune objective
+  weights, pairing rotation, windows, scope, LR, horizon, or EMA.

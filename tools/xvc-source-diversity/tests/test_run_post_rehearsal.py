@@ -120,6 +120,38 @@ def test_acoustic_encoder_policy_moves_learning_before_converter() -> None:
     assert "21,521,536" in policy["independent_variable"]
 
 
+def test_unpaired_human_policy_factorizes_content_and_identity() -> None:
+    policy = post.listening_policy(
+        post.UNPAIRED_HUMAN_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.FACTORIZED_UNPAIRED_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp203"
+    assert policy["candidate_id"] == "human170-factorized-unpaired-ema170"
+    assert "unrelated-text Amitaro" in policy["independent_variable"]
+
+
+def test_factorized_loss_uses_source_semantics_and_target_speaker() -> None:
+    import torch
+
+    outputs = {
+        "pred": torch.tensor([[[1.0, 3.0]]]),
+        "pred_sim_feat": torch.tensor([[2.0, 4.0]]),
+        "sim_feat": torch.tensor([[1.0, 1.0]]),
+    }
+    batch = {"ssl_feat": torch.tensor([[[0.0, 1.0]]])}
+
+    losses = post.factorized_unpaired_generator_loss(
+        outputs, batch, torch=torch
+    )
+
+    assert losses["semantic"].item() == 2.5
+    assert losses["speaker"].item() == 5.0
+    assert losses["loss"].item() == 2_550.0
+
+
 def test_acoustic_encoder_setter_freezes_every_other_module() -> None:
     class FakeModule:
         def train(self, value: bool) -> None:

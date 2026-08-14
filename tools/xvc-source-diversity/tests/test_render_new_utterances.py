@@ -796,6 +796,32 @@ def test_acoustic_encoder_policy_prebinds_complete_five_surface_contract() -> No
     assert all(kind in choices for kind in kinds)
 
 
+def test_unpaired_human_policy_prebinds_complete_five_surface_contract() -> None:
+    kinds = [
+        "unpaired-human-ema-fresh48",
+        "unpaired-human-ema-hadou",
+        "unpaired-human-ema-stress",
+        "unpaired-human-ema-jsut",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-204",
+        "EXP-205",
+        "EXP-206",
+        "EXP-207",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "human170-factorized-unpaired-ema170"
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert all(kind in choices for kind in kinds)
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"

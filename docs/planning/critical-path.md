@@ -219,6 +219,8 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-199--202 prebound fresh48 / Hadou31 / stress60 / JSUT24
         -> 850 WAVs; Hadou improved but fresh48 / tempo / JSUT regressed
         -> acoustic-encoder target family closed; no depth/LR/scope neighbor
+        -> EXP-203 alignment-free human content/identity factorization
+        -> EXP-204--207 prebound fresh48 / Hadou31 / stress60 / JSUT24
         -> operator hearing when available
 ```
 

@@ -1198,6 +1198,48 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "complete frozen cross-corpus and condition contract?"
             ),
         }
+    if kind in {
+        "unpaired-human-ema-fresh48",
+        "unpaired-human-ema-hadou",
+        "unpaired-human-ema-stress",
+        "unpaired-human-ema-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        experiment_id = (
+            "EXP-207"
+            if jsut
+            else "EXP-206"
+            if stress
+            else "EXP-205"
+            if hadou
+            else "EXP-204"
+        )
+        suffix = (
+            "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "human170-factorized-unpaired-ema170",
+            "display_name": (
+                "EXP-203 / unpaired human content-identity factorization / EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-unpaired-human-"
+                f"factorized-ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does alignment-free human content/identity factorization survive "
+                "the complete frozen cross-corpus and condition contract?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1883,6 +1925,10 @@ def _parser() -> argparse.ArgumentParser:
             "acoustic-encoder-ema-hadou",
             "acoustic-encoder-ema-stress",
             "acoustic-encoder-ema-jsut",
+            "unpaired-human-ema-fresh48",
+            "unpaired-human-ema-hadou",
+            "unpaired-human-ema-stress",
+            "unpaired-human-ema-jsut",
         ),
         default="speaker7",
     )

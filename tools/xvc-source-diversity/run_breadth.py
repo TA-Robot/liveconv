@@ -359,6 +359,9 @@ def _adversarial_update(
     output_regularizer: (
         Callable[[Any, Mapping[str, Any]], tuple[Any, Mapping[str, float]]] | None
     ) = None,
+    generator_loss_fn: (
+        Callable[[Mapping[str, Any], Mapping[str, Any]], Mapping[str, Any]] | None
+    ) = None,
 ) -> dict[str, float]:
     setter = generator_training_setter or base._set_adapter_training_only
     setter(trained)
@@ -393,7 +396,11 @@ def _adversarial_update(
         parameter.requires_grad_(False)
     with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
         outputs["audios"] = batch["target_wav"][..., : reconstruction.shape[-1]]
-        generator_losses = trained.generative_loss(outputs)
+        generator_losses = (
+            trained.generative_loss(outputs)
+            if generator_loss_fn is None
+            else generator_loss_fn(outputs, batch)
+        )
         outputs["audios"] = discriminator_real[..., : reconstruction.shape[-1]]
         adversarial_losses = discriminator.adversarial_loss(outputs)
         generator_loss = _finite_loss(
@@ -449,6 +456,13 @@ def _adversarial_update(
         "adversarial_generator": float(adversarial_losses["adv_gen_loss"]),
         "adversarial_feature": float(adversarial_losses["adv_feat_loss"]),
     }
+    metrics.update(
+        {
+            f"generator_{key}": float(value.detach().cpu())
+            for key, value in generator_losses.items()
+            if key != "loss" and hasattr(value, "detach")
+        }
+    )
     metrics.update(
         {str(key): float(value) for key, value in regularizer_metrics.items()}
     )
