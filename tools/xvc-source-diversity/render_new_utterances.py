@@ -34,6 +34,12 @@ from prepare_jsut_evaluation import OUTPUT_KIND as JSUT_KIND  # noqa: E402
 from prepare_jsut_evaluation import (  # noqa: E402
     WINDOW_POLICY as JSUT_WINDOW_POLICY,
 )
+from prepare_src4vc_heldout_evaluation import (  # noqa: E402
+    OUTPUT_KIND as SRC4VC_HELDOUT_KIND,
+)
+from prepare_src4vc_heldout_evaluation import (  # noqa: E402
+    SOURCE_LICENSE as SRC4VC_SOURCE_LICENSE,
+)
 
 KIND = "liveconv-exp039-commonvoice-same-speaker-new-utterances/v1"
 EXPANDED_KIND = "liveconv-exp055-commonvoice-local-unused/v1"
@@ -55,6 +61,8 @@ EXPANDED_STRESS_SPEAKERS = 16
 FRESH48_ROWS = 48
 FRESH48_SPEAKERS = 48
 JSUT_SPEAKERS = 1
+SRC4VC_HELDOUT_ROWS = 30
+SRC4VC_HELDOUT_SPEAKERS = 15
 STRESS_GROUPS = {
     "stress-clean",
     "stress-noise20",
@@ -1464,6 +1472,22 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "across the frozen symmetric length and condition matrix?"
             ),
         }
+    if kind == "src4vc-pseudoparallel-ema-heldout30":
+        return {
+            "experiment_id": "EXP-250",
+            "variant_id": "src4vc85-pseudoparallel-real-adv-ema170",
+            "display_name": (
+                "EXP-244 / SRC4VC85 source substitution / pseudoparallel / "
+                "real-adversarial / EMA"
+            ),
+            "result_kind": (
+                "liveconv-exp250-xvc-src4vc-pseudoparallel-heldout30/v1"
+            ),
+            "question": (
+                "Does the SRC4VC85 source substitution retain content on thirty "
+                "rows from fifteen disjoint SRC4VC speakers?"
+            ),
+        }
     if kind in {
         "src4vc-pseudoparallel-ema-fresh48",
         "src4vc-pseudoparallel-ema-hadou",
@@ -1652,6 +1676,7 @@ def load_evaluation(path: Path) -> dict[str, Any]:
         EXPANDED_STRESS_KIND: EXPANDED_STRESS_ROWS,
         FRESH48_KIND: FRESH48_ROWS,
         JSUT_KIND: JSUT_ROWS,
+        SRC4VC_HELDOUT_KIND: SRC4VC_HELDOUT_ROWS,
     }.get(kind, EXPECTED_ROWS)
     expected_speakers = {
         EXPANDED_KIND: EXPANDED_SPEAKERS,
@@ -1660,6 +1685,7 @@ def load_evaluation(path: Path) -> dict[str, Any]:
         EXPANDED_STRESS_KIND: EXPANDED_STRESS_SPEAKERS,
         FRESH48_KIND: FRESH48_SPEAKERS,
         JSUT_KIND: JSUT_SPEAKERS,
+        SRC4VC_HELDOUT_KIND: SRC4VC_HELDOUT_SPEAKERS,
     }.get(kind, EXPECTED_SPEAKERS)
     if (
         not isinstance(value, dict)
@@ -1672,6 +1698,7 @@ def load_evaluation(path: Path) -> dict[str, Any]:
             EXPANDED_STRESS_KIND,
             FRESH48_KIND,
             JSUT_KIND,
+            SRC4VC_HELDOUT_KIND,
         }
         or not isinstance(source, dict)
         or source.get("license")
@@ -1681,7 +1708,11 @@ def load_evaluation(path: Path) -> dict[str, Any]:
             else (
                 "JSUT-LICENCE.txt (category-specific CC BY/CC BY-SA)"
                 if kind == JSUT_KIND
-                else "CC0-1.0"
+                else (
+                    SRC4VC_SOURCE_LICENSE
+                    if kind == SRC4VC_HELDOUT_KIND
+                    else "CC0-1.0"
+                )
             )
         )
         or not isinstance(items, list)
@@ -1796,6 +1827,20 @@ def load_evaluation(path: Path) -> dict[str, Any]:
             or len(normalized) < 2
         ):
             raise NewUtteranceError("JSUT evaluation row identity drifted")
+        if kind == SRC4VC_HELDOUT_KIND and (
+            item.get("group") != "src4vc-disjoint-heldout"
+            or item.get("selection_policy")
+            != (
+                "first two RECITATION rows from each of fifteen frozen speakers "
+                "disjoint from SRC4VC85 training"
+            )
+            or item.get("window_policy") != "first-2.4s-right-pad-if-short"
+            or item.get("sample_rate") not in {24_000, 44_100, 48_000}
+            or not isinstance(item.get("src4vc_speaker_id"), str)
+            or not isinstance(transcript, str)
+            or not normalized
+        ):
+            raise NewUtteranceError("SRC4VC heldout row identity drifted")
         identifiers.add(identifier)
         filenames.add(filename)
         clients.add(client)
@@ -1829,6 +1874,10 @@ def load_evaluation(path: Path) -> dict[str, Any]:
             raise NewUtteranceError(
                 "expanded stress matrix balance drifted"
             )
+    if kind == SRC4VC_HELDOUT_KIND and Counter(
+        str(item["src4vc_speaker_id"]) for item in items
+    ) != {str(item["src4vc_speaker_id"]): 2 for item in items}:
+        raise NewUtteranceError("SRC4VC heldout speaker balance drifted")
     return value
 
 
@@ -2437,6 +2486,7 @@ def _parser() -> argparse.ArgumentParser:
             "src4vc-pseudoparallel-ema-stress",
             "src4vc-pseudoparallel-ema-jsut",
             "src4vc-pseudoparallel-ema-expanded-stress",
+            "src4vc-pseudoparallel-ema-heldout30",
         ),
         default="speaker7",
     )

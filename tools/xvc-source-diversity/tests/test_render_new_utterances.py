@@ -1031,6 +1031,7 @@ def test_src4vc_pseudoparallel_prebinds_broad_evaluation_contract() -> None:
         "src4vc-pseudoparallel-ema-stress",
         "src4vc-pseudoparallel-ema-jsut",
         "src4vc-pseudoparallel-ema-expanded-stress",
+        "src4vc-pseudoparallel-ema-heldout30",
     ]
     policies = [NEW.candidate_policy(kind) for kind in kinds]
 
@@ -1040,6 +1041,7 @@ def test_src4vc_pseudoparallel_prebinds_broad_evaluation_contract() -> None:
         "EXP-247",
         "EXP-248",
         "EXP-249",
+        "EXP-250",
     ]
     assert {policy["variant_id"] for policy in policies} == {
         "src4vc85-pseudoparallel-real-adv-ema170"
