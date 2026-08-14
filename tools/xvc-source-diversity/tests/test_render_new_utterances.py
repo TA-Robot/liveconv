@@ -540,6 +540,26 @@ def test_selective_retention_policies_cover_three_frozen_sets() -> None:
     assert fresh["variant_id"] == hadou["variant_id"] == jsut["variant_id"]
 
 
+def test_full_converter_retention_policies_cover_three_frozen_sets() -> None:
+    fresh = NEW.candidate_policy("full-converter-retention-fresh48")
+    hadou = NEW.candidate_policy("full-converter-retention-hadou")
+    jsut = NEW.candidate_policy("full-converter-retention-jsut")
+
+    assert [fresh["experiment_id"], hadou["experiment_id"], jsut["experiment_id"]] == [
+        "EXP-155",
+        "EXP-156",
+        "EXP-157",
+    ]
+    assert fresh["variant_id"] == hadou["variant_id"] == jsut["variant_id"]
+    assert fresh["candidate_format"] == "merged-control69-converter"
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert "full-converter-retention-jsut" in choices
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"

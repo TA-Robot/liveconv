@@ -46,3 +46,24 @@ def test_selective_retention_has_distinct_listener_identity() -> None:
     assert policy["slug"] == "exp150"
     assert policy["candidate_id"] == "cv12-selective-retention170"
     assert policy["result_kind"].startswith("liveconv-exp150-")
+
+
+def test_full_converter_retention_changes_only_trainable_target_identity() -> None:
+    policy = post.listening_policy(
+        post.SELECTIVE_OUTPUT_KIND, post.FULL_CONVERTER_TARGET
+    )
+
+    assert policy["slug"] == "exp154"
+    assert policy["candidate_id"] == (
+        "cv12-selective-retention-full-converter170"
+    )
+    assert "42" not in policy["independent_variable"]
+
+
+def test_full_converter_is_not_admitted_for_other_curricula() -> None:
+    try:
+        post.listening_policy(post.HARD_OUTPUT_KIND, post.FULL_CONVERTER_TARGET)
+    except post.PostRehearsalError as error:
+        assert "selective retention" in str(error)
+    else:
+        raise AssertionError("full converter unexpectedly admitted")

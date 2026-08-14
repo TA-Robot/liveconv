@@ -51,15 +51,49 @@ from prepare_selective_retention_curriculum import (  # noqa: E402
 CANDIDATE_ID = "cv12-clean-post-rehearsal170"
 RESULT_KIND = "liveconv-exp141-xvc-clean-post-rehearsal-result/v1"
 LEARNING_RATE = 1e-4
+FULL_CONVERTER_TARGET = "full-converter"
+LORA69_TARGET = "lora69"
+CONVERTER_PREFIX = "acoustic_converter"
+EXPECTED_CONVERTER_PARAMETERS = 42_357_760
+CONVERTER_CHECKPOINT_KIND = "liveconv-xvc-merged-control69-converter/v1"
 
 
 class PostRehearsalError(RuntimeError):
     """The bounded clean post-adaptation rehearsal cannot safely continue."""
 
 
-def listening_policy(manifest_kind: str = OUTPUT_KIND) -> dict[str, str]:
+def listening_policy(
+    manifest_kind: str = OUTPUT_KIND, trainable_target: str = LORA69_TARGET
+) -> dict[str, str]:
     """Return the complete shared-listener identity for the admitted method."""
 
+    if trainable_target == FULL_CONVERTER_TARGET:
+        if manifest_kind != SELECTIVE_OUTPUT_KIND:
+            raise PostRehearsalError(
+                "full converter is admitted only for selective retention"
+            )
+        return {
+            "slug": "exp154",
+            "candidate_id": "cv12-selective-retention-full-converter170",
+            "candidate_name": (
+                "EXP-154 / selective retention / full acoustic converter"
+            ),
+            "run_kind": "EXP-154 X-VC full-converter retention evaluation",
+            "result_kind": "liveconv-exp154-xvc-full-converter-retention/v1",
+            "question": (
+                "Can a merged-control69 full acoustic converter generalize "
+                "selective hard repair while retaining normal behavior?"
+            ),
+            "independent_variable": (
+                "trainable target changes from control69's 69 LoRA modules to "
+                "all acoustic-converter parameters; the exact EXP-150 selective "
+                "curriculum, learning targets, initialization function, loss, LR, "
+                "clip, target references, update count, and zero frame condition "
+                "stay fixed"
+            ),
+        }
+    if trainable_target != LORA69_TARGET:
+        raise PostRehearsalError("unknown trainable target")
     if manifest_kind == SELECTIVE_OUTPUT_KIND:
         return {
             "slug": "exp150",
@@ -308,6 +342,120 @@ def _batch_from_item(
     }
 
 
+def _set_converter_training_only(model: Any) -> list[Any]:
+    model.eval()
+    converter = getattr(model, CONVERTER_PREFIX, None)
+    if converter is None:
+        raise PostRehearsalError("X-VC acoustic converter is unavailable")
+    converter.train(True)
+    trainable: list[Any] = []
+    for name, parameter in model.named_parameters():
+        selected = name.startswith(CONVERTER_PREFIX + ".")
+        parameter.requires_grad_(selected)
+        if selected:
+            trainable.append(parameter)
+    if (
+        sum(parameter.numel() for parameter in trainable)
+        != EXPECTED_CONVERTER_PARAMETERS
+    ):
+        raise PostRehearsalError("full converter parameter count drifted")
+    return trainable
+
+
+def _converter_snapshot(model: Any, torch: Any) -> dict[str, Any]:
+    snapshot: dict[str, Any] = {}
+    for name, parameter in model.named_parameters():
+        if not name.startswith(CONVERTER_PREFIX + "."):
+            continue
+        relative = name.removeprefix(CONVERTER_PREFIX + ".")
+        value = parameter.detach().cpu().contiguous()
+        if not bool(torch.isfinite(value).all()):
+            raise PostRehearsalError(f"non-finite converter parameter: {relative}")
+        snapshot[relative] = value
+    if (
+        sum(value.numel() for value in snapshot.values())
+        != EXPECTED_CONVERTER_PARAMETERS
+    ):
+        raise PostRehearsalError("converter snapshot parameter count drifted")
+    return snapshot
+
+
+def save_converter_checkpoint(
+    model: Any, directory: Path, torch: Any
+) -> dict[str, Any]:
+    from safetensors.torch import load_file, save_file
+
+    directory.mkdir()
+    weights = directory / "converter-parameters.safetensors"
+    snapshot = _converter_snapshot(model, torch)
+    save_file(
+        snapshot,
+        str(weights),
+        metadata={"format": "merged_control69_converter_parameters_v1"},
+    )
+    reloaded = load_file(str(weights), device="cpu")
+    if set(reloaded) != set(snapshot) or any(
+        not torch.equal(reloaded[name], snapshot[name]) for name in snapshot
+    ):
+        raise PostRehearsalError("converter checkpoint serialization drifted")
+    metadata = {
+        "schema_version": 1,
+        "kind": CONVERTER_CHECKPOINT_KIND,
+        "initialization": "base-xvc-plus-merged-control69",
+        "parameter_prefix": CONVERTER_PREFIX,
+        "tensor_count": len(snapshot),
+        "parameter_count": EXPECTED_CONVERTER_PARAMETERS,
+        "weights_sha256": sha256_file(weights),
+    }
+    method._write_json(directory / "converter.json", metadata)
+    return metadata
+
+
+def load_converter_checkpoint(
+    model: Any, directory: Path, *, torch: Any, device: Any
+) -> dict[str, Any]:
+    from safetensors.torch import load_file
+
+    metadata_path = directory / "converter.json"
+    weights = directory / "converter-parameters.safetensors"
+    if (
+        directory.is_symlink()
+        or metadata_path.is_symlink()
+        or weights.is_symlink()
+        or not metadata_path.is_file()
+        or not weights.is_file()
+    ):
+        raise PostRehearsalError("full converter checkpoint is unavailable")
+    metadata = load_json(metadata_path)
+    if (
+        metadata.get("kind") != CONVERTER_CHECKPOINT_KIND
+        or metadata.get("parameter_prefix") != CONVERTER_PREFIX
+        or metadata.get("parameter_count") != EXPECTED_CONVERTER_PARAMETERS
+        or metadata.get("weights_sha256") != sha256_file(weights)
+    ):
+        raise PostRehearsalError("full converter checkpoint identity drifted")
+    stored = load_file(str(weights), device="cpu")
+    destinations = {
+        name.removeprefix(CONVERTER_PREFIX + "."): parameter
+        for name, parameter in model.named_parameters()
+        if name.startswith(CONVERTER_PREFIX + ".")
+    }
+    if set(stored) != set(destinations) or sum(
+        value.numel() for value in stored.values()
+    ) != EXPECTED_CONVERTER_PARAMETERS:
+        raise PostRehearsalError("full converter tensor set drifted")
+    with torch.no_grad():
+        for name, value in stored.items():
+            destination = destinations[name]
+            if tuple(value.shape) != tuple(destination.shape):
+                raise PostRehearsalError(f"converter shape drifted: {name}")
+            destination.copy_(value.to(device=device, dtype=destination.dtype))
+    actual = _converter_snapshot(model, torch)
+    if any(not torch.equal(actual[name], stored[name]) for name in stored):
+        raise PostRehearsalError("full converter checkpoint reload is not exact")
+    return metadata
+
+
 def run(
     arguments: argparse.Namespace,
     manifest: Mapping[str, Any],
@@ -321,7 +469,7 @@ def run(
         raise PostRehearsalError("EXP-141 requires the explicit gpu0 lease")
     started = time.monotonic()
     arguments.work_dir.mkdir()
-    policy = listening_policy(str(manifest["kind"]))
+    policy = listening_policy(str(manifest["kind"]), arguments.trainable_target)
 
     import torch
     from peft import PeftModel
@@ -349,21 +497,32 @@ def run(
     } != role_mix.STANDARD_LOSS_WEIGHTS:
         raise PostRehearsalError("upstream X-VC loss weights drifted")
 
-    trained = PeftModel.from_pretrained(
-        model, str(arguments.control_adapter), is_trainable=True
-    )
     scope = role_mix.training_scope(arguments.inventory, "control69")
-    trainable = role_mix._set_scope_training_only(trained, scope)
-    expected_trainable = role_mix.expected_trainable_parameter_count(
-        scope, "standard"
-    )
+    if arguments.trainable_target == FULL_CONVERTER_TARGET:
+        control = PeftModel.from_pretrained(
+            model, str(arguments.control_adapter), is_trainable=False
+        )
+        trained = control.merge_and_unload(safe_merge=True)
+        trainable = _set_converter_training_only(trained)
+        expected_trainable = EXPECTED_CONVERTER_PARAMETERS
+    else:
+        trained = PeftModel.from_pretrained(
+            model, str(arguments.control_adapter), is_trainable=True
+        )
+        trainable = role_mix._set_scope_training_only(trained, scope)
+        expected_trainable = role_mix.expected_trainable_parameter_count(
+            scope, "standard"
+        )
     if sum(parameter.numel() for parameter in trainable) != expected_trainable:
         raise PostRehearsalError("control69 trainable parameter count drifted")
     optimizer = torch.optim.AdamW(trainable, lr=LEARNING_RATE)
     losses: list[float] = []
     rows = manifest["items"][:1] if arguments.smoke else manifest["items"]
     for item in rows:
-        role_mix._set_scope_training_only(trained, scope)
+        if arguments.trainable_target == FULL_CONVERTER_TARGET:
+            _set_converter_training_only(trained)
+        else:
+            role_mix._set_scope_training_only(trained, scope)
         tensors = _batch_from_item(
             trained,
             item,
@@ -409,8 +568,17 @@ def run(
         return 0
     if len(losses) != EXPECTED_ROWS:
         raise PostRehearsalError("post-rehearsal update count drifted")
-    adapter_dir = arguments.work_dir / f"adapter-{EXPECTED_ROWS}"
-    trained.save_pretrained(adapter_dir, safe_serialization=True)
+    if arguments.trainable_target == FULL_CONVERTER_TARGET:
+        checkpoint_metadata = save_converter_checkpoint(
+            trained, arguments.work_dir / f"converter-{EXPECTED_ROWS}", torch
+        )
+    else:
+        adapter_dir = arguments.work_dir / f"adapter-{EXPECTED_ROWS}"
+        trained.save_pretrained(adapter_dir, safe_serialization=True)
+        checkpoint_metadata = {
+            "kind": "peft-adapter",
+            "directory": adapter_dir.name,
+        }
 
     target_id, target_path, target_digest = target_rows[0]
     target = base._extract_pair_tensors(
@@ -515,6 +683,8 @@ def run(
             else None
         ),
         "control_adapter": str(arguments.control_adapter),
+        "trainable_target": arguments.trainable_target,
+        "candidate_checkpoint": checkpoint_metadata,
         "updates": len(losses),
         "role_counts": {"real-donor-teacher-output": len(losses)},
         "learning_target_counts": manifest.get(
@@ -565,6 +735,11 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--source-root", type=Path, required=True)
     value.add_argument("--pair-root", type=Path, required=True)
     value.add_argument("--control-adapter", type=Path, required=True)
+    value.add_argument(
+        "--trainable-target",
+        choices=(LORA69_TARGET, FULL_CONVERTER_TARGET),
+        default=LORA69_TARGET,
+    )
     value.add_argument("--xvc-source-root", type=Path, required=True)
     value.add_argument("--xvc-config", type=Path, required=True)
     value.add_argument("--checkpoint", type=Path, required=True)

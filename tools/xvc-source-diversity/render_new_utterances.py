@@ -23,6 +23,7 @@ for import_root in (TOOL_ROOT, HUMAN_TOOL_ROOT):
 import listen_now as base  # noqa: E402
 import run as method  # noqa: E402
 import run_breadth as breadth  # noqa: E402
+import run_post_rehearsal as post  # noqa: E402
 import run_role_mix as role_mix  # noqa: E402
 import screen  # noqa: E402
 from prepare_jsut_evaluation import (  # noqa: E402
@@ -766,6 +767,42 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 )
             ),
         }
+    if kind in {
+        "full-converter-retention-fresh48",
+        "full-converter-retention-hadou",
+        "full-converter-retention-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        jsut = kind.endswith("-jsut")
+        return {
+            "experiment_id": "EXP-157" if jsut else "EXP-156" if hadou else "EXP-155",
+            "variant_id": "cv12-selective-retention-full-converter170",
+            "display_name": (
+                "EXP-154 / selective retention / full acoustic converter"
+            ),
+            "candidate_format": "merged-control69-converter",
+            "result_kind": (
+                "liveconv-exp157-xvc-full-converter-retention-jsut24/v1"
+                if jsut
+                else (
+                    "liveconv-exp156-xvc-full-converter-retention-hadou31/v1"
+                    if hadou
+                    else "liveconv-exp155-xvc-full-converter-retention-fresh48/v1"
+                )
+            ),
+            "question": (
+                "Does full-converter selective repair survive untouched JSUT "
+                "categories?"
+                if jsut
+                else (
+                    "Does full-converter selective repair remove the heldout Hadou "
+                    "loop without broad regression?"
+                    if hadou
+                    else "Does full-converter selective repair preserve broad "
+                    "fresh48 control69 behavior?"
+                )
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -952,14 +989,44 @@ def validate_inputs(
     targets = method.target_inventory(arguments.pair_root)
     if {row[0]: row[2] for row in targets}.get(TARGET_ID) != TARGET_SHA256:
         raise NewUtteranceError("target reference identity drifted")
-    for label, adapter in (
-        ("EXP-035 control", arguments.control_adapter),
-        ("method candidate", arguments.candidate_adapter),
-    ):
+    for label, adapter in (("EXP-035 control", arguments.control_adapter),):
         if adapter.is_symlink() or not (
             adapter / "adapter_model.safetensors"
         ).is_file():
             raise NewUtteranceError(f"{label} adapter is unavailable")
+    policy = candidate_policy(arguments.candidate_kind)
+    if policy.get("candidate_format") == "merged-control69-converter":
+        if (
+            arguments.candidate_adapter is not None
+            or arguments.candidate_converter is None
+        ):
+            raise NewUtteranceError("full converter candidate arguments drifted")
+        metadata_path = arguments.candidate_converter / "converter.json"
+        weights = arguments.candidate_converter / "converter-parameters.safetensors"
+        if (
+            arguments.candidate_converter.is_symlink()
+            or metadata_path.is_symlink()
+            or weights.is_symlink()
+            or not metadata_path.is_file()
+            or not weights.is_file()
+        ):
+            raise NewUtteranceError("full converter candidate is unavailable")
+        metadata = post.load_json(metadata_path)
+        if (
+            metadata.get("kind") != post.CONVERTER_CHECKPOINT_KIND
+            or metadata.get("parameter_count") != post.EXPECTED_CONVERTER_PARAMETERS
+            or metadata.get("weights_sha256") != base.sha256_file(weights)
+        ):
+            raise NewUtteranceError("full converter candidate identity drifted")
+    elif (
+        arguments.candidate_converter is not None
+        or arguments.candidate_adapter is None
+    ):
+        raise NewUtteranceError("adapter candidate arguments drifted")
+    elif arguments.candidate_adapter.is_symlink() or not (
+        arguments.candidate_adapter / "adapter_model.safetensors"
+    ).is_file():
+        raise NewUtteranceError("method candidate adapter is unavailable")
     method._validate_xvc(arguments)
     base._require_new_output(
         arguments.work_dir,
@@ -1143,10 +1210,7 @@ def run(
         ]
 
     outputs = {"base": render(model)}
-    for label, adapter in (
-        ("cv12-control69", arguments.control_adapter),
-        (policy["variant_id"], arguments.candidate_adapter),
-    ):
+    for label, adapter in (("cv12-control69", arguments.control_adapter),):
         adapted_base = method._load_xvc(arguments, XVC, device)
         adapted = PeftModel.from_pretrained(
             adapted_base, str(adapter), is_trainable=False
@@ -1172,6 +1236,42 @@ def run(
         )
         del adapted, adapted_base
         torch.cuda.empty_cache()
+    candidate_base = method._load_xvc(arguments, XVC, device)
+    if policy.get("candidate_format") == "merged-control69-converter":
+        candidate_control = PeftModel.from_pretrained(
+            candidate_base, str(arguments.control_adapter), is_trainable=False
+        )
+        candidate = candidate_control.merge_and_unload(safe_merge=True)
+        post.load_converter_checkpoint(
+            candidate,
+            arguments.candidate_converter,
+            torch=torch,
+            device=device,
+        )
+    else:
+        candidate = PeftModel.from_pretrained(
+            candidate_base, str(arguments.candidate_adapter), is_trainable=False
+        )
+    outputs[policy["variant_id"]] = (
+        [
+            role_mix.conditioned_inference(
+                candidate,
+                source,
+                target_tensor,
+                frame_condition_tensor,
+                seed=base.SEED + index,
+                torch=torch,
+                device=device,
+            )
+            .detach()
+            .cpu()
+            for index, source in enumerate(evaluation_tensors)
+        ]
+        if policy.get("conditioned_inference")
+        else render(candidate)
+    )
+    del candidate, candidate_base
+    torch.cuda.empty_cache()
 
     staging = arguments.work_dir / "listener-staging"
     staging.mkdir()
@@ -1309,6 +1409,9 @@ def _parser() -> argparse.ArgumentParser:
             "selective-retention-fresh48",
             "selective-retention-hadou",
             "selective-retention-jsut",
+            "full-converter-retention-fresh48",
+            "full-converter-retention-hadou",
+            "full-converter-retention-jsut",
         ),
         default="speaker7",
     )
@@ -1316,7 +1419,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--pair-root", type=Path, required=True)
     parser.add_argument("--control-adapter", type=Path, required=True)
-    parser.add_argument("--candidate-adapter", type=Path, required=True)
+    parser.add_argument("--candidate-adapter", type=Path)
+    parser.add_argument("--candidate-converter", type=Path)
     parser.add_argument("--xvc-source-root", type=Path, required=True)
     parser.add_argument("--xvc-config", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, required=True)

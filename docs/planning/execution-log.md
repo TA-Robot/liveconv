@@ -3597,3 +3597,22 @@ job queue.
   policy helped normal rows while the 69-module LoRA still failed on the same
   heldout mechanism, the next one-variable lane should keep the selective
   targets and change the trainable target to the full acoustic converter.
+
+## 2026-08-14T00:43:00Z - EXP-154--157 full-converter retention prepared
+
+- Agent: `primary-integrator`.
+- Task: preserve EXP-150's selective learning targets and test a genuinely
+  different trainable target rather than another data-ratio or LoRA neighbor.
+- Dependencies: EXP-150 rejection; committed selective manifest SHA-256
+  `6322a9c5`; merged control69 initialization; external7, frozen fresh48,
+  Hadou31, and unopened JSUT24; gpu0; listener 8878.
+- Result: add a full `acoustic_converter` path with exactly 42,357,760 trainable
+  parameters, a converter-only safetensors checkpoint, and exact reconstruction
+  from base plus merged control69 for later evaluation. Keep the same 170 rows,
+  repair/retention targets, loss, LR, clip, zero condition, and update order.
+- Problems: human listening remains unavailable, so machine screens may only
+  reject gross corruption or content collapse. The historical local
+  tongue-twister is excluded from both training and gating.
+- Rework: commit before the real GPU smoke and training. Gate unchanged audio
+  external7 -> fresh48 -> Hadou31; consume JSUT24 only after all survive. Do not
+  tune LR, loss, ratio, blend, threshold, or converter sub-scope in this lane.
