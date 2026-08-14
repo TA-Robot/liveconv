@@ -2202,6 +2202,9 @@ def output_speaker_identity_regularizer(
     output_embedding = differentiable_xvc_speaker_embedding(
         speaker_encoder, reconstruction, torch=torch
     )
+    target_waveform = target_waveform.to(
+        device=reconstruction.device, dtype=torch.float32
+    )
     with torch.no_grad():
         target_embedding = differentiable_xvc_speaker_embedding(
             speaker_encoder, target_waveform, torch=torch
