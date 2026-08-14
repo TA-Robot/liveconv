@@ -1,6 +1,6 @@
 # EXP-333: source-speaker GRL target/source direction screen
 
-Status: admitted auxiliary batch screen; no perceptual selection
+Status: completed auxiliary batch screen; fixed GRL technically closed
 
 ## Question
 
@@ -36,6 +36,28 @@ source advantage for all 344 matched rows.
 
 No new audio, embedding, private target, or model weight is committed. The
 aggregate JSON remains below ignored `artifacts/`.
+
+## Result
+
+Commit `9a404f6` embedded 1,033 unique WAV identities across all 344 matched
+rows. Aggregate target-to-output cosine moved `0.499488 -> 0.499127`, delta
+`-0.000361`, with 158 increases and 186 decreases. Source-to-output cosine
+moved in the wrong direction by `+0.000124`, and target-over-source advantage
+regressed by `-0.000486`.
+
+Fresh48 and Hadou31 had small target-advantage gains (`+0.001057` and
+`+0.001287`), but expanded144, JSUT24, and stress60 regressed (`-0.000874`,
+`-0.003259`, and `-0.001097`). The fully heldout SRC4VC30 direction was flat
+at `-0.000066` target advantage. External7 reduced source similarity but also
+reduced target similarity and had only two target-similarity wins versus five
+losses.
+
+The fixed source-speaker GRL therefore did not generalize its intended
+speaker-direction mechanism. Combined with expanded144 content regression,
+close the method completely. Do not reopen GRL weight, classifier, data,
+horizon, loss, scope, LR, or an adjacent latent/retention anchor. Preserve the
+changed audio unheard and unselected; this auxiliary encoder does not measure
+naturalness or identity by ear.
 
 ## Command
 

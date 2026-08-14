@@ -6604,3 +6604,25 @@ job queue.
 - Rework: run one cached ECAPA batch on gpu0, record aggregate and per-surface
   target/source direction, then close or retain EXP-326 as unheard only. Do not
   use the result to reopen GRL coefficients or select a winner.
+
+## 2026-08-14T22:13:00Z - EXP-333 GRL speaker-direction result
+
+- Agent: `primary-integrator`.
+- Task: determine whether EXP-326's content/stability tradeoff corresponded to
+  the intended source-speaker removal and target-speaker direction.
+- Dependencies: commit `9a404f6`; pinned ECAPA tree; authorized target lineage;
+  one gpu0 batch; 344 exact matched listener rows.
+- Result: 1,033 unique WAV identities embedded without persisting embeddings.
+  Target cosine moved `0.499488 -> 0.499127` (`-0.000361`, 158W/186L), source
+  cosine moved the wrong way by `+0.000124`, and target-over-source advantage
+  regressed `-0.000486`.
+- Result: fresh48 and Hadou31 had small advantage gains, while expanded144,
+  JSUT24, and stress60 regressed; fully heldout SRC4VC30 was flat. No metric is
+  treated as naturalness, personal identity, keep, winner, or promotion.
+- Problems: the GRL failed its intended aggregate speaker mechanism in addition
+  to regressing broad content. A proposed post-converter activation anchor is
+  a retention/representation neighbor and does not repair this causal failure.
+- Rework: close EXP-326 and every GRL coefficient/head/data/horizon/loss/scope
+  neighbor completely. Preserve audio unheard. The next training pilot must
+  introduce a genuinely different target/architecture rather than another
+  source-speaker-removal or control69-anchor objective.
