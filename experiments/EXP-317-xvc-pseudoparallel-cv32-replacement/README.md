@@ -69,3 +69,26 @@ instability above EXP-238's one row, a newly unstable EXP-238-stable row, or
 common-stable source-relative mean regression. Known-text distance is auxiliary
 only. If the arm clears the external gate, admit the existing disjoint broad
 surfaces in a later committed slice; otherwise record the stop and replan.
+
+## Result
+
+Plan commit `7813612` and implementation commit `c1108f4` bound exactly 170
+rows with the declared 32 replacement positions and 138 unchanged rows. The
+real artifact preflight verified every source, control69 teacher, and real
+Amitaro WAV hash. It also found that EXP-306's appended rows carried incorrect
+`real_target_text` metadata despite correct target IDs, WAV paths, and hashes;
+EXP-317 restores the text from each position's EXP-238 source of truth. The
+training audio contract was unaffected.
+
+The pilot completed 170 updates in 163.30 seconds at 6,163,570,688 peak
+allocated bytes and published 35 external7 WAVs. The EMA adapter SHA-256 is
+`5623f7c9434dbd45ef1af35a1ed549fc3aebdc06f78786306b6b9c9d4f276b5f`.
+All seven candidates changed and no consensus gross row was added.
+
+Decoder instability increased from one row in EXP-238 to two: existing
+`cv39005101` plus newly unstable `cv45195640`. On the five jointly stable rows,
+source-relative distance tied exactly (`0W/5T/0L`, mean `0.344872`), while
+secondary known-text distance was `1W/4T/0L` (`0.435154 -> 0.401821`). The
+predefined instability stop fired, so no broad render is admitted. The result
+does not select an audible winner. The next method must address the CV32 window
+construction difference rather than sweep row count or horizon.

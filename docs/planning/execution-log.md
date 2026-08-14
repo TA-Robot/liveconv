@@ -6178,3 +6178,29 @@ job queue.
 - Rework: constrain the next curriculum to 170 total rows and preserve the
   ordered Amitaro references. Secondary known-text improvement is diagnostic,
   not a keep or naturalness claim.
+
+## 2026-08-14T19:08:00Z - EXP-317 CV32 replacement at 170 updates
+
+- Agent: `primary-integrator`; three bounded owners implemented the manifest,
+  ordinary trainer admission, and external7 renderer in separate file zones.
+- Task: retain the genuine CV32 data while removing EXP-305/306's 202-update
+  horizon confound.
+- Dependencies: commits `7813612` and `c1108f4`; exact EXP-238 curriculum;
+  existing EXP-306 CV32 sources and control69 teachers; one gpu0 lease.
+- Result: real-artifact admission proved 170 rows, 32 fixed replacements, 138
+  unchanged rows, unchanged CV48/JSUT85/JVS3/Hadou34 composition, and all 510
+  source/teacher/real-target hashes. Training completed 170 updates in 163.30
+  seconds at 6.16 GB peak and published 35 external7 WAVs.
+- Result: all seven candidates changed, no consensus gross row was added, and
+  five jointly stable rows tied source-relative distance (`0W/5T/0L`).
+  Secondary known-text distance was `1W/4T/0L`, but decoder instability rose
+  `1 -> 2` with new instability on `cv45195640`; the external stop fired.
+- Problems: fixture-only validation initially encoded EXP-306's composition as
+  CV48 instead of its actual CV80. Real-artifact validation caught and fixed
+  it. The same check found incorrect `real_target_text` metadata on EXP-306's
+  appended rows while target IDs/files/hashes were correct; EXP-317 restores
+  the text from the position-specific EXP-238 row. Training audio was intact.
+- Rework: stop broad rendering. EXP-317 changed both source identities and the
+  source-window construction: CV32 reused first-2.4/right-pad evaluation WAVs,
+  while EXP-238 used speech-active Common Voice windows. Isolate that
+  preprocessing difference once before changing data count, loss, or scope.

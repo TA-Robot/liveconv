@@ -342,7 +342,9 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-317 replace first 32 EXP-238 CV positions with retained CV32 rows
         -> keep total 170, CV48/JSUT85/JVS3/Hadou34, target order, and full method fixed
         -> commit one replacement manifest and ordinary external7 binding, then gpu0
-        -> broad fixed surfaces only if EXP-317 preserves EXP-238 external stability
+        -> 170 updates complete; gross 0 -> 0; stable source distance 0W/5T/0L
+        -> instability 1 -> 2 on cv45195640; stop broad fixed surfaces
+        -> isolate evaluation-style first-window/pad versus EXP238 speech-active windows
         -> operator hearing when available
 ```
 
