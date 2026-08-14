@@ -845,6 +845,21 @@ def factorized_unpaired_generator_loss(
     return {"loss": loss, "semantic": semantic, "speaker": speaker}
 
 
+def source_receipt_identities(
+    manifest_kind: str, source_work: Path, training_manifest: Path
+) -> dict[str, str | None]:
+    """Bind either a predecessor result or the standalone human curriculum."""
+    if manifest_kind == UNPAIRED_HUMAN_OUTPUT_KIND:
+        return {
+            "source_result_sha256": None,
+            "unpaired_human_curriculum_sha256": sha256_file(training_manifest),
+        }
+    return {
+        "source_result_sha256": sha256_file(source_work / "result.json"),
+        "unpaired_human_curriculum_sha256": None,
+    }
+
+
 def _set_converter_training_only(model: Any) -> list[Any]:
     model.eval()
     converter = getattr(model, CONVERTER_PREFIX, None)
@@ -1812,7 +1827,11 @@ def run(
         "question": policy["question"],
         "independent_variable": policy["independent_variable"],
         "training_manifest_sha256": sha256_file(arguments.training_manifest),
-        "source_result_sha256": sha256_file(arguments.source_work / "result.json"),
+        **source_receipt_identities(
+            str(manifest.get("kind")),
+            arguments.source_work,
+            arguments.training_manifest,
+        ),
         "control_probe_result_sha256": (
             sha256_file(arguments.control_work / "result.json")
             if arguments.control_work is not None

@@ -152,6 +152,24 @@ def test_factorized_loss_uses_source_semantics_and_target_speaker() -> None:
     assert losses["loss"].item() == 2_550.0
 
 
+def test_unpaired_human_manifest_does_not_require_predecessor_result(
+    tmp_path: Path,
+) -> None:
+    curriculum = tmp_path / "curriculum.json"
+    curriculum.write_text("{}", encoding="utf-8")
+
+    identities = post.source_receipt_identities(
+        post.UNPAIRED_HUMAN_OUTPUT_KIND,
+        tmp_path / "no-predecessor-result",
+        curriculum,
+    )
+
+    assert identities["source_result_sha256"] is None
+    assert identities["unpaired_human_curriculum_sha256"] == post.sha256_file(
+        curriculum
+    )
+
+
 def test_acoustic_encoder_setter_freezes_every_other_module() -> None:
     class FakeModule:
         def train(self, value: bool) -> None:
