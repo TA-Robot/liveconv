@@ -9,7 +9,9 @@ complete curriculum consumed by both matched training arms.
 
 ``--check`` validates manifests and every source/real-target hash without
 importing the model or touching CUDA.  A normal run is the only path that
-imports X-VC and creates teacher WAVs.
+imports X-VC and creates teacher WAVs.  ``--resume-existing`` is a narrow
+crash-recovery path: it accepts only the exact complete 170-WAV inventory and
+finishes the manifests without rerendering those WAVs.
 """
 
 from __future__ import annotations
@@ -238,9 +240,10 @@ def _copy_verified(source: Path, destination: Path, digest: str, label: str) -> 
 
 def validate_inputs(
     arguments: argparse.Namespace,
-) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+) -> tuple[dict[str, Any], dict[str, Any]]:
     pool = source_pool(load_json(arguments.pool))
-    exp238 = base_rows(load_json(arguments.exp238_curriculum))
+    exp238 = load_json(arguments.exp238_curriculum)
+    exp238_rows = base_rows(exp238)
     if arguments.source_work.is_symlink() or not arguments.source_work.is_dir():
         raise Src4vcRenderError("source-work is unavailable")
 
@@ -255,7 +258,7 @@ def validate_inputs(
             row["real_target_sha256"],
             f"EXP-325 real target {position}",
         )
-        reference = exp238[position]
+        reference = exp238_rows[position]
         for key in ("target_id", "real_target_root", "real_target_file", "real_target_sha256"):
             if row.get(key) != reference.get(key):
                 raise Src4vcRenderError(
@@ -270,7 +273,10 @@ def validate_inputs(
         arguments.control_adapter / "adapter_model.safetensors"
     ).is_file():
         raise Src4vcRenderError("frozen control69 adapter is unavailable")
-    if arguments.output_diverse_work.exists() or arguments.output_diverse_work.is_symlink():
+    if (
+        not arguments.resume_existing
+        and (arguments.output_diverse_work.exists() or arguments.output_diverse_work.is_symlink())
+    ):
         raise Src4vcRenderError("EXP-325 diverse-work output already exists")
     return pool, exp238
 
@@ -376,93 +382,153 @@ def _create_output_root(path: Path) -> Path:
     return control_outputs
 
 
+def _output_path(
+    output_diverse_work: Path, position: int, item: Mapping[str, Any]
+) -> Path:
+    return (
+        output_diverse_work
+        / "control-outputs"
+        / f"src4vc-{position:03d}-{item['id']}-16k.wav"
+    )
+
+
+def _existing_output_rows(
+    output_diverse_work: Path, pool: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    """Recover only an exact, complete render left before manifest commit."""
+
+    control_root = output_diverse_work / "control-outputs"
+    if (
+        output_diverse_work.is_symlink()
+        or not output_diverse_work.is_dir()
+        or control_root.is_symlink()
+        or not control_root.is_dir()
+    ):
+        raise Src4vcRenderError("EXP-325 resumable output root is unavailable")
+    if (output_diverse_work / "curriculum.json").exists() or (
+        output_diverse_work / "result.json"
+    ).exists():
+        raise Src4vcRenderError("EXP-325 resume requires an unfinalized render")
+
+    expected_paths = {
+        _output_path(output_diverse_work, position, item)
+        for position, item in enumerate(pool["items"])
+    }
+    actual_paths = set(control_root.glob("*.wav"))
+    if actual_paths != expected_paths:
+        raise Src4vcRenderError("EXP-325 resumable WAV inventory drifted")
+
+    output_rows: list[dict[str, Any]] = []
+    for position, item in enumerate(pool["items"]):
+        output_path = _output_path(output_diverse_work, position, item)
+        teacher_hash = sha256_file(output_path)
+        _validate_audio(output_path, teacher_hash, f"EXP-325 teacher {position}")
+        output_rows.append(
+            {
+                "position": position,
+                "teacher_id": item["teacher_id"],
+                "target_id": item["target_id"],
+                "target_file": output_path.relative_to(output_diverse_work).as_posix(),
+                "output_sha256": teacher_hash,
+            }
+        )
+    return output_rows
+
+
 def run(
     arguments: argparse.Namespace,
     pool: Mapping[str, Any],
-    exp238: Sequence[Mapping[str, Any]],
+    exp238: Mapping[str, Any],
 ) -> int:
-    del exp238
     for name in ("HF_DATASETS_OFFLINE", "HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"):
         if os.environ.get(name) != "1":
             raise Src4vcRenderError(f"{name}=1 is required before model import")
     if arguments.confirm_gpu_lease != "gpu0" or arguments.device != "cuda:0":
         raise Src4vcRenderError("EXP-325 requires the explicit gpu0 lease")
     started = time.monotonic()
-    import torch
-    from peft import PeftModel
+    resumed_existing = bool(arguments.resume_existing)
+    if resumed_existing:
+        output_rows = _existing_output_rows(arguments.output_diverse_work, pool)
+        peak_gpu_bytes = 0
+    else:
+        import torch
+        from peft import PeftModel
 
-    if not torch.cuda.is_available():
-        raise Src4vcRenderError("CUDA is unavailable")
-    device = torch.device(arguments.device)
-    base._configure_deterministic_cuda(torch, device)
-    torch.cuda.reset_peak_memory_stats(device)
-    xvc_root = str(arguments.xvc_source_root.resolve())
-    if xvc_root not in sys.path:
-        sys.path.insert(0, xvc_root)
-    from models.codec.sac.model import XVC
-    from models.codec.sac.utils import process_audio
-    from utils.file import load_config
+        if not torch.cuda.is_available():
+            raise Src4vcRenderError("CUDA is unavailable")
+        device = torch.device(arguments.device)
+        base._configure_deterministic_cuda(torch, device)
+        torch.cuda.reset_peak_memory_stats(device)
+        xvc_root = str(arguments.xvc_source_root.resolve())
+        if xvc_root not in sys.path:
+            sys.path.insert(0, xvc_root)
+        from models.codec.sac.model import XVC
+        from models.codec.sac.utils import process_audio
+        from utils.file import load_config
 
-    config = load_config(str(arguments.xvc_config))
-    if "config" in config:
-        config = config["config"]
-    sample_rate = int(config["sample_rate"])
-    plain = method._load_xvc(arguments, XVC, device)
-    control = PeftModel.from_pretrained(
-        plain, str(arguments.control_adapter), is_trainable=False
-    )
-    target_cache: dict[str, dict[str, Any]] = {}
-    output_root = _create_output_root(arguments.output_diverse_work)
-    output_rows: list[dict[str, Any]] = []
-    for position, item in enumerate(pool["items"]):
-        source_path = arguments.source_work / str(item["source_file"])
-        source = base._extract_pair_tensors(
-            control,
-            _pair(str(item["teacher_id"]), source_path, str(item["source_sha256"])),
-            process_audio=process_audio,
-            config=config,
-            torch=torch,
-            device=device,
+        config = load_config(str(arguments.xvc_config))
+        if "config" in config:
+            config = config["config"]
+        sample_rate = int(config["sample_rate"])
+        plain = method._load_xvc(arguments, XVC, device)
+        control = PeftModel.from_pretrained(
+            plain, str(arguments.control_adapter), is_trainable=False
         )
-        target_id = str(item["target_id"])
-        if target_id not in target_cache:
-            target_path = arguments.source_work / str(item["real_target_file"])
-            target_cache[target_id] = base._extract_pair_tensors(
+        target_cache: dict[str, dict[str, Any]] = {}
+        output_root = _create_output_root(arguments.output_diverse_work)
+        output_rows = []
+        for position, item in enumerate(pool["items"]):
+            source_path = arguments.source_work / str(item["source_file"])
+            source = base._extract_pair_tensors(
                 control,
-                _pair(target_id, target_path, str(item["real_target_sha256"])),
+                _pair(
+                    str(item["teacher_id"]),
+                    source_path,
+                    str(item["source_sha256"]),
+                ),
                 process_audio=process_audio,
                 config=config,
                 torch=torch,
                 device=device,
             )
-        waveform = (
-            base._inference(
-                control,
-                source,
-                target_cache[target_id],
-                seed=base.SEED + position,
-                torch=torch,
-                device=device,
+            target_id = str(item["target_id"])
+            if target_id not in target_cache:
+                target_path = arguments.source_work / str(item["real_target_file"])
+                target_cache[target_id] = base._extract_pair_tensors(
+                    control,
+                    _pair(target_id, target_path, str(item["real_target_sha256"])),
+                    process_audio=process_audio,
+                    config=config,
+                    torch=torch,
+                    device=device,
+                )
+            waveform = (
+                base._inference(
+                    control,
+                    source,
+                    target_cache[target_id],
+                    seed=base.SEED + position,
+                    torch=torch,
+                    device=device,
+                )
+                .detach()
+                .cpu()
             )
-            .detach()
-            .cpu()
-        )
-        output_path = output_root / f"src4vc-{position:03d}-{item['id']}-16k.wav"
-        teacher_hash = base._write_float_wav(
-            output_path, waveform, sample_rate
-        )
-        _validate_audio(output_path, teacher_hash, f"EXP-325 teacher {position}")
-        output_rows.append(
-            {
-                "position": position,
-                "teacher_id": item["teacher_id"],
-                "target_id": target_id,
-                "target_file": output_path.relative_to(
-                    arguments.output_diverse_work
-                ).as_posix(),
-                "output_sha256": teacher_hash,
-            }
-        )
+            output_path = _output_path(arguments.output_diverse_work, position, item)
+            teacher_hash = base._write_float_wav(output_path, waveform, sample_rate)
+            _validate_audio(output_path, teacher_hash, f"EXP-325 teacher {position}")
+            output_rows.append(
+                {
+                    "position": position,
+                    "teacher_id": item["teacher_id"],
+                    "target_id": target_id,
+                    "target_file": output_path.relative_to(
+                        arguments.output_diverse_work
+                    ).as_posix(),
+                    "output_sha256": teacher_hash,
+                }
+            )
+        peak_gpu_bytes = int(torch.cuda.max_memory_allocated(device))
     curriculum = _build_curriculum(exp238, pool, output_rows)
     curriculum_path = arguments.output_diverse_work / "curriculum.json"
     curriculum_path.write_text(
@@ -478,7 +544,8 @@ def run(
         "exp238_curriculum_sha256": sha256_file(arguments.exp238_curriculum),
         "curriculum_sha256": sha256_file(curriculum_path),
         "elapsed_seconds": time.monotonic() - started,
-        "peak_gpu_bytes": int(torch.cuda.max_memory_allocated(device)),
+        "peak_gpu_bytes": peak_gpu_bytes,
+        "resumed_existing_outputs": resumed_existing,
         "boundary": "new training-target preparation only; no listener, winner, or promotion claim",
     }
     (arguments.output_diverse_work / "result.json").write_text(
@@ -502,6 +569,7 @@ def run(
 def parser() -> argparse.ArgumentParser:
     value = argparse.ArgumentParser(description=__doc__)
     value.add_argument("--check", action="store_true")
+    value.add_argument("--resume-existing", action="store_true")
     value.add_argument("--pool", type=Path, required=True)
     value.add_argument("--source-work", type=Path, required=True)
     value.add_argument("--exp238-curriculum", type=Path, required=True)

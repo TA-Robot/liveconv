@@ -224,7 +224,7 @@ def test_validate_inputs_checks_source_and_real_target_hashes(tmp_path: Path) ->
     )
     pool, exp238 = render.validate_inputs(arguments)
     assert len(pool["items"]) == render.EXPECTED_ROWS
-    assert len(exp238) == render.EXPECTED_ROWS
+    assert len(exp238["items"]) == render.EXPECTED_ROWS
 
     pool_rows[0]["source_sha256"] = _digest(9999)
     pool_path.write_text(json.dumps(pool_value), encoding="utf-8")
@@ -239,3 +239,24 @@ def test_create_output_root_refuses_existing_path(tmp_path: Path) -> None:
     assert control.is_dir()
     with pytest.raises(render.Src4vcRenderError, match="already exists"):
         render._create_output_root(output)
+
+
+def test_existing_output_rows_requires_exact_unfinalized_inventory(tmp_path: Path) -> None:
+    base = _base()
+    pool = render.source_pool(_pool(base))
+    output = tmp_path / "diverse-work"
+    control = output / "control-outputs"
+    control.mkdir(parents=True)
+    for position, item in enumerate(pool["items"]):
+        path = render._output_path(output, position, item)
+        path.write_bytes(f"teacher-{position}".encode())
+
+    rows = render._existing_output_rows(output, pool)
+    assert len(rows) == render.EXPECTED_ROWS
+    assert rows[0]["teacher_id"] == pool["items"][0]["teacher_id"]
+    assert rows[-1]["target_file"].startswith("control-outputs/")
+    assert all(render._is_sha256(row["output_sha256"]) for row in rows)
+
+    (control / "unexpected.wav").write_bytes(b"unexpected")
+    with pytest.raises(render.Src4vcRenderError, match="inventory"):
+        render._existing_output_rows(output, pool)
