@@ -3776,3 +3776,22 @@ job queue.
 - Rework: commit, render once, reject on candidate-added gross corruption, and
   do not use the outcome to tune EMA. In parallel after launch, prepare a
   disjoint category-balanced JSUT training-data method.
+
+## 2026-08-14T01:43:00Z - EXP-168 expanded33 posthoc gate survived
+
+- Agent: `primary-integrator`.
+- Dependencies: commit `afc38d0`; exact EXP-163 EMA adapter; frozen expanded33;
+  gpu0; listener 8878.
+- Result: published 165 more comparison WAVs. The candidate added no gross row,
+  while base and control69 both gross-looped on `cv41748688u`. Raw
+  source-relative mean improved `1.084 -> 0.596`, known-text `1.738 -> 1.078`,
+  and maximum `12.33 -> 2.83`. On 32 common non-gross rows, source-relative
+  mean improved `0.732 -> 0.526` and median `0.600 -> 0.333`, despite W/T/L
+  `4/21/7`; known-text mean regressed `0.848 -> 0.899` with W/T/L `3/19/10`.
+- Problems: the shared gross-row rescue dominates raw means, and source-relative
+  versus known-text evidence conflicts on common rows. This is not a quality
+  selection.
+- Rework: retain unchanged posthoc audio and do not tune EMA. Continue the
+  separate CPU design for disjoint category-balanced JSUT retention training;
+  any next GPU lane must be a committed data-method change, not another EMA
+  evaluation or hyperparameter point.
