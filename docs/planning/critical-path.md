@@ -221,6 +221,8 @@ claims from that artifact are superseded. The active join is now:
         -> acoustic-encoder target family closed; no depth/LR/scope neighbor
         -> EXP-203 alignment-free human content/identity factorization
         -> EXP-204--207 prebound fresh48 / Hadou31 / stress60 / JSUT24
+        -> 850 WAVs; Hadou/category signal but a new fresh48 gross loop and tempo regression
+        -> exact unpaired-factorization objective closed; no weight/pair/window/scope neighbor
         -> operator hearing when available
 ```
 

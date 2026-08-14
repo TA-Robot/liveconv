@@ -1,6 +1,6 @@
 # EXP-203: X-VC unpaired human content/identity factorization
 
-Status: Prepared listen-now training pilot; unselected
+Status: Completed listen-now training pilot; technically rejected and unselected
 
 ## Goal
 
@@ -55,3 +55,30 @@ loss/gradient, malformed adapter, OOM, candidate-added gross corruption, or
 broad common-stable content regression. Do not tune semantic/speaker/
 adversarial weights, target rotation, window selection, update count, LR,
 scope, or EMA after this run. Generated audio remains unheard and unselected.
+
+## Result
+
+The committed `6a0f208` run completed all 170 updates and saved both online and
+EMA adapters. The terminal receipt write then failed after checkpoint save and
+external7 publication because the standalone curriculum had no upstream
+`source_work/result.json`; `150ccde` repaired that post-publication receipt path.
+The surviving EMA adapter SHA-256 is
+`432917a9c4b3bda307daf81c469655cf4247e5001be7890d1eb30c647a37a8b5`.
+The weights were not retrained merely to recreate a receipt.
+
+The unchanged checkpoint produced 35 external7, 240 fresh48, 155 Hadou31, 300
+stress60, and 120 JSUT24 WAVs on the listener: 850 total. Cross-arm common-stable
+source-relative distance moved external7 `0.256 -> 0.287` (`1/3/1`), fresh48
+`0.192 -> 0.188` (`13/15/7`), Hadou31 `0.133 -> 0.100` (`10/13/2`), stress60
+`0.197 -> 0.218` (`13/14/16`), and JSUT24 `0.121 -> 0.141` (`6/11/4`). Within
+stress60, pitch+3 and silence300 improved, but tempo1.2 regressed
+`0.262 -> 0.465` (`0/4/4`).
+
+The candidate repaired control69's `cv30615849f` repetition but introduced a
+different consensus gross failure on `cv39028774f`: both decoders produced a
+223-character repeated `ん` run. That candidate-added corruption satisfies the
+predeclared technical stop. The alignment-free human factorization idea shows
+useful Hadou and category-specific signal, but this exact objective is rejected.
+Do not sweep its weights, pairing rotation, windows, scope, LR, horizon, or EMA.
+No naturalness, identity, or audible-quality conclusion is made before human
+listening.

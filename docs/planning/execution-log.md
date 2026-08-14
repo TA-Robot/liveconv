@@ -4649,3 +4649,49 @@ job queue.
 - Rework: commit this exact slice, run one two-row smoke and one 170-update GPU
   pilot, then render all five fixed surfaces and close. Do not tune objective
   weights, pairing rotation, windows, scope, LR, horizon, or EMA.
+
+## 2026-08-14T06:50:25Z - Grok progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux `liveconv-grok-auditor`.
+- Task: independent 30-minute direction, evidence-cost, and idle-resource audit.
+- Result: `CONTINUE`. It accepted the fixed five-surface evaluation contract,
+  the method-level factorization hypothesis, one-point training run, and new
+  listener audio; it rejected tuning neighbors and required all five screens
+  before selecting the next mechanism.
+- Problems: the audit snapshot only exposed the first EXP-203 listener files,
+  so it could not see EXP-204--207 already rendering or complete. It cannot
+  observe operator localStorage, which remains unknown by design.
+- Rework: verdict adopted and satisfied. All 850 WAVs and five v4 screens are
+  complete; the new gross failure triggers the declared stop. Commit the
+  closure before admitting one different source-content-preservation method.
+
+## 2026-08-14T06:58:00Z - EXP-203--207 unpaired human factorization completed
+
+- Agent: `primary-integrator`.
+- Task: train the one-point alignment-free human factorization method and
+  publish its unchanged checkpoint on all five prebound evaluation surfaces.
+- Dependencies: commits `6a0f208` and `150ccde`; 219 focused tests;
+  `make control-check`; curriculum SHA-256
+  `f191882641bbff714c4e03a247e38fdca959ca4f7bb7f6a2fd658b0f67c0d727`.
+- Result: the two-row smoke was finite with 835,584 trainable parameters and
+  4,623,464,960 peak allocated bytes. The full run completed 170 updates and
+  saved an EMA adapter with SHA-256
+  `432917a9c4b3bda307daf81c469655cf4247e5001be7890d1eb30c647a37a8b5`.
+  Published 35 external7, 240 fresh48, 155 Hadou31, 300 stress60, and 120
+  JSUT24 WAVs to port 8878: 850 total. Cross-arm common-stable source distance
+  moved external7 `0.256 -> 0.287` (`1/3/1`), fresh48 `0.192 -> 0.188`
+  (`13/15/7`), Hadou31 `0.133 -> 0.100` (`10/13/2`), stress60
+  `0.197 -> 0.218` (`13/14/16`), and JSUT24 `0.121 -> 0.141`
+  (`6/11/4`). Pitch+3 and silence300 improved, but tempo1.2 regressed
+  `0.262 -> 0.465` (`0/4/4`).
+- Problems: the candidate repaired control69's gross loop on `cv30615849f`
+  but added a different consensus gross failure on `cv39028774f`, producing a
+  223-character repeated `ん` run. After the checkpoint and external audio
+  were safely written, the terminal receipt step failed because standalone
+  curricula lacked `source_work/result.json`; `150ccde` repaired that receipt
+  path. The weights were not rerun just to recreate a receipt.
+- Rework: the predeclared candidate-added-corruption stop closes this exact
+  objective despite useful Hadou and category-specific signal. Do not sweep
+  weight, pairing, window, scope, LR, horizon, or EMA neighbors. Preserve the
+  unheard audio as unselected diagnosis and choose the next method from a
+  different mechanism that explicitly preserves source content under tempo.
