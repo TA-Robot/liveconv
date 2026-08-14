@@ -58,6 +58,13 @@ EXPECTED_CONVERTER_PARAMETERS = 42_357_760
 CONVERTER_CHECKPOINT_KIND = "liveconv-xvc-merged-control69-converter/v1"
 GENERATIVE_OBJECTIVE = "generative-only"
 REAL_REFERENCE_ADVERSARIAL_OBJECTIVE = "real-reference-adversarial"
+EMA_IMPLEMENTATION = "ema-pytorch-0.7.7-defaults-adapter-equivalent"
+EMA_BETA = 0.9999
+EMA_UPDATE_AFTER_STEP = 100
+EMA_UPDATE_EVERY = 10
+EMA_INV_GAMMA = 1.0
+EMA_POWER = 2.0 / 3.0
+EMA_MIN_VALUE = 0.0
 
 
 class PostRehearsalError(RuntimeError):
@@ -68,9 +75,39 @@ def listening_policy(
     manifest_kind: str = OUTPUT_KIND,
     trainable_target: str = LORA69_TARGET,
     training_objective: str = GENERATIVE_OBJECTIVE,
+    use_adapter_ema: bool = False,
 ) -> dict[str, str]:
     """Return the complete shared-listener identity for the admitted method."""
 
+    if use_adapter_ema:
+        if (
+            manifest_kind != SELECTIVE_OUTPUT_KIND
+            or trainable_target != LORA69_TARGET
+            or training_objective != REAL_REFERENCE_ADVERSARIAL_OBJECTIVE
+        ):
+            raise PostRehearsalError(
+                "adapter EMA is admitted only for selective real-adversarial LoRA69"
+            )
+        return {
+            "slug": "exp163",
+            "candidate_id": "cv12-selective-real-adversarial-ema170",
+            "candidate_name": (
+                "EXP-163 / selective real-adversarial / upstream EMA"
+            ),
+            "run_kind": "EXP-163 X-VC upstream-EMA external evaluation",
+            "result_kind": "liveconv-exp163-xvc-real-adversarial-ema/v1",
+            "question": (
+                "Does restoring upstream-configured EMA retain ordinary gains "
+                "without the final online adapter's fresh collapse?"
+            ),
+            "independent_variable": (
+                "reported adapter state changes from EXP-158's final online "
+                "LoRA69 parameters to the equivalent trainable-parameter EMA "
+                "using pinned ema-pytorch 0.7.7 defaults; data, objective, "
+                "initialization, optimizer steps, LR, clip, scope, and condition "
+                "stay fixed"
+            ),
+        }
     if training_objective == REAL_REFERENCE_ADVERSARIAL_OBJECTIVE:
         if (
             manifest_kind != SELECTIVE_OUTPUT_KIND
@@ -297,6 +334,12 @@ def validate_inputs(
     manifest = load_manifest(
         arguments.training_manifest, arguments.source_work, arguments.control_work
     )
+    listening_policy(
+        str(manifest["kind"]),
+        arguments.trainable_target,
+        arguments.training_objective,
+        arguments.adapter_ema,
+    )
     evaluation = breadth._load_manifest(
         arguments.evaluation_set,
         kind=breadth.EVALUATION_KIND,
@@ -490,6 +533,78 @@ def load_converter_checkpoint(
     return metadata
 
 
+class AdapterEMA:
+    """Exact ema-pytorch 0.7.7 default schedule over mutable adapter tensors."""
+
+    def __init__(self, model: Any, torch: Any) -> None:
+        self.torch = torch
+        self.parameters = {
+            name: parameter
+            for name, parameter in model.named_parameters()
+            if parameter.requires_grad and bool(torch.is_floating_point(parameter))
+        }
+        if not self.parameters:
+            raise PostRehearsalError("adapter EMA has no mutable tensors")
+        self.shadow = {
+            name: parameter.detach().clone()
+            for name, parameter in self.parameters.items()
+        }
+        self.step = 0
+        self.initted = False
+        self.copy_updates = 0
+        self.moving_average_updates = 0
+        self.last_decay = 0.0
+
+    def _copy(self) -> None:
+        with self.torch.no_grad():
+            for name, parameter in self.parameters.items():
+                self.shadow[name].copy_(parameter.detach())
+        self.copy_updates += 1
+
+    def update(self) -> None:
+        current_step = self.step
+        self.step += 1
+        if not self.initted:
+            self._copy()
+            self.initted = True
+            return
+        if current_step % EMA_UPDATE_EVERY != 0:
+            return
+        if current_step <= EMA_UPDATE_AFTER_STEP:
+            self._copy()
+            return
+        epoch = max(self.step - EMA_UPDATE_AFTER_STEP - 1, 0)
+        decay = 1.0 - (1.0 + epoch / EMA_INV_GAMMA) ** (-EMA_POWER)
+        decay = min(max(decay, EMA_MIN_VALUE), EMA_BETA)
+        with self.torch.no_grad():
+            for name, parameter in self.parameters.items():
+                self.shadow[name].lerp_(parameter.detach(), 1.0 - decay)
+        self.moving_average_updates += 1
+        self.last_decay = decay
+
+    def copy_to(self) -> None:
+        with self.torch.no_grad():
+            for name, parameter in self.parameters.items():
+                parameter.copy_(self.shadow[name])
+
+    def receipt(self) -> dict[str, Any]:
+        return {
+            "implementation": EMA_IMPLEMENTATION,
+            "beta": EMA_BETA,
+            "update_after_step": EMA_UPDATE_AFTER_STEP,
+            "update_every": EMA_UPDATE_EVERY,
+            "inv_gamma": EMA_INV_GAMMA,
+            "power": EMA_POWER,
+            "min_value": EMA_MIN_VALUE,
+            "calls": self.step,
+            "copy_updates": self.copy_updates,
+            "moving_average_updates": self.moving_average_updates,
+            "last_decay": self.last_decay,
+            "tensor_count": len(self.shadow),
+            "parameter_count": sum(value.numel() for value in self.shadow.values()),
+        }
+
+
 def run(
     arguments: argparse.Namespace,
     manifest: Mapping[str, Any],
@@ -507,6 +622,7 @@ def run(
         str(manifest["kind"]),
         arguments.trainable_target,
         arguments.training_objective,
+        arguments.adapter_ema,
     )
 
     import torch
@@ -554,6 +670,7 @@ def run(
     if sum(parameter.numel() for parameter in trainable) != expected_trainable:
         raise PostRehearsalError("control69 trainable parameter count drifted")
     optimizer = torch.optim.AdamW(trainable, lr=LEARNING_RATE)
+    adapter_ema = AdapterEMA(trained, torch) if arguments.adapter_ema else None
     losses: list[float] = []
     adversarial_metrics: list[dict[str, float]] = []
     rows = manifest["items"][:1] if arguments.smoke else manifest["items"]
@@ -634,6 +751,8 @@ def run(
             if not arguments.smoke:
                 optimizer.step()
             losses.append(numeric)
+        if adapter_ema is not None:
+            adapter_ema.update()
     if arguments.smoke:
         smoke = {
             "status": "smoked-control69-clean-post-rehearsal",
@@ -646,6 +765,8 @@ def run(
             smoke["adversarial_metrics"] = adversarial_metrics[0]
         else:
             smoke["gradient_norm"] = float(gradient_norm.detach().cpu())
+        if adapter_ema is not None:
+            smoke["adapter_ema"] = adapter_ema.receipt()
         print(
             json.dumps(smoke, sort_keys=True)
         )
@@ -658,10 +779,17 @@ def run(
         )
     else:
         adapter_dir = arguments.work_dir / f"adapter-{EXPECTED_ROWS}"
+        if adapter_ema is not None:
+            online_dir = arguments.work_dir / f"online-adapter-{EXPECTED_ROWS}"
+            trained.save_pretrained(online_dir, safe_serialization=True)
+            adapter_ema.copy_to()
         trained.save_pretrained(adapter_dir, safe_serialization=True)
         checkpoint_metadata = {
-            "kind": "peft-adapter",
+            "kind": "peft-adapter-ema" if adapter_ema is not None else "peft-adapter",
             "directory": adapter_dir.name,
+            "online_directory": (
+                f"online-adapter-{EXPECTED_ROWS}" if adapter_ema is not None else None
+            ),
         }
 
     target_id, target_path, target_digest = target_rows[0]
@@ -769,6 +897,7 @@ def run(
         "control_adapter": str(arguments.control_adapter),
         "trainable_target": arguments.trainable_target,
         "training_objective": arguments.training_objective,
+        "adapter_ema": adapter_ema.receipt() if adapter_ema is not None else None,
         "candidate_checkpoint": checkpoint_metadata,
         "updates": len(losses),
         "role_counts": {"real-donor-teacher-output": len(losses)},
@@ -841,6 +970,7 @@ def parser() -> argparse.ArgumentParser:
         choices=(GENERATIVE_OBJECTIVE, REAL_REFERENCE_ADVERSARIAL_OBJECTIVE),
         default=GENERATIVE_OBJECTIVE,
     )
+    value.add_argument("--adapter-ema", action="store_true")
     value.add_argument("--xvc-source-root", type=Path, required=True)
     value.add_argument("--xvc-config", type=Path, required=True)
     value.add_argument("--checkpoint", type=Path, required=True)

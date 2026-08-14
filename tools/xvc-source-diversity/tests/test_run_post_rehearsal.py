@@ -94,3 +94,37 @@ def test_real_reference_adversarial_rejects_full_converter() -> None:
         assert "selective LoRA69" in str(error)
     else:
         raise AssertionError("adversarial full converter unexpectedly admitted")
+
+
+def test_upstream_ema_policy_changes_reported_adapter_state() -> None:
+    policy = post.listening_policy(
+        post.SELECTIVE_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp163"
+    assert policy["candidate_id"] == "cv12-selective-real-adversarial-ema170"
+    assert "EMA" in policy["independent_variable"]
+
+
+def test_adapter_ema_matches_pinned_default_update_schedule() -> None:
+    import torch
+
+    model = torch.nn.Linear(1, 1, bias=False)
+    model.weight.requires_grad_(True)
+    tracker = post.AdapterEMA(model, torch)
+    for update in range(1, 171):
+        with torch.no_grad():
+            model.weight.fill_(float(update))
+        tracker.update()
+
+    receipt = tracker.receipt()
+    assert receipt["calls"] == 170
+    assert receipt["copy_updates"] == 11
+    assert receipt["moving_average_updates"] == 6
+    assert receipt["last_decay"] == 1.0 - 61.0 ** (-2.0 / 3.0)
+    assert float(tracker.shadow["weight"].item()) < 161.0
+    tracker.copy_to()
+    assert torch.equal(model.weight, tracker.shadow["weight"])

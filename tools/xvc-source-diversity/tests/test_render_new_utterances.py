@@ -584,6 +584,30 @@ def test_real_reference_adversarial_policies_include_stress_gate() -> None:
     assert "real-reference-adversarial-stress" in choices
 
 
+def test_real_adversarial_ema_policies_include_stress_gate() -> None:
+    kinds = [
+        "real-adversarial-ema-fresh48",
+        "real-adversarial-ema-hadou",
+        "real-adversarial-ema-stress",
+        "real-adversarial-ema-jsut",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-164",
+        "EXP-165",
+        "EXP-166",
+        "EXP-167",
+    ]
+    assert len({policy["variant_id"] for policy in policies}) == 1
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert "real-adversarial-ema-stress" in choices
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"

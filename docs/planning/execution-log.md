@@ -3699,3 +3699,23 @@ job queue.
   the current wrapper because extraction is no-grad and crosses CPU NumPy.
   The next bounded method restores the upstream-configured EMA omission once,
   using pinned package defaults and the same training/evaluation contract.
+
+## 2026-08-14T01:16:00Z - EXP-163--167 upstream EMA prepared
+
+- Agent: `primary-integrator`.
+- Task: restore one omitted upstream X-VC training mechanism rather than tune
+  EXP-158's adversarial weights or add another scope point.
+- Dependencies: EXP-158's 45-row ordinary-content gain and new fresh collapse;
+  pinned X-VC `ema_update: True`; pinned `ema-pytorch==0.7.7` defaults;
+  external7, fresh48, Hadou31, stress60, and unopened JSUT24; gpu0; listener
+  8878.
+- Result: implement the exact default inverse-decay schedule over the only
+  mutable tensors: 835,584 LoRA parameters. In 170 calls it performs 11 exact
+  copies through step 100 and six moving-average updates through step 160.
+  Preserve the final online adapter separately and evaluate only EMA. Focused
+  tests verify the schedule, decay, copy-back, policies, and frozen gates.
+- Problems: EMA may stabilize parameter trajectory but cannot guarantee content
+  correctness or perceived naturalness. It must hit the same gross stop.
+- Rework: run one real smoke, commit, then one unchanged GPU lane. Do not sweep
+  EMA settings. Gate external7 -> fresh48 -> Hadou31 -> stress60, then JSUT24
+  only on all-survival.

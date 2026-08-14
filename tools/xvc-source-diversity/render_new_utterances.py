@@ -859,6 +859,59 @@ def candidate_policy(kind: str) -> dict[str, str]:
             ),
             "question": question,
         }
+    if kind in {
+        "real-adversarial-ema-fresh48",
+        "real-adversarial-ema-hadou",
+        "real-adversarial-ema-stress",
+        "real-adversarial-ema-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        experiment_id = (
+            "EXP-167"
+            if jsut
+            else "EXP-166"
+            if stress
+            else "EXP-165"
+            if hadou
+            else "EXP-164"
+        )
+        suffix = (
+            "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "cv12-selective-real-adversarial-ema170",
+            "display_name": (
+                "EXP-163 / selective real-adversarial / upstream EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-real-adversarial-ema-"
+                f"{suffix}/v1"
+            ),
+            "question": (
+                "Does upstream EMA survive untouched JSUT categories?"
+                if jsut
+                else (
+                    "Does upstream EMA survive frozen rate, pitch, silence, and "
+                    "noise conditions?"
+                    if stress
+                    else (
+                        "Does upstream EMA avoid heldout Hadou collapse?"
+                        if hadou
+                        else "Does upstream EMA preserve broad fresh48 behavior "
+                        "without online-checkpoint collapse?"
+                    )
+                )
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1472,6 +1525,10 @@ def _parser() -> argparse.ArgumentParser:
             "real-reference-adversarial-hadou",
             "real-reference-adversarial-stress",
             "real-reference-adversarial-jsut",
+            "real-adversarial-ema-fresh48",
+            "real-adversarial-ema-hadou",
+            "real-adversarial-ema-stress",
+            "real-adversarial-ema-jsut",
         ),
         default="speaker7",
     )
