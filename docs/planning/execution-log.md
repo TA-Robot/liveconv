@@ -6443,3 +6443,41 @@ job queue.
   added gross corruption appeared and the result is mixed, not a method win.
   Continue the already-fixed Hadou/stress/JSUT/expanded/SRC4VC-heldout inputs;
   do not change data, GRL weight, head, loss, scope, LR, or horizon.
+
+## 2026-08-14T21:23:00Z - EXP-328 matched Hadou31 broad surface
+
+- Agent: `primary-integrator`.
+- Task: compare EXP-325 and EXP-326 on the frozen Hadou31 inputs without
+  changing either adapter or render contract.
+- Dependencies: commits `7163fc6` and `4e92025`; one sequential gpu0 lease;
+  listener 8878; fixed Hadou31 input identity.
+- Result: both arms completed all 31 rows and published 310 WAVs. All 31
+  candidate hashes differ. The exact GRL-versus-control join is `3W/28T/0L`
+  for both source-relative and auxiliary known-text ASR distance; source-
+  relative mean changes `0.193576 -> 0.181842`.
+- Result: gross repetition stays `0 -> 0`, decoder instability stays `5 -> 5`,
+  and there are no new or recovered unstable rows. This remains a coarse
+  corruption/content result only.
+- Problems: none on this surface. Two surfaces are insufficient for a robust
+  method decision and operator hearing remains unavailable.
+- Rework: continue the predefined four remaining surfaces before replanning;
+  keep both arms unheard and unselected.
+
+## 2026-08-14T21:24:36Z - Grok project-progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux
+  `liveconv-grok-auditor` (read-only, no tools or delegation).
+- Task: judge whether EXP-326's matched six-surface characterization remains
+  the shortest path toward broadly better X-VC audio after mixed fresh48.
+- Result: `CONTINUE`. Grok accepted the new EXP-326 external7, EXP-327
+  fresh48, and EXP-328 Hadou31 audio, the frozen diverse evaluation, and the
+  single-variable GRL contract. It specifically judged continuing after the
+  mixed fresh48 result preferable to either a winner claim or an early stop.
+- Adopted: yes. Finish stress60, JSUT24, expanded144, and SRC4VC-heldout30 in
+  the same sequential matched arms, with only coarse content/corruption
+  screens, then replan once.
+- Problems: the auditor snapshot missed the already-completed Hadou screen and
+  briefly observed an idle gap between completed jobs. Neither changes the
+  verdict; Hadou subsequently proved `3W/28T/0L` with unchanged instability.
+- Rework: none. Do not open GRL sweeps, another data arm, promote evidence, or
+  machine naturalness/identity claims while the fixed characterization runs.
