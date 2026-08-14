@@ -1,6 +1,6 @@
 # EXP-196: X-VC source activity-envelope retention
 
-Status: Prepared listen-now training pilot; unselected
+Status: Completed listen-now training pilot; mixed/rejected; unselected
 
 ## Goal
 
@@ -43,3 +43,26 @@ zero condition, and upstream EMA schedule.
 No loss-weight, envelope-window, hop, scope, LR, epoch, or data sweep. No
 fresh48, Hadou, JSUT, EXP-024 DTW retry, adjacent source-path scope, product
 promotion, or optimization of the obsolete 8.17-second tongue-twister sample.
+
+## Result
+
+The two-row smoke was finite. The one full run completed 170 updates in 129.4
+seconds at 6,163,570,688 peak allocated GPU bytes. Total loss moved from
+`300.93` to `142.58`; the activity-envelope distance itself moved from `0.253`
+to `0.293`, so the auxiliary objective did not decrease over the ordered
+trajectory.
+
+EXP-196 published 35 external7 WAVs and EXP-197 published 300 stress60 WAVs.
+No arm added a consensus gross corruption row. On the five external7 rows
+stable in both control and candidate decodes, source-relative distance moved
+`0.256 -> 0.191` and known-text distance `0.371 -> 0.254`, both with W/T/L
+`3/1/1`. The broader stress result did not support the timing hypothesis: on
+45 common-stable rows source-relative distance moved `0.223 -> 0.233`
+(`7/25/13`) and known-text distance `0.599 -> 0.612` (`6/30/9`). Noise20
+improved, but tempo1.2 was `0/4/4` on both diagnostics and clean/pitch/silence
+were mixed or worse.
+
+Close this objective family. Do not sweep its weight, window, hop, curriculum,
+or scope. These machine diagnostics say only that the intended coarse timing
+effect was not observed; they do not judge the naturalness, target identity,
+or perceptual quality of the 335 unheard WAVs.

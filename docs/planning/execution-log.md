@@ -4520,3 +4520,25 @@ job queue.
   both fixed evaluation surfaces and close. Do not sweep loss weight/window/hop,
   add evaluation sets after seeing results, or return to the obsolete 8.17-second
   tongue-twister target.
+
+## 2026-08-14T05:48:00Z - EXP-196--197 source timing objective completed
+
+- Agent: `primary-integrator`.
+- Task: train the fixed source activity-envelope objective and publish both
+  prebound evaluation surfaces.
+- Dependencies: commit `421b618`; 209 focused source-diversity tests and
+  `make control-check` green; exact EXP-186 curriculum and controls.
+- Result: smoke was finite with 835,584 trainable parameters. Full training
+  completed 170 updates in 129.4 seconds at 6,163,570,688 peak allocated bytes;
+  total loss moved `300.93 -> 142.58`, while activity-envelope distance moved
+  `0.253 -> 0.293`. Published 35 external7 and 300 stress60 WAVs with no
+  candidate-added consensus gross row. External7 common-stable rows improved
+  on both auxiliary diagnostics (`3/1/1`), but 45 stress common-stable rows
+  moved source `0.223 -> 0.233` (`7/25/13`) and known text `0.599 -> 0.612`
+  (`6/30/9`). Tempo1.2 was `0/4/4` on both; only noise20 clearly improved.
+- Problems: the explicit timing prior did not repair the motivating tempo
+  residual and the broader result contradicts the small external7 signal.
+  Auxiliary ASR cannot assess naturalness, identity, or audible timing quality.
+- Rework: close source-envelope weight/window/hop and adjacent timing-loss
+  points after 335 WAVs. Keep the audio unselected on 8878 and choose the next
+  lane from a different mechanism; do not optimize the old tongue twister.

@@ -213,8 +213,9 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-193 stress60 gate (mixed; tempo residual remains; family closed)
         -> EXP-194 source36 placement on exact EXP-186 method
         -> EXP-195 stress60 (mixed; tempo/silence residual; family closed)
-        -> EXP-196 source activity-envelope objective (Ready)
-        -> EXP-197 prebound stress60 gate
+        -> EXP-196 source activity-envelope objective
+        -> EXP-197 stress60 (tempo 0/4/4; objective family closed)
+        -> next method must not be an adjacent timing-loss point (Ready)
         -> operator hearing when available
 ```
 
