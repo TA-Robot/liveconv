@@ -3199,9 +3199,20 @@ def run(
                 adapter_ema.update()
     if arguments.smoke:
         smoke = {
-            "status": "smoked-control69-clean-post-rehearsal",
+            "status": (
+                "smoked-fresh-lora-pseudoparallel"
+                if arguments.training_objective
+                == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE
+                else "smoked-control69-clean-post-rehearsal"
+            ),
             "loss": losses[0],
             "trainable_parameters": expected_trainable,
+            "training_initialization": (
+                "fresh-zero-initialized-rank8-lora69-on-base-xvc"
+                if arguments.training_objective
+                == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE
+                else "exp035-control69-adapter"
+            ),
             "training_objective": arguments.training_objective,
             "optimizer_mode": arguments.optimizer_mode,
             "parameter_anchor": arguments.parameter_anchor,
