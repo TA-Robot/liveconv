@@ -270,6 +270,23 @@ def test_pseudoparallel_output_speaker_policy_changes_only_final_wav_loss() -> N
     assert "weight-10 cosine loss" in policy["independent_variable"]
 
 
+def test_latent_speaker_margin_policy_changes_only_source_leakage_loss() -> None:
+    policy = post.listening_policy(
+        post.PSEUDOPARALLEL_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp266"
+    assert policy["candidate_id"] == (
+        "cross-corpus170-pseudoparallel-latent-speaker-margin-ema170"
+    )
+    assert "target cosine" in policy["independent_variable"]
+    assert "source-speaker ERes2Net cosine" in policy["independent_variable"]
+    assert "margin 0.1" in policy["independent_variable"]
+
+
 def test_condition_calibrator_policy_freezes_exp238_and_moves_only_condition() -> None:
     policy = post.listening_policy(
         post.PSEUDOPARALLEL_OUTPUT_KIND,
@@ -372,6 +389,74 @@ def test_output_speaker_identity_reaches_final_waveform_gradient() -> None:
     assert metrics["output_speaker_identity_loss"] > 0.0
     assert reconstruction.grad is not None
     assert torch.count_nonzero(reconstruction.grad).item() > 0
+
+
+def test_latent_source_speaker_margin_rejects_source_leakage(monkeypatch) -> None:
+    import torch
+
+    class FakeModel:
+        speaker_encoder = object()
+
+        @staticmethod
+        def generative_loss(outputs):
+            return {"loss": outputs["pred_sim_feat"].sum() * 0.0 + 2.0}
+
+    predicted = torch.tensor([[1.0, 0.0]], requires_grad=True)
+    outputs = {
+        "pred_sim_feat": predicted,
+        "sim_feat": torch.tensor([[0.0, 1.0]]),
+    }
+    batch = {"source_wav": torch.zeros(1, 1, 8)}
+    monkeypatch.setattr(
+        post,
+        "differentiable_xvc_speaker_embedding",
+        lambda speaker_encoder, waveform, *, torch: torch.tensor([[1.0, 0.0]]),
+    )
+
+    losses = post.latent_source_speaker_margin_generator_loss(
+        FakeModel(), outputs, batch, torch=torch
+    )
+    losses["loss"].backward()
+
+    assert losses["latent_source_speaker_target_similarity"].item() == 0.0
+    assert losses["latent_source_speaker_source_similarity"].item() == 1.0
+    assert losses["latent_source_speaker_advantage"].item() == -1.0
+    assert losses["latent_source_speaker_active_fraction"].item() == 1.0
+    assert abs(losses["latent_source_speaker_margin_loss"].item() - 11.0) < 1e-6
+    assert abs(losses["loss"].item() - 13.0) < 1e-6
+    assert predicted.grad is not None
+    assert torch.count_nonzero(predicted.grad).item() > 0
+
+
+def test_latent_source_speaker_margin_is_zero_when_satisfied(monkeypatch) -> None:
+    import torch
+
+    class FakeModel:
+        speaker_encoder = object()
+
+        @staticmethod
+        def generative_loss(outputs):
+            return {"loss": outputs["pred_sim_feat"].sum() * 0.0 + 2.0}
+
+    outputs = {
+        "pred_sim_feat": torch.tensor([[1.0, 0.0]], requires_grad=True),
+        "sim_feat": torch.tensor([[1.0, 0.0]]),
+    }
+    batch = {"source_wav": torch.zeros(1, 1, 8)}
+    monkeypatch.setattr(
+        post,
+        "differentiable_xvc_speaker_embedding",
+        lambda speaker_encoder, waveform, *, torch: torch.tensor([[0.0, 1.0]]),
+    )
+
+    losses = post.latent_source_speaker_margin_generator_loss(
+        FakeModel(), outputs, batch, torch=torch
+    )
+
+    assert losses["latent_source_speaker_advantage"].item() == 1.0
+    assert losses["latent_source_speaker_active_fraction"].item() == 0.0
+    assert losses["latent_source_speaker_margin_loss"].item() == 0.0
+    assert losses["loss"].item() == 2.0
 
 
 def test_speaker_path_loss_contains_only_the_weighted_voice_target() -> None:

@@ -282,6 +282,10 @@ claims from that artifact are superseded. The active join is now:
         -> 314/314 WAVs changed; zero added gross; mostly ASR ties but decoder instability +4
         -> EXP-265 independent ECAPA is flat/mixed: -0.000129, 151W/163L
         -> close calibrator and all adjacent dimension/weight/LR/scope points
+        -> EXP-266 return to the EXP-238 method and fixed data/evaluation surfaces
+        -> add one converter-latent target-over-source speaker margin loss
+        -> exact LoRA69/LR/170/EMA controls; no final-WAV loss or frozen sidecar
+        -> two-row active-gradient smoke, then one gpu0 lane if admitted
         -> operator hearing when available
 ```
 

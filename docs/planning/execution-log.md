@@ -5548,3 +5548,40 @@ job queue.
 - Rework: close exact EXP-259 and its adjacent dimension, initialization,
   weight, LR, horizon, data, and scope points. Return to a method-level X-VC
   retraining hypothesis; do not treat the unheard audio as selected.
+
+## 2026-08-14T14:22:18Z - Grok audit redirects from identity patches
+
+- Agent: `grok-4.6-project-progress-auditor` in tmux
+  `liveconv-grok-auditor`; independent, read-only, and no delegation.
+- Task: judge whether the EXP-259--265 closure and proposed next work remain the
+  shortest route to better robust X-VC audio.
+- Result: `REDIRECT`. The auditor accepted the 307 new WAVs and method closure,
+  but classified additional frozen sidecars, calibrators, and final-WAV
+  identity patches as adjacent work with low expected value. It required one
+  method-level X-VC retraining variable that can explain EXP-243's distributed
+  losses while reusing the fixed evaluation surfaces.
+- Adopted: yes. Discard final-WAV target/source margin, calibrator neighbors,
+  new evaluation design, and identity-metric winner claims. Admit only EXP-266's
+  converter-latent source-leakage loss, with data, scope, LR, horizon, EMA, and
+  evaluation fixed.
+- Problems: gpu0 was idle at the audit snapshot. Operator hearing and browser
+  localStorage decisions remain unavailable.
+- Rework: commit the smallest loss/test/plan slice, prove an active gradient on
+  two real rows, and launch exactly one 170-update gpu0 lane if admitted.
+
+## 2026-08-14T14:31:22Z - EXP-266 latent leakage pilot prepared
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T14:22:18Z.
+- End: 2026-08-14T14:31:22Z.
+- Dependencies: EXP-238 technical survivor; EXP-243 16-speaker stress matrix;
+  EXP-252/259 closures; Grok `REDIRECT`; fixed broad evaluation surfaces.
+- Result: added one target-over-source cosine hinge to the existing converter-
+  latent speaker predictor, plus policy identity, result receipt, and focused
+  regressions. The loss is active and differentiable for a source-leaking unit
+  case and exactly zero once target advantage exceeds 0.1. All 56 focused
+  runner tests pass.
+- Problems: unit evidence does not establish that the real EXP-238 rows activate
+  the hinge or that LoRA69 receives a useful finite gradient.
+- Rework: run exact CPU admission, then a two-row CUDA smoke. Stop before the
+  full lane if no real row activates the margin.

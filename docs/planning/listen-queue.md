@@ -21,6 +21,12 @@ committed, single-variable job at a time, publish its comparison on 8878, apply
 only coarse machine rejection for corruption/content failure, and replan after
 each result. Accumulated candidates remain unselected until human hearing.
 
+Current GPU lane (2026-08-14 14:31 UTC): EXP-266 tests one method-level X-VC
+loss change on the exact EXP-238 curriculum: require the converter-latent
+speaker prediction to prefer the target over the current source by margin 0.1.
+It changes neither the final-WAV loss nor a frozen sidecar. A two-row active-
+gradient smoke gates the single 170-update run; all hearing claims remain open.
+
 Provenance correction (2026-08-13): the retained 8.17-second recording saying
 `隣の客はよく柿食う客だ` is a local tongue-twister diagnostic, **not** audio
 captured from the ChatGPT browser. All earlier `actual ChatGPT` labels for that

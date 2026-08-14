@@ -126,6 +126,9 @@ PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE = (
 PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE = (
     "pseudoparallel-generative-real-adversarial-condition-calibrator"
 )
+PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE = (
+    "pseudoparallel-generative-real-adversarial-latent-speaker-margin"
+)
 OUTPUT_CYCLE_CONTENT_WEIGHT = 1000.0
 CONTRASTIVE_CONTENT_TEMPERATURE = 0.1
 SEQUENTIAL_OPTIMIZER = "sequential"
@@ -147,6 +150,11 @@ SOURCE_ACTIVITY_ENVELOPE_IMPLEMENTATION = (
 OUTPUT_SPEAKER_IDENTITY_WEIGHT = 10.0
 OUTPUT_SPEAKER_IDENTITY_IMPLEMENTATION = (
     "frozen-xvc-eres2net-final-waveform-cosine/v1"
+)
+LATENT_SOURCE_SPEAKER_MARGIN = 0.1
+LATENT_SOURCE_SPEAKER_MARGIN_WEIGHT = 10.0
+LATENT_SOURCE_SPEAKER_MARGIN_IMPLEMENTATION = (
+    "xvc-speaker-predictor-target-over-frozen-source-eres2net-hinge/v1"
 )
 SPEAKER_CONDITION_DIMENSION = 192
 SPEAKER_CONDITION_CALIBRATOR_KIND = (
@@ -236,6 +244,7 @@ def listening_policy(
         in {
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
+            PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
         }
     ):
         if (
@@ -245,6 +254,7 @@ def listening_policy(
             not in {
                 PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
                 PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
+                PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
             }
             or not use_adapter_ema
             or optimizer_mode != SEQUENTIAL_OPTIMIZER
@@ -256,7 +266,11 @@ def listening_policy(
             )
         if (
             manifest_kind == SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND
-            and training_objective == PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE
+            and training_objective
+            in {
+                PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
+                PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
+            }
         ):
             raise PostRehearsalError(
                 "output speaker identity requires the retained EXP-238 curriculum"
@@ -313,6 +327,35 @@ def listening_policy(
                     "speaker predictor loss, LoRA69 initialization and scope, LR, "
                     "sequential optimizer, 170 updates, clip, zero condition, and "
                     "EMA remain fixed"
+                ),
+            }
+        if training_objective == PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE:
+            return {
+                "slug": "exp266",
+                "candidate_id": (
+                    "cross-corpus170-pseudoparallel-latent-speaker-margin-ema170"
+                ),
+                "candidate_name": (
+                    "EXP-266 / source-speaker leakage margin / EMA"
+                ),
+                "run_kind": "EXP-266 X-VC latent speaker leakage evaluation",
+                "result_kind": (
+                    "liveconv-exp266-xvc-latent-speaker-margin-ema/v1"
+                ),
+                "question": (
+                    "Does explicitly rejecting source-speaker leakage in X-VC's "
+                    "converter latent improve robust target-voice conversion?"
+                ),
+                "independent_variable": (
+                    "relative to EXP-238, add one weight-10 hinge loss requiring "
+                    "the converter-latent speaker prediction's target cosine to "
+                    "exceed its frozen source-speaker ERes2Net cosine by margin "
+                    "0.1; the exact CV48/JSUT85/JVS3/Hadou34 curriculum, source-"
+                    "aligned control69 targets, real Amitaro discriminator targets, "
+                    "complete generative loss including the existing target-speaker "
+                    "MSE, control69 LoRA69 initialization and scope, LR, sequential "
+                    "170 updates, clip, zero frame condition, discriminator, and EMA "
+                    "remain fixed"
                 ),
             }
         return {
@@ -2418,6 +2461,70 @@ def differentiable_xvc_speaker_embedding(
     return embedding
 
 
+def latent_source_speaker_margin_generator_loss(
+    model: Any,
+    outputs: Mapping[str, Any],
+    batch: Mapping[str, Any],
+    *,
+    torch: Any,
+    margin: float = LATENT_SOURCE_SPEAKER_MARGIN,
+    weight: float = LATENT_SOURCE_SPEAKER_MARGIN_WEIGHT,
+) -> dict[str, Any]:
+    """Keep the converter latent closer to the target than the source speaker."""
+    if (
+        not math.isfinite(margin)
+        or margin <= 0.0
+        or not math.isfinite(weight)
+        or weight <= 0.0
+    ):
+        raise PostRehearsalError("latent source-speaker margin is invalid")
+    predicted = outputs.get("pred_sim_feat")
+    target = outputs.get("sim_feat")
+    source_waveform = batch.get("source_wav")
+    speaker_encoder = getattr(model, "speaker_encoder", None)
+    if (
+        predicted is None
+        or target is None
+        or source_waveform is None
+        or speaker_encoder is None
+    ):
+        raise PostRehearsalError("latent source-speaker margin input is unavailable")
+    predicted = torch.nn.functional.normalize(predicted.float(), dim=-1)
+    target = torch.nn.functional.normalize(target.detach().float(), dim=-1)
+    with torch.no_grad():
+        source = differentiable_xvc_speaker_embedding(
+            speaker_encoder,
+            source_waveform,
+            torch=torch,
+        )
+    if predicted.shape != target.shape or predicted.shape != source.shape:
+        raise PostRehearsalError("latent source-speaker margin shape drifted")
+    target_similarity = torch.nn.functional.cosine_similarity(
+        predicted, target, dim=-1
+    )
+    source_similarity = torch.nn.functional.cosine_similarity(
+        predicted, source, dim=-1
+    )
+    advantage = target_similarity - source_similarity
+    deficit = torch.nn.functional.relu(margin - advantage)
+    margin_loss = weight * deficit.mean()
+    if not bool(torch.isfinite(margin_loss)):
+        raise PostRehearsalError("latent source-speaker margin loss is non-finite")
+    losses = dict(model.generative_loss(outputs))
+    base_loss = losses.get("loss")
+    if base_loss is None or not bool(torch.isfinite(base_loss)):
+        raise PostRehearsalError("base X-VC generative loss is non-finite")
+    losses["loss"] = base_loss + margin_loss
+    losses["latent_source_speaker_margin_loss"] = margin_loss
+    losses["latent_source_speaker_target_similarity"] = target_similarity.mean()
+    losses["latent_source_speaker_source_similarity"] = source_similarity.mean()
+    losses["latent_source_speaker_advantage"] = advantage.mean()
+    losses["latent_source_speaker_active_fraction"] = (
+        deficit.gt(0.0).float().mean()
+    )
+    return losses
+
+
 def output_speaker_identity_regularizer(
     reconstruction: Any,
     target_waveform: Any,
@@ -2604,6 +2711,7 @@ def run(
         PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
         PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
         PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
+        PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
     }:
         discriminator, discriminator_optimizer = breadth._load_pretrained_discriminator(
             arguments, config, torch=torch, device=device
@@ -2613,6 +2721,7 @@ def run(
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
             PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
+            PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
         }:
             target_by_id = {
                 target_id: _pair(target_id, path, digest)
@@ -2626,6 +2735,7 @@ def run(
                         PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
                         PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
                         PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
+                        PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
                     }
                 ):
                     real_target = arguments.source_work / str(item["real_target_file"])
@@ -2806,6 +2916,7 @@ def run(
                             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
                             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
                             PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
+                            PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
                         }
                         else None
                     ),
@@ -2931,6 +3042,18 @@ def run(
                         )
                         if arguments.training_objective
                         == DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+                        else (
+                            lambda outputs, current_batch: (
+                                latent_source_speaker_margin_generator_loss(
+                                    trained,
+                                    outputs,
+                                    current_batch,
+                                    torch=torch,
+                                )
+                            )
+                        )
+                        if arguments.training_objective
+                        == PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE
                         else None
                     ),
                 )
@@ -3213,6 +3336,30 @@ def run(
             }
             else None
         ),
+        "latent_source_speaker_margin": (
+            {
+                "implementation": LATENT_SOURCE_SPEAKER_MARGIN_IMPLEMENTATION,
+                "margin": LATENT_SOURCE_SPEAKER_MARGIN,
+                "weight": LATENT_SOURCE_SPEAKER_MARGIN_WEIGHT,
+                "source": "current-source-window-frozen-XVC-ERes2Net",
+                "target": "assigned-pseudoparallel-target-XVC-ERes2Net",
+                "first_advantage": adversarial_metrics[0][
+                    "generator_latent_source_speaker_advantage"
+                ],
+                "last_advantage": adversarial_metrics[-1][
+                    "generator_latent_source_speaker_advantage"
+                ],
+                "first_active_fraction": adversarial_metrics[0][
+                    "generator_latent_source_speaker_active_fraction"
+                ],
+                "last_active_fraction": adversarial_metrics[-1][
+                    "generator_latent_source_speaker_active_fraction"
+                ],
+            }
+            if arguments.training_objective
+            == PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE
+            else None
+        ),
         "adapter_ema": adapter_ema.receipt() if adapter_ema is not None else None,
         "candidate_checkpoint": checkpoint_metadata,
         "optimizer_steps": optimizer_steps,
@@ -3259,6 +3406,8 @@ def run(
                     == PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE
                     or arguments.training_objective
                     == PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE
+                    or arguments.training_objective
+                    == PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE
                     else "selective-repair-or-retention-target"
                 ),
             }
@@ -3344,6 +3493,7 @@ def parser() -> argparse.ArgumentParser:
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
             PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
+            PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
         ),
         default=GENERATIVE_OBJECTIVE,
     )
