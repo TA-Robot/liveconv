@@ -3795,3 +3795,21 @@ job queue.
   separate CPU design for disjoint category-balanced JSUT retention training;
   any next GPU lane must be a committed data-method change, not another EMA
   evaluation or hyperparameter point.
+
+## 2026-08-14T01:47:00Z - EXP-169 JSUT retention sources designed
+
+- Agent: `primary-integrator`.
+- Task: answer the operator's request for broader data with a distinct training
+  construction, not another EMA/adversarial hyperparameter point.
+- Dependencies: official JSUT 1.1 archive SHA-256 `081da547`; frozen JSUT24;
+  EXP-150's 85 easy curriculum positions; exact EXP-163 method controls.
+- Result: define 85 training sources disjoint from JSUT24 using output-blind
+  transcript-order bin centers: basic 29 and four constraint categories at 14
+  each. Bind them one-to-one to the existing easy positions; hard 85 and total
+  170 updates remain fixed.
+- Problems: JSUT training and JSUT24 share one corpus speaker, so JSUT24 becomes
+  sentence/category-heldout rather than speaker-heldout. Fresh48, Hadou31,
+  stress60, and expanded33 remain independent earlier gates.
+- Rework: focused tests and real archive check, commit, materialize ignored
+  audio, then render control69 retention targets once. Stop before training if
+  any generated target gross-loops; do not replace or cherry-pick rows.
