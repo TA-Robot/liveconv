@@ -355,8 +355,10 @@ def _adversarial_update(
     generator_regularizer: (
         Callable[[], tuple[Any, Mapping[str, float]]] | None
     ) = None,
+    generator_training_setter: Callable[[Any], Sequence[Any]] | None = None,
 ) -> dict[str, float]:
-    base._set_adapter_training_only(trained)
+    setter = generator_training_setter or base._set_adapter_training_only
+    setter(trained)
     discriminator.train()
     generator_optimizer.zero_grad(set_to_none=True)
     discriminator_optimizer.zero_grad(set_to_none=True)

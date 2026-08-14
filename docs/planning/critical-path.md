@@ -211,7 +211,8 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-191 condition-balanced control69 retention replay
         -> EXP-192 frozen fresh48 gate (mixed; no candidate-added gross row)
         -> EXP-193 stress60 gate (mixed; tempo residual remains; family closed)
-        -> next distinct X-VC retraining mechanism (Ready for selection)
+        -> EXP-194 source36 placement on exact EXP-186 method (Ready)
+        -> external7 technical gate; fresh48 only on survival
         -> operator hearing when available
 ```
 

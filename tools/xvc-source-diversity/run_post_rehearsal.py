@@ -71,6 +71,7 @@ RESULT_KIND = "liveconv-exp141-xvc-clean-post-rehearsal-result/v1"
 LEARNING_RATE = 1e-4
 FULL_CONVERTER_TARGET = "full-converter"
 LORA69_TARGET = "lora69"
+SOURCE36_TARGET = "source36"
 CONVERTER_PREFIX = "acoustic_converter"
 EXPECTED_CONVERTER_PARAMETERS = 42_357_760
 CONVERTER_CHECKPOINT_KIND = "liveconv-xvc-merged-control69-converter/v1"
@@ -172,6 +173,38 @@ def listening_policy(
     if optimizer_mode != SEQUENTIAL_OPTIMIZER:
         raise PostRehearsalError("unknown optimizer mode")
     if use_adapter_ema:
+        if trainable_target == SOURCE36_TARGET:
+            if (
+                manifest_kind != COMMONVOICE_RETENTION_OUTPUT_KIND
+                or training_objective != REAL_REFERENCE_ADVERSARIAL_OBJECTIVE
+            ):
+                raise PostRehearsalError(
+                    "source36 EMA is admitted only for EXP-186 retention"
+                )
+            return {
+                "slug": "exp194",
+                "candidate_id": (
+                    "cv12-commonvoice48-source36-real-adversarial-ema170"
+                ),
+                "candidate_name": (
+                    "EXP-194 / Common Voice 48-speaker retention / "
+                    "source36 / real-adversarial / EMA"
+                ),
+                "run_kind": "EXP-194 X-VC source36 retention evaluation",
+                "result_kind": "liveconv-exp194-xvc-source36-retention-ema/v1",
+                "question": (
+                    "Can restricting EXP-186 updates to the source-side "
+                    "attention and feed-forward path reduce forgetting?"
+                ),
+                "independent_variable": (
+                    "only the mutable LoRA path changes from all 69 control69 "
+                    "attention/condition/feed-forward modules to the contained "
+                    "36 source-side attention and feed-forward modules; EXP-186 "
+                    "hard85/easy85 data, 48 speakers, targets, initialization, "
+                    "objective, 170 updates, LR, optimizer, clip, zero condition, "
+                    "and upstream EMA remain fixed"
+                ),
+            }
         if (
             manifest_kind
             not in {
@@ -668,6 +701,37 @@ def _set_converter_training_only(model: Any) -> list[Any]:
     return trainable
 
 
+def _set_existing_adapter_scope_training_only(
+    model: Any, scope: Mapping[str, object]
+) -> list[Any]:
+    """Restrict an already-loaded control69 adapter to one contained scope."""
+
+    targets = tuple(str(item) for item in scope.get("target_modules", []))
+    if not targets:
+        raise PostRehearsalError("adapter scope has no target modules")
+    model.eval()
+    active = 0
+    for name, module in model.named_modules():
+        selected = (
+            ".lora_A" in name or ".lora_B" in name
+        ) and any(f".{target}." in f".{name}." for target in targets)
+        if selected:
+            module.train(True)
+            active += 1
+    trainable: list[Any] = []
+    for name, parameter in model.named_parameters():
+        selected = (
+            ".lora_A." in name or ".lora_B." in name
+        ) and any(f".{target}." in f".{name}." for target in targets)
+        parameter.requires_grad_(selected)
+        if selected:
+            trainable.append(parameter)
+    expected = int(scope["trainable_parameter_count"])
+    if active == 0 or sum(parameter.numel() for parameter in trainable) != expected:
+        raise PostRehearsalError("existing adapter scope topology drifted")
+    return trainable
+
+
 def _converter_snapshot(model: Any, torch: Any) -> dict[str, Any]:
     snapshot: dict[str, Any] = {}
     for name, parameter in model.named_parameters():
@@ -1003,7 +1067,10 @@ def run(
     } != role_mix.STANDARD_LOSS_WEIGHTS:
         raise PostRehearsalError("upstream X-VC loss weights drifted")
 
-    scope = role_mix.training_scope(arguments.inventory, "control69")
+    scope = role_mix.training_scope(
+        arguments.inventory,
+        "source36" if arguments.trainable_target == SOURCE36_TARGET else "control69",
+    )
     if arguments.trainable_target == FULL_CONVERTER_TARGET:
         control = PeftModel.from_pretrained(
             model, str(arguments.control_adapter), is_trainable=False
@@ -1015,7 +1082,11 @@ def run(
         trained = PeftModel.from_pretrained(
             model, str(arguments.control_adapter), is_trainable=True
         )
-        trainable = role_mix._set_scope_training_only(trained, scope)
+        trainable = (
+            _set_existing_adapter_scope_training_only(trained, scope)
+            if arguments.trainable_target == SOURCE36_TARGET
+            else role_mix._set_scope_training_only(trained, scope)
+        )
         expected_trainable = role_mix.expected_trainable_parameter_count(
             scope, "standard"
         )
@@ -1070,6 +1141,8 @@ def run(
     def batch_for(item: Mapping[str, Any]) -> Any:
         if arguments.trainable_target == FULL_CONVERTER_TARGET:
             _set_converter_training_only(trained)
+        elif arguments.trainable_target == SOURCE36_TARGET:
+            _set_existing_adapter_scope_training_only(trained, scope)
         else:
             role_mix._set_scope_training_only(trained, scope)
         tensors = _batch_from_item(
@@ -1154,6 +1227,15 @@ def run(
                             )
                         )
                         if parameter_anchors is not None
+                        else None
+                    ),
+                    generator_training_setter=(
+                        (
+                            lambda current: _set_existing_adapter_scope_training_only(
+                                current, scope
+                            )
+                        )
+                        if arguments.trainable_target == SOURCE36_TARGET
                         else None
                     ),
                 )
@@ -1438,7 +1520,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--control-adapter", type=Path, required=True)
     value.add_argument(
         "--trainable-target",
-        choices=(LORA69_TARGET, FULL_CONVERTER_TARGET),
+        choices=(LORA69_TARGET, SOURCE36_TARGET, FULL_CONVERTER_TARGET),
         default=LORA69_TARGET,
     )
     value.add_argument(

@@ -4447,3 +4447,24 @@ job queue.
   unheard mixed comparison, but do not tune ratios, severities, schedule, or
   add Hadou/JSUT renders. Select the next retraining lane from a different
   mechanism axis.
+
+## 2026-08-14T05:18:00Z - EXP-194 source36 placement prepared
+
+- Agent: `primary-integrator`.
+- Task: select and implement one retraining mechanism outside the closed data-
+  condition family.
+- Dependencies: EXP-186's frozen hard85/easy85 curriculum and surviving
+  adversarial/EMA method; the local function-placement research map; control69
+  source36 is a contained adapter path.
+- Result: selected one variable: freeze the non-source control69 adapter tensors
+  and update only 36 source-side attention/`ff_x` LoRA modules. Data, targets,
+  initialization, objective, optimizer, LR, clip, updates, zero condition, and
+  EMA stay at EXP-186. Added an exact contained-scope setter and distinct
+  EXP-194 identity.
+- Problems: EXP-052 previously rejected source36 under a different fresh-base,
+  1,044-standard-update method. EXP-194 is evidence only about placement inside
+  the later selective-retention/adversarial/EMA method, not a generic source36
+  retry or proof of causality.
+- Rework: commit after focused tests, then run one hard/easy smoke and one
+  170-update external7 lane. Stop on candidate-added gross corruption or broad
+  common-stable regression; do not open adjacent scope points.

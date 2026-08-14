@@ -133,6 +133,66 @@ def test_commonvoice_retention_changes_only_easy_data_identity() -> None:
     assert "48 precommitted Common Voice" in policy["independent_variable"]
 
 
+def test_source36_retention_changes_only_mutable_function_path() -> None:
+    policy = post.listening_policy(
+        post.COMMONVOICE_RETENTION_OUTPUT_KIND,
+        post.SOURCE36_TARGET,
+        post.REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp194"
+    assert policy["candidate_id"] == (
+        "cv12-commonvoice48-source36-real-adversarial-ema170"
+    )
+    assert "36 source-side" in policy["independent_variable"]
+
+
+def test_existing_adapter_scope_freezes_lora_outside_selected_path() -> None:
+    class FakeModule:
+        def train(self, value: bool) -> None:
+            self.training = value
+
+    class FakeParameter:
+        def __init__(self, count: int) -> None:
+            self.count = count
+            self.requires_grad = True
+
+        def requires_grad_(self, value: bool) -> None:
+            self.requires_grad = value
+
+        def numel(self) -> int:
+            return self.count
+
+    target = "acoustic_converter.transformer_blocks.0.attn.to_q"
+    selected_a = FakeParameter(10)
+    selected_b = FakeParameter(14)
+    excluded = FakeParameter(99)
+
+    class FakeModel:
+        def eval(self) -> None:
+            self.training = False
+
+        def named_modules(self):
+            yield f"base_model.model.{target}.lora_A.default", FakeModule()
+            yield "base_model.model.acoustic_converter.proj_out.lora_A.default", FakeModule()
+
+        def named_parameters(self):
+            yield f"base_model.model.{target}.lora_A.default.weight", selected_a
+            yield f"base_model.model.{target}.lora_B.default.weight", selected_b
+            yield "base_model.model.acoustic_converter.proj_out.lora_A.default.weight", excluded
+
+    trainable = post._set_existing_adapter_scope_training_only(
+        FakeModel(),
+        {"target_modules": [target], "trainable_parameter_count": 24},
+    )
+
+    assert trainable == [selected_a, selected_b]
+    assert selected_a.requires_grad is True
+    assert selected_b.requires_grad is True
+    assert excluded.requires_grad is False
+
+
 def test_conditioned_retention_changes_only_easy_condition_identity() -> None:
     policy = post.listening_policy(
         post.CONDITIONED_RETENTION_OUTPUT_KIND,
