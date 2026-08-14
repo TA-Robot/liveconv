@@ -1,6 +1,6 @@
 # EXP-319: 170-update Common Voice 26-row speech-active window treatment
 
-Status: external7 passed; fixed broad surfaces admitted
+Status: broad corruption/content gate failed; unheard and unselected
 
 ## Milestone
 
@@ -71,3 +71,31 @@ was `1W/4T/1L`, mean `0.338675 -> 0.323718`, while known-text was `2W/4T/0L`,
 `0.422152 -> 0.315009`.  The predefined external gate passes, so only the five
 already-frozen broad surfaces are admitted next.  These auxiliary diagnostics
 do not establish naturalness, target identity, a keeper, or a winner.
+
+## Broad result and decision
+
+EXP-320--324 rendered all 307 frozen inputs and published 1,535 WAVs on port
+8878. Exact EXP-238 joins below use rows where both candidates are decoder
+stable. W/T/L is EXP-319 versus EXP-238 on source-relative auxiliary ASR
+distance; lower is better.
+
+| Surface | Common rows | EXP-238 -> EXP-319 | W/T/L | Unstable |
+| --- | ---: | ---: | ---: | ---: |
+| fresh48 | 40 | `1.033891 -> 1.030058` | 5/33/2 | `6 -> 8` |
+| Hadou31 | 26 | `0.127328 -> 0.129427` | 4/21/1 | `5 -> 5` |
+| stress60 | 46 | `0.212649 -> 0.215318` | 2/42/2 | `13 -> 12` |
+| JSUT24 | 22 | `0.123253 -> 0.102246` | 3/19/0 | `2 -> 2` |
+| expanded144 | 108 | `0.315745 -> 0.510056` | 9/92/7 | `33 -> 34` |
+| all | 242 | `0.377108 -> 0.462015` | 23/207/12 | `59 -> 61` |
+
+Fresh48 gained two newly decoder-unstable rows. Stress60 resolved two unstable
+rows but added one different unstable row. Expanded144 added one consensus
+gross repetition on `cv39028774f-silence600`, three newly unstable rows while
+resolving two, and a large common-stable mean regression. Hadou was essentially
+flat and JSUT improved, so the effect is distribution-dependent rather than a
+generic content gain.
+
+The predefined broad stop fires. Close first-window/activity-threshold/gain/
+filter/row-count neighbors and do not nominate EXP-319. The audio remains
+useful for later human diagnosis of naturalness and target voice; the machine
+screen cannot reject or keep it perceptually.

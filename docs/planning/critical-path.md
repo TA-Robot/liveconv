@@ -351,6 +351,10 @@ claims from that artifact are superseded. The active join is now:
         -> both keep 170 updates, target order, method, and external7-only first gate
         -> both gross 0 and instability 1; EXP319 beats EXP318 1W/5T/0L on stable source distance
         -> EXP319 external mean 0.323718 versus EXP238 0.338675; admit five fixed broad surfaces
+        -> EXP320--324 render all 307 frozen broad inputs and publish 1,535 WAVs
+        -> fresh48 adds two unstable rows; expanded144 adds one gross row
+        -> all-surface common-stable content regresses 0.377108 -> 0.462015
+        -> close window/preprocessing neighbors; next method must change a real learning signal
         -> operator hearing when available
 ```
 

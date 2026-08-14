@@ -51,10 +51,16 @@ WAVs with zero added gross rows and exactly EXP-238's one unstable row. On the
 six rows stable in all three arms, the current-window control regressed
 source-relative mean `0.338675 -> 0.351496`, while the speech-active treatment
 improved it to `0.323718`; EXP-319 versus EXP-318 was `1W/5T/0L`. Secondary
-known-text distance also moved `0.382470 -> 0.315009` (`2W/4T/0L`). Admit
-EXP-319 only to the already-frozen fresh48, Hadou31, stress60, JSUT24, and
-expanded144 surfaces. This is a machine content/corruption pass, not a keep or
-audible winner.
+known-text distance also moved `0.382470 -> 0.315009` (`2W/4T/0L`).
+
+EXP-320--324 then published all 307 frozen broad inputs as 1,535 WAVs. The
+speech-active arm was nearly flat on Hadou, improved JSUT24, but added two
+fresh48 decoder instabilities and one expanded144 consensus gross loop. Across
+242 rows stable in both EXP-238 and EXP-319, source-relative distance regressed
+`0.377108 -> 0.462015`; expanded144 alone moved `0.315745 -> 0.510056`.
+Instability across the five surfaces rose `59 -> 61`. The broad stop closes the
+window/preprocessing family. Keep the audio unheard and unselected; do not use
+the external7 or JSUT auxiliary improvement as a winner claim.
 
 Identity preflight stopped EXP-303/304 before CUDA. The EXP-186 `exposure=2`
 rows are exact repeats of the same source ID/SHA/text, paired only with a

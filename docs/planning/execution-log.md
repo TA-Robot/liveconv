@@ -6260,3 +6260,43 @@ job queue.
   EXP-319 clears the predefined external gate, so add only the five frozen
   broad surfaces and do not sweep threshold, gain, filter, row count, horizon,
   loss, or scope.
+
+## 2026-08-14T19:54:25Z - Grok project-progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux
+  `liveconv-grok-auditor` (read-only, no tools or delegation).
+- Task: judge whether the EXP-319 broad render is the shortest route toward
+  broadly better X-VC while the operator cannot listen.
+- Result: `CONTINUE`. The auditor counted the 19:45 external7 audio, accepted
+  the matched window pilot, and directed the already-admitted fresh48,
+  Hadou31, stress60, JSUT24, and expanded144 renders before changing method.
+- Adopted: yes. The five surfaces ran sequentially on gpu0 without stopping a
+  safe job. After that one broad pass, close the window family and move to a
+  genuinely different data, teacher, conditioning, or trainable-target method.
+- Problems: the snapshot saw gpu0 idle immediately before EXP-320 launched;
+  the committed job was already running when the audit returned. Listener 8878
+  was then verified at HTTP 200 with 240 fresh48 and 155 Hadou WAVs present.
+- Rework: none. Do not infer a keeper or audible winner from the machine pass.
+
+## 2026-08-14T20:06:00Z - EXP-320--324 broad CV26 active-window screen
+
+- Agent: `primary-integrator`; the committed broad renderer was supplied by a
+  bounded implementation owner.
+- Task: test whether EXP-319's small external7 content signal survives five
+  frozen, disjoint evaluation surfaces without added corruption.
+- Dependencies: commits `ad29353` and `35bdfc9`; exact EXP-319 EMA adapter;
+  one sequential gpu0 lease; listener 8878; fixed EXP-238 screen baselines.
+- Result: fresh48, Hadou31, stress60, JSUT24, and expanded144 rendered all
+  307 inputs and published 1,535 WAVs. All five coarse ASR screens completed.
+  No machine result is treated as naturalness, identity, keep, or winner.
+- Result: on 242 rows decoder-stable in both arms, source-relative distance
+  regressed `0.377108 -> 0.462015`, W/T/L `23/207/12`. Hadou was near-flat and
+  JSUT24 improved `0.123253 -> 0.102246`, but fresh48 instability rose `6 ->
+  8` and expanded144 regressed `0.315745 -> 0.510056`.
+- Problems: expanded144 added one consensus gross repetition on
+  `cv39028774f-silence600`; aggregate broad instability rose `59 -> 61`.
+- Rework: reject EXP-319 at the broad corruption/content gate and close all
+  first-window/activity-threshold/gain/filter/row-count neighbors. Preserve the
+  audio unheard. A proposed control69-hidden teacher follow-up was also stopped
+  at CPU inspection because EXP-238's `ssl_feat` already comes from that exact
+  same-content control69 target WAV, so the purported change was a no-op.
