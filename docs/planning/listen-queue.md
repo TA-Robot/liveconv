@@ -21,14 +21,15 @@ committed, single-variable job at a time, publish its comparison on 8878, apply
 only coarse machine rejection for corruption/content failure, and replan after
 each result. Accumulated candidates remain unselected until human hearing.
 
-Current GPU lane (2026-08-14 17:39 UTC): EXP-297 stopped at external7 after
-decoder instability increased `1 -> 2`; EXP-298--302 were correctly skipped.
-All seven outputs changed but the five jointly stable, non-gross rows were exact
-content ties. Acoustic representation micro-edits and simple scale-matched
-robust semantic-loss substitution are closed. The next lane must change the
-data, teacher signal, conditioning, or learnable training target rather than
-sweep EXP-297's beta, scale, or weight. The EXP-305/306 matched CV32 data lane
-is the admitted next method. All hearing claims remain open.
+Current GPU lane (2026-08-14 18:49 UTC): EXP-305 and EXP-306 completed 202
+updates and published 35 external7 WAVs each. The repeat32 control increased
+decoder instability `1 -> 3`; the genuinely new CV32 arm increased it only
+`1 -> 2`, but both meet the predefined external stop. Neither added a gross
+row. On the four rows stable in all three arms, source-relative distance tied;
+the CV32 arm improved the secondary known-text distance `2W/2T/0L` while the
+repeat control tied `0W/4T/0L`. Stop EXP-307--316 broad rendering. The result
+supports keeping the new data while removing the 202-update horizon confound;
+it does not establish naturalness or a winner. All hearing claims remain open.
 
 Identity preflight stopped EXP-303/304 before CUDA. The EXP-186 `exposure=2`
 rows are exact repeats of the same source ID/SHA/text, paired only with a
@@ -79,7 +80,7 @@ target.
 | EXP-291 X-VC acoustic temporal jitter | EXP-238 versus the exact pseudoparallel contract with only odd training rows' quantized `zq_a` shifted right one frame; inference remains normal | optional external7 diagnosis after hearing returns; do not nominate this arm | 7/7 candidates changed with no added gross and five common-stable content ties, but instability rose `1 -> 2`; EXP-292--296 and shift/share/direction neighbors were skipped, and acoustic representation manipulation is closed |
 | EXP-297 X-VC robust semantic loss | EXP-238 versus the exact pseudoparallel contract with only weight-1000 semantic MSE replaced by scale-matched `2 * SmoothL1(beta=1)` | optional external7 diagnosis after hearing returns; do not nominate this arm | 7/7 candidates changed with no added gross and five common-stable content ties, but instability rose `1 -> 2`; EXP-298--302 and beta/scale/weight/blend neighbors were skipped |
 | EXP-303/304 stopped CV breadth premise | Planned EXP-238 plus 37 repeats versus purported second utterances | none; no audio was produced | CPU identity join proved all 37 `exposure=2` rows repeat the same source ID/SHA/text and change only the real target; stopped before CUDA and retracted the new-audio claim |
-| EXP-305/306 X-VC matched new-speaker breadth | Exact EXP-238 first170 plus 32 old-row repeats versus 32 new Common Voice speakers/texts, both at 202 updates and matched real-target assignment | after hearing returns, compare naturalness and target fit only if the new-data arm survives machine corruption/content gates | implementation in progress; new32 is 116.46 seconds, disjoint from EXP-238 training and current fixed evaluation clients, and retired from future expanded33 evaluation |
+| EXP-305/306 X-VC matched new-speaker breadth | Exact EXP-238 first170 plus 32 old-row repeats versus 32 new Common Voice speakers/texts, both at 202 updates and matched real-target assignment | optional diagnosis after hearing returns; do not nominate either arm because the instability stop fired | both produced 35 external7 WAVs with zero added gross; repeat32 raised instability `1 -> 3`, while new32 raised it `1 -> 2` and improved secondary known-text distance `2W/2T/0L` on four jointly stable rows; stop broad EXP-307--316 and retain the disjoint CV32 data for a horizon-matched method |
 | EXP-033 source diversity | Base vs legacy human87 control69-e12 vs JVS3 generated-pair X-VC on ten fixed cross-speaker/constraint rows | after hearing returns: prefer one arm per group or reject all; judge naturalness and target voice by ear | machine ASR may reject corruption only; a consistent audible result admits the next method decision, not promotion |
 | EXP-023 | 12 Qwen3-TTS Ono_Anna texts | per text: `continue` or `rejected` | one `rejected` stops this exact TTS profile; all `continue` only admits later TTS transport work, not a VC win |
 | EXP-025 whole-short 87 | Frozen base vs human-paired adapted X-VC on three public heldout source-only utterances | `keep` only if adapted is clearly preferable on the set; otherwise `rejected` | `keep` admits a separate promote pass; `rejected` closes this exact 87-pair schedule |

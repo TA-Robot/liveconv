@@ -44,3 +44,18 @@ Stop on identity drift, nonfinite loss or gradient, OOM, malformed adapter, a
 new external7 gross row, increased decoder instability, or common-stable
 content regression against EXP-238. Exact auxiliary ties are not audible ties.
 The checkpoint remains unheard and unselected until human listening returns.
+
+## Result
+
+Commit `bd4b3dc` plus output-directory fix `5f4b2ea` materialized the matched
+202-row curriculum. The shared real two-row CUDA smoke proved finite losses
+and gradients for 835,584 trainable LoRA69 parameters at 4,636,175,872 peak
+allocated bytes. Training completed 202 updates in 199.22 seconds at
+6,163,570,688 peak bytes and published 35 external7 WAVs. The EMA adapter
+SHA-256 is `e71dd1f439cdda03bac6b8cf1422e7d755825700d6dafb29884cf6536c44f503`.
+
+All seven candidate WAVs changed and no consensus gross row was added. Decoder
+instability increased from EXP-238's one row to three. On the four rows stable
+in EXP-238, EXP-305, and EXP-306, both source-relative and known-text distances
+were exact ties (`0W/4T/0L`). The predefined external stop fired. Do not render
+EXP-312--316 or infer an audible result from the auxiliary screen.

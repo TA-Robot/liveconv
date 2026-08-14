@@ -63,3 +63,22 @@ EXP-305. Exact auxiliary ties may proceed because content diagnostics can be
 insensitive to changed audio. Broad rendering stops on added gross corruption,
 increased instability, or aggregate common-stable content regression. All
 audio remains unheard and unselected until the operator returns.
+
+## Result
+
+The materializer admitted 32 new source IDs, hashes, texts, and clients; the
+frozen control69 render produced 32 same-content teachers in 173.25 seconds at
+2,668,426,752 peak allocated bytes. The shared real two-row CUDA smoke proved
+finite losses and gradients for 835,584 trainable LoRA69 parameters. Training
+completed 202 updates in 181.89 seconds at 6,163,570,688 peak bytes and
+published 35 external7 WAVs. The EMA adapter SHA-256 is
+`3a560cfef1bfcf4ec95642d132007cb0d035a6783b55075757ea3e8cf845a019`.
+
+All seven candidates changed and no consensus gross row was added. Decoder
+instability was two rows versus one for EXP-238 and three for the matched
+repeat32 control, so the predefined comparison against EXP-238 stopped broad
+EXP-307--311. On the four rows stable in all three arms, source-relative
+distance tied exactly; secondary known-text distance improved against both
+controls (`2W/2T/0L`, mean `0.356443 -> 0.296919`). This favors retaining the
+new data for a 170-update replacement test, not declaring naturalness, target
+identity, or a winner.

@@ -6131,3 +6131,50 @@ job queue.
   18:52 UTC.
 - Rework: none beyond simplifying to commit and launch. Do not re-open
   EXP-303/304 identity work or add another admission layer.
+
+## 2026-08-14T18:49:00Z - EXP-305/306 matched CV32 data comparison
+
+- Agent: `primary-integrator`; data, trainer, and renderer implementations were
+  integrated from bounded ownership agents before CUDA.
+- Task: separate the effect of 32 extra updates from adding 32 genuinely new
+  Common Voice speakers and texts to the retained EXP-238 method.
+- Dependencies: commits `bd4b3dc` and `5f4b2ea`; frozen control69 adapter;
+  exact EXP-238 first170; disjoint CV32 pool; one sequential gpu0 lease.
+- Result: the control69 teacher rendered 32/32 rows in 173.25 seconds at 2.67
+  GB peak. A shared two-row smoke proved finite gradients for 835,584 LoRA69
+  parameters at 4.64 GB peak. EXP-305 and EXP-306 each completed 202/202
+  updates and published 35 external7 WAVs, in 199.22 and 181.89 seconds
+  respectively at 6.16 GB peak.
+- Result: all seven candidates changed in each arm and neither added a
+  consensus gross row. Decoder instability moved EXP-238 `1`, repeat32
+  EXP-305 `3`, new-CV32 EXP-306 `2`. On the four rows stable in all three,
+  source-relative distance tied in both new arms. EXP-306 improved secondary
+  known-text distance against both controls (`2W/2T/0L`, mean
+  `0.356443 -> 0.296919`); EXP-305 tied (`0W/4T/0L`).
+- Problems: the first teacher render reached CUDA but failed before its first
+  WAV because the new `control-outputs` directory was not created. A focused
+  regression test and fix were committed as `5f4b2ea`; the retry completed.
+- Rework: the predefined instability stop rejects both 202-update arms before
+  broad EXP-307--316. Keep the valid CV32 data and teacher artifacts, remove
+  the extra-horizon confound in the next method, and do not interpret ASR as
+  naturalness, target identity, or a winner.
+
+## 2026-08-14T18:54:17Z - Grok project-progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux
+  `liveconv-grok-auditor` (read-only, no tools or delegation).
+- Task: judge whether the completed EXP-305/306 comparison and proposed
+  horizon-matched follow-up remain the shortest route to better X-VC.
+- Result: `CONTINUE`. The auditor confirmed that the last 30 minutes produced
+  new 8878 audio, that EXP-305/306 supplied useful one-variable evidence, and
+  that the legitimate next hypothesis is to retain genuine CV32 data while
+  returning to 170 total updates.
+- Adopted: yes. Commit only the thin result record and one 170-row replacement
+  method, then run one sequential gpu0 pilot through external7. Do not run
+  stopped EXP-307--316 broad renders, adjacent horizons, or method-catalog
+  design while the GPU is idle.
+- Problems: none in the audit. Operator hearing and browser playback remain
+  unobserved, so the new audio remains unselected.
+- Rework: constrain the next curriculum to 170 total rows and preserve the
+  ordered Amitaro references. Secondary known-text improvement is diagnostic,
+  not a keep or naturalness claim.
