@@ -1,6 +1,6 @@
 # EXP-181: control69 parameter anchor on the surviving X-VC method
 
-Status: external7 through stress60 complete; JSUT24 decision pending
+Status: technically stopped after stress60; human listening pending
 
 ## Goal
 
@@ -84,3 +84,10 @@ pitch+3, leading silence, and tempo1.2 regressed. The parameter anchor therefore
 did not generically prevent condition forgetting. It remains an unheard mixed
 candidate; wait for the concurrent progress audit before spending the final
 JSUT24 render.
+
+The 03:50 Grok audit defined stress60 as the final justified refutation point
+and required closing this method family if retention was absent. That condition
+is met: the anchor helped noise but did not preserve pitch, silence, tempo, or
+fresh source-relative behavior. EXP-185 JSUT24 is therefore deferred, not
+silently treated as passed. Preserve the 730 WAVs for later hearing, but do not
+tune the coefficient or open another parameter-anchor variant.
