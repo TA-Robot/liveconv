@@ -40,6 +40,7 @@ def test_aggregate_keeps_domain_and_macro_failure_counts() -> None:
             "domain": "cv",
             "source_relative_distance": 0.8,
             "repetition": {"gross_repetition": True},
+            "decoder_unstable": True,
         },
         {
             "domain": "hadou",
@@ -53,3 +54,4 @@ def test_aggregate_keeps_domain_and_macro_failure_counts() -> None:
     assert value["cv"]["mean_source_relative_distance"] == 0.5
     assert value["cv"]["distance_at_least_half_rows"] == 1
     assert value["macro"]["gross_repetition_rows"] == 1
+    assert value["macro"]["decoder_unstable_rows"] == 1

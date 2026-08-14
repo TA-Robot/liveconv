@@ -91,6 +91,9 @@ def aggregate(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             "gross_repetition_rows": sum(
                 bool(item["repetition"]["gross_repetition"]) for item in items
             ),
+            "decoder_unstable_rows": sum(
+                bool(item.get("decoder_unstable", False)) for item in items
+            ),
         }
     distances = [float(item["source_relative_distance"]) for item in rows]
     output["macro"] = {
@@ -100,6 +103,9 @@ def aggregate(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         "distance_at_least_half_rows": sum(value >= 0.5 for value in distances),
         "gross_repetition_rows": sum(
             bool(item["repetition"]["gross_repetition"]) for item in rows
+        ),
+        "decoder_unstable_rows": sum(
+            bool(item.get("decoder_unstable", False)) for item in rows
         ),
     }
     return output
@@ -122,20 +128,35 @@ def run(arguments: argparse.Namespace) -> int:
         str(arguments.model_root),
         device=arguments.device,
         compute_type=arguments.compute_type,
+        cpu_threads=4,
+        num_workers=1,
+        local_files_only=True,
     )
-    source_transcripts: dict[str, str] = {}
+    source_transcripts: dict[str, tuple[str, str]] = {}
     source_hashes: dict[str, str] = {}
     for teacher_id in sorted(pool):
         path = arguments.source_root / f"{teacher_id}.wav"
         if path.is_symlink() or not path.is_file():
             raise TeacherScreenError(f"teacher source is unavailable: {teacher_id}")
-        source_transcripts[teacher_id] = screen._transcribe(model, path)
+        source_transcripts[teacher_id] = screen._transcribe_pair(model, path)
         source_hashes[teacher_id] = screen.sha256_file(path)
 
     rows: list[dict[str, Any]] = []
     for target_id, teacher_id, path in outputs:
-        transcript = screen._transcribe(model, path)
-        source_transcript = source_transcripts[teacher_id]
+        transcript, beam5_transcript = screen._transcribe_pair(model, path)
+        source_transcript, source_beam5_transcript = source_transcripts[teacher_id]
+        source_repetition = screen.consensus_repetition(
+            source_transcript, source_beam5_transcript
+        )
+        output_repetition = screen.consensus_repetition(
+            transcript, beam5_transcript
+        )
+        decoder_unstable = (
+            float(source_repetition["decoder_normalized_distance"])
+            > screen.DECODER_DISAGREEMENT_LIMIT
+            or float(output_repetition["decoder_normalized_distance"])
+            > screen.DECODER_DISAGREEMENT_LIMIT
+        )
         row: dict[str, Any] = {
             "target_id": target_id,
             "teacher_id": teacher_id,
@@ -143,11 +164,18 @@ def run(arguments: argparse.Namespace) -> int:
             "source_sha256": source_hashes[teacher_id],
             "output_sha256": screen.sha256_file(path),
             "source_transcript": source_transcript,
+            "source_beam5_transcript": source_beam5_transcript,
             "output_transcript": transcript,
+            "output_beam5_transcript": beam5_transcript,
             "source_relative_distance": screen.normalized_distance(
                 source_transcript, transcript
             ),
-            "repetition": screen.repetition_metrics(transcript),
+            "beam5_source_relative_distance": screen.normalized_distance(
+                source_beam5_transcript, beam5_transcript
+            ),
+            "repetition": output_repetition,
+            "source_repetition": source_repetition,
+            "decoder_unstable": decoder_unstable,
         }
         known = pool[teacher_id].get("source_transcript")
         if isinstance(known, str) and known:
@@ -161,13 +189,22 @@ def run(arguments: argparse.Namespace) -> int:
         "schema_version": 1,
         "kind": "liveconv-xvc-pseudo-teacher-output-screen/v1",
         "boundary": (
-            "source-relative ASR and gross repetition only; not naturalness, "
+            "auxiliary two-decode source-relative ASR only; gross repetition "
+            "requires greedy and beam5 agreement. This is not naturalness, "
             "speaker similarity, target-voice quality, or a winner"
         ),
         "teacher_manifest_sha256": screen.sha256_file(arguments.teacher_manifest),
         "model": {
             "tree_sha256": sha256_model_tree(arguments.model_root),
             "compute_type": arguments.compute_type,
+            "decode": {
+                "primary_beam_size": 1,
+                "diagnostic_beam_size": 5,
+                "gross_repetition_policy": "greedy-and-beam5-must-both-trigger",
+                "decoder_unstable_normalized_distance_above": (
+                    screen.DECODER_DISAGREEMENT_LIMIT
+                ),
+            },
         },
         "aggregate": aggregate(rows),
         "rows": rows,
