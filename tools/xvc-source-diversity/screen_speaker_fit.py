@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.metadata
 import json
 import math
+import os
 import subprocess
 import sys
 from collections.abc import Callable, Mapping, Sequence
@@ -22,9 +24,9 @@ SPEAKER_ROOT = REPO_ROOT / "packages" / "speaker" / "src"
 if str(SPEAKER_ROOT) not in sys.path:
     sys.path.insert(0, str(SPEAKER_ROOT))
 
-from liveconv_speaker.backend import SpeechBrainEcapaBackend  # noqa: E402
 from liveconv_speaker.evidence import (  # noqa: E402
     ComparisonPolicy,
+    SpeakerEvidenceError,
     compare_embeddings,
     inspect_pcm_wav,
     sha256_model_tree,
@@ -33,6 +35,98 @@ from liveconv_speaker.evidence import (  # noqa: E402
 
 class SpeakerFitScreenError(RuntimeError):
     """The bounded speaker-fit screen cannot continue safely."""
+
+
+BATCH_RUNTIME_VERSIONS = {
+    "speechbrain": "1.0.3",
+    "torch": "2.8.0",
+    "torchaudio": "2.8.0",
+    "numpy": "2.1.2",
+    "scipy": "1.16.1",
+    "hyperpyyaml": "1.2.2",
+}
+
+
+class PinnedBatchEcapaBackend:
+    """ECAPA loader pinned to the existing CUDA batch runtime.
+
+    The formal speaker-evidence package currently locks Torch 2.6, while the
+    installed private batch runtime is Torch 2.8.  This auxiliary-only screen
+    binds the exact installed tuple instead of weakening that formal lock.
+    """
+
+    def __init__(
+        self,
+        model_path: str | Path,
+        *,
+        expected_sha256: str,
+        device: str,
+    ) -> None:
+        root = Path(model_path).resolve(strict=True)
+        if sha256_model_tree(root) != expected_sha256:
+            raise SpeakerFitScreenError("speaker model digest does not match")
+        if device not in {"cpu", "cuda"}:
+            raise SpeakerFitScreenError("device must be cpu or cuda")
+        for distribution, expected in BATCH_RUNTIME_VERSIONS.items():
+            actual = importlib.metadata.version(distribution).split("+")[0]
+            if actual != expected:
+                raise SpeakerFitScreenError(
+                    f"batch runtime {distribution} drifted: {actual} != {expected}"
+                )
+        for name in (
+            "hyperparams.yaml",
+            "embedding_model.ckpt",
+            "mean_var_norm_emb.ckpt",
+            "classifier.ckpt",
+            "label_encoder.txt",
+            "custom.py",
+        ):
+            if not (root / name).is_file():
+                raise SpeakerFitScreenError("speaker model artifact is incomplete")
+
+        os.environ["HF_HUB_OFFLINE"] = "1"
+        try:
+            from speechbrain.inference.classifiers import EncoderClassifier
+            from speechbrain.utils.fetching import LocalStrategy
+
+            self._model = EncoderClassifier.from_hparams(
+                source=str(root),
+                savedir=str(root.parent / f".{root.name}-runtime-cache"),
+                overrides={"pretrained_path": str(root)},
+                run_opts={"device": device},
+                local_strategy=LocalStrategy.COPY,
+            )
+        except Exception as error:
+            raise SpeakerFitScreenError(
+                "failed to initialize pinned batch speaker model"
+            ) from error
+        self.device = device
+
+    def embed(self, path: Path) -> tuple[float, ...]:
+        try:
+            import torch
+            import torchaudio
+
+            waveform, sample_rate = torchaudio.load(str(path))
+            waveform = waveform.mean(dim=0, keepdim=True)
+            if sample_rate != 16_000:
+                waveform = torchaudio.functional.resample(
+                    waveform, sample_rate, 16_000
+                )
+            with torch.inference_mode():
+                embedding = self._model.encode_batch(
+                    waveform.to(self.device), normalize=False
+                )
+            values = embedding.detach().to("cpu", dtype=torch.float64).reshape(-1)
+            if values.numel() != 192 or not torch.isfinite(values).all():
+                raise SpeakerFitScreenError(
+                    "speaker backend returned invalid embedding"
+                )
+            return tuple(float(value) for value in values.tolist())
+        except SpeakerFitScreenError:
+            raise
+        except Exception as error:
+            raise SpeakerFitScreenError("speaker embedding failed") from error
 
 
 ALWAYS_PASS = ComparisonPolicy(
@@ -207,7 +301,7 @@ def _aggregate(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
 def run(
     arguments: argparse.Namespace,
     *,
-    backend_factory: Callable[..., Any] = SpeechBrainEcapaBackend,
+    backend_factory: Callable[..., Any] = PinnedBatchEcapaBackend,
 ) -> dict[str, Any]:
     plan = _load_object(arguments.surface_plan, "surface plan")
     if plan.get("schema_version") != 1:
@@ -332,6 +426,8 @@ def run(
             "tree_sha256": expected_model_sha,
             "device": arguments.device,
             "embedding_dimensions": 192,
+            "batch_runtime_versions": BATCH_RUNTIME_VERSIONS,
+            "formal_speaker_runtime_lock_satisfied": False,
             "unique_audio_embeddings": len(embedding_cache),
             "embeddings_persisted": False,
         },
@@ -374,7 +470,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments = _parser().parse_args(argv)
     try:
         report = run(arguments)
-    except (OSError, SpeakerFitScreenError, ValueError) as error:
+    except (OSError, SpeakerEvidenceError, SpeakerFitScreenError, ValueError) as error:
         print(f"screen_speaker_fit: {error}", file=sys.stderr)
         return 1
     print(

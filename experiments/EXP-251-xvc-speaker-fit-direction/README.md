@@ -21,6 +21,13 @@ The target is the existing private, operator-authorized Amitaro runrun
 the raw archive/member hashes, and the normalized listener target hash. No raw
 audio or embedding is added to Git.
 
+The formal speaker-evidence package locks a separate Torch 2.6 closure, while
+the existing private CUDA batch runtime is Torch/TorchAudio 2.8.0, SpeechBrain
+1.0.3, NumPy 2.1.2, SciPy 1.16.1, and HyperPyYAML 1.2.2. This screen pins and
+records that exact installed tuple rather than weakening the formal package
+lock. Consequently the result is auxiliary direction evidence only and cannot
+satisfy a promote-tier speaker-evidence gate.
+
 ## Decision boundary
 
 - If target similarity and target-over-source advantage improve consistently,
