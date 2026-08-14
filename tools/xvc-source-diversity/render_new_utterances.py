@@ -9,6 +9,7 @@ import os
 import shutil
 import sys
 import time
+from collections import Counter
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -38,6 +39,7 @@ KIND = "liveconv-exp039-commonvoice-same-speaker-new-utterances/v1"
 EXPANDED_KIND = "liveconv-exp055-commonvoice-local-unused/v1"
 HADOU_KIND = "liveconv-exp060-hadou-clean-heldout/v1"
 STRESS_KIND = "liveconv-exp086-commonvoice-condition-matrix/v1"
+EXPANDED_STRESS_KIND = "liveconv-exp243-length-balanced-symmetric-stress144/v1"
 FRESH48_KIND = "liveconv-exp112-commonvoice-fresh48/v1"
 JSUT_ROWS = sum(JSUT_CATEGORY_COUNTS.values())
 EXPECTED_ROWS = 12
@@ -48,6 +50,8 @@ HADOU_ROWS = 31
 HADOU_SPEAKERS = 1
 STRESS_ROWS = 60
 STRESS_SPEAKERS = 6
+EXPANDED_STRESS_ROWS = 144
+EXPANDED_STRESS_SPEAKERS = 16
 FRESH48_ROWS = 48
 FRESH48_SPEAKERS = 48
 JSUT_SPEAKERS = 1
@@ -58,6 +62,24 @@ STRESS_GROUPS = {
     "stress-tempo120",
     "stress-pitchp3",
 }
+EXPANDED_STRESS_LENGTHS = {
+    "short10to14",
+    "medium15to21",
+    "long22to30",
+    "verylong40plus",
+}
+EXPANDED_STRESS_TRANSFORMS = {
+    "clean": {"kind": "clean"},
+    "noise30": {"kind": "noise", "snr_db": 30.0},
+    "noise10": {"kind": "noise", "snr_db": 10.0},
+    "silence100": {"kind": "leading-silence", "milliseconds": 100},
+    "silence600": {"kind": "leading-silence", "milliseconds": 600},
+    "tempo080": {"kind": "tempo", "factor": 0.8},
+    "tempo120": {"kind": "tempo", "factor": 1.2},
+    "pitchn3": {"kind": "pitch", "factor": 0.840896415},
+    "pitchp3": {"kind": "pitch", "factor": 1.189207115},
+}
+EXPANDED_STRESS_CONDITIONS = set(EXPANDED_STRESS_TRANSFORMS)
 TARGET_ID = "EMOTION100_003"
 TARGET_SHA256 = "76f5a4a9b989ed692a55343a7681623fa4f18e354ca04026f022e3e449195ca2"
 
@@ -1408,6 +1430,23 @@ def candidate_policy(kind: str) -> dict[str, str]:
             ),
         }
     if kind in {
+        "pseudoparallel-real-adv-ema-expanded-stress",
+    }:
+        return {
+            "experiment_id": "EXP-243",
+            "variant_id": "cross-corpus170-pseudoparallel-real-adv-ema170",
+            "display_name": (
+                "EXP-238 / source-aligned control69 targets / real-adversarial / EMA"
+            ),
+            "result_kind": (
+                "liveconv-exp243-xvc-pseudoparallel-expanded-stress144/v1"
+            ),
+            "question": (
+                "Does the EXP-238 technical survivor remain content-stable across "
+                "symmetric speed, pitch, silence, noise, and text-length strata?"
+            ),
+        }
+    if kind in {
         "pseudoparallel-real-adv-ema-fresh48",
         "pseudoparallel-real-adv-ema-hadou",
         "pseudoparallel-real-adv-ema-stress",
@@ -1548,6 +1587,7 @@ def load_evaluation(path: Path) -> dict[str, Any]:
         EXPANDED_KIND: EXPANDED_ROWS,
         HADOU_KIND: HADOU_ROWS,
         STRESS_KIND: STRESS_ROWS,
+        EXPANDED_STRESS_KIND: EXPANDED_STRESS_ROWS,
         FRESH48_KIND: FRESH48_ROWS,
         JSUT_KIND: JSUT_ROWS,
     }.get(kind, EXPECTED_ROWS)
@@ -1555,6 +1595,7 @@ def load_evaluation(path: Path) -> dict[str, Any]:
         EXPANDED_KIND: EXPANDED_SPEAKERS,
         HADOU_KIND: HADOU_SPEAKERS,
         STRESS_KIND: STRESS_SPEAKERS,
+        EXPANDED_STRESS_KIND: EXPANDED_STRESS_SPEAKERS,
         FRESH48_KIND: FRESH48_SPEAKERS,
         JSUT_KIND: JSUT_SPEAKERS,
     }.get(kind, EXPECTED_SPEAKERS)
@@ -1566,6 +1607,7 @@ def load_evaluation(path: Path) -> dict[str, Any]:
             EXPANDED_KIND,
             HADOU_KIND,
             STRESS_KIND,
+            EXPANDED_STRESS_KIND,
             FRESH48_KIND,
             JSUT_KIND,
         }
@@ -1639,6 +1681,36 @@ def load_evaluation(path: Path) -> dict[str, Any]:
             or item.get("duration_seconds") != base.MODEL_SAMPLES / 16_000
         ):
             raise NewUtteranceError("stress evaluation row identity drifted")
+        if kind == EXPANDED_STRESS_KIND and (
+            item.get("length_bin") not in EXPANDED_STRESS_LENGTHS
+            or item.get("group")
+            not in {
+                f"expanded-stress-{length}-{condition}"
+                for length in EXPANDED_STRESS_LENGTHS
+                for condition in EXPANDED_STRESS_CONDITIONS
+            }
+            or not isinstance(item.get("base_id"), str)
+            or not isinstance(item.get("stress_condition"), dict)
+            or item.get("duration_seconds") != base.MODEL_SAMPLES / 16_000
+            or not isinstance(
+                item.get("source_original_duration_seconds"), (int, float)
+            )
+        ):
+            raise NewUtteranceError(
+                "expanded stress evaluation row identity drifted"
+            )
+        if kind == EXPANDED_STRESS_KIND:
+            condition = item["group"].removeprefix(
+                f"expanded-stress-{item['length_bin']}-"
+            )
+            if (
+                condition not in EXPANDED_STRESS_CONDITIONS
+                or item["stress_condition"]
+                != EXPANDED_STRESS_TRANSFORMS[condition]
+            ):
+                raise NewUtteranceError(
+                    "expanded stress transform identity drifted"
+                )
         if kind == FRESH48_KIND and (
             len(normalized) < 10
             or item.get("source_normalized_characters") != len(normalized)
@@ -1667,6 +1739,34 @@ def load_evaluation(path: Path) -> dict[str, Any]:
         clients.add(client)
     if len(clients) != expected_speakers:
         raise NewUtteranceError("evaluation speaker count drifted")
+    if kind == EXPANDED_STRESS_KIND:
+        expected_groups = {
+            f"expanded-stress-{length}-{condition}": 4
+            for length in EXPANDED_STRESS_LENGTHS
+            for condition in EXPANDED_STRESS_CONDITIONS
+        }
+        bases = Counter(str(item["base_id"]) for item in items)
+        if (
+            Counter(str(item["group"]) for item in items) != expected_groups
+            or len(bases) != EXPANDED_STRESS_SPEAKERS
+            or set(bases.values()) != {len(EXPANDED_STRESS_CONDITIONS)}
+            or any(
+                len(
+                    {
+                        item["group"].removeprefix(
+                            f"expanded-stress-{item['length_bin']}-"
+                        )
+                        for item in items
+                        if item["base_id"] == base_id
+                    }
+                )
+                != len(EXPANDED_STRESS_CONDITIONS)
+                for base_id in bases
+            )
+        ):
+            raise NewUtteranceError(
+                "expanded stress matrix balance drifted"
+            )
     return value
 
 
@@ -1702,6 +1802,15 @@ def validate_inputs(
     elif evaluation["kind"] in {KIND, STRESS_KIND}:
         if not clients < original_clients or clients & donor_clients:
             raise NewUtteranceError("evaluation speaker binding drifted")
+    elif evaluation["kind"] == EXPANDED_STRESS_KIND:
+        fresh48 = load_evaluation(arguments.fresh48_evaluation)
+        fresh48_clients = {
+            item["client_id_sha256"] for item in fresh48["items"]
+        }
+        if not clients < fresh48_clients or clients & (
+            original_clients | donor_clients
+        ):
+            raise NewUtteranceError("expanded stress speaker binding drifted")
     elif evaluation["kind"] == EXPANDED_KIND and any(
         item["filename"] in original_files | donor_files
         for item in evaluation["items"]
@@ -2260,6 +2369,7 @@ def _parser() -> argparse.ArgumentParser:
             "pseudoparallel-real-adv-ema-hadou",
             "pseudoparallel-real-adv-ema-stress",
             "pseudoparallel-real-adv-ema-jsut",
+            "pseudoparallel-real-adv-ema-expanded-stress",
         ),
         default="speaker7",
     )
@@ -2296,6 +2406,14 @@ def _parser() -> argparse.ArgumentParser:
             / "experiments"
             / "EXP-055-xvc-target-text-breadth"
             / "expanded-evaluation.json"
+        ),
+    )
+    parser.add_argument(
+        "--fresh48-evaluation",
+        type=Path,
+        default=(
+            REPO_ROOT
+            / "artifacts/xvc-source-diversity/exp112-fresh48-inputs-v1/evaluation.json"
         ),
     )
     parser.add_argument(

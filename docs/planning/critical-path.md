@@ -258,6 +258,9 @@ claims from that artifact are superseded. The active join is now:
         -> 850 WAVs; no added gross; external ties and fresh/Hadou/stress improve
         -> JSUT has 20/22 ties plus one win/one loss; broad-regression stop does not fire
         -> retain EXP-238 as an unheard technical survivor; no automatic winner
+        -> EXP-243 freeze 16 disjoint speakers x four text lengths x nine symmetric conditions
+        -> render source/target/base/control69/EXP-238 once; no new training variable
+        -> use length/speed/F0/silence/noise failure strata to choose the next retraining method
         -> operator hearing when available
 ```
 

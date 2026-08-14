@@ -5174,3 +5174,26 @@ job queue.
   checkpoint as an unheard technical survivor and prioritize it for later
   hearing. Do not call it a winner or sweep target/LR/scope/horizon neighbors.
   Replan the next bounded method or evaluation axis before another GPU lane.
+
+## 2026-08-14T11:22:34Z - Grok progress audit broadened evaluation first
+
+- Agent: `grok-4.6-project-progress-auditor` in tmux
+  `liveconv-grok-auditor`; independent, read-only, and no delegation.
+- Task: challenge whether another X-VC retraining lane or the same five
+  automatic surfaces were the shortest path to robust Japanese voice
+  conversion while the operator is unavailable for hearing.
+- Result: `CONTINUE`. The auditor accepted EXP-238's committed one-lane
+  render/screen/replan loop and its source-aligned data-contract intervention.
+  It rejected target/LR/scope/horizon/rank neighbors and warned that repeatedly
+  accumulating technical survivors on the same five surfaces would no longer
+  add enough information.
+- Adopted: yes. Keep EXP-238 unheard and unselected. Before another training
+  lane, add fixed diversity across speaker, text length, speed, F0, silence,
+  and noise, then let the observed failure strata select one new method axis.
+- Problems: gpu0 is idle during the bounded runner/test/commit preparation;
+  automatic content diagnostics still cannot measure naturalness, identity,
+  emotion, or preference.
+- Rework: prepare EXP-243 as 16 disjoint fresh48 speakers in four text-length
+  bands crossed with nine symmetric conditions. Commit before CUDA, then
+  render base/control69/EXP-238 and publish 720 WAVs on 8878. Do not register a
+  human speaker model or widen promotion evidence for this listen-now slice.

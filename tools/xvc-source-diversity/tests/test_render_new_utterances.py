@@ -1007,6 +1007,23 @@ def test_pseudoparallel_prebinds_complete_five_surface_contract() -> None:
     assert all(kind in choices for kind in kinds)
 
 
+def test_pseudoparallel_expanded_stress_policy_is_exp243() -> None:
+    policy = NEW.candidate_policy(
+        "pseudoparallel-real-adv-ema-expanded-stress"
+    )
+
+    assert policy["experiment_id"] == "EXP-243"
+    assert policy["variant_id"] == (
+        "cross-corpus170-pseudoparallel-real-adv-ema170"
+    )
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert "pseudoparallel-real-adv-ema-expanded-stress" in choices
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"
