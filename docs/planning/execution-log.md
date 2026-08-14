@@ -6562,3 +6562,25 @@ job queue.
 - Rework: close GRL weight/head/data/horizon/loss/scope neighbors. Preserve all
   audio unheard and unselected, and replan the next method-level X-VC training
   hypothesis rather than optimizing any individual evaluation row.
+
+## 2026-08-14T21:54:47Z - Grok project-progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux
+  `liveconv-grok-auditor` (read-only, no tools or delegation).
+- Task: judge the completed EXP-327--332 broad characterization and the next
+  shortest route toward better X-VC audio.
+- Result: `CONTINUE`. Grok accepted the new stress/JSUT/expanded/heldout audio,
+  the fixed six-surface aggregation, and closure of the GRL family from the
+  expanded144 regression. It directed the next GPU use to one committed,
+  single-variable method-level X-VC training pilot rather than more GRL
+  analysis or evaluation work.
+- Adopted: close GRL neighbors, preserve all unheard audio, and select exactly
+  one different learning-signal, conditioning, data-composition, or trainable-
+  target hypothesis for the next sequential gpu0 lane.
+- Not adopted: Grok offered EXP-305/306 new-CV32-versus-repeat32 as an example.
+  That matched pair already completed, and EXP-317 retested the real CV32 at
+  the 170-update horizon before failing the external instability gate. Repeating
+  it would reopen a closed data/window family rather than add information.
+- Rework: two independent read-only designers are screening only untried
+  method-level hypotheses. Commit the selected plan and implementation before
+  CUDA; do not let planning expand into another evaluation redesign.
