@@ -4721,3 +4721,23 @@ job queue.
   before the full lane. Stop on frontend mismatch, no waveform gradient,
   nonfinite execution, or OOM. Do not sweep cycle weight, feature layer,
   alignment, data, pairing, scope, LR, horizon, or EMA.
+
+## 2026-08-14T07:16:00Z - EXP-208 output-cycle runtime admission passed
+
+- Agent: `primary-integrator`.
+- Task: prove the torch Whisper frontend matches X-VC's detached helper and
+  that final-WAV content loss reaches the LoRA parameters on real data.
+- Dependencies: commit `9e23e62`; exact EXP-203 curriculum; pinned X-VC
+  checkpoint and frozen GLM-4-Voice tokenizer.
+- Result: the two-row backward smoke completed with 835,584 trainable
+  parameters and 5,366,944,768 peak allocated bytes. Differentiable versus
+  detached hidden states differed by maximum `0.00026691` under the `0.001`
+  stop threshold and mean `0.00000336`. Content-cycle MSE was finite at
+  `0.06174` and `0.13544`; both generator/discriminator updates completed.
+- Problems: PyTorch warned that reflection-padding backward has no strict
+  deterministic CUDA implementation. The configured warn-only path completed;
+  no nonfinite value or OOM occurred. The first launcher left an empty `v1`
+  smoke directory while its delayed exit was being polled; the successful,
+  unchanged run is recorded under `v2`.
+- Rework: admit exactly one 170-update run. Do not tune weight, feature layer,
+  frontend, pairing, data, scope, LR, horizon, or EMA from the smoke values.

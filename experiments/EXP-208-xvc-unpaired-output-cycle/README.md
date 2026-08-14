@@ -44,3 +44,14 @@ Stop on frontend mismatch, missing waveform-to-content gradient, nonfinite
 loss/gradient, OOM, malformed adapter, candidate-added gross corruption, or
 broad common-stable content regression. Do not tune the cycle weight, frontend,
 data, pair rotation, windows, scope, LR, horizon, or EMA after this one run.
+
+## Runtime admission
+
+Commit `9e23e62` passed the two-row real-model backward smoke. The differentiable
+frontend matched X-VC's detached helper with maximum absolute hidden-state
+difference `0.00026691` under the fixed `0.001` tolerance and mean difference
+`0.00000336`. Both final-WAV content-cycle updates were finite, with content
+MSE `0.06174` and `0.13544`, 835,584 trainable parameters, and
+5,366,944,768 peak allocated GPU bytes. PyTorch emitted one warn-only notice
+that reflection-padding backward lacks a deterministic CUDA implementation;
+the backward completed and no nonfinite value or OOM occurred.
