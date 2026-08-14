@@ -1,6 +1,6 @@
 # EXP-181: control69 parameter anchor on the surviving X-VC method
 
-Status: prepared; GPU run pending
+Status: external7 complete; fresh48 pending
 
 ## Goal
 
@@ -43,3 +43,19 @@ one frozen gate at a time. Use v4 only as a coarse content/corruption screen.
 Do not tune the coefficient, EMA, data ratio, LR, scope, horizon, or optimizer
 from this run, and do not claim naturalness, identity, a keeper, or promotion
 without human listening.
+
+## Result so far
+
+Commit `f43df26` completed all 170 updates in 155.73 seconds at 5.74 GiB peak.
+The anchor loss moved from zero to `1.348`, with final online squared distance
+`2.697`. For comparison, the unchanged EXP-163 online adapter's squared
+distance from control69 was about `8.386`; the anchor constrained drift without
+returning the adapter to its initialization. All generative, adversarial,
+feature-matching, discriminator, anchor, and EMA values remained finite.
+
+External7 published 35 WAVs and added no consensus gross row. On five cross-arm
+common decoder-stable rows, source-relative mean moved slightly from control69
+`0.256 -> 0.268` and known-text mean improved `0.371 -> 0.283`; both comparisons
+had W/T/L `2/1/2`. This mixed small set does not trigger a broad-regression stop
+and cannot decide perceptual quality. Continue the unchanged checkpoint to
+frozen fresh48 as EXP-182.

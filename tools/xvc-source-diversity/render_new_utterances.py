@@ -1006,6 +1006,48 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "Does JSUT retention survive the same frozen independent gate?"
             ),
         }
+    if kind in {
+        "parameter-anchor-ema-fresh48",
+        "parameter-anchor-ema-hadou",
+        "parameter-anchor-ema-stress",
+        "parameter-anchor-ema-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        experiment_id = (
+            "EXP-185"
+            if jsut
+            else "EXP-184"
+            if stress
+            else "EXP-183"
+            if hadou
+            else "EXP-182"
+        )
+        suffix = (
+            "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "cv12-selective-real-adversarial-anchor-ema170",
+            "display_name": (
+                "EXP-181 / control69 parameter anchor + adversarial + EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-parameter-anchor-ema-"
+                f"{suffix}/v1"
+            ),
+            "question": (
+                "Does the control69 parameter anchor survive the same frozen "
+                "content and corruption gate?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1632,6 +1674,10 @@ def _parser() -> argparse.ArgumentParser:
             "jsut-retention-ema-hadou",
             "jsut-retention-ema-stress",
             "jsut-retention-ema-jsut",
+            "parameter-anchor-ema-fresh48",
+            "parameter-anchor-ema-hadou",
+            "parameter-anchor-ema-stress",
+            "parameter-anchor-ema-jsut",
         ),
         default="speaker7",
     )

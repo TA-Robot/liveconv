@@ -204,6 +204,7 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-180 JSUT24 (no consensus gross; mixed source/known-text result)
         -> paired PCGrad retained as mixed, unheard technical survivor
         -> EXP-181 control69 parameter-anchor on the exact EXP-163 method
+        -> EXP-182--185 frozen fresh48 / Hadou31 / stress60 / JSUT24 gates
         -> operator hearing when available
 ```
 

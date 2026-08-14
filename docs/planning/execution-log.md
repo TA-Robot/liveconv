@@ -4158,3 +4158,23 @@ job queue.
   effect, and the coefficient remains one bounded method point.
 - Rework: commit runner and plan before CUDA, smoke two rows so the second sees
   nonzero displacement, then run one 170-update lane and external7 render.
+
+## 2026-08-14T03:37:00Z - EXP-181 trained and published external7
+
+- Agent: `primary-integrator`.
+- Task: smoke then execute the single precommitted coefficient-1 parameter
+  anchor on the exact EXP-163 method.
+- Dependencies: commit `f43df26`; explicit gpu0 lease; exact control69,
+  curriculum, real-reference adversarial objective, and EMA schedule.
+- Result: the two-row smoke moved anchor loss `0 -> 0.00412`. The full run
+  completed 170 updates in 155.73 seconds at 5.74 GiB peak. Final online anchor
+  loss was `1.348`, squared distance `2.697`, versus about `8.386` for the
+  unregularized EXP-163 online adapter. All objectives were finite. External7
+  published 35 WAVs with zero candidate-added consensus gross rows. Across five
+  common stable rows, source mean moved `0.256 -> 0.268`, known-text mean
+  `0.371 -> 0.283`, and both W/T/L counts were `2/1/2`.
+- Problems: external7 is too small and mixed to establish retention or quality;
+  one-arm aggregate means are also distorted by different decoder-unstable rows.
+- Rework: keep the adapter unchanged, bind EXP-182--185 follow-up identities,
+  and render frozen fresh48 next. Stop on gross corruption or broad common-row
+  regression; do not tune anchor coefficient.
