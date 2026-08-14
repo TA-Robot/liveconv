@@ -1,6 +1,6 @@
 # EXP-154: selective retention with a full acoustic converter
 
-Status: ready for one bounded gpu0 lane
+Status: rejected after frozen fresh48
 
 ## Goal
 
@@ -32,3 +32,19 @@ product route.
 
 Do not tune LR, loss, update count, curriculum ratio, retention blend, failure
 threshold, frame condition, or converter sub-scope in this lane.
+
+## Result
+
+Commit `7afe5c5` trained all 42,357,760 converter parameters for 170 updates in
+117.83 seconds at 5.56 GiB peak, with loss `227.96 -> 44.63`. External7 had no
+gross repetition and tied control69 on source-relative mean (`0.360 -> 0.358`),
+but known-text mean regressed `0.399 -> 0.494` and maximum source-relative
+distance rose `0.571 -> 1.0`.
+
+The frozen fresh48 gate rejected the unchanged checkpoint. It added a new
+gross collapse on `cv39028774f`: `ご視聴ありがとうございました` became a
+223-character run of `ん`. Across the 45 rows where neither control nor
+candidate was gross, source-relative W/T/L was `9/25/11`, mean regressed
+`0.326 -> 0.353`, and median regressed `0.250 -> 0.294`. Full-converter capacity
+did not generalize selective hard repair and broadened failure risk. Close
+trainable-scope neighbors; do not run Hadou31 or JSUT24 for this checkpoint.

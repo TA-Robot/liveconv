@@ -3616,3 +3616,41 @@ job queue.
 - Rework: commit before the real GPU smoke and training. Gate unchanged audio
   external7 -> fresh48 -> Hadou31; consume JSUT24 only after all survive. Do not
   tune LR, loss, ratio, blend, threshold, or converter sub-scope in this lane.
+
+## 2026-08-14T00:50:25Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux `liveconv-grok-auditor`; independent, read-only,
+  no tools or delegation.
+- Verdict: `CONTINUE`.
+- Adopted: finish the committed full-converter pilot, screen external7 then
+  fresh48 then Hadou31, reject gross corruption immediately, leave JSUT24
+  unopened unless all survive, and make no machine naturalness selection.
+- Adopted redirect condition: if the same collapse family survives or another
+  collapse appears, close trainable-scope neighbors and move to data, loss, or
+  conditioning. Make speaking-rate, F0, silence, and noise a first-class frozen
+  gate for the next surviving candidate.
+- Changed action: none during the running lane. The audit stayed parallel to
+  the GPU job and did not become a gate.
+
+## 2026-08-14T00:57:00Z - EXP-154--157 full converter rejected
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T00:49:00Z.
+- End: 2026-08-14T00:57:00Z.
+- Dependencies: commit `7afe5c5`; EXP-150 selective manifest; merged control69;
+  external7 and frozen fresh48; gpu0; listener 8878.
+- Result: the real smoke exposed finite gradients on all 42,357,760 converter
+  parameters. Training completed 170 updates in 117.83 seconds at 5.56 GiB
+  peak, loss `227.96 -> 44.63`, and published external7 plus fresh48 audio.
+  External7 had no gross loop and tied source-relative mean (`0.360 -> 0.358`),
+  though known-text mean regressed `0.399 -> 0.494`. Frozen fresh48 then added
+  one gross row: `cv39028774f` repeated `ん` for 223 normalized characters.
+  On 45 common non-gross rows, source-relative W/T/L was `9/25/11`, mean
+  `0.326 -> 0.353`, and median `0.250 -> 0.294`.
+- Problems: increasing trainable capacity added a new collapse and did not
+  generalize the repair target. Auxiliary known-text mean alone was nearly tied
+  on non-gross rows and is not a quality decision.
+- Rework: reject without Hadou31 or JSUT24. Close converter and LoRA-scope
+  neighbors. The next lane changes objective, data construction, or
+  conditioning, and a surviving checkpoint must also pass stress60 before
+  JSUT24. Keep the local tongue-twister excluded.
