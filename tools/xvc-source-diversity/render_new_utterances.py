@@ -912,6 +912,19 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 )
             ),
         }
+    if kind == "real-adversarial-ema-expanded":
+        return {
+            "experiment_id": "EXP-168",
+            "variant_id": "cv12-selective-real-adversarial-ema170",
+            "display_name": (
+                "EXP-163 / selective real-adversarial / upstream EMA"
+            ),
+            "result_kind": "liveconv-exp168-xvc-real-adversarial-ema-expanded33/v1",
+            "question": (
+                "Does the frozen upstream-EMA candidate avoid corruption across "
+                "33 additional Common Voice speakers and utterances?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1529,6 +1542,7 @@ def _parser() -> argparse.ArgumentParser:
             "real-adversarial-ema-hadou",
             "real-adversarial-ema-stress",
             "real-adversarial-ema-jsut",
+            "real-adversarial-ema-expanded",
         ),
         default="speaker7",
     )

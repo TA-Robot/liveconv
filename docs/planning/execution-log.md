@@ -3760,3 +3760,19 @@ job queue.
   on 8878. Mark the EMA arm a technical survivor only. Stop EMA/adversarial
   sweeps and await human hearing for keep/reject; further GPU work must use a
   distinct data or model method and a frozen cross-corpus gate.
+
+## 2026-08-14T01:38:00Z - EXP-168 expanded33 posthoc gate prepared
+
+- Agent: `primary-integrator`.
+- Task: keep gpu0 productive while the next distinct data method is designed,
+  using one already-frozen evaluation set rather than an EMA parameter sweep.
+- Dependencies: exact EXP-163 EMA adapter; frozen EXP-055 expanded33 manifest;
+  gpu0; listener 8878.
+- Result: bind unchanged base, control69, and EMA identities to 33 additional
+  Common Voice speakers/utterances. The set is evaluation-only and cannot
+  select EMA settings or promotion.
+- Problems: posthoc evidence is weaker than the preregistered gate and contains
+  known source-side ASR pathologies; report common non-gross rows separately.
+- Rework: commit, render once, reject on candidate-added gross corruption, and
+  do not use the outcome to tune EMA. In parallel after launch, prepare a
+  disjoint category-balanced JSUT training-data method.

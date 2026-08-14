@@ -608,6 +608,14 @@ def test_real_adversarial_ema_policies_include_stress_gate() -> None:
     assert "real-adversarial-ema-stress" in choices
 
 
+def test_real_adversarial_ema_expanded_policy_is_posthoc_exp168() -> None:
+    policy = NEW.candidate_policy("real-adversarial-ema-expanded")
+
+    assert policy["experiment_id"] == "EXP-168"
+    assert policy["variant_id"] == "cv12-selective-real-adversarial-ema170"
+    assert "33 additional" in policy["question"]
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"
