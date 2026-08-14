@@ -328,6 +328,12 @@ claims from that artifact are superseded. The active join is now:
         -> common-stable 0W/5T/0L but instability 1 -> 2 on cv45141533
         -> skip EXP-298--302 and close beta/scale/weight/MSE-blend neighbors
         -> next method must change data, teacher signal, conditioning, or training target
+        -> EXP-303 append 37 matched repeats to exact EXP-238 order (207 updates)
+        -> EXP-304 replace those repeats with 37 unused CV second utterances
+        -> same 48 train speakers; 88.8 s new text/audio; zero evaluation-client overlap
+        -> exact standard loss/init/scope/LR/clip/discriminator/EMA/inference controls
+        -> CPU materialization + CUDA smoke, then sequential external7 lanes
+        -> broad EXP-305--309 only if EXP-304 clears EXP-238 and EXP-303 gates
         -> operator hearing when available
 ```
 

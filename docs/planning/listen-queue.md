@@ -30,6 +30,14 @@ data, teacher signal, conditioning, or learnable training target rather than
 sweep EXP-297's beta, scale, or weight. Label and gradient-hook admission for
 that next method is in progress. All hearing claims remain open.
 
+Next committed-method boundary: EXP-303/304 form one exposure-matched data
+breadth comparison. Both retain EXP-238's complete model/loss/init/optimizer/
+EMA/inference contract and run 207 updates. EXP-303 appends 37 matched repeats;
+EXP-304 instead appends 37 previously unused second utterances from the same
+authorized Common Voice training speakers. The additions total 88.8 seconds,
+have distinct IDs/SHA/text and zero fixed-evaluation client overlap, and already
+have 37/37 same-content control69 outputs. External7 precedes broad rendering.
+
 Provenance correction (2026-08-13): the retained 8.17-second recording saying
 `隣の客はよく柿食う客だ` is a local tongue-twister diagnostic, **not** audio
 captured from the ChatGPT browser. All earlier `actual ChatGPT` labels for that
@@ -67,6 +75,7 @@ target.
 | EXP-285--290 X-VC continuous pre-VQ acoustic | EXP-238 versus the exact pseudoparallel contract with the nearest-code output replaced by frozen projected continuous acoustic features at training and inference, across all six fixed surfaces | optional Hadou diagnosis after hearing returns; do not nominate this arm | 314/314 candidates changed and no gross row was added, but broad instability rose `59 -> 68` and common-stable content regressed `0.227246 -> 0.264113`; continuous/quantized blend neighbors are closed |
 | EXP-291 X-VC acoustic temporal jitter | EXP-238 versus the exact pseudoparallel contract with only odd training rows' quantized `zq_a` shifted right one frame; inference remains normal | optional external7 diagnosis after hearing returns; do not nominate this arm | 7/7 candidates changed with no added gross and five common-stable content ties, but instability rose `1 -> 2`; EXP-292--296 and shift/share/direction neighbors were skipped, and acoustic representation manipulation is closed |
 | EXP-297 X-VC robust semantic loss | EXP-238 versus the exact pseudoparallel contract with only weight-1000 semantic MSE replaced by scale-matched `2 * SmoothL1(beta=1)` | optional external7 diagnosis after hearing returns; do not nominate this arm | 7/7 candidates changed with no added gross and five common-stable content ties, but instability rose `1 -> 2`; EXP-298--302 and beta/scale/weight/blend neighbors were skipped |
+| EXP-303/304 X-VC exposure-matched CV utterance breadth | EXP-238 plus 37 repeated CV rows versus 37 unused second utterances from the same training speakers, both at 207 updates | after hearing returns, compare naturalness and target fit only if the data-breadth arm survives machine corruption/content gates | implementation in progress; no CTC/GRL head or model/loss/inference change; fixed evaluation clients remain disjoint |
 | EXP-033 source diversity | Base vs legacy human87 control69-e12 vs JVS3 generated-pair X-VC on ten fixed cross-speaker/constraint rows | after hearing returns: prefer one arm per group or reject all; judge naturalness and target voice by ear | machine ASR may reject corruption only; a consistent audible result admits the next method decision, not promotion |
 | EXP-023 | 12 Qwen3-TTS Ono_Anna texts | per text: `continue` or `rejected` | one `rejected` stops this exact TTS profile; all `continue` only admits later TTS transport work, not a VC win |
 | EXP-025 whole-short 87 | Frozen base vs human-paired adapted X-VC on three public heldout source-only utterances | `keep` only if adapted is clearly preferable on the set; otherwise `rejected` | `keep` admits a separate promote pass; `rejected` closes this exact 87-pair schedule |

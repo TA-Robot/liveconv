@@ -6024,3 +6024,27 @@ job queue.
 - Rework: skip EXP-298--302 and close beta, scale, semantic-weight, and
   MSE/SmoothL1-blend neighbors. Keep the 35 WAVs unheard and unselected. Move
   to a data, teacher-signal, conditioning, or learnable-target method.
+
+## 2026-08-14T17:52:00Z - EXP-303/304 exposure-matched data breadth selected
+
+- Agent: `primary-integrator`; three bounded owners for materialization, runner,
+  and renderer; two read-only data/gradient audits.
+- Start: 2026-08-14T17:39:00Z.
+- Dependencies: EXP-238 technical survivor; EXP-297 closure; EXP-186 authorized
+  Common Voice training pool and control69 outputs; fixed six evaluation
+  surfaces.
+- Result: naive CTC was rejected before implementation. CTC on frozen/discrete
+  semantic tokens cannot affect converter LoRA69; attaching it after
+  `outputs["pred"]` would require a new randomly initialized head. Only 167/170
+  rows have text and 51 source-speaker classes are singletons, so CTC/GRL is not
+  the shortest valid next lane.
+- Result: data inventory found 37 unused exposure-2 Common Voice utterances from
+  37 of EXP-238's 48 authorized training speakers. They total 88.8 seconds,
+  have 37 unique IDs/SHA/nonempty texts, overlap neither fresh48 nor expanded144
+  clients, and already have 37/37 same-content control69 outputs.
+- Problems: running 207 unique rows only against EXP-238 would confound data
+  breadth with 37 additional updates.
+- Rework: EXP-303 appends 37 matched repeats; EXP-304 appends the 37 new
+  utterances. Both use 207 updates and otherwise exact EXP-238 controls. Commit
+  method and plans, then run CPU admission, CUDA smoke, and the two external7
+  lanes sequentially before any broad render.
