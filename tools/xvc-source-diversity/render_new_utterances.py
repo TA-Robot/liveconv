@@ -1910,6 +1910,25 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "across the fixed external and broad evaluation surfaces?"
             ),
         }
+    if kind == "cv32-replacement-pseudoparallel-ema-external7":
+        return {
+            "experiment_id": "EXP-317",
+            "variant_id": (
+                "cross-corpus170-pseudoparallel-cv32-replacement-real-adv-ema170"
+            ),
+            "display_name": (
+                "EXP-317 / CV32 replacement / source-aligned targets / "
+                "real-adversarial / EMA"
+            ),
+            "result_kind": (
+                "liveconv-exp317-xvc-pseudoparallel-cv32-replacement-"
+                "real-adv-ema/v1"
+            ),
+            "question": (
+                "Does the CV32 replacement preserve content and avoid corruption "
+                "on the fixed external7 evaluation?"
+            ),
+        }
     if kind in {
         "speaker-condition-calibrator-fresh48",
         "speaker-condition-calibrator-hadou",
@@ -3154,6 +3173,7 @@ def _parser() -> argparse.ArgumentParser:
             "repeat-control-pseudoparallel-ema-stress",
             "repeat-control-pseudoparallel-ema-jsut",
             "repeat-control-pseudoparallel-ema-expanded144",
+            "cv32-replacement-pseudoparallel-ema-external7",
             "speaker-condition-calibrator-fresh48",
             "speaker-condition-calibrator-hadou",
             "speaker-condition-calibrator-stress",

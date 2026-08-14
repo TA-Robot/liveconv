@@ -1426,6 +1426,32 @@ def test_adapter202_candidates_are_normal_peft_without_wrapper_or_attachment(
         )
 
 
+def test_cv32_replacement_external7_prebinds_exp317_without_attachment() -> None:
+    kind = "cv32-replacement-pseudoparallel-ema-external7"
+    policy = NEW.candidate_policy(kind)
+
+    assert policy["experiment_id"] == "EXP-317"
+    assert policy["variant_id"] == (
+        "cross-corpus170-pseudoparallel-cv32-replacement-real-adv-ema170"
+    )
+    assert policy["result_kind"] == (
+        "liveconv-exp317-xvc-pseudoparallel-cv32-replacement-real-adv-ema/v1"
+    )
+    assert "candidate_format" not in policy
+    assert "candidate_attachment" not in policy
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert kind in choices
+    candidate = object()
+    assert (
+        NEW._attach_candidate_representation(candidate, policy, torch=object())
+        is candidate
+    )
+
+
 def test_noncontinuous_candidate_does_not_attach_wrapper(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

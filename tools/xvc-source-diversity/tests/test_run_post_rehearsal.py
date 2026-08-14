@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -10,6 +11,72 @@ if str(TOOL_ROOT) not in sys.path:
 
 import run_post_rehearsal as post  # noqa: E402
 import run_role_mix as role_mix  # noqa: E402
+
+
+def test_exp317_policy_keeps_ordinary_exp238_170_update_contract() -> None:
+    policy = post.listening_policy(
+        post.CV32_REPLACEMENT_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+        True,
+    )
+
+    assert post.expected_training_rows(post.CV32_REPLACEMENT_OUTPUT_KIND) == 170
+    assert policy["slug"] == "exp317"
+    assert policy["candidate_id"] == (
+        "cross-corpus170-pseudoparallel-cv32-replacement-real-adv-ema170"
+    )
+    assert policy["result_kind"] == (
+        "liveconv-exp317-xvc-pseudoparallel-cv32-replacement-"
+        "real-adv-ema/v1"
+    )
+    assert "external7" in policy["run_kind"]
+
+
+def test_exp317_manifest_gate_replaces_only_first_32_cv_positions() -> None:
+    reference = json.loads(
+        (
+            post.REPO_ROOT
+            / "artifacts/xvc-source-diversity/exp238-cross-corpus-control69-targets-v1"
+            / "curriculum.json"
+        ).read_text(encoding="utf-8")
+    )
+    items = [dict(item) for item in reference["items"]]
+    for replacement_index, position in enumerate(post.CV32_REPLACEMENT_POSITIONS):
+        original = items[position]
+        source_id = f"cv32-replacement-{replacement_index:02d}"
+        source_text = f"CV32 replacement sentence {replacement_index}"
+        items[position] = {
+            **original,
+            "id": f"cv32-{replacement_index:02d}",
+            "teacher_id": f"commonvoice-cv32-{replacement_index:02d}",
+            "source_manifest_id": f"EXP055:{source_id}",
+            "source_file": f"new-sources/{replacement_index:02d}.wav",
+            "source_sha256": hashlib.sha256(source_id.encode()).hexdigest(),
+            "source_text": source_text,
+            "target_text": source_text,
+            "target_file": f"control-outputs/cv32-{replacement_index:02d}.wav",
+            "target_sha256": hashlib.sha256(
+                f"teacher-{source_id}".encode()
+            ).hexdigest(),
+            "source_client_id_sha256": hashlib.sha256(
+                f"client-{source_id}".encode()
+            ).hexdigest(),
+        }
+    manifest = {
+        "kind": post.CV32_REPLACEMENT_OUTPUT_KIND,
+        "composition": post.CV32_REPLACEMENT_COMPOSITION,
+        "items": items,
+    }
+
+    receipt = post.validate_cv32_replacement_manifest(
+        manifest, reference_manifest=reference
+    )
+
+    assert receipt["replacement_row_count"] == 32
+    assert receipt["unchanged_row_count"] == 138
+    assert receipt["remaining_commonvoice_rows"] == 16
+    assert receipt["position_specific_real_targets"] is True
 
 
 def test_cv32_policies_bind_202_update_external7_candidates() -> None:

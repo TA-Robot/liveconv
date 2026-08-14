@@ -59,6 +59,9 @@ from prepare_exp305_exp306_cv32 import (  # noqa: E402
 from prepare_exp305_exp306_cv32 import (  # noqa: E402
     REPEAT_OUTPUT_KIND as CV32_REPEAT_OUTPUT_KIND,
 )
+from prepare_exp317_cv32_replacement import (  # noqa: E402
+    OUTPUT_KIND as CV32_REPLACEMENT_OUTPUT_KIND,
+)
 from prepare_hard_negative_curriculum import (  # noqa: E402
     EXPECTED_COMPOSITION as HARD_EXPECTED_DOMAINS,
 )
@@ -224,11 +227,48 @@ PSEUDOPARALLEL_KINDS = {
     SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND,
     CV32_REPEAT_OUTPUT_KIND,
     CV32_BREADTH_OUTPUT_KIND,
+    CV32_REPLACEMENT_OUTPUT_KIND,
 }
 CV32_PSEUDOPARALLEL_KINDS = {
     CV32_REPEAT_OUTPUT_KIND,
     CV32_BREADTH_OUTPUT_KIND,
 }
+CV32_REPLACEMENT_POSITIONS = (
+    4,
+    5,
+    6,
+    11,
+    13,
+    14,
+    16,
+    19,
+    25,
+    27,
+    30,
+    31,
+    35,
+    36,
+    39,
+    43,
+    48,
+    52,
+    54,
+    55,
+    57,
+    58,
+    59,
+    63,
+    71,
+    75,
+    78,
+    80,
+    86,
+    91,
+    101,
+    103,
+)
+CV32_REPLACEMENT_KINDS = {CV32_REPLACEMENT_OUTPUT_KIND}
+CV32_REPLACEMENT_COMPOSITION = dict(PSEUDOPARALLEL_EXPECTED_DOMAINS)
 
 
 class PostRehearsalError(RuntimeError):
@@ -409,6 +449,130 @@ def validate_cv32_manifest(
     }
 
 
+def validate_cv32_replacement_manifest(
+    manifest: Mapping[str, Any],
+    *,
+    reference_manifest: Mapping[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """Admit EXP-317's fixed-position 32-row source replacement."""
+
+    if manifest.get("kind") not in CV32_REPLACEMENT_KINDS:
+        return None
+    items = manifest.get("items")
+    if (
+        not isinstance(items, list)
+        or len(items) != EXPECTED_ROWS
+        or manifest.get("composition") != CV32_REPLACEMENT_COMPOSITION
+    ):
+        raise PostRehearsalError("EXP-317 replacement manifest drifted")
+    reference = reference_manifest or _load_exp238_manifest()
+    reference_items = reference.get("items") if reference else None
+    if not isinstance(reference_items, list) or len(reference_items) != EXPECTED_ROWS:
+        raise PostRehearsalError("EXP-317 EXP-238 reference is unavailable")
+    expected_positions = tuple(
+        index
+        for index, row in enumerate(reference_items)
+        if isinstance(row, Mapping) and row.get("domain") == "commonvoice-unpaired"
+    )
+    if (
+        expected_positions[: len(CV32_REPLACEMENT_POSITIONS)]
+        != CV32_REPLACEMENT_POSITIONS
+    ):
+        raise PostRehearsalError("EXP-317 replacement positions drifted")
+    if len(expected_positions) != 48:
+        raise PostRehearsalError("EXP-238 Common Voice positions drifted")
+    forbidden = {
+        "source_representation",
+        "representation_attachment",
+        "inference_attachment",
+        "inference_representation",
+    }
+    if any(
+        key in manifest and manifest.get(key) is not None for key in forbidden
+    ) or any(
+        key in row and row.get(key) is not None
+        for row in items
+        if isinstance(row, Mapping)
+        for key in forbidden
+    ):
+        raise PostRehearsalError(
+            "EXP-317 policy must not attach representation/inference"
+        )
+
+    replaced: list[Mapping[str, Any]] = []
+    for position, (candidate, expected) in enumerate(
+        zip(items, reference_items, strict=True)
+    ):
+        if not isinstance(candidate, Mapping) or not isinstance(expected, Mapping):
+            raise PostRehearsalError("EXP-317 row is malformed")
+        if position not in CV32_REPLACEMENT_POSITIONS:
+            if candidate != expected:
+                raise PostRehearsalError(
+                    f"EXP-317 unchanged row drifted at position {position}"
+                )
+            continue
+        replaced.append(candidate)
+        if (
+            candidate.get("domain") != "commonvoice-unpaired"
+            or expected.get("domain") != "commonvoice-unpaired"
+            or not str(candidate.get("source_manifest_id", "")).startswith("EXP055:")
+            or candidate.get("source_root") != "source-work"
+            or candidate.get("target_root") != "diverse-work"
+            or candidate.get("learning_target") != PSEUDOPARALLEL_LEARNING_TARGET
+            or candidate.get("target_text") != candidate.get("source_text")
+            or candidate.get("source_relative_distance") != 0.0
+        ):
+            raise PostRehearsalError("EXP-317 replacement source boundary drifted")
+        for key in (
+            "target_id",
+            "real_target_text",
+            "real_target_root",
+            "real_target_file",
+            "real_target_sha256",
+        ):
+            if candidate.get(key) != expected.get(key):
+                raise PostRehearsalError(
+                    f"EXP-317 position-specific target drifted at {position}"
+                )
+
+    base_sources = [row for row in reference_items if isinstance(row, Mapping)]
+    base_ids = {_source_identity(row) for row in base_sources}
+    base_shas = {row.get("source_sha256") for row in base_sources}
+    base_texts = {row.get("source_text") for row in base_sources}
+    base_teachers = {row.get("teacher_id") for row in base_sources}
+    replacement_ids = {_source_identity(row) for row in replaced}
+    replacement_shas = {row.get("source_sha256") for row in replaced}
+    replacement_texts = {row.get("source_text") for row in replaced}
+    replacement_teachers = {row.get("teacher_id") for row in replaced}
+    replacement_clients = {_client_identity(row) for row in replaced}
+    if (
+        len(replaced) != len(CV32_REPLACEMENT_POSITIONS)
+        or None in replacement_ids
+        or len(replacement_ids) != len(replaced)
+        or len(replacement_shas) != len(replaced)
+        or len(replacement_texts) != len(replaced)
+        or None in replacement_clients
+        or len(replacement_clients) != len(replaced)
+        or len(replacement_teachers) != len(replaced)
+        or replacement_ids & base_ids
+        or replacement_shas & base_shas
+        or replacement_texts & base_texts
+        or replacement_teachers & base_teachers
+    ):
+        raise PostRehearsalError("EXP-317 replacement identity is not new and unique")
+    return {
+        "manifest_kind": manifest["kind"],
+        "manifest_row_count": EXPECTED_ROWS,
+        "replacement_row_count": len(replaced),
+        "replacement_positions": list(CV32_REPLACEMENT_POSITIONS),
+        "unchanged_row_count": EXPECTED_ROWS - len(replaced),
+        "remaining_commonvoice_rows": 16,
+        "position_specific_real_targets": True,
+        "representation": None,
+        "inference_attachment": None,
+    }
+
+
 def _load_exp238_manifest() -> Mapping[str, Any] | None:
     path = (
         REPO_ROOT
@@ -431,6 +595,51 @@ def listening_policy(
     source_activity_envelope: bool = False,
 ) -> dict[str, str]:
     """Return the complete shared-listener identity for the admitted method."""
+
+    if manifest_kind in CV32_REPLACEMENT_KINDS:
+        if (
+            trainable_target != LORA69_TARGET
+            or training_objective != PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE
+            or not use_adapter_ema
+            or optimizer_mode != SEQUENTIAL_OPTIMIZER
+            or parameter_anchor
+            or source_activity_envelope
+        ):
+            raise PostRehearsalError(
+                "EXP-317 requires the exact EXP-238 model and loss contract"
+            )
+        return {
+            "slug": "exp317",
+            "candidate_id": (
+                "cross-corpus170-pseudoparallel-cv32-replacement-"
+                "real-adv-ema170"
+            ),
+            "candidate_name": (
+                "EXP-317 / CV32 replacement / source-aligned targets / "
+                "real-adversarial / EMA"
+            ),
+            "run_kind": (
+                "EXP-317 X-VC pseudoparallel CV32 replacement external7 evaluation"
+            ),
+            "result_kind": (
+                "liveconv-exp317-xvc-pseudoparallel-cv32-replacement-"
+                "real-adv-ema/v1"
+            ),
+            "question": (
+                "Does replacing 32 Common Voice training tuples preserve content "
+                "and avoid corruption on fixed external7?"
+            ),
+            "independent_variable": (
+                "relative to exact EXP-238, only the first 32 ordered Common Voice "
+                "positions are replaced by the disjoint CV32 source and frozen "
+                "control69 teacher tuples; the remaining 138 rows, including 16 "
+                "Common Voice rows, position-specific real Amitaro assignments, "
+                "complete generator plus real-adversarial loss, control69 LoRA69 "
+                "initialization/scope, LR, sequential optimizer, norm-5 clip, zero "
+                "frame condition, discriminator, EMA, normal quantized source "
+                "acoustics, ordinary inference, and external7 remain fixed"
+            ),
+        }
 
     if manifest_kind in CV32_PSEUDOPARALLEL_KINDS:
         if (
@@ -1574,6 +1783,8 @@ def load_manifest(
         expected_domains = SRC4VC_PSEUDOPARALLEL_EXPECTED_DOMAINS
     elif kind in CV32_PSEUDOPARALLEL_KINDS:
         expected_domains = CV32_EXPECTED_COMPOSITION
+    elif kind in CV32_REPLACEMENT_KINDS:
+        expected_domains = CV32_REPLACEMENT_COMPOSITION
     elif kind == COMMONVOICE_RETENTION_OUTPUT_KIND:
         expected_domains = COMMONVOICE_RETENTION_EXPECTED_DOMAINS
     elif kind == CONDITIONED_RETENTION_OUTPUT_KIND:
@@ -1598,6 +1809,7 @@ def load_manifest(
             SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND,
             CV32_REPEAT_OUTPUT_KIND,
             CV32_BREADTH_OUTPUT_KIND,
+            CV32_REPLACEMENT_OUTPUT_KIND,
         }
         or value.get("composition") != expected_domains
         or not isinstance(items, list)
@@ -1753,6 +1965,7 @@ def load_manifest(
     if dict(domains) != expected_domains:
         raise PostRehearsalError("clean rehearsal composition drifted")
     validate_cv32_manifest(value)
+    validate_cv32_replacement_manifest(value)
     return value
 
 
@@ -4662,6 +4875,7 @@ def run(
         "independent_variable": policy["independent_variable"],
         "training_manifest_sha256": sha256_file(arguments.training_manifest),
         "cv32": validate_cv32_manifest(manifest),
+        "cv32_replacement": validate_cv32_replacement_manifest(manifest),
         **source_receipt_identities(
             str(manifest.get("kind")),
             arguments.source_work,
@@ -5071,6 +5285,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                             else None
                         ),
                         "cv32": validate_cv32_manifest(manifest),
+                        "cv32_replacement": validate_cv32_replacement_manifest(
+                            manifest
+                        ),
                     },
                     sort_keys=True,
                 )
