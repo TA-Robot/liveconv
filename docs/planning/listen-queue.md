@@ -21,14 +21,16 @@ committed, single-variable job at a time, publish its comparison on 8878, apply
 only coarse machine rejection for corruption/content failure, and replan after
 each result. Accumulated candidates remain unselected until human hearing.
 
-Current GPU lane (2026-08-14 22:42 UTC): EXP-334 completed 170 updates and
-published 35 external7 WAVs, but its predefined gate failed: decoder
-instability increased `1 -> 3`, two EXP-238-stable rows became unstable, and
-common-stable source distance regressed `0.195513 -> 0.233974`. Skip its five
-broad renders. EXP-340 is the sole admitted next method. It keeps EXP-238's
-data, teachers, losses, LR, 170 updates, EMA, and existing converter LoRA69,
-and adds rank-8 LoRA only at `prenet.linear_pre`. Commit, run a two-row CUDA
-smoke, then one sequential 170-update lane and external7. The operator still
+Current GPU lane (2026-08-14 23:32 UTC): EXP-340 completed its sole 170-update
+lane, external7, and all five predeclared broad surfaces. It published 1,570
+listener WAVs and changed all 314 candidate outputs versus EXP-238. Aggregate
+jointly stable/non-gross content is `14W/220T/8L`, mean `0.241776 ->
+0.238999`, but gross repetition moves `2 -> 3` with one added expanded144 row
+and decoder instability moves `60 -> 66` with nine new versus three recovered
+rows. Fresh48 alone adds five unstable rows. Close the exact prenet
+input-fusion topology and do not walk rank or nearby LoRA locations. The next
+lane must use a genuinely different data/input construction or training
+method, commit before CUDA, and remain one sequential job. The operator still
 cannot listen; every arm remains unselected and none may produce a keep or
 winner claim.
 
@@ -116,7 +118,7 @@ target.
 | EXP-325 X-VC two-utterance SRC4VC control | Base, control69, EXP-238, and the ordinary 85-speaker x2 SRC4VC control on external7 | after hearing returns: optional naturalness and target-voice comparison; no machine winner | 35 WAVs; exact EXP-238 comparison `0W/6T/1L`, gross `0 -> 0`, instability `1 -> 1`, no new unstable row; safe enough only to admit the matched EXP-326 GRL test, not a data-method claim |
 | EXP-326--333 X-VC source-speaker GRL | EXP-325 versus the identical 85-speaker x2 contract with only a training-only post-converter source-speaker GRL, across external7 and six fixed broad surfaces | after hearing returns: optional naturalness and target-voice diagnosis only; do not nominate this technically closed arm | 3,440 matched listener WAVs; broad content `15W/303T/19L`, mean `0.609039 -> 0.628134`; ECAPA over all 344 rows moved target cosine `-0.000361`, source cosine the wrong way `+0.000124`, and target advantage `-0.000486`; the GRL neither preserves broad content nor reaches its intended speaker direction, so all neighbors are closed |
 | EXP-334--339 X-VC adversarial feature statistics | EXP-238 versus the same method with only unrelated-text real-reference discriminator feature matching reduced from pointwise frames to per-channel mean/std statistics | optional external7 diagnosis after hearing returns; do not nominate this stopped arm | 35 external7 WAVs; all seven candidates changed and gross stayed zero, but instability rose `1 -> 3`, two stable rows became unstable, and common-stable content regressed `0.195513 -> 0.233974`; skip EXP-335--339 and close feature-statistic neighbors |
-| EXP-340--345 X-VC prenet input-fusion LoRA | EXP-238 objective/data and existing converter LoRA69 plus one rank-8 LoRA only at `prenet.linear_pre` | after rendering: coarse external7 content/corruption gate only; after hearing returns judge naturalness and target-voice fit | implementation in progress; external7 precedes the already-frozen fresh48/Hadou31/stress60/JSUT24/expanded144 surfaces; unheard and unselected |
+| EXP-340--345 X-VC prenet input-fusion LoRA | EXP-238 objective/data and existing converter LoRA69 plus one rank-8 LoRA only at `prenet.linear_pre` | after hearing returns: optional naturalness/target-voice diagnosis only; do not nominate this technically closed arm | 1,570 listener WAVs; all 314 candidates changed; common-stable/non-gross content `14W/220T/8L`, mean `0.241776 -> 0.238999`, but gross `2 -> 3`, instability `60 -> 66`, nine newly unstable versus three recovered; close rank and location neighbors |
 | EXP-317 X-VC CV32 replacement at 170 updates | EXP-238 versus the same 170-row corpus composition with its first 32 Common Voice source/teacher tuples replaced by the admitted CV32 rows | optional diagnosis after hearing returns; do not nominate because the instability stop fired | 35 external7 WAVs, zero added gross, stable source rows `0W/5T/0L`, secondary known text `1W/4T/0L`, but instability `1 -> 2`; stop broad and investigate the CV window-construction mismatch |
 | EXP-033 source diversity | Base vs legacy human87 control69-e12 vs JVS3 generated-pair X-VC on ten fixed cross-speaker/constraint rows | after hearing returns: prefer one arm per group or reject all; judge naturalness and target voice by ear | machine ASR may reject corruption only; a consistent audible result admits the next method decision, not promotion |
 | EXP-023 | 12 Qwen3-TTS Ono_Anna texts | per text: `continue` or `rejected` | one `rejected` stops this exact TTS profile; all `continue` only admits later TTS transport work, not a VC win |

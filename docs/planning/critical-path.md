@@ -381,6 +381,10 @@ claims from that artifact are superseded. The active join is now:
         -> common-stable source distance 0.195513 -> 0.233974; stop EXP335--339
         -> EXP340 keeps EXP238 objective/data but adds LoRA only at prenet.linear_pre
         -> commit -> two-row CUDA smoke -> 170 updates -> external7 -> fixed broad only if green
+        -> all 314 candidate hashes change; 1,570 listener WAVs published
+        -> content 14W/220T/8L, mean 0.241776 -> 0.238999 on stable/non-gross rows
+        -> gross 2 -> 3; instability 60 -> 66 with 9 new / 3 recovered
+        -> close prenet rank/location neighbors; replan a different method
         -> operator hearing when available
 ```
 

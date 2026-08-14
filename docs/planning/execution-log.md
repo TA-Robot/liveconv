@@ -6696,3 +6696,68 @@ job queue.
   858,112` composed LoRA contract.
 - Rework: no EXP-334 broad render and no LoRA-location walk if EXP-340 fails.
   Run the predeclared external gate and replan at method level.
+
+## 2026-08-14T23:18:00Z - EXP-340 training and external7 gate
+
+- Agent: `primary-integrator`; bounded renderer implementation supplied by
+  `implement_exp340_prenet_renderer` and integrated before commit.
+- Task: add only rank-8 LoRA at `prenet.linear_pre` to the existing EXP-238
+  converter LoRA69, then run the committed smoke, one training lane, and
+  external7.
+- Dependencies: commit `c69d9a8`; exact EXP-238 curriculum, teachers, objective,
+  LR, 170-update horizon, EMA, inference path, external7, and one `gpu0` lease.
+- Result: the two-row smoke proved exact control69 state, zero added LoRA-B,
+  finite nonzero converter and prenet gradients, ordinary adapter reload, and
+  `[1, 1, 38400]` inference. The composed adapter has 70 target modules, 140
+  tensors, and 858,112 trainable parameters.
+- Result: training completed 170 updates in 178.34 seconds at 6,163,970,048
+  peak allocated bytes and published 35 external7 WAVs. All seven candidates
+  changed; gross stayed `0 -> 0`, instability stayed `1 -> 1`, and the six
+  jointly stable rows tied at mean source-relative distance `0.338675`.
+- Problems: none in the admitted lane. The system-Python test environment still
+  lacks the preexisting `safetensors` dependency; the pinned X-VC runtime passed
+  all 92 runner tests.
+- Rework: external7 passes the predeclared coarse gate. Render each of the five
+  already-fixed broad surfaces once; do not tune the adapter after seeing them.
+
+## 2026-08-14T23:24:35Z - Grok accepts the fixed broad decision gate
+
+- Agent: `grok-project-progress-auditor` in tmux
+  `liveconv-grok-auditor` (read-only, no tools or delegation).
+- Task: judge whether the prenet pilot and diverse screens remained the shortest
+  path toward better X-VC audio rather than a single-phrase or LoRA-location
+  detour.
+- Result: `CONTINUE`. Grok counted the new EXP-340/343 audio, accepted
+  `prenet.linear_pre` as one method-level trainable-target change, and rejected
+  a location walk, fixed sweep, evaluation redesign, and promotion ceremony.
+- Adopted: yes. The exact stress60 join was gross `0 -> 0`, instability
+  `13 -> 13` with one new/one recovered, and stable content `4W/41T/1L`, so the
+  remaining predeclared JSUT24 and expanded144 surfaces continued. No new
+  training knob or parallel GPU lane was admitted.
+- Problems: the audit snapshot saw a short model-import/load gap as idle GPU and
+  could not observe the operator's browser localStorage; the operator is known
+  unavailable and all audio remains unselected.
+- Rework: finish only the fixed broad characterization. Close the topology on
+  a gross/stability failure and move to a genuinely different method.
+
+## 2026-08-14T23:32:00Z - EXP-341--345 broad closure
+
+- Agent: `primary-integrator`.
+- Task: compare the unchanged EXP-340 adapter with EXP-238 on fresh48, Hadou31,
+  stress60, JSUT24, and expanded144 without another training run.
+- Dependencies: commit `c69d9a8`; frozen evaluation identities; one sequential
+  `gpu0` renderer/screener lane; listener 8878.
+- Result: the five surfaces published 1,535 listener WAVs. Together with
+  external7, all 314 candidate hashes changed. Aggregate gross moves `2 -> 3`;
+  decoder instability moves `60 -> 66`, with nine new and three recovered.
+  Across 242 jointly stable/non-gross rows, source-relative content is
+  `14W/220T/8L`, mean `0.241776 -> 0.238999`.
+- Result: Hadou31 and stress60 have small positive content signals. Fresh48
+  adds five unstable rows; JSUT24 is `0W/21T/1L`; expanded144 adds one gross
+  row and three unstable rows despite `8W/96T/3L` stable content.
+- Problems: the small aggregate content gain is not a broadly robust method
+  because corruption/stability worsens on disjoint and expanded conditions.
+  No machine result judges naturalness, target voice, keeper, or winner.
+- Rework: reject the exact prenet input-fusion topology and close rank, alpha,
+  and location neighbors. Preserve all audio unheard on 8878. Replan the next
+  single-variable lane at the data/input-construction or method level.

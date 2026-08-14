@@ -1,7 +1,7 @@
 # EXP-340: X-VC prenet input-fusion LoRA
 
-Status: admitted listen-now method pilot; implementation in progress; unheard
-and unselected
+Status: external7 and five fixed broad surfaces complete; topology rejected by
+the broad corruption/stability gate; audio remains unheard and unselected
 
 ## Question
 
@@ -43,6 +43,37 @@ prenet training or another converter scope/rank sweep.
 
 Do not tune rank, alpha, module scope, loss, data, LR, horizon, initialization,
 condition, optimizer, or EMA after seeing external7.
+
+## Result
+
+Commit `c69d9a8` bound the ordinary 70-target PEFT adapter before CUDA. The
+additional `prenet.linear_pre` target contributes 22,528 parameters to the
+existing 835,584-parameter converter LoRA69, for 858,112 trainable parameters.
+The two-row smoke proved exact control69 loading, B-zero initialization of the
+two added tensors, finite nonzero gradients in both adapter regions, ordinary
+adapter save/reload, and unchanged `[1, 1, 38400]` inference shape.
+
+The sole training lane completed 170 updates in 178.34 seconds at
+6,163,970,048 peak allocated GPU bytes. It published 35 external7 WAVs, passed
+that coarse gate with gross `0 -> 0`, instability `1 -> 1`, and six jointly
+stable source-relative ties, then published the five predeclared broad surfaces
+as 1,535 more listener WAVs.
+
+All 314 candidate hashes differ from EXP-238. Across external7, fresh48,
+Hadou31, stress60, JSUT24, and expanded144, gross repetition moves `2 -> 3`
+with one newly gross `expanded144:cv39028774f-silence600` row. Decoder
+instability moves `60 -> 66`, comprising nine newly unstable and three
+recovered rows. The 242 jointly stable, non-gross rows are
+`14W/220T/8L`; mean source-relative distance moves slightly from `0.241776`
+to `0.238999`.
+
+That small aggregate content gain does not rescue the method. Fresh48 adds
+five unstable rows, expanded144 adds one gross and three unstable rows, and
+JSUT24 has one content loss with no win. The exact prenet input-fusion topology
+is therefore rejected as a broadly robust retraining method. Do not walk rank,
+alpha, or neighboring prenet locations. Preserve every comparison unheard on
+port 8878 and move to a genuinely different data/input construction or
+training method.
 
 ## Listening boundary
 
