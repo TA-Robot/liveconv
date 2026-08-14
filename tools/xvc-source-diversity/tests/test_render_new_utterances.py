@@ -1485,6 +1485,61 @@ def test_cv26_window_policies_prebind_exp318_and_exp319_without_attachment() -> 
         )
 
 
+def test_cv26_active_window_broad_policies_prebind_exp320_to_exp324() -> None:
+    kinds = [
+        "cv26-active-window-pseudoparallel-ema-fresh48",
+        "cv26-active-window-pseudoparallel-ema-hadou",
+        "cv26-active-window-pseudoparallel-ema-stress",
+        "cv26-active-window-pseudoparallel-ema-jsut",
+        "cv26-active-window-pseudoparallel-ema-expanded144",
+    ]
+    expected_experiment_ids = [
+        "EXP-320",
+        "EXP-321",
+        "EXP-322",
+        "EXP-323",
+        "EXP-324",
+    ]
+    expected_result_kinds = [
+        "liveconv-exp-320-xvc-cv26-active-window-pseudoparallel-ema-fresh48/v1",
+        "liveconv-exp-321-xvc-cv26-active-window-pseudoparallel-ema-hadou31/v1",
+        "liveconv-exp-322-xvc-cv26-active-window-pseudoparallel-ema-stress60/v1",
+        "liveconv-exp-323-xvc-cv26-active-window-pseudoparallel-ema-jsut24/v1",
+        "liveconv-exp-324-xvc-cv26-active-window-pseudoparallel-ema-expanded144/v1",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == (
+        expected_experiment_ids
+    )
+    assert {
+        policy["variant_id"] for policy in policies
+    } == {
+        "cross-corpus170-pseudoparallel-cv26-active-window-real-adv-ema170"
+    }
+    assert [policy["result_kind"] for policy in policies] == expected_result_kinds
+    assert {
+        policy["display_name"] for policy in policies
+    } == {
+        "EXP-319 / CV26 active-window treatment / source-aligned targets / "
+        "real-adversarial / EMA"
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert all(kind in choices for kind in kinds)
+    for policy in policies:
+        assert "candidate_format" not in policy
+        assert "candidate_attachment" not in policy
+        candidate = object()
+        assert (
+            NEW._attach_candidate_representation(candidate, policy, torch=object())
+            is candidate
+        )
+
+
 def test_noncontinuous_candidate_does_not_attach_wrapper(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -1968,6 +1968,58 @@ def candidate_policy(kind: str) -> dict[str, str]:
             ),
         }
     if kind in {
+        "cv26-active-window-pseudoparallel-ema-fresh48",
+        "cv26-active-window-pseudoparallel-ema-hadou",
+        "cv26-active-window-pseudoparallel-ema-stress",
+        "cv26-active-window-pseudoparallel-ema-jsut",
+        "cv26-active-window-pseudoparallel-ema-expanded144",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        expanded = kind.endswith("-expanded144")
+        experiment_id = (
+            "EXP-324"
+            if expanded
+            else "EXP-323"
+            if jsut
+            else "EXP-322"
+            if stress
+            else "EXP-321"
+            if hadou
+            else "EXP-320"
+        )
+        suffix = (
+            "expanded144"
+            if expanded
+            else "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": (
+                "cross-corpus170-pseudoparallel-cv26-active-window-"
+                "real-adv-ema170"
+            ),
+            "display_name": (
+                "EXP-319 / CV26 active-window treatment / source-aligned targets / "
+                "real-adversarial / EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-cv26-active-window-"
+                f"pseudoparallel-ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does the CV26 active-window treatment preserve content across "
+                "the established broad evaluation surfaces?"
+            ),
+        }
+    if kind in {
         "speaker-condition-calibrator-fresh48",
         "speaker-condition-calibrator-hadou",
         "speaker-condition-calibrator-stress",
@@ -3214,6 +3266,11 @@ def _parser() -> argparse.ArgumentParser:
             "cv32-replacement-pseudoparallel-ema-external7",
             "cv26-current-window-control-pseudoparallel-ema-external7",
             "cv26-active-window-pseudoparallel-ema-external7",
+            "cv26-active-window-pseudoparallel-ema-fresh48",
+            "cv26-active-window-pseudoparallel-ema-hadou",
+            "cv26-active-window-pseudoparallel-ema-stress",
+            "cv26-active-window-pseudoparallel-ema-jsut",
+            "cv26-active-window-pseudoparallel-ema-expanded144",
             "speaker-condition-calibrator-fresh48",
             "speaker-condition-calibrator-hadou",
             "speaker-condition-calibrator-stress",
