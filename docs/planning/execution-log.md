@@ -5148,3 +5148,29 @@ job queue.
 - Rework: focused tests, exact CPU admission, commit, then 170 target renders,
   one two-row smoke, one 170-step lane, five-surface publish, and coarse screen.
   Stop rather than sweep if broad content or corruption fails.
+
+## 2026-08-14T11:18:00Z - EXP-238--242 pseudoparallel technical survivor
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T10:53:00Z.
+- End: 2026-08-14T11:18:00Z.
+- Dependencies: commit `edbe8c5`; frozen control69; exact cross-corpus170
+  source order and real Amitaro target assignment; gpu0; listener 8878.
+- Result: generated 170 same-content control69 targets in 95.37 seconds at
+  2,668,426,752 peak bytes. Two-row smoke was finite at 4,636,175,872 bytes.
+  Training completed 170 updates in 136.83 seconds at 6,163,570,688 bytes; EMA
+  adapter SHA-256 is
+  `778b430133b5397d86bd70bd7c9fa7bd4f7f9cc4d737ca94e4b91e5c7bc8a9da`.
+  Published and screened 850 WAVs with no candidate-added consensus gross row.
+  Exact common-stable source distance moved external7
+  `0.256410 -> 0.256410`, fresh48 `0.214090 -> 0.206909`, Hadou31
+  `0.148912 -> 0.127328`, stress60 `0.222702 -> 0.193036`, and JSUT24
+  `0.115028 -> 0.123253`. W/T/L were `0/5/0`, `4/30/3`, `3/22/1`,
+  `7/36/2`, and `1/20/1`; known-text distance improved on all five surfaces.
+- Problems: JSUT source-relative mean has one loss despite 20 ties and one win;
+  pitch+3 has one loss among eight common-stable rows. Machine diagnostics do
+  not establish naturalness, target identity, emotion, or audible preference.
+- Rework: the predefined broad-regression stop does not fire. Retain the exact
+  checkpoint as an unheard technical survivor and prioritize it for later
+  hearing. Do not call it a winner or sweep target/LR/scope/horizon neighbors.
+  Replan the next bounded method or evaluation axis before another GPU lane.

@@ -255,6 +255,9 @@ claims from that artifact are superseded. The active join is now:
         -> original Amitaro WAV stays only on the real discriminator side
         -> EXP-239--242 prebound fresh48 / Hadou31 / stress60 / JSUT24
         -> one 170-step complete-generative pilot; no target/loss/scope/LR sweep
+        -> 850 WAVs; no added gross; external ties and fresh/Hadou/stress improve
+        -> JSUT has 20/22 ties plus one win/one loss; broad-regression stop does not fire
+        -> retain EXP-238 as an unheard technical survivor; no automatic winner
         -> operator hearing when available
 ```
 

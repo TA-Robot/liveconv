@@ -1,6 +1,6 @@
 # EXP-238: X-VC cross-corpus source-aligned pseudoparallel retraining
 
-Status: prepared; not run
+Status: completed technical survivor; unheard and unselected
 
 ## Goal
 
@@ -52,3 +52,35 @@ broad common-stable content regression. Do not tune teacher model, corpus
 ratio, target assignment, loss weights, scope, LR, horizon, condition,
 discriminator, or EMA after this run. A content-stable result is only an
 unheard technical survivor until human listening returns.
+
+## Result
+
+Commit `edbe8c5` passed 248 focused tests, control validation, exact 170-row
+CPU admission, and a real two-row backward smoke. The smoke proved 835,584
+trainable LoRA69 parameters, finite complete-generative and real-reference
+adversarial updates, and 4,636,175,872 peak allocated bytes.
+
+The frozen control69 materializer produced 170 same-content training targets in
+95.37 seconds at 2,668,426,752 peak bytes. The single pilot completed 170
+updates in 136.83 seconds at 6,163,570,688 peak bytes. The EMA adapter SHA-256
+is `778b430133b5397d86bd70bd7c9fa7bd4f7f9cc4d737ca94e4b91e5c7bc8a9da`.
+Training loss moved `106.41 -> 124.30`; this non-monotonic discriminator-coupled
+trajectory is recorded but is not treated as a quality decision.
+
+The unchanged checkpoint published and screened 850 WAVs across external7,
+fresh48, Hadou31, stress60, and JSUT24. There was no candidate-added consensus
+gross row on any surface. On exact cross-arm common-stable rows, source-relative
+auxiliary distance moved external7 `0.256410 -> 0.256410` (W/T/L `0/5/0`),
+fresh48 `0.214090 -> 0.206909` (`4/30/3`), Hadou31
+`0.148912 -> 0.127328` (`3/22/1`), stress60 `0.222702 -> 0.193036`
+(`7/36/2`), and JSUT24 `0.115028 -> 0.123253` (`1/20/1`). Exact common-stable
+known-text distance improved on all five surfaces.
+
+Within stress60, clean, noise20, and silence300 improved, tempo1.2 tied exactly,
+and pitch+3 had one loss among eight common-stable rows. JSUT's only
+source-relative loss was `basic5000_4688`, where known-text distance instead
+improved; the only other changed row was a larger loanword improvement. This
+does not meet the predefined broad-regression stop. Retain this exact checkpoint
+as an unheard technical survivor. It is not a perceptual winner, keeper, route,
+or promotion; naturalness, target voice, and emotion remain human-listening
+questions.
