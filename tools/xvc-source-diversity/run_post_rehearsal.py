@@ -120,6 +120,9 @@ DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE = (
 )
 SPEAKER_PATH_UNPAIRED_OBJECTIVE = "factorized-unpaired-human-speaker-path-adversarial"
 PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE = "pseudoparallel-generative-real-adversarial"
+PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE = (
+    "pseudoparallel-generative-real-adversarial-fresh-lora"
+)
 PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE = (
     "pseudoparallel-generative-real-adversarial-output-speaker"
 )
@@ -246,6 +249,7 @@ def listening_policy(
         or training_objective
         in {
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+            PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
             PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
@@ -257,6 +261,7 @@ def listening_policy(
             or training_objective
             not in {
                 PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+                PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
                 PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
                 PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
                 PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
@@ -305,6 +310,34 @@ def listening_policy(
                     "control69 LoRA69 initialization, complete generative and real "
                     "adversarial losses, LR, sequential optimizer, 170 updates, "
                     "gradient clip, zero condition, and EMA remain fixed"
+                ),
+            }
+        if training_objective == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE:
+            return {
+                "slug": "exp273",
+                "candidate_id": (
+                    "cross-corpus170-pseudoparallel-fresh-lora-real-adv-ema170"
+                ),
+                "candidate_name": (
+                    "EXP-273 / source-aligned targets / fresh LoRA69 / EMA"
+                ),
+                "run_kind": "EXP-273 X-VC fresh-LoRA pseudoparallel evaluation",
+                "result_kind": (
+                    "liveconv-exp273-xvc-pseudoparallel-fresh-lora-ema/v1"
+                ),
+                "question": (
+                    "Does learning the source-aligned teacher from a fresh LoRA "
+                    "avoid inherited control69 failures and improve robust X-VC?"
+                ),
+                "independent_variable": (
+                    "relative to EXP-238, only LoRA69 initialization changes from "
+                    "the trained EXP-035 control69 adapter to a new zero-initialized "
+                    "rank-8 adapter on the same frozen base X-VC; the exact "
+                    "CV48/JSUT85/JVS3/Hadou34 curriculum, source-aligned control69 "
+                    "teacher targets, assigned real Amitaro adversarial targets, "
+                    "complete generative and real-adversarial losses, trainable "
+                    "scope, LR, sequential 170 updates, clip, zero frame condition, "
+                    "discriminator, and EMA remain fixed"
                 ),
             }
         if training_objective == PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE:
@@ -2698,6 +2731,23 @@ def run(
         expected_trainable = role_mix.expected_trainable_parameter_count(
             scope, "standard"
         )
+    elif arguments.training_objective == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE:
+        trained = get_peft_model(
+            model,
+            LoraConfig(
+                r=8,
+                lora_alpha=8,
+                lora_dropout=0.0,
+                bias="none",
+                use_dora=False,
+                use_rslora=False,
+                target_modules=list(scope["target_modules"]),
+            ),
+        )
+        trainable = role_mix._set_scope_training_only(trained, scope)
+        expected_trainable = role_mix.expected_trainable_parameter_count(
+            scope, "standard"
+        )
     else:
         trained = PeftModel.from_pretrained(
             model, str(arguments.control_adapter), is_trainable=True
@@ -2745,6 +2795,7 @@ def run(
         DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
         SPEAKER_PATH_UNPAIRED_OBJECTIVE,
         PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+        PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
         PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
         PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
         PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
@@ -2756,6 +2807,7 @@ def run(
         if arguments.training_objective in {
             REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+            PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
             PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
@@ -2771,6 +2823,7 @@ def run(
                     arguments.training_objective
                     in {
                         PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+                        PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
                         PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
                         PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
                         PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
@@ -2953,6 +3006,7 @@ def run(
                         in {
                             REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
                             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+                            PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
                             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
                             PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
                             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
@@ -3457,6 +3511,8 @@ def run(
                     if arguments.training_objective
                     == PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE
                     or arguments.training_objective
+                    == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE
+                    or arguments.training_objective
                     == PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE
                     or arguments.training_objective
                     == PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE
@@ -3547,6 +3603,7 @@ def parser() -> argparse.ArgumentParser:
             DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
             SPEAKER_PATH_UNPAIRED_OBJECTIVE,
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+            PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
             PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,

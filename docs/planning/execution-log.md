@@ -5639,3 +5639,39 @@ job queue.
   unavailable.
 - Rework: commit the minimal five-policy renderer slice and immediately return
   gpu0 to sequential rendering.
+
+## 2026-08-14T15:12:00Z - EXP-267--272 broad closure
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T14:53:03Z.
+- End: 2026-08-14T15:12:00Z.
+- Dependencies: commit `6998359`; unchanged EXP-238/267 adapters; frozen
+  fresh48/Hadou31/stress60/JSUT24/expanded144; v4 faster-whisper; gpu0;
+  listener 8878.
+- Result: all five CPU admissions passed, then 307 rows and 1,535 comparison
+  WAVs were published. All 307 candidate hashes changed and no candidate-added
+  consensus gross row appeared. Exact jointly stable/non-gross EXP-238 to
+  EXP-267 content across 232 rows moved `0.230440 -> 0.281612`, W/T/L
+  `17/189/26`. Fresh48 was `1/29/6`, Hadou `1/23/2`, stress `3/38/4`, JSUT
+  `1/20/1`, and expanded144 `11/79/13`.
+- Problems: decoder instability increased fresh48 `6 -> 10` and expanded144
+  `33 -> 36`; the real speaker condition did not improve broad robustness.
+- Rework: close EXP-267 and target-mixture/weight/LR/scope/rank/horizon
+  neighbors. Do not patch it with another identity loss. Test fresh LoRA69
+  distillation of the unchanged EXP-238 teacher as one initialization variable.
+
+## 2026-08-14T15:18:00Z - EXP-273 fresh-LoRA pilot prepared
+
+- Agent: `primary-integrator`.
+- Task: remove only EXP-238's trained control69 adapter initialization while
+  preserving its exact source-aligned targets and full training contract.
+- Dependencies: EXP-238 technical survivor; EXP-267 broad rejection; fixed
+  six-surface evaluation; one gpu0 lane.
+- Result: added a distinct fresh zero-initialized rank-8 LoRA69 policy and model
+  setup, plus policy regression and one-page listen-now plan. The X-VC runtime
+  passed all 63 focused runner tests.
+- Problems: an initial test invocation used the Whisper-only `.venv` and failed
+  16 Torch imports; rerunning the unchanged suite in the pinned X-VC runtime
+  passed. This was runner selection error, not a code failure.
+- Rework: commit before GPU, run exact CPU admission and a two-row CUDA smoke;
+  only a finite nonzero-gradient smoke may admit one 170-update lane.

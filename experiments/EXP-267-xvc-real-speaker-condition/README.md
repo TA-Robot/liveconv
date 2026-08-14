@@ -1,7 +1,6 @@
 # EXP-267: X-VC real target-speaker conditioning
 
-Status: trained; external7 published; broad fixed-surface render admitted;
-unheard and unselected
+Status: completed and technically closed; unheard and unselected
 
 ## Goal
 
@@ -65,6 +64,28 @@ W/T/L `0/4/1`; one additional decoder became unstable. This small surface is
 insufficient to classify the method. EXP-268--272 therefore bind the unchanged
 EMA adapter to fresh48, Hadou31, stress60, JSUT24, and expanded144. Those runs
 may close a technical method but cannot select audible quality.
+
+## Broad result and decision
+
+EXP-268--272 published all 307 fixed-surface candidate rows, with 307/307 WAV
+hashes changed and no candidate-added consensus gross repetition. Exact
+EXP-238-to-EXP-267 joins use only rows where both candidates are decoder-stable
+and non-gross:
+
+| Surface | Common rows | EXP-238 -> EXP-267 mean | W/T/L |
+| --- | ---: | ---: | ---: |
+| fresh48 | 36 | `0.217428 -> 0.269791` | 1/29/6 |
+| Hadou31 | 26 | `0.127328 -> 0.143417` | 1/23/2 |
+| stress60 | 45 | `0.198327 -> 0.203075` | 3/38/4 |
+| JSUT24 | 22 | `0.123253 -> 0.117626` | 1/20/1 |
+| expanded144 | 103 | `0.297940 -> 0.389966` | 11/79/13 |
+| all | 232 | `0.230440 -> 0.281612` | 17/189/26 |
+
+Decoder-unstable rows increased on fresh48 `6 -> 10` and expanded144 `33 ->
+36`. The real-speaker target contract therefore does not improve broad content
+robustness. Close this exact method and its target-mixture, speaker-weight, LR,
+scope, rank, and horizon neighbors. The audio remains available for later
+identity/naturalness diagnosis but is not nominated.
 
 ## Command
 

@@ -240,6 +240,24 @@ def test_pseudoparallel_policy_restores_complete_same_content_targets() -> None:
     assert "real side" in policy["independent_variable"]
 
 
+def test_pseudoparallel_fresh_lora_changes_only_initialization() -> None:
+    policy = post.listening_policy(
+        post.PSEUDOPARALLEL_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp273"
+    assert policy["candidate_id"] == (
+        "cross-corpus170-pseudoparallel-fresh-lora-real-adv-ema170"
+    )
+    assert "zero-initialized" in policy["independent_variable"]
+    assert "source-aligned control69 teacher targets" in policy[
+        "independent_variable"
+    ]
+
+
 def test_src4vc_pseudoparallel_policy_changes_only_source_corpus_block() -> None:
     policy = post.listening_policy(
         post.SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND,
