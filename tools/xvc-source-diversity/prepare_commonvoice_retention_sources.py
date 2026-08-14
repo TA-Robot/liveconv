@@ -12,10 +12,11 @@ from pathlib import Path
 from typing import Any
 
 from prepare_clean_post_rehearsal import sha256_file
+from prepare_commonvoice_active_windows import OUTPUT_KIND as ACTIVE_WINDOW_KIND
 from prepare_jsut_evaluation import stratified_positions
 from prepare_jsut_retention_sources import easy_slots
 
-OUTPUT_KIND = "liveconv-exp186-commonvoice48-retention-sources85/v1"
+OUTPUT_KIND = "liveconv-exp186-commonvoice48-retention-sources85/v2"
 SOURCE_KIND = "liveconv-exp114-commonvoice-teacher48/v1"
 EXPECTED_SOURCES = 48
 EXPECTED_ROWS = 85
@@ -77,6 +78,8 @@ def wav_identity(path: Path) -> tuple[int, int, int]:
 def build(
     source_manifest: Mapping[str, Any],
     source_manifest_path: Path,
+    window_manifest: Mapping[str, Any],
+    window_manifest_path: Path,
     source_root: Path,
     selective: Mapping[str, Any],
     selective_path: Path,
@@ -86,6 +89,20 @@ def build(
         raise CommonVoiceRetentionError("EXP-114 source identity drifted")
     if len(items) != EXPECTED_SOURCES:
         raise CommonVoiceRetentionError("EXP-114 source coverage drifted")
+    window_items = window_manifest.get("items")
+    if (
+        window_manifest.get("kind") != ACTIVE_WINDOW_KIND
+        or not isinstance(window_items, list)
+        or len(window_items) != EXPECTED_SOURCES
+    ):
+        raise CommonVoiceRetentionError("speech-active window identity drifted")
+    windows = {
+        str(item.get("id")): item
+        for item in window_items
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    }
+    if len(windows) != EXPECTED_SOURCES:
+        raise CommonVoiceRetentionError("speech-active window coverage drifted")
     slots = easy_slots(selective)
     schedule = exposure_schedule(items)
     client_ids: set[str] = set()
@@ -108,8 +125,20 @@ def build(
             or not transcript
         ):
             raise CommonVoiceRetentionError("EXP-114 speaker identity drifted")
+        window = windows.get(identifier)
+        if (
+            not isinstance(window, dict)
+            or window.get("client_id_sha256") != client_id
+            or window.get("source_sha256") != item.get("sha256")
+            or not isinstance(window.get("window_sha256"), str)
+            or not isinstance(window.get("window_start_sample"), int)
+            or not isinstance(window.get("active_sample_fraction"), (int, float))
+        ):
+            raise CommonVoiceRetentionError("speech-active source binding drifted")
         path = source_root / f"{identifier}.wav"
         sample_rate, frames, bit_depth = wav_identity(path)
+        if sha256_file(path) != window["window_sha256"]:
+            raise CommonVoiceRetentionError("speech-active source audio drifted")
         source_ids.add(identifier)
         client_ids.add(client_id)
         source_rows.append(
@@ -123,6 +152,10 @@ def build(
                 "sample_rate": sample_rate,
                 "frames": frames,
                 "bit_depth": bit_depth,
+                "window_start_sample": window["window_start_sample"],
+                "window_start_seconds": window["window_start_seconds"],
+                "active_sample_fraction": window["active_sample_fraction"],
+                "window_selection_policy": window_manifest["selection"]["policy"],
             }
         )
     exposure_counts: Counter[str] = Counter()
@@ -158,6 +191,7 @@ def build(
             "role": "training-only retention sources",
             "redistribution": "audio excluded from git and result bundles",
             "source_manifest_sha256": sha256_file(source_manifest_path),
+            "window_manifest_sha256": sha256_file(window_manifest_path),
             "selective_curriculum_sha256": sha256_file(selective_path),
         },
         "selection": {
@@ -174,6 +208,7 @@ def build(
 def parser() -> argparse.ArgumentParser:
     value = argparse.ArgumentParser(description=__doc__)
     value.add_argument("--source-manifest", type=Path, required=True)
+    value.add_argument("--window-manifest", type=Path, required=True)
     value.add_argument("--source-root", type=Path, required=True)
     value.add_argument("--selective-curriculum", type=Path, required=True)
     value.add_argument("--output", type=Path, required=True)
@@ -187,6 +222,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         manifest = build(
             load_json(arguments.source_manifest),
             arguments.source_manifest,
+            load_json(arguments.window_manifest),
+            arguments.window_manifest,
             arguments.source_root,
             load_json(arguments.selective_curriculum),
             arguments.selective_curriculum,

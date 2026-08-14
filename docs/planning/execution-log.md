@@ -4242,3 +4242,39 @@ job queue.
   regressions in the other three conditions, so the anchor hypothesis is closed.
   Defer EXP-185 rather than filling a symmetric matrix for ceremony. Move to a
   distinct data-construction hypothesis.
+
+## 2026-08-14T04:05:00Z - EXP-186 first Common Voice target preflight stopped
+
+- Agent: `primary-integrator`.
+- Task: replace only EXP-163's easy85 retention data with balanced exposures
+  from 48 frozen training-only Common Voice speakers.
+- Dependencies: commits `921fd38`, `14890c1`, and `1b4c509`; frozen EXP-114
+  speaker manifest; unchanged EXP-150 hard85; exact control69 adapter.
+- Result: bound 48 speakers to 85 slots with exposure counts 37x2 and 11x1.
+  Rendered 85 historical leading-window control69 targets in 106.4 seconds at
+  2.49 GiB peak. The updated greedy+beam5 teacher screen found one
+  candidate-added consensus gross loop.
+- Problems: 12/85 source exposures, representing six speakers, decoded to only
+  zero through three characters under both decoders. The gross source's full
+  MP3 contains its utterance later, but the reused leading 2.4-second window
+  decoded only `ん`. This is a source-window construction failure, not evidence
+  against multi-speaker retention.
+- Rework: stop the entire v1 target set before training; do not delete or replace
+  the one failed row. Apply one signal-only speech-active window policy to all
+  48 original MP3s, then rerender all 85 targets as v2.
+
+## 2026-08-14T04:16:00Z - EXP-186 speech-active source revision prepared
+
+- Agent: `primary-integrator`.
+- Task: correct the source-window role without selecting by ASR or model output.
+- Dependencies: the same 48 source MP3 identities and 85 slot schedule.
+- Result: implement 2.4-second windows at 100 ms hops, maximizing the count of
+  samples above absolute amplitude 0.01, then energy, then earliest start. The
+  rule is applied to every source and reads no transcript, ASR, target, or
+  evaluation. All 48 speakers and 85 exposures remain unchanged; the prior
+  gross row moves from 0.0 to 3.7 seconds with active fraction 0.814.
+- Problems: two complete source MP3s are extremely quiet, but X-VC's pinned
+  config performs volume normalization before feature extraction. Do not add a
+  second waveform normalization or treat raw ASR silence as model-input silence.
+- Rework: commit the v2 source construction, rerender all 85 control69 targets,
+  and require zero candidate-added consensus gross rows before training.

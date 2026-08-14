@@ -18,7 +18,7 @@ from prepare_selective_retention_curriculum import REPAIR_TARGET, RETENTION_TARG
 from render_commonvoice_retention_targets import OUTPUT_KIND as TARGET_KIND
 from screen_teacher_outputs import aggregate
 
-OUTPUT_KIND = "liveconv-exp186-commonvoice48-selective-retention-inputs/v1"
+OUTPUT_KIND = "liveconv-exp186-commonvoice48-selective-retention-inputs/v2"
 SCREEN_KIND = "liveconv-xvc-pseudo-teacher-output-screen/v1"
 EXPECTED_ROWS = 170
 EXPECTED_COMPOSITION = {"commonvoice": 125, "hadou": 45}

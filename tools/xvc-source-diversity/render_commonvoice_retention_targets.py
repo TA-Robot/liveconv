@@ -29,8 +29,8 @@ from prepare_commonvoice_retention_sources import (  # noqa: E402
 )
 from prepare_commonvoice_retention_sources import OUTPUT_KIND as SOURCE_KIND  # noqa: E402
 
-OUTPUT_KIND = "liveconv-exp186-commonvoice48-control69-targets85/v1"
-POOL_KIND = "liveconv-exp186-commonvoice48-control69-pool85/v1"
+OUTPUT_KIND = "liveconv-exp186-commonvoice48-control69-targets85/v2"
+POOL_KIND = "liveconv-exp186-commonvoice48-control69-pool85/v2"
 
 
 class CommonVoiceTargetError(RuntimeError):
