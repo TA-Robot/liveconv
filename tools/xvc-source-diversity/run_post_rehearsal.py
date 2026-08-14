@@ -710,8 +710,13 @@ class AdapterEMA:
         }
 
 
-def smoke_rows(manifest: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+def smoke_rows(
+    manifest: Mapping[str, Any],
+    optimizer_mode: str = SEQUENTIAL_OPTIMIZER,
+) -> list[Mapping[str, Any]]:
     items = manifest["items"]
+    if optimizer_mode == PCGRAD_PAIRED_OPTIMIZER:
+        return items[:2]
     if manifest.get("kind") != JSUT_RETENTION_OUTPUT_KIND:
         return items[:1]
     hard = next(item for item in items if item.get("curriculum_role") == "hard")
@@ -861,7 +866,11 @@ def run(
     adversarial_metrics: list[dict[str, float]] = []
     pcgrad_metrics: list[dict[str, float | bool]] = []
     optimizer_steps = 0
-    rows = smoke_rows(manifest) if arguments.smoke else manifest["items"]
+    rows = (
+        smoke_rows(manifest, arguments.optimizer_mode)
+        if arguments.smoke
+        else manifest["items"]
+    )
     discriminator = None
     discriminator_optimizer = None
     realism_targets: dict[str, Any] = {}

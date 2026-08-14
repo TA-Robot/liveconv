@@ -3957,16 +3957,29 @@ job queue.
   Stop at the first candidate-added gross corruption; do not tune projection or
   reopen EXP-150/171 ratios.
 
-## 2026-08-14T02:32:00Z - EXP-174 first smoke output was not observable
+## 2026-08-14T02:32:00Z - EXP-174 first smoke result was not observable
 
 - Agent: `primary-integrator`.
 - Task: run the committed hard/easy PCGrad smoke before full training.
 - Dependencies: commit `77728a1`; exact pinned X-VC runtime and gpu0 lease.
 - Result: the process loaded the 5 GB checkpoint, occupied CUDA, and exited,
   but the execution wrapper detached during the quiet load and lost the final
-  stdout-only JSON. No full job was admitted from an unobservable smoke.
+  stdout-only result. No full job was admitted from an unobservable smoke.
 - Problems: the inherited smoke path created its work directory but persisted
   no result file, so process exit alone could not distinguish a finite method
   smoke from an external execution-wrapper loss.
 - Rework: persist the same smoke payload as `smoke.json`, commit that operational
   fix, and rerun once. Do not change projection, data, loss, or GPU admission.
+
+## 2026-08-14T02:36:00Z - EXP-174 paired smoke stopped before training
+
+- Agent: `primary-integrator`.
+- Task: rerun PCGrad smoke with a persistent result and attached PTY.
+- Dependencies: commit `31a4065`; same frozen inputs and gpu0 lease.
+- Result: after the immutable base load, input validation correctly stopped
+  before any optimizer step with `paired PCGrad requires an even row count`.
+- Problems: the inherited smoke reducer kept one row for every non-JSUT
+  manifest, whereas PCGrad requires one complete adjacent hard/easy pair.
+- Rework: make only the PCGrad smoke reducer retain the first two frozen rows,
+  add a regression test for their roles, commit, and rerun. Full training stays
+  blocked until this two-row smoke persists finite geometry.

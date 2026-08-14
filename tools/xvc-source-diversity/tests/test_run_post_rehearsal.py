@@ -170,6 +170,21 @@ def test_paired_rows_require_frozen_hard_easy_order() -> None:
         raise AssertionError("reversed PCGrad pair unexpectedly admitted")
 
 
+def test_pcgrad_smoke_keeps_one_complete_hard_easy_pair() -> None:
+    manifest = {
+        "kind": post.SELECTIVE_OUTPUT_KIND,
+        "items": [
+            {"curriculum_role": "hard"},
+            {"curriculum_role": "easy"},
+            {"curriculum_role": "hard"},
+        ],
+    }
+
+    rows = post.smoke_rows(manifest, post.PCGRAD_PAIRED_OPTIMIZER)
+
+    assert [row["curriculum_role"] for row in rows] == ["hard", "easy"]
+
+
 def test_pcgrad_projects_only_conflicting_task_components() -> None:
     import torch
 
