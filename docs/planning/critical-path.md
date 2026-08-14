@@ -251,6 +251,10 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-234--237 prebound fresh48 / Hadou31 / stress60 / JSUT24
         -> 850 WAVs; no added gross, but fresh/stress/ordinary JSUT regress
         -> function-path overlay closed; change the unpaired data target contract
+        -> EXP-238 keep broad cross-corpus sources; render source-aligned control69 targets
+        -> original Amitaro WAV stays only on the real discriminator side
+        -> EXP-239--242 prebound fresh48 / Hadou31 / stress60 / JSUT24
+        -> one 170-step complete-generative pilot; no target/loss/scope/LR sweep
         -> operator hearing when available
 ```
 

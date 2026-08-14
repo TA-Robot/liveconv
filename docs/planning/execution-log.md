@@ -5110,3 +5110,41 @@ job queue.
   rank/scope/weight/schedule points. The repeated failure now implicates the
   unrelated source/target training contract. Next restore source-aligned
   pseudo-parallel targets while retaining the broad cross-corpus source set.
+
+## 2026-08-14T10:52:18Z - Grok progress audit
+
+- Agent: `grok-4.6-project-progress-auditor` in
+  `liveconv-grok-auditor` tmux.
+- Task: independent read-only 30-minute audit of whether the active X-VC quality
+  search is the shortest route to a usable realtime Japanese conversation
+  system.
+- Dependencies: completed EXP-233--237 five-surface screen; idle gpu0; operator
+  unavailable for hearing; corrected non-browser tongue-twister provenance.
+- Result: `CONTINUE`. The auditor accepted the fixed diverse five-surface gate,
+  the completed single-lane render/screen/replan loop, and the next change from
+  unrelated targets to source-aligned pseudoparallel targets as a testable data
+  contract hypothesis.
+- Problems: gpu0 was idle after the last close, and 143 dirty entries could
+  obscure the identity if the next runner itself were not committed.
+- Rework: adopted. Discard speaker-path neighbors and further loss/optimizer
+  changes on the same unpaired contract. Commit only the EXP-238 runner, tests,
+  and plan before rendering 170 training targets and starting one GPU lane;
+  do not block on unrelated dirty files.
+
+## 2026-08-14T10:53:00Z - EXP-238--242 pseudoparallel pilot prepared
+
+- Agent: `primary-integrator`.
+- Task: replace the repeated unrelated-content training contradiction with one
+  source-aligned target-data intervention.
+- Dependencies: frozen control69; exact EXP-213 CV48/JSUT85/JVS3/Hadou34
+  source order and Amitaro target assignment; fixed five-surface gate; gpu0.
+- Result: materializer binds each source to the frozen control69 conversion of
+  that same source under its assigned Amitaro reference. Training returns to
+  the complete standard generative loss, while the original real Amitaro WAV
+  remains only the discriminator real side. EXP-239--242 prebind the unchanged
+  fresh48/Hadou31/stress60/JSUT24 renders.
+- Problems: the frozen control69 teacher can distill its existing defects and
+  automatic diagnostics cannot establish naturalness or target-voice quality.
+- Rework: focused tests, exact CPU admission, commit, then 170 target renders,
+  one two-row smoke, one 170-step lane, five-surface publish, and coarse screen.
+  Stop rather than sweep if broad content or corruption fails.

@@ -70,6 +70,15 @@ from prepare_cross_corpus_unpaired_curriculum import (  # noqa: E402
 from prepare_cross_corpus_unpaired_curriculum import (  # noqa: E402
     OUTPUT_KIND as CROSS_CORPUS_UNPAIRED_OUTPUT_KIND,
 )
+from render_cross_corpus_pseudoparallel_targets import (  # noqa: E402
+    EXPECTED_COMPOSITION as PSEUDOPARALLEL_EXPECTED_DOMAINS,
+)
+from render_cross_corpus_pseudoparallel_targets import (  # noqa: E402
+    LEARNING_TARGET as PSEUDOPARALLEL_LEARNING_TARGET,
+)
+from render_cross_corpus_pseudoparallel_targets import (  # noqa: E402
+    OUTPUT_KIND as PSEUDOPARALLEL_OUTPUT_KIND,
+)
 from prepare_selective_retention_curriculum import (  # noqa: E402
     OUTPUT_KIND as SELECTIVE_OUTPUT_KIND,
 )
@@ -108,6 +117,9 @@ DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE = (
 )
 SPEAKER_PATH_UNPAIRED_OBJECTIVE = (
     "factorized-unpaired-human-speaker-path-adversarial"
+)
+PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE = (
+    "pseudoparallel-generative-real-adversarial"
 )
 OUTPUT_CYCLE_CONTENT_WEIGHT = 1000.0
 CONTRASTIVE_CONTENT_TEMPERATURE = 0.1
@@ -152,6 +164,47 @@ def listening_policy(
     source_activity_envelope: bool = False,
 ) -> dict[str, str]:
     """Return the complete shared-listener identity for the admitted method."""
+
+    if (
+        manifest_kind == PSEUDOPARALLEL_OUTPUT_KIND
+        or training_objective == PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE
+    ):
+        if (
+            manifest_kind != PSEUDOPARALLEL_OUTPUT_KIND
+            or trainable_target != LORA69_TARGET
+            or training_objective != PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE
+            or not use_adapter_ema
+            or optimizer_mode != SEQUENTIAL_OPTIMIZER
+            or parameter_anchor
+            or source_activity_envelope
+        ):
+            raise PostRehearsalError(
+                "pseudoparallel supervision requires the exact EXP-238 pilot"
+            )
+        return {
+            "slug": "exp238",
+            "candidate_id": "cross-corpus170-pseudoparallel-real-adv-ema170",
+            "candidate_name": (
+                "EXP-238 / source-aligned control69 targets / real-adversarial / EMA"
+            ),
+            "run_kind": "EXP-238 X-VC pseudoparallel retraining evaluation",
+            "result_kind": "liveconv-exp238-xvc-pseudoparallel-real-adv-ema/v1",
+            "question": (
+                "Does replacing unrelated-text target supervision with frozen "
+                "control69 same-content targets improve broad X-VC retraining?"
+            ),
+            "independent_variable": (
+                "the exact CV48/JSUT85/JVS3/Hadou34 sources and ordered Amitaro "
+                "target references stay fixed, but each generative target changes "
+                "from unrelated real target speech plus factorized content losses "
+                "to the frozen control69 conversion of that same source under the "
+                "assigned Amitaro reference; the original authorized Amitaro WAV "
+                "remains only the real side of the unchanged adversarial/feature "
+                "objective; control69 LoRA69 initialization, standard complete "
+                "generative loss, 170 updates, LR, optimizer, clip, zero condition, "
+                "discriminator update, and EMA remain fixed"
+            ),
+        }
 
     if source_activity_envelope:
         if (
@@ -820,6 +873,8 @@ def load_manifest(
         expected_domains = UNPAIRED_HUMAN_EXPECTED_DOMAINS
     elif kind == CROSS_CORPUS_UNPAIRED_OUTPUT_KIND:
         expected_domains = CROSS_CORPUS_UNPAIRED_EXPECTED_DOMAINS
+    elif kind == PSEUDOPARALLEL_OUTPUT_KIND:
+        expected_domains = PSEUDOPARALLEL_EXPECTED_DOMAINS
     elif kind == COMMONVOICE_RETENTION_OUTPUT_KIND:
         expected_domains = COMMONVOICE_RETENTION_EXPECTED_DOMAINS
     elif kind == CONDITIONED_RETENTION_OUTPUT_KIND:
@@ -839,6 +894,7 @@ def load_manifest(
             CONDITIONED_RETENTION_OUTPUT_KIND,
             UNPAIRED_HUMAN_OUTPUT_KIND,
             CROSS_CORPUS_UNPAIRED_OUTPUT_KIND,
+            PSEUDOPARALLEL_OUTPUT_KIND,
         }
         or value.get("composition") != expected_domains
         or not isinstance(items, list)
@@ -903,6 +959,32 @@ def load_manifest(
             target_root = diverse_work
             if target_root is None:
                 raise PostRehearsalError("unpaired human work is required")
+        if kind == PSEUDOPARALLEL_OUTPUT_KIND:
+            real_target_file = item.get("real_target_file")
+            if (
+                item.get("source_root") != "source-work"
+                or item.get("target_root") != "diverse-work"
+                or item.get("learning_target") != PSEUDOPARALLEL_LEARNING_TARGET
+                or item.get("target_text") != item.get("source_text")
+                or item.get("real_target_root") != "source-work"
+                or not isinstance(real_target_file, str)
+                or Path(real_target_file).is_absolute()
+                or ".." in Path(real_target_file).parts
+                or not base._is_sha256(item.get("real_target_sha256"))
+            ):
+                raise PostRehearsalError(
+                    "pseudoparallel learning-target identity drifted"
+                )
+            target_root = diverse_work
+            if target_root is None:
+                raise PostRehearsalError("pseudoparallel target work is required")
+            real_target = source_work / real_target_file
+            if (
+                real_target.is_symlink()
+                or not real_target.is_file()
+                or sha256_file(real_target) != item["real_target_sha256"]
+            ):
+                raise PostRehearsalError("pseudoparallel real target drifted")
         if kind in {
             SELECTIVE_OUTPUT_KIND,
             JSUT_RETENTION_OUTPUT_KIND,
@@ -1379,7 +1461,7 @@ def source_receipt_identities(
     manifest_kind: str, source_work: Path, training_manifest: Path
 ) -> dict[str, str | None]:
     """Bind either a predecessor result or the standalone human curriculum."""
-    if manifest_kind in UNPAIRED_HUMAN_KINDS:
+    if manifest_kind in UNPAIRED_HUMAN_KINDS | {PSEUDOPARALLEL_OUTPUT_KIND}:
         return {
             "source_result_sha256": None,
             "unpaired_human_curriculum_sha256": sha256_file(training_manifest),
@@ -1740,7 +1822,9 @@ def smoke_rows(
         return items[:2]
     if parameter_anchor:
         return items[:2]
-    if manifest.get("kind") in UNPAIRED_HUMAN_KINDS:
+    if manifest.get("kind") in UNPAIRED_HUMAN_KINDS | {
+        PSEUDOPARALLEL_OUTPUT_KIND
+    }:
         return items[:2]
     if (
         manifest.get("kind") not in DIVERSE_RETENTION_KINDS
@@ -2180,21 +2264,39 @@ def run(
         CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
         DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
         SPEAKER_PATH_UNPAIRED_OBJECTIVE,
+        PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
     }:
         discriminator, discriminator_optimizer = breadth._load_pretrained_discriminator(
             arguments, config, torch=torch, device=device
         )
-        if arguments.training_objective == REAL_REFERENCE_ADVERSARIAL_OBJECTIVE:
+        if arguments.training_objective in {
+            REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
+            PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+        }:
             target_by_id = {
                 target_id: _pair(target_id, path, digest)
                 for target_id, path, digest in target_rows
             }
-            for target_id in {str(item["target_id"]) for item in rows}:
-                pair = target_by_id.get(target_id)
-                if pair is None:
-                    raise PostRehearsalError(
-                        f"real adversarial target is unavailable: {target_id}"
+            for item in rows:
+                target_id = str(item["target_id"])
+                if (
+                    arguments.training_objective
+                    == PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE
+                ):
+                    real_target = arguments.source_work / str(
+                        item["real_target_file"]
                     )
+                    pair = _pair(
+                        target_id,
+                        real_target,
+                        str(item["real_target_sha256"]),
+                    )
+                else:
+                    pair = target_by_id.get(target_id)
+                    if pair is None:
+                        raise PostRehearsalError(
+                            f"real adversarial target is unavailable: {target_id}"
+                        )
                 realism_targets[target_id] = base._extract_pair_tensors(
                     trained,
                     pair,
@@ -2361,7 +2463,10 @@ def run(
                             device=device, dtype=torch.float32
                         )
                         if arguments.training_objective
-                        == REAL_REFERENCE_ADVERSARIAL_OBJECTIVE
+                        in {
+                            REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
+                            PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+                        }
                         else None
                     ),
                     generator_regularizer=(
@@ -2734,6 +2839,9 @@ def run(
                     else "source-semantic-plus-target-speaker-factorization"
                     if arguments.training_objective
                     == FACTORIZED_UNPAIRED_OBJECTIVE
+                    else "source-aligned-control69-complete-generative-target"
+                    if arguments.training_objective
+                    == PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE
                     else "selective-repair-or-retention-target"
                 ),
             }
@@ -2815,6 +2923,7 @@ def parser() -> argparse.ArgumentParser:
             CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
             DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
             SPEAKER_PATH_UNPAIRED_OBJECTIVE,
+            PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
         ),
         default=GENERATIVE_OBJECTIVE,
     )

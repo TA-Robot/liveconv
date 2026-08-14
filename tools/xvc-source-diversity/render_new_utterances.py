@@ -1408,6 +1408,48 @@ def candidate_policy(kind: str) -> dict[str, str]:
             ),
         }
     if kind in {
+        "pseudoparallel-real-adv-ema-fresh48",
+        "pseudoparallel-real-adv-ema-hadou",
+        "pseudoparallel-real-adv-ema-stress",
+        "pseudoparallel-real-adv-ema-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        experiment_id = (
+            "EXP-242"
+            if jsut
+            else "EXP-241"
+            if stress
+            else "EXP-240"
+            if hadou
+            else "EXP-239"
+        )
+        suffix = (
+            "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "cross-corpus170-pseudoparallel-real-adv-ema170",
+            "display_name": (
+                "EXP-238 / source-aligned control69 targets / real-adversarial / EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-pseudoparallel-real-"
+                f"adv-ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does source-aligned pseudo-parallel supervision remove the "
+                "broad-content tradeoff of unrelated-target retraining?"
+            ),
+        }
+    if kind in {
         "speaker7-voice-overlay-ema-fresh48",
         "speaker7-voice-overlay-ema-hadou",
         "speaker7-voice-overlay-ema-stress",
@@ -2214,6 +2256,10 @@ def _parser() -> argparse.ArgumentParser:
             "speaker7-voice-overlay-ema-hadou",
             "speaker7-voice-overlay-ema-stress",
             "speaker7-voice-overlay-ema-jsut",
+            "pseudoparallel-real-adv-ema-fresh48",
+            "pseudoparallel-real-adv-ema-hadou",
+            "pseudoparallel-real-adv-ema-stress",
+            "pseudoparallel-real-adv-ema-jsut",
         ),
         default="speaker7",
     )

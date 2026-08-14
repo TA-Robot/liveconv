@@ -230,6 +230,22 @@ def test_speaker7_voice_overlay_freezes_the_content_converter() -> None:
     assert "content-cycle loss" in policy["independent_variable"]
 
 
+def test_pseudoparallel_policy_restores_complete_same_content_targets() -> None:
+    policy = post.listening_policy(
+        post.PSEUDOPARALLEL_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp238"
+    assert policy["candidate_id"] == (
+        "cross-corpus170-pseudoparallel-real-adv-ema170"
+    )
+    assert "same source" in policy["independent_variable"]
+    assert "real side" in policy["independent_variable"]
+
+
 def test_speaker_path_loss_contains_only_the_weighted_voice_target() -> None:
     import torch
 
