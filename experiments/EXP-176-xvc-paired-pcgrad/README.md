@@ -1,6 +1,6 @@
 # EXP-176: paired hard-repair and retention PCGrad
 
-Status: admitted for one bounded gpu0 listen-now lane
+Status: technically rejected on frozen Hadou31; human diagnosis optional
 
 ## Goal
 
@@ -41,3 +41,28 @@ on the first candidate-added gross failure or broad common-non-gross content
 regression. Auxiliary ASR screens content/corruption only; it cannot select
 naturalness, target identity, a keeper, or promotion. Do not tune projection,
 pairing, task weights, LR, scope, data ratio, or horizon from this result.
+
+## Result
+
+The finite two-row smoke found a real conflict on its first hard/easy pair:
+gradient cosine `-0.0134`, dot product `-205.5`, and merged pre-clip norm
+`180.2`. The canonical committed lane then processed all 170 examples in 85
+pair optimizer steps. It found negative gradient conflict in 74/85 pairs, with
+cosine min/mean/max `-0.498/-0.207/0.236`. Loss moved `227.88 -> 46.31`, peak
+CUDA allocation was 5.19 GB, and the adapter was reproduced bit-exactly after
+correcting a provisional experiment-ID collision.
+
+External7 added no gross repetition but slightly regressed both auxiliary
+means versus control69 (`0.360 -> 0.367` source-relative and `0.399 -> 0.431`
+known-text). Frozen fresh48 added no gross row beyond the same two control
+failures. On the 46 common non-gross rows, source-relative mean improved
+`0.341 -> 0.299` with W/T/L `13/25/8`, while its median slightly regressed
+`0.275 -> 0.293`; known-text mean improved `0.618 -> 0.606`.
+
+Hadou31 rejects the method. Control69 had no gross row, while the candidate
+again collapsed on `RECITATION324_138`, repeating `三、四` through a long
+numeric run. Excluding that failure, the other 30 rows looked favorable
+(`0.185 -> 0.171`, W/T/L `6/22/2`), demonstrating why aggregate content scores
+cannot override the corruption gate. Do not run stress60 or JSUT24 and do not
+tune projection, pairing, or task weights. The 430 canonical comparison WAVs
+remain on port 8878 for later human diagnosis; this is not a perceptual verdict.

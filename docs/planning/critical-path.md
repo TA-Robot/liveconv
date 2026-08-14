@@ -193,6 +193,12 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-123 frozen fresh48 gate
         -> EXP-124 full-output teacher / CV24 + Hadou21 + JVS3 sources
         -> EXP-125 frozen fresh48 gate
+        -> EXP-163--168 selective real-adversarial upstream-EMA survivor
+        -> EXP-169--173 category-balanced JSUT retention (Hadou loop; rejected)
+        -> EXP-176 paired hard/easy PCGrad (74/85 gradient conflicts)
+        -> EXP-177 fresh48 (no candidate-added gross row)
+        -> EXP-178 Hadou31 (candidate-only repeated-number loop; rejected)
+        -> stress60 and JSUT24 stopped for the rejected PCGrad checkpoint
         -> operator hearing when available
 ```
 

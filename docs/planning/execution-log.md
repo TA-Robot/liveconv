@@ -4001,3 +4001,27 @@ job queue.
 - Rework: assign PCGrad to the next free ID `EXP-176` and frozen gates to
   `EXP-177--180`; quarantine the wrong-ID ignored outputs and deterministically
   rerun from control69. Do not posthoc relabel a committed run receipt.
+
+## 2026-08-14T02:53:00Z - EXP-176--178 PCGrad reproduced and rejected
+
+- Agent: `primary-integrator`.
+- Task: rerun the corrected canonical identity, then apply the frozen
+  external7 -> fresh48 -> Hadou31 corruption/content gates.
+- Dependencies: commit `c9a648e`; finite paired smoke; control69; frozen
+  EXP-150 sources/targets and evaluation manifests.
+- Result: the canonical adapter SHA-256 and all seven candidate WAV hashes were
+  bit-exact with the quarantined wrong-ID run. Training exposed all 170 rows in
+  85 pair steps, found 74 conflicts, and published 35 external WAVs. Fresh48
+  published 240 more and added no gross row beyond control69's same two known
+  failures; on 46 common non-gross rows source mean was `0.341 -> 0.299` with
+  W/T/L `13/25/8`, while median was `0.275 -> 0.293`. Hadou31 published 155
+  more, then added one candidate-only gross `RECITATION324_138` collapse that
+  repeated `三、四`; control69 had zero gross Hadou rows.
+- Problems: the other 30 Hadou rows improved mean `0.185 -> 0.171` with W/T/L
+  `6/22/2`, so aggregate ASR would falsely retain a checkpoint that still has
+  catastrophic content instability. Gradient interference was real but was
+  not the sufficient cause of the loop.
+- Rework: technically reject EXP-176, keep its 430 canonical WAVs on 8878, and
+  stop EXP-179 stress60 and EXP-180 JSUT24. Do not tune projection, pair order,
+  weights, or data mix. Wait for the concurrent 02:50 Grok verdict before
+  selecting another materially different method.
