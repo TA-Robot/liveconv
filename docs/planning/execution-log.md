@@ -4875,3 +4875,43 @@ job queue.
   170-update lane and all five screens. Stop on shape/gradient/nonfinite/OOM or
   candidate-added corruption. Do not sweep temperature, negative count/mining,
   weight, data, pairing, frontend, scope, LR, horizon, or EMA.
+
+## 2026-08-14T08:20:25Z - Grok progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux `liveconv-grok-auditor`.
+- Task: independent 30-minute direction, method-value, and GPU-idle audit.
+- Result: `CONTINUE`. It accepted the fixed five broad surfaces and the one
+  source-versus-negative objective point, while explicitly warning that
+  framewise InfoNCE may not solve tempo. It rejected temperature/negative/mining
+  sweeps and required a different timing/continuation hypothesis if the five
+  screens fail.
+- Problems: its snapshot again sampled a model-load boundary at GPU 0% and did
+  not see the already completed smoke/training or newer listener files. Operator
+  localStorage remains unobservable by design.
+- Rework: verdict adopted. Complete the already-running five surfaces before
+  replanning; do not interpret the stale GPU sample as a reason to duplicate
+  the lane.
+
+## 2026-08-14T08:29:00Z - EXP-218--222 contrastive bundle completed
+
+- Agent: `primary-integrator`.
+- Task: train the fixed source-versus-negative objective once and publish/screen
+  the unchanged checkpoint on all five surfaces.
+- Dependencies: commits `6a01fbc` and `6e61a9f`; 234 focused tests;
+  `make control-check`; exact EXP-213 curriculum and target multiset.
+- Result: smoke v2 proved positive cosine above negative on both rows and a
+  finite final-WAV gradient. Training completed 170 updates in 154.47 seconds
+  at 5,876,534,272 peak allocated bytes. EMA adapter SHA-256 is
+  `2ded4bec936abb6390f6330514848f1e2cd510d724b2a1ceaf33c8102354419b`.
+  Published and screened 850 WAVs. Exact common-stable source distance moved
+  external7 `0.256 -> 0.254`, fresh48 `0.155 -> 0.226`, Hadou31
+  `0.149 -> 0.128`, stress60 `0.221 -> 0.203`, and JSUT24
+  `0.115 -> 0.158`. Tempo1.2 improved `0.262 -> 0.237`.
+- Problems: the first smoke exposed a local plumbing bug: the inherited GPU
+  batch helper silently omitted the new negative key. Commit `6e61a9f` fixed
+  that transfer only. The completed method added no gross row, but fresh48 and
+  JSUT regressed broadly, and it gave up much of EXP-213's Hadou/noise gain.
+- Rework: the broad-content stop rejects this exact method. Do not sweep or
+  blend temperature, negative identity/count, mining, or weight. Inspect a
+  different final-WAV semantic representation, preferably direct frozen
+  WhisperVQ token classification, before admitting another GPU lane.

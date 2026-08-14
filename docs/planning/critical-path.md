@@ -235,6 +235,8 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-218 final-WAV source-vs-next-row contrastive content objective
         -> EXP-219--222 prebound fresh48 / Hadou31 / stress60 / JSUT24
         -> one fixed temperature/negative point; no mining or coefficient sweep
+        -> 850 WAVs; tempo improves but fresh48 / JSUT regress; contrastive family closed
+        -> inspect discrete final-WAV semantic-token supervision as a different representation
         -> operator hearing when available
 ```
 

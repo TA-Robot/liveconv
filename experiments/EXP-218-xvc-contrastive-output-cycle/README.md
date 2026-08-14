@@ -1,6 +1,6 @@
 # EXP-218: X-VC contrastive final-waveform content cycle
 
-Status: Admitted listen-now training pilot; not selected
+Status: Completed listen-now training pilot; technically rejected and unselected
 
 ## Goal
 
@@ -67,3 +67,32 @@ admission on curriculum SHA-256
 `44d2ba9c03d44437711c7b7d359f519672dca32696ba73b3fcd178b07024b931`
 reported 170 training rows and seven external evaluation rows. A real-model
 two-row backward is still required before the full lane.
+
+The first smoke stopped before training because the inherited GPU-batch helper
+dropped the new negative tensor. Commit `6e61a9f` fixed only that key transfer.
+The unchanged v2 smoke then completed: positive cosine was `0.972/0.925`,
+negative cosine `0.594/0.629`, contrastive loss `0.0228/0.0502`, frontend
+maximum difference `0.00014424`, and peak allocated GPU memory 5,368,197,120
+bytes.
+
+## Result
+
+Commit `6e61a9f` completed 170 updates in 154.47 seconds at 5,876,534,272
+peak allocated bytes. Positive cosine remained above the fixed negative at the
+last row (`0.902` versus `0.602`). The EMA adapter SHA-256 is
+`2ded4bec936abb6390f6330514848f1e2cd510d724b2a1ceaf33c8102354419b`.
+The unchanged checkpoint produced 850 WAVs on the same five listener surfaces.
+
+On exact cross-arm common-stable rows, source-relative distance moved
+external7 `0.256 -> 0.254` (`1/2/2`), fresh48 `0.155 -> 0.226`
+(`2/17/12`), Hadou31 `0.149 -> 0.128` (`5/16/5`), stress60
+`0.221 -> 0.203` (`11/27/7`), and JSUT24 `0.115 -> 0.158`
+(`2/14/6`). Tempo1.2 improved `0.262 -> 0.237`, but fresh unknown speakers
+and ordinary/onomatopoeic JSUT regressed broadly. Fresh48 retained exactly the
+same two control69 consensus gross rows and added none; all other surfaces had
+zero gross rows.
+
+The explicit negative changes the failure tradeoff but is not a robust content
+solution. The broad fresh48 and JSUT regressions satisfy the declared stop.
+Reject and close this exact contrastive family without temperature, negative,
+weight, mining, or blend neighbors. No perceptual conclusion is made.
