@@ -3446,3 +3446,44 @@ job queue.
   smoke, but the unchanged norm-5 clip operated normally.
 - Rework: admit exactly one 170-update clean pass. Do not change LR, clip,
   threshold, or row count. Render external7, fresh48, and Hadou31 only.
+
+## 2026-08-13T23:52:58Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux `liveconv-grok-auditor`; independent, read-only,
+  no tools or delegation.
+- Verdict: `CONTINUE`.
+- Adopted: finish the single EXP-141 screen before another training lane;
+  record known heldout repetition, added corruption, and broad content change.
+  Treat JSUT24 only as a frozen evaluation and never as an optimization target.
+  If clean teachers still leave a loop, close data-filter/coverage neighbors.
+- Not adopted: the audit sampled GPU at 0% during model loading and could not
+  see the new EXP-141 WAV mtimes. Direct inspection showed the sole renderer
+  alive and it completed all three frozen screens moments later.
+- Changed action: do not run EXP-141 on JSUT after its fresh/Hadou stop. Use the
+  untouched set for a later surviving method. Before another training point,
+  ask whether control69's collapse can be reproduced on training-only inputs.
+
+## 2026-08-13T23:57:35Z - EXP-141--143 clean rehearsal rejected
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-13T23:44:40Z; committed retry 2026-08-13T23:48:42Z.
+- End: 2026-08-13T23:57:35Z.
+- Dependencies: commits `2b6dc18`, `cebe17c`, and `e6369ef`; clean manifest
+  SHA-256 `86822d41`; control69; frozen external7/fresh48/Hadou31; gpu0;
+  listener 8878.
+- Result: the retry completed 170 updates in 144.40 seconds at 5.10 GiB peak,
+  loss `213.54 -> 53.78`, and published 35 external, 240 fresh48, and 155
+  Hadou31 WAVs. The clean pass removed EXP-138's candidate-only 109-character
+  vowel collapse. On 30 non-gross Hadou rows it improved control mean `0.185
+  -> 0.148` (8/19/3); on 46 non-gross fresh rows it regressed `0.341 ->
+  0.352` (9/22/15).
+- Problems: the initial run finished training and inference but a missing
+  listener `slug` raised `KeyError` before publication. A contract test and
+  one-field fix were committed before the exact retry. The retry retained the
+  fresh `cv30615849f` 32.4-distance control collapse and added an 85-repeat
+  `24` loop on heldout `RECITATION324_138`.
+- Rework: reject the generic candidate; close clean-threshold, row-count, and
+  rehearsal-pass neighbors. Preserve the broad unheard audio. Do not spend
+  untouched JSUT24 on this failed checkpoint. Admit only a training-only
+  control-collapse probe; if it finds no reproducible hard negatives, redirect
+  directly to loss, conditioning, or trainable-target design.

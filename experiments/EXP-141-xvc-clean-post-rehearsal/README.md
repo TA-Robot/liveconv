@@ -1,6 +1,6 @@
 # EXP-141: clean post-adaptation X-VC rehearsal
 
-Status: prepared; one bounded gpu0 lane
+Status: completed; technically rejected; hearing deferred
 
 ## Goal
 
@@ -43,3 +43,22 @@ Commit `727b27f` loaded control69 as a trainable adapter and completed one real
 teacher backward pass with loss `213.5427`, finite pre-clip gradient norm
 `156.4660`, 835,584 trainable parameters, and 3.30 GiB peak GPU allocation.
 The unchanged norm-5 clip bounds the admitted 170-update pass.
+
+## Result
+
+The committed retry trained 170 updates in 144.40 seconds at 5.10 GiB peak;
+loss moved from `213.54` to `53.78`. The first execution completed training and
+all external inference but hit a missing listener-profile `slug` while writing
+the first `index.json`. Commit `cebe17c` added the missing shared-index contract
+test, and the retry published external7, fresh48, and Hadou31 without changing
+the method.
+
+External7 had no loop but moved source-relative distance `0.360 -> 0.370` and
+known-text distance `0.399 -> 0.559`. On the 46 fresh48 rows where every arm
+was non-gross, candidate versus control was 9/22/15 and mean moved `0.341 ->
+0.352`; the pre-existing `cv30615849f` 32.4-distance repetition remained. On
+30 non-gross Hadou rows the method improved mean `0.185 -> 0.148` (8/19/3),
+but it repeated `24` 85 times on `RECITATION324_138`. The clean filter removed
+EXP-138's candidate-only 109-character vowel failure but did not repair the
+control-family heldout collapse. Reject the generic candidate and close clean
+filter/rehearsal neighbors.
