@@ -1525,6 +1525,58 @@ def candidate_policy(kind: str) -> dict[str, str]:
             ),
         }
     if kind in {
+        "fresh-lora-pseudoparallel-ema-fresh48",
+        "fresh-lora-pseudoparallel-ema-hadou",
+        "fresh-lora-pseudoparallel-ema-stress",
+        "fresh-lora-pseudoparallel-ema-jsut",
+        "fresh-lora-pseudoparallel-ema-expanded-stress",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress") and not kind.endswith(
+            "-expanded-stress"
+        )
+        jsut = kind.endswith("-jsut")
+        expanded = kind.endswith("-expanded-stress")
+        experiment_id = (
+            "EXP-278"
+            if expanded
+            else "EXP-277"
+            if jsut
+            else "EXP-276"
+            if stress
+            else "EXP-275"
+            if hadou
+            else "EXP-274"
+        )
+        suffix = (
+            "expanded-stress144"
+            if expanded
+            else "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": (
+                "cross-corpus170-pseudoparallel-fresh-lora-real-adv-ema170"
+            ),
+            "display_name": (
+                "EXP-273 / source-aligned targets / fresh LoRA69 / EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-fresh-lora-"
+                f"pseudoparallel-{suffix}/v1"
+            ),
+            "question": (
+                "Does fresh LoRA distillation of the source-aligned teacher "
+                "avoid inherited failures across the established broad surfaces?"
+            ),
+        }
+    if kind in {
         "speaker-condition-calibrator-fresh48",
         "speaker-condition-calibrator-hadou",
         "speaker-condition-calibrator-stress",
@@ -2714,6 +2766,11 @@ def _parser() -> argparse.ArgumentParser:
             "real-speaker-condition-ema-stress",
             "real-speaker-condition-ema-jsut",
             "real-speaker-condition-ema-expanded-stress",
+            "fresh-lora-pseudoparallel-ema-fresh48",
+            "fresh-lora-pseudoparallel-ema-hadou",
+            "fresh-lora-pseudoparallel-ema-stress",
+            "fresh-lora-pseudoparallel-ema-jsut",
+            "fresh-lora-pseudoparallel-ema-expanded-stress",
             "speaker-condition-calibrator-fresh48",
             "speaker-condition-calibrator-hadou",
             "speaker-condition-calibrator-stress",

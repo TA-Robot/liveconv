@@ -5675,3 +5675,29 @@ job queue.
   passed. This was runner selection error, not a code failure.
 - Rework: commit before GPU, run exact CPU admission and a two-row CUDA smoke;
   only a finite nonzero-gradient smoke may admit one 170-update lane.
+
+## 2026-08-14T15:22:40Z - Grok audit continues EXP-273
+
+- Agent: `grok-4.6-project-progress-auditor` in tmux
+  `liveconv-grok-auditor`; independent, read-only, and no delegation.
+- Result: `CONTINUE`. It accepted EXP-267's broad closure and EXP-273 as the
+  one-variable test of source-aligned teacher value versus inherited control69
+  initialization, with all diverse surfaces already frozen.
+- Adopted: yes. The snapshot preceded the CUDA smoke, but the smoke and full
+  170-update lane were already running safely in parallel. Continue through the
+  fixed broad screen; discard initialization/rank/LR/scope/horizon neighbors.
+
+## 2026-08-14T15:24:00Z - EXP-273 trained and external7 published
+
+- Agent: `primary-integrator`.
+- Dependencies: commits `500f6bb`, `24b491d`, `c6e623a`; exact EXP-238
+  curriculum and objective; fresh zero-init LoRA69; gpu0; listener 8878.
+- Result: CPU admission and two-row smoke passed. The full lane completed 170
+  updates in 148.09 seconds at 6,163,570,688 peak bytes and published seven
+  changed external WAVs with no added gross row. Exact common-stable EXP-238 to
+  EXP-273 content was `0.306410 -> 0.312179`, W/T/L `1/2/2`; instability was
+  `1 -> 2`.
+- Problems: external7 is mixed and too small to decide whether fresh
+  initialization removes inherited broad failures.
+- Rework: bind the unchanged adapter to EXP-274--278 and render all five frozen
+  surfaces before any next training method.

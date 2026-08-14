@@ -31,3 +31,17 @@ run one 170-update gpu0 lane and publish external7 to port 8878. Use only the
 existing content/corruption screen. Stop on nonfinite loss, OOM, candidate-added
 gross corruption, or broad content regression. Do not sweep initialization,
 rank, LR, scope, horizon, target mix, or loss weights.
+
+## Training and external result
+
+Commits `500f6bb`, `24b491d`, and `c6e623a` passed 58 focused runner tests,
+the exact 170-row CPU admission, and a finite two-row CUDA smoke with 835,584
+trainable parameters. The full lane completed 170 updates in 148.09 seconds at
+6,163,570,688 peak allocated bytes; the EMA adapter SHA-256 is
+`3eb7b0753e4a87afc33458936457a861fa28dcf46a0dfbedd126b5c33600e245`.
+
+All seven external WAVs changed and no gross row was added. On the five exact
+jointly stable/non-gross rows versus EXP-238, source distance moved `0.306410 ->
+0.312179`, W/T/L `1/2/2`; decoder instability moved `1 -> 2`. This is mixed
+and too small to classify the initialization. EXP-274--278 therefore bind the
+unchanged adapter to fresh48, Hadou31, stress60, JSUT24, and expanded144.
