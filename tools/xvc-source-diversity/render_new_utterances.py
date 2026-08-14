@@ -2062,6 +2062,61 @@ def candidate_policy(kind: str) -> dict[str, str]:
             ),
         }
     if kind in {
+        "src4vc-two-utterance-control-pseudoparallel-ema-fresh48",
+        "src4vc-two-utterance-control-pseudoparallel-ema-hadou",
+        "src4vc-two-utterance-control-pseudoparallel-ema-stress",
+        "src4vc-two-utterance-control-pseudoparallel-ema-jsut",
+        "src4vc-two-utterance-control-pseudoparallel-ema-expanded144",
+        "src4vc-two-utterance-control-pseudoparallel-ema-heldout30",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        expanded = kind.endswith("-expanded144")
+        heldout = kind.endswith("-heldout30")
+        experiment_id = (
+            "EXP-332"
+            if heldout
+            else "EXP-331"
+            if expanded
+            else "EXP-330"
+            if jsut
+            else "EXP-329"
+            if stress
+            else "EXP-328"
+            if hadou
+            else "EXP-327"
+        )
+        suffix = (
+            "heldout30"
+            if heldout
+            else "expanded144"
+            if expanded
+            else "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "src4vc170-two-utterance-pseudoparallel-real-adv-ema170",
+            "display_name": (
+                "EXP-325 / SRC4VC two-utterance control / source-aligned targets / "
+                "real-adversarial / EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-src4vc-two-utterance-"
+                f"control-pseudoparallel-ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does the EXP-325 two-utterance SRC4VC control preserve content "
+                "across the established fixed evaluation surfaces?"
+            ),
+        }
+    if kind in {
         "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-fresh48",
         "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-hadou",
         "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-stress",
@@ -3373,6 +3428,12 @@ def _parser() -> argparse.ArgumentParser:
             "cv26-active-window-pseudoparallel-ema-stress",
             "cv26-active-window-pseudoparallel-ema-jsut",
             "cv26-active-window-pseudoparallel-ema-expanded144",
+            "src4vc-two-utterance-control-pseudoparallel-ema-fresh48",
+            "src4vc-two-utterance-control-pseudoparallel-ema-hadou",
+            "src4vc-two-utterance-control-pseudoparallel-ema-stress",
+            "src4vc-two-utterance-control-pseudoparallel-ema-jsut",
+            "src4vc-two-utterance-control-pseudoparallel-ema-expanded144",
+            "src4vc-two-utterance-control-pseudoparallel-ema-heldout30",
             "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-fresh48",
             "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-hadou",
             "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-stress",
