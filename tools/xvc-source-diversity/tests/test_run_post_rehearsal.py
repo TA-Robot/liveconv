@@ -256,6 +256,9 @@ def test_pseudoparallel_fresh_lora_changes_only_initialization() -> None:
     assert "source-aligned control69 teacher targets" in policy[
         "independent_variable"
     ]
+    assert post.PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE in post.parser()._option_string_actions[
+        "--training-objective"
+    ].choices
 
 
 def test_src4vc_pseudoparallel_policy_changes_only_source_corpus_block() -> None:

@@ -3383,6 +3383,12 @@ def run(
             else None
         ),
         "control_adapter": str(arguments.control_adapter),
+        "training_initialization": (
+            "fresh-zero-initialized-rank8-lora69-on-base-xvc"
+            if arguments.training_objective
+            == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE
+            else "exp035-control69-adapter"
+        ),
         "initial_adapter": (
             str(arguments.initial_adapter)
             if arguments.initial_adapter is not None
@@ -3655,6 +3661,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                             "EXP-238-EMA-plus-zero-speaker-condition-delta"
                             if arguments.trainable_target
                             == SPEAKER_CONDITION_CALIBRATOR_TARGET
+                            else "fresh-zero-initialized-rank8-LoRA69-on-base-XVC"
+                            if arguments.training_objective
+                            == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE
                             else "EXP-035-control69"
                         ),
                     },
