@@ -1,6 +1,6 @@
 # EXP-191: condition-balanced control69 retention replay
 
-Status: fresh48 technical gate passed; stress60 final gate next
+Status: completed mixed; method family closed
 
 ## Goal
 
@@ -78,3 +78,17 @@ distance moves `0.811 -> 0.807` with `8/23/6`.
 This is a mixed technical survivor rather than a broad regression. It admits
 the final stress60 transfer test because condition retention is the stated
 question. No Hadou or JSUT cascade is reserved for this family.
+
+## Stress60 result and decision
+
+EXP-193 published 300 WAVs with zero gross-repetition row. Across 43 rows stable
+under both control69 and EXP-191 decoders, source-relative distance moved
+`0.187 -> 0.203` with W/T/L `5/28/10`; known-text distance moved
+`0.584 -> 0.587` with `5/33/5`.
+
+Noise20 improved on both diagnostics. Clean and pitch+3 regressed on the source
+diagnostic, silence300 was nearly flat/mixed, and tempo1.2 remained worse on its
+seven common stable rows with W/T/L `0/6/1` on both diagnostics. Conditioned
+retention therefore did not repair the motivating tempo residual and is closed
+after 575 new WAVs. The checkpoint remains available for human listening but is
+not a machine-selected keeper. Do not tune condition ratios or severities.

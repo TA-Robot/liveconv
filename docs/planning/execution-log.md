@@ -4428,3 +4428,22 @@ job queue.
 - Rework: admit the unchanged checkpoint to the one final stress60 gate because
   cross-severity condition retention is the experiment question. Do not add
   Hadou, JSUT, a condition sweep, or retraining afterward.
+
+## 2026-08-14T05:12:00Z - EXP-193 stress60 completed
+
+- Agent: `primary-integrator`.
+- Task: run the final cross-severity condition gate for the unchanged EXP-191
+  checkpoint.
+- Dependencies: commit `2ad0f0b`; frozen 60-row clean/noise20/pitch+3/
+  silence300/tempo1.2 matrix; no retraining.
+- Result: published 300 WAVs in 92.2 seconds with zero gross row. Across 43
+  common stable rows, source distance moved `0.187 -> 0.203` with W/T/L
+  `5/28/10`; known-text moved `0.584 -> 0.587` with `5/33/5`. Noise20 improved
+  on both diagnostics.
+- Problems: clean and pitch regress on source-relative content, and tempo1.2
+  remains worse with `0/6/1` on both diagnostics. The motivating residual was
+  not repaired.
+- Rework: close conditioned-retention after 575 new WAVs. Preserve it as an
+  unheard mixed comparison, but do not tune ratios, severities, schedule, or
+  add Hadou/JSUT renders. Select the next retraining lane from a different
+  mechanism axis.
