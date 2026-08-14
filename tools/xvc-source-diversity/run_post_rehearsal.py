@@ -3433,6 +3433,7 @@ def source_speaker_grl_adversarial_update(
     trainable: Sequence[Any],
     batch: Mapping[str, Any],
     hook: Any,
+    real_audios: Any,
     *,
     torch: Any,
 ) -> dict[str, float]:
@@ -3443,6 +3444,8 @@ def source_speaker_grl_adversarial_update(
         raise PostRehearsalError("source-speaker class labels are malformed")
     if labels.numel() != batch["source_wav"].shape[0]:
         raise PostRehearsalError("source-speaker class batch size drifted")
+    if real_audios is None or not hasattr(real_audios, "shape"):
+        raise PostRehearsalError("source-speaker real adversarial audio is unavailable")
     if _optimizer_parameter_ids(generator_optimizer) & _optimizer_parameter_ids(
         classifier_optimizer
     ):
@@ -3454,11 +3457,11 @@ def source_speaker_grl_adversarial_update(
     discriminator_optimizer.zero_grad(set_to_none=True)
     with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
         hook.clear()
-        outputs = trained(breadth._generator_model_inputs(batch))
+        outputs = trained(breadth._generator_model_inputs(batch, None))
         reconstruction = outputs.get("recons") if isinstance(outputs, dict) else None
         if reconstruction is None or not bool(torch.isfinite(reconstruction).all()):
             raise PostRehearsalError("source-speaker discriminator reconstruction malformed")
-        discriminator_real = batch["target_wav"][..., : reconstruction.shape[-1]]
+        discriminator_real = real_audios[..., : reconstruction.shape[-1]]
         outputs["audios"] = discriminator_real
         discriminator_losses = discriminator.discriminative_loss(outputs)
         discriminator_loss = breadth._finite_loss(
@@ -3483,7 +3486,7 @@ def source_speaker_grl_adversarial_update(
     classifier_optimizer.zero_grad(set_to_none=True)
     with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
         hook.clear()
-        classifier_outputs = trained(breadth._generator_model_inputs(batch))
+        classifier_outputs = trained(breadth._generator_model_inputs(batch, None))
         del classifier_outputs
         classifier_features = hook.pooled().detach()
         classifier_logits = classifier(classifier_features)
@@ -3515,7 +3518,7 @@ def source_speaker_grl_adversarial_update(
     try:
         with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
             hook.clear()
-            outputs = trained(breadth._generator_model_inputs(batch))
+            outputs = trained(breadth._generator_model_inputs(batch, None))
             reconstruction = outputs.get("recons")
             if reconstruction is None or not bool(torch.isfinite(reconstruction).all()):
                 raise PostRehearsalError("source-speaker generator reconstruction malformed")
@@ -5163,7 +5166,7 @@ def run(
                     probe_batch = batch_for(item)
                     source_speaker_hook.clear()
                     with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
-                        trained(breadth._generator_model_inputs(probe_batch))
+                        trained(breadth._generator_model_inputs(probe_batch, None))
                     probe_features.append(source_speaker_hook.pooled().detach())
                     probe_labels.append(str(item["source_speaker_id"]))
             source_speaker_hook.clear()
@@ -5194,6 +5197,9 @@ def run(
                 trainable,
                 batch,
                 source_speaker_hook,
+                real_audios=realism_targets[str(item["target_id"])].to(
+                    device=device, dtype=torch.float32
+                ),
                 torch=torch,
             )
             losses.append(metrics["total"])

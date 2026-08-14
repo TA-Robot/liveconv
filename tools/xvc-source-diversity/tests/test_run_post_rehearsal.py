@@ -1184,6 +1184,98 @@ def test_exp326_realism_target_uses_row_real_target_not_target_inventory(tmp_pat
     assert pair.target_sha256 == item["real_target_sha256"]
 
 
+def test_exp326_grl_forward_contract_keeps_teacher_speaker_target_and_real_audio(
+    monkeypatch,
+) -> None:
+    import torch
+
+    calls: list[object] = []
+    discriminator_audios: list[torch.Tensor] = []
+
+    def model_inputs(batch, speaker_target_wav):
+        calls.append(speaker_target_wav)
+        assert speaker_target_wav is None
+        return dict(batch)
+
+    monkeypatch.setattr(post.breadth, "_generator_model_inputs", model_inputs)
+    monkeypatch.setattr(post.base, "_set_adapter_training_only", lambda _model: None)
+
+    class FakeModel(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.lora = torch.nn.Parameter(torch.tensor(0.5))
+
+        def forward(self, inputs):
+            # The teacher target must remain the batch target; the real audio is
+            # supplied separately to the discriminator path.
+            assert inputs["target_wav"] is teacher
+            return {"recons": self.lora.expand(1, 1, 2)}
+
+        def generative_loss(self, outputs):
+            return {"loss": outputs["recons"].square().mean()}
+
+    class FakeDiscriminator(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.weight = torch.nn.Parameter(torch.tensor(0.25))
+
+        def discriminative_loss(self, outputs):
+            discriminator_audios.append(outputs["audios"].detach().clone())
+            return {"loss": self.weight.square()}
+
+        def adversarial_loss(self, outputs):
+            discriminator_audios.append(outputs["audios"].detach().clone())
+            return {
+                "loss": outputs["recons"].square().mean(),
+                "adv_gen_loss": 0.0,
+                "adv_feat_loss": 0.0,
+            }
+
+    class FakeHook:
+        def set_enabled(self, _enabled):
+            return None
+
+        def clear(self):
+            return None
+
+        def pooled(self):
+            return fake_model.lora.expand(1, post.SOURCE_SPEAKER_FEATURE_DIMENSION)
+
+    fake_model = FakeModel()
+    discriminator = FakeDiscriminator()
+    classifier = post.source_speaker_classifier(torch=torch)
+    generator_optimizer = torch.optim.SGD([fake_model.lora], lr=0.01)
+    discriminator_optimizer = torch.optim.SGD(discriminator.parameters(), lr=0.01)
+    classifier_optimizer = torch.optim.SGD(classifier.parameters(), lr=0.01)
+    teacher = torch.ones(1, 1, 2)
+    real_audio = torch.full((1, 1, 2), 7.0)
+    batch = {
+        "source_wav": torch.zeros(1, 1, 2),
+        "target_wav": teacher,
+        "source_speaker_label": torch.tensor([0], dtype=torch.long),
+    }
+
+    post.source_speaker_grl_adversarial_update(
+        fake_model,
+        discriminator,
+        generator_optimizer,
+        discriminator_optimizer,
+        classifier,
+        classifier_optimizer,
+        [fake_model.lora],
+        batch,
+        FakeHook(),
+        real_audios=real_audio,
+        torch=torch,
+    )
+
+    assert len(calls) == 3
+    assert all(value is None for value in calls)
+    assert len(discriminator_audios) == 2
+    assert torch.equal(discriminator_audios[0], real_audio)
+    assert torch.equal(discriminator_audios[1], real_audio)
+
+
 def test_source_speaker_mean_std_pool_and_cross_utterance_probe() -> None:
     import torch
 
