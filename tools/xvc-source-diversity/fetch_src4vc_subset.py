@@ -100,10 +100,27 @@ def parse_central_directory(value: bytes) -> dict[str, dict[str, int | str]]:
 
 def selected_rows(
     entries: Mapping[str, Mapping[str, int | str]],
+    *,
+    train_utterance_index: int = 0,
 ) -> list[dict[str, str]]:
-    """Select one row for 85 train speakers and two for 15 heldout speakers."""
+    """Select one row for 85 train speakers and two for 15 heldout speakers.
+
+    ``train_utterance_index`` deliberately changes only the train row chosen
+    for each speaker.  The heldout rows remain the first two lexicographic
+    RECITATION entries so that a source-breadth lane cannot accidentally move
+    its evaluation boundary.
+    """
+
+    if (
+        isinstance(train_utterance_index, bool)
+        or not isinstance(train_utterance_index, int)
+        or train_utterance_index < 0
+        or train_utterance_index >= 10
+    ):
+        raise Src4vcFetchError("train utterance index must be an integer from 0 to 9")
 
     by_speaker: dict[str, list[str]] = {}
+    heldout = heldout_speakers()
     for speaker_index in range(1, SPEAKERS + 1):
         speaker = f"SRC4VC{speaker_index:03d}"
         prefix = f"{ROOT_PREFIX}/{speaker}/wav/RECITATION_"
@@ -115,11 +132,15 @@ def selected_rows(
         if len(names) != 10:
             raise Src4vcFetchError(f"{speaker}: RECITATION inventory drifted")
         by_speaker[speaker] = names
-    heldout = heldout_speakers()
     rows: list[dict[str, str]] = []
     for speaker, names in sorted(by_speaker.items()):
         split = "evaluation" if speaker in heldout else "train"
-        for wav_name in names[: 2 if split == "evaluation" else 1]:
+        selected = (
+            names[:2]
+            if split == "evaluation"
+            else [names[train_utterance_index]]
+        )
+        for wav_name in selected:
             basename = Path(wav_name).stem
             txt_name = wav_name.replace("/wav/", "/txt/").removesuffix(".wav") + ".txt"
             metadata_name = f"{ROOT_PREFIX}/{speaker}/speaker_metadata.yml"
@@ -299,7 +320,9 @@ def run(arguments: argparse.Namespace) -> int:
     ):
         raise Src4vcFetchError("SRC4VC archive identity drifted")
     entries = parse_central_directory(central)
-    rows = selected_rows(entries)
+    rows = selected_rows(
+        entries, train_utterance_index=arguments.train_utterance_index
+    )
     if arguments.check:
         print(
             json.dumps(
@@ -308,6 +331,7 @@ def run(arguments: argparse.Namespace) -> int:
                     "archive_entries": len(entries),
                     "train_rows": TRAIN_ROWS,
                     "evaluation_rows": HELDOUT_ROWS,
+                    "train_utterance_index": arguments.train_utterance_index,
                     "heldout_speakers": sorted(heldout_speakers()),
                 },
                 sort_keys=True,
@@ -387,6 +411,7 @@ def run(arguments: argparse.Namespace) -> int:
                 "two for fifteen evenly spread disjoint heldout speakers"
             ),
         },
+        "train_utterance_index": arguments.train_utterance_index,
         "split_counts": {"train": TRAIN_ROWS, "evaluation": HELDOUT_ROWS},
         "items": materialized,
     }
@@ -402,6 +427,7 @@ def run(arguments: argparse.Namespace) -> int:
                 "items": len(materialized),
                 "manifest": str(output),
                 "manifest_sha256": sha256_bytes(output.read_bytes()),
+                "train_utterance_index": arguments.train_utterance_index,
             },
             sort_keys=True,
         )
@@ -414,6 +440,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--check", action="store_true")
     value.add_argument("--archive-url", default=ARCHIVE_URL)
     value.add_argument("--output-root", type=Path, required=True)
+    value.add_argument("--train-utterance-index", type=int, default=0)
     value.add_argument("--workers", type=int, choices=range(1, 17), default=8)
     return value
 

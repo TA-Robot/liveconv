@@ -34,6 +34,22 @@ def _central(value: bytes) -> bytes:
     return value[offset : offset + size]
 
 
+def _selection_entries(train_utterances: int = 10) -> dict[str, dict[str, str]]:
+    names: list[str] = []
+    for speaker_index in range(1, 101):
+        speaker = f"SRC4VC{speaker_index:03d}"
+        names.append(f"SRC4VC_ver1/{speaker}/speaker_metadata.yml")
+        for row_index in range(train_utterances):
+            stem = f"RECITATION_{row_index:03d}"
+            names.extend(
+                (
+                    f"SRC4VC_ver1/{speaker}/wav/{stem}.wav",
+                    f"SRC4VC_ver1/{speaker}/txt/{stem}.txt",
+                )
+            )
+    return {name: {"filename": name} for name in names}
+
+
 def test_heldout_speakers_are_evenly_spread_and_disjoint() -> None:
     heldout = FETCH.heldout_speakers()
 
@@ -70,19 +86,7 @@ def test_payload_inflater_rejects_corruption() -> None:
 
 
 def test_selection_freezes_85_train_and_30_disjoint_evaluation_rows() -> None:
-    names: list[str] = []
-    for speaker_index in range(1, 101):
-        speaker = f"SRC4VC{speaker_index:03d}"
-        names.append(f"SRC4VC_ver1/{speaker}/speaker_metadata.yml")
-        for row_index in range(10):
-            stem = f"RECITATION_{row_index:03d}"
-            names.extend(
-                (
-                    f"SRC4VC_ver1/{speaker}/wav/{stem}.wav",
-                    f"SRC4VC_ver1/{speaker}/txt/{stem}.txt",
-                )
-            )
-    entries = {name: {"filename": name} for name in names}
+    entries = _selection_entries()
 
     rows = FETCH.selected_rows(entries)
 
@@ -97,6 +101,59 @@ def test_selection_freezes_85_train_and_30_disjoint_evaluation_rows() -> None:
     assert len(train_speakers) == 85
     assert len(evaluation_speakers) == 15
     assert not train_speakers & evaluation_speakers
+
+
+def test_train_utterance_index_zero_preserves_default_selection() -> None:
+    entries = _selection_entries()
+
+    assert FETCH.selected_rows(entries) == FETCH.selected_rows(
+        entries, train_utterance_index=0
+    )
+
+
+def test_train_utterance_index_one_changes_only_train_rows() -> None:
+    entries = _selection_entries()
+    first_rows = FETCH.selected_rows(entries, train_utterance_index=0)
+    second_rows = FETCH.selected_rows(entries, train_utterance_index=1)
+
+    first_train = {row["speaker_id"] for row in first_rows if row["split"] == "train"}
+    second_train = {
+        row["speaker_id"] for row in second_rows if row["split"] == "train"
+    }
+    assert second_train == first_train
+
+    first_heldout = {
+        row["id"]: row["wav_entry"]
+        for row in first_rows
+        if row["split"] == "evaluation"
+    }
+    second_heldout = {
+        row["id"]: row["wav_entry"]
+        for row in second_rows
+        if row["split"] == "evaluation"
+    }
+    assert second_heldout == first_heldout
+
+    first_train = {
+        row["speaker_id"]: row["wav_entry"]
+        for row in first_rows
+        if row["split"] == "train"
+    }
+    second_train = {
+        row["speaker_id"]: row["wav_entry"]
+        for row in second_rows
+        if row["split"] == "train"
+    }
+    for speaker, first_name in first_train.items():
+        assert second_train[speaker] != first_name
+        assert second_train[speaker].endswith("RECITATION_001.wav")
+
+
+def test_train_utterance_index_rejects_out_of_range_value() -> None:
+    entries = _selection_entries()
+
+    with pytest.raises(FETCH.Src4vcFetchError, match="from 0 to 9"):
+        FETCH.selected_rows(entries, train_utterance_index=10)
 
 
 def test_metadata_parser_accepts_only_published_flat_multiline_shape() -> None:
