@@ -85,6 +85,7 @@ FULL_CONVERTER_TARGET = "full-converter"
 ACOUSTIC_ENCODER_TARGET = "acoustic-encoder"
 LORA69_TARGET = "lora69"
 SOURCE36_TARGET = "source36"
+SPEAKER7_OVERLAY_TARGET = "speaker7-overlay"
 CONVERTER_PREFIX = "acoustic_converter"
 EXPECTED_CONVERTER_PARAMETERS = 42_357_760
 CONVERTER_CHECKPOINT_KIND = "liveconv-xvc-merged-control69-converter/v1"
@@ -104,6 +105,9 @@ CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE = (
 )
 DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE = (
     "factorized-unpaired-human-discrete-output-cycle-adversarial"
+)
+SPEAKER_PATH_UNPAIRED_OBJECTIVE = (
+    "factorized-unpaired-human-speaker-path-adversarial"
 )
 OUTPUT_CYCLE_CONTENT_WEIGHT = 1000.0
 CONTRASTIVE_CONTENT_TEMPERATURE = 0.1
@@ -213,6 +217,43 @@ def listening_policy(
                 "curriculum, real-reference adversarial objective, 170 sequential "
                 "updates, LR, AdamW, clip, scope, zero condition, and upstream EMA "
                 "schedule stay fixed"
+            ),
+        }
+    if (
+        trainable_target == SPEAKER7_OVERLAY_TARGET
+        or training_objective == SPEAKER_PATH_UNPAIRED_OBJECTIVE
+    ):
+        if (
+            manifest_kind != CROSS_CORPUS_UNPAIRED_OUTPUT_KIND
+            or trainable_target != SPEAKER7_OVERLAY_TARGET
+            or training_objective != SPEAKER_PATH_UNPAIRED_OBJECTIVE
+            or not use_adapter_ema
+            or optimizer_mode != SEQUENTIAL_OPTIMIZER
+            or parameter_anchor
+            or source_activity_envelope
+        ):
+            raise PostRehearsalError(
+                "speaker-path overlay requires the exact EXP-233 pilot"
+            )
+        return {
+            "slug": "exp233",
+            "candidate_id": "control69-speaker7-real-voice-ema170",
+            "candidate_name": "EXP-233 / control69 + speaker7 voice overlay / EMA",
+            "run_kind": "EXP-233 X-VC speaker-path voice refinement evaluation",
+            "result_kind": "liveconv-exp233-xvc-speaker7-voice-overlay-ema/v1",
+            "question": (
+                "Can a voice-only speaker-modulation overlay improve X-VC without "
+                "retraining the content converter?"
+            ),
+            "independent_variable": (
+                "merge the frozen control69 content converter into the base, then "
+                "train a new rank-8 LoRA only on the seven speaker-conditioned "
+                "AdaLN linears with the unchanged target-speaker plus real-wave "
+                "adversarial/feature loss; the content-cycle loss and all 69 "
+                "control69 content/condition LoRA paths are absent from the mutable "
+                "graph; exact CV48/JSUT85/JVS3/Hadou34 rows, ordered Amitaro target "
+                "multiset, 170 updates, LR, clip, zero condition, discriminator "
+                "update, and EMA schedule remain fixed"
             ),
         }
     if optimizer_mode == PCGRAD_CONTENT_VOICE_OPTIMIZER:
@@ -1061,6 +1102,21 @@ def factorized_unpaired_generator_loss(
     if not bool(torch.isfinite(loss)):
         raise PostRehearsalError("factorized human loss is non-finite")
     return {"loss": loss, "semantic": semantic, "speaker": speaker}
+
+
+def speaker_path_unpaired_generator_loss(
+    outputs: Mapping[str, Any], _batch: Mapping[str, Any], *, torch: Any
+) -> dict[str, Any]:
+    """Train only target-voice prediction on the frozen content converter."""
+    predicted_speaker = outputs.get("pred_sim_feat")
+    target_speaker = outputs.get("sim_feat")
+    if predicted_speaker is None or target_speaker is None:
+        raise PostRehearsalError("speaker-path output shape drifted")
+    speaker = torch.nn.functional.mse_loss(predicted_speaker, target_speaker)
+    loss = role_mix.STANDARD_LOSS_WEIGHTS["sim_mse_loss"] * speaker
+    if not bool(torch.isfinite(loss)):
+        raise PostRehearsalError("speaker-path voice loss is non-finite")
+    return {"loss": loss, "speaker": speaker}
 
 
 def differentiable_whisper_hidden_states(
@@ -2010,7 +2066,7 @@ def run(
     )
 
     import torch
-    from peft import PeftModel
+    from peft import LoraConfig, PeftModel, get_peft_model
 
     if not torch.cuda.is_available():
         raise PostRehearsalError("CUDA is unavailable")
@@ -2035,10 +2091,14 @@ def run(
     } != role_mix.STANDARD_LOSS_WEIGHTS:
         raise PostRehearsalError("upstream X-VC loss weights drifted")
 
-    scope = role_mix.training_scope(
-        arguments.inventory,
-        "source36" if arguments.trainable_target == SOURCE36_TARGET else "control69",
+    scope_name = (
+        "speaker7"
+        if arguments.trainable_target == SPEAKER7_OVERLAY_TARGET
+        else "source36"
+        if arguments.trainable_target == SOURCE36_TARGET
+        else "control69"
     )
+    scope = role_mix.training_scope(arguments.inventory, scope_name)
     if arguments.trainable_target in {
         FULL_CONVERTER_TARGET,
         ACOUSTIC_ENCODER_TARGET,
@@ -2053,6 +2113,27 @@ def run(
         else:
             trainable = _set_acoustic_encoder_training_only(trained)
             expected_trainable = EXPECTED_ACOUSTIC_ENCODER_PARAMETERS
+    elif arguments.trainable_target == SPEAKER7_OVERLAY_TARGET:
+        control = PeftModel.from_pretrained(
+            model, str(arguments.control_adapter), is_trainable=False
+        )
+        merged = control.merge_and_unload(safe_merge=True)
+        trained = get_peft_model(
+            merged,
+            LoraConfig(
+                r=8,
+                lora_alpha=8,
+                lora_dropout=0.0,
+                bias="none",
+                use_dora=False,
+                use_rslora=False,
+                target_modules=list(scope["target_modules"]),
+            ),
+        )
+        trainable = role_mix._set_scope_training_only(trained, scope)
+        expected_trainable = role_mix.expected_trainable_parameter_count(
+            scope, "standard"
+        )
     else:
         trained = PeftModel.from_pretrained(
             model, str(arguments.control_adapter), is_trainable=True
@@ -2066,7 +2147,7 @@ def run(
             scope, "standard"
         )
     if sum(parameter.numel() for parameter in trainable) != expected_trainable:
-        raise PostRehearsalError("control69 trainable parameter count drifted")
+        raise PostRehearsalError("trainable parameter count drifted")
     optimizer = torch.optim.AdamW(trainable, lr=LEARNING_RATE)
     adapter_ema = AdapterEMA(trained, torch) if arguments.adapter_ema else None
     parameter_anchors = (
@@ -2098,6 +2179,7 @@ def run(
         OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
         CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
         DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+        SPEAKER_PATH_UNPAIRED_OBJECTIVE,
     }:
         discriminator, discriminator_optimizer = breadth._load_pretrained_discriminator(
             arguments, config, torch=torch, device=device
@@ -2324,6 +2406,17 @@ def run(
                     ),
                     generator_loss_fn=(
                         (
+                            lambda outputs, current_batch: (
+                                speaker_path_unpaired_generator_loss(
+                                    outputs,
+                                    current_batch,
+                                    torch=torch,
+                                )
+                            )
+                        )
+                        if arguments.training_objective
+                        == SPEAKER_PATH_UNPAIRED_OBJECTIVE
+                        else (
                             lambda outputs, current_batch: (
                                 factorized_unpaired_generator_loss(
                                     outputs,
@@ -2620,7 +2713,10 @@ def run(
                 "last": adversarial_metrics[-1],
                 "real_audio": "authorized-original-Amitaro-target",
                 "generative_audio": (
-                    "final-waveform-source-content-cycle-plus-target-speaker"
+                    "speaker-path-target-voice-plus-real-wave-adversarial"
+                    if arguments.training_objective
+                    == SPEAKER_PATH_UNPAIRED_OBJECTIVE
+                    else "final-waveform-source-content-cycle-plus-target-speaker"
                     if arguments.training_objective
                     == OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
                     else (
@@ -2703,6 +2799,7 @@ def parser() -> argparse.ArgumentParser:
         choices=(
             LORA69_TARGET,
             SOURCE36_TARGET,
+            SPEAKER7_OVERLAY_TARGET,
             FULL_CONVERTER_TARGET,
             ACOUSTIC_ENCODER_TARGET,
         ),
@@ -2717,6 +2814,7 @@ def parser() -> argparse.ArgumentParser:
             OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
             CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
             DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+            SPEAKER_PATH_UNPAIRED_OBJECTIVE,
         ),
         default=GENERATIVE_OBJECTIVE,
     )

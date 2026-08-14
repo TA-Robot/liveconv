@@ -216,6 +216,37 @@ def test_content_voice_pcgrad_task_split_preserves_total() -> None:
     ).item()
 
 
+def test_speaker7_voice_overlay_freezes_the_content_converter() -> None:
+    policy = post.listening_policy(
+        post.CROSS_CORPUS_UNPAIRED_OUTPUT_KIND,
+        post.SPEAKER7_OVERLAY_TARGET,
+        post.SPEAKER_PATH_UNPAIRED_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp233"
+    assert policy["candidate_id"] == "control69-speaker7-real-voice-ema170"
+    assert "seven speaker-conditioned" in policy["independent_variable"]
+    assert "content-cycle loss" in policy["independent_variable"]
+
+
+def test_speaker_path_loss_contains_only_the_weighted_voice_target() -> None:
+    import torch
+
+    predicted = torch.tensor([[1.0, 3.0]], requires_grad=True)
+    target = torch.tensor([[0.0, 1.0]])
+
+    losses = post.speaker_path_unpaired_generator_loss(
+        {"pred_sim_feat": predicted, "sim_feat": target},
+        {},
+        torch=torch,
+    )
+
+    assert losses["speaker"].item() == 2.5
+    assert losses["loss"].item() == 25.0
+    assert set(losses) == {"loss", "speaker"}
+
+
 def test_contrastive_output_cycle_policy_changes_only_content_comparison() -> None:
     policy = post.listening_policy(
         post.CROSS_CORPUS_UNPAIRED_OUTPUT_KIND,

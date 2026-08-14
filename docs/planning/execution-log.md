@@ -5064,3 +5064,23 @@ job queue.
 - Rework: reject this exact method and close optimizer-surgery neighbors. Do
   not tune weights or projection. Move to a function-path, target-data, or
   conditioning intervention while retaining one committed GPU lane at a time.
+
+## 2026-08-14T10:34:00Z - EXP-233--237 speaker-path overlay prepared
+
+- Agent: `primary-integrator`.
+- Task: convert EXP-228's frequent content/voice conflict into a distinct
+  function-path intervention instead of another loss or optimizer neighbor.
+- Dependencies: frozen control69 content converter; exact cross-corpus170
+  source/target schedule; speaker7 topology already mapped by EXP-038; fixed
+  five-surface gate; no operator hearing availability.
+- Result: select a second-stage overlay that merges control69, freezes every
+  content/condition parameter, and adds a fresh rank-8 LoRA only to the seven
+  speaker-conditioned AdaLN linears. Train those 166,400 parameters using only
+  target-speaker MSE plus real-wave adversarial/feature loss. EXP-234--237 bind
+  the unchanged fresh48/Hadou31/stress60/JSUT24 evaluations.
+- Problems: content stability can be screened, but the intended naturalness and
+  identity effect cannot be selected without later hearing. Speaker modulation
+  can still indirectly disturb content even when the content path is frozen.
+- Rework: focused tests, exact no-CUDA admission, commit, then one two-row smoke
+  and one 170-step lane. Stop on added corruption or broad content regression;
+  do not tune rank, scope, loss weights, data, LR, condition, or EMA.

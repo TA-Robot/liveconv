@@ -247,6 +247,9 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-229--232 prebound fresh48 / Hadou31 / stress60 / JSUT24
         -> 850 WAVs; 92/170 conflicts, no added gross, but ordinary JSUT regresses
         -> optimizer surgery closed; next change mutable function path, data target, or condition
+        -> EXP-233 merge control69; train only speaker7 AdaLN on real voice/adversarial loss
+        -> EXP-234--237 prebound fresh48 / Hadou31 / stress60 / JSUT24
+        -> one fixed voice overlay; no rank/scope/weight/data/LR sweep
         -> operator hearing when available
 ```
 

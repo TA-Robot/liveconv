@@ -1408,6 +1408,47 @@ def candidate_policy(kind: str) -> dict[str, str]:
             ),
         }
     if kind in {
+        "speaker7-voice-overlay-ema-fresh48",
+        "speaker7-voice-overlay-ema-hadou",
+        "speaker7-voice-overlay-ema-stress",
+        "speaker7-voice-overlay-ema-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        experiment_id = (
+            "EXP-237"
+            if jsut
+            else "EXP-236"
+            if stress
+            else "EXP-235"
+            if hadou
+            else "EXP-234"
+        )
+        suffix = (
+            "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "control69-speaker7-real-voice-ema170",
+            "display_name": "EXP-233 / control69 + speaker7 voice overlay / EMA",
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-speaker7-voice-overlay-"
+                f"ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does voice-only speaker-path refinement preserve broad content "
+                "while creating a useful audible alternative?"
+            ),
+            "candidate_format": "merged-control69-plus-adapter",
+        }
+    if kind in {
         "discrete-output-cycle-ema-fresh48",
         "discrete-output-cycle-ema-hadou",
         "discrete-output-cycle-ema-stress",
@@ -1938,6 +1979,16 @@ def run(
             torch=torch,
             device=device,
         )
+    elif policy.get("candidate_format") == "merged-control69-plus-adapter":
+        candidate_control = PeftModel.from_pretrained(
+            candidate_base, str(arguments.control_adapter), is_trainable=False
+        )
+        candidate_merged = candidate_control.merge_and_unload(safe_merge=True)
+        candidate = PeftModel.from_pretrained(
+            candidate_merged,
+            str(arguments.candidate_adapter),
+            is_trainable=False,
+        )
     else:
         candidate = PeftModel.from_pretrained(
             candidate_base, str(arguments.candidate_adapter), is_trainable=False
@@ -2159,6 +2210,10 @@ def _parser() -> argparse.ArgumentParser:
             "content-voice-pcgrad-ema-hadou",
             "content-voice-pcgrad-ema-stress",
             "content-voice-pcgrad-ema-jsut",
+            "speaker7-voice-overlay-ema-fresh48",
+            "speaker7-voice-overlay-ema-hadou",
+            "speaker7-voice-overlay-ema-stress",
+            "speaker7-voice-overlay-ema-jsut",
         ),
         default="speaker7",
     )
