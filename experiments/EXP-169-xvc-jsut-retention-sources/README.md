@@ -24,3 +24,6 @@ The committed target renderer reads every row exactly once, uses the frozen
 control69 adapter and existing target assignment, and writes a training-only
 pool plus target identities. The generated targets must pass the existing
 source-relative ASR/gross-repetition screen before a curriculum is admitted.
+Sources shorter than X-VC's 2.4-second model window are right-zero-padded, and
+longer sources use the leading 2.4 seconds, matching the existing runner's
+window. The frozen source row is not replaced after preprocessing.

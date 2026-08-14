@@ -3828,3 +3828,20 @@ job queue.
   admission remains conditional on the existing source-relative ASR and gross
   repetition screen.
 - Rework: focused tests, no-CUDA real-input check, commit, then one GPU render.
+
+## 2026-08-14T01:54:00Z - EXP-170 first render stopped before inference
+
+- Agent: `primary-integrator`.
+- Task: render the 85 committed JSUT control69 retention targets.
+- Dependencies: commit `e29cb86`; X-VC runtime with matching PEFT 0.20.0.
+- Result: the first launch used the wrong lightweight Python and exited before
+  CUDA load. After restoring the pinned X-VC runtime dependency, the committed
+  runner loaded the checkpoint but stopped with zero outputs because
+  `LOANWORD128_078.wav` is 2.3 seconds, shorter than the exact 2.4-second model
+  window.
+- Problems: the source freezer preserved official variable-length JSUT audio,
+  while the inherited tensor extractor assumes at least 38,400 samples at
+  16 kHz.
+- Rework: preserve all 85 selected rows and add deterministic PCM windowing in
+  the renderer: right-zero-pad short rows and use the leading 2.4 seconds of
+  long rows. Do not replace the failing utterance or alter the selection.

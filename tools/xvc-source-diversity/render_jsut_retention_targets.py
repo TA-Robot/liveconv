@@ -13,6 +13,8 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 TOOL_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = TOOL_ROOT.parents[1]
 HUMAN_TOOL_ROOT = REPO_ROOT / "tools" / "xvc-human-paired"
@@ -39,6 +41,16 @@ class JsutTargetError(RuntimeError):
 
 def pair(identifier: str, path: Path, digest: str) -> base.MaterializedPair:
     return base.MaterializedPair(identifier, path, path, digest, digest)
+
+
+def model_window(samples: np.ndarray) -> np.ndarray:
+    """Fit one 48 kHz mono source to X-VC's exact 2.4-second window."""
+
+    if samples.ndim != 1 or samples.size == 0:
+        raise JsutTargetError("JSUT retention PCM shape drifted")
+    if samples.size >= base.WINDOW_48K:
+        return np.ascontiguousarray(samples[: base.WINDOW_48K])
+    return base._right_pad(samples, base.WINDOW_48K)
 
 
 def source_pool(manifest: Mapping[str, Any]) -> dict[str, Any]:
@@ -143,6 +155,16 @@ def run(
     arguments.work_dir.mkdir()
     output_root = arguments.work_dir / "control-outputs"
     output_root.mkdir()
+    model_source_root = arguments.work_dir / "model-sources"
+    model_source_root.mkdir()
+    model_sources: dict[str, tuple[Path, str]] = {}
+    for item in pool["items"]:
+        teacher_id = str(item["id"])
+        source_path = arguments.source_root / str(item["filename"])
+        samples = base._parse_pcm16_wav(source_path.read_bytes(), teacher_id)
+        model_path = model_source_root / str(item["filename"])
+        base._write_pcm16(model_path, model_window(samples))
+        model_sources[teacher_id] = (model_path, base.sha256_file(model_path))
 
     import torch
     from peft import PeftModel
@@ -175,10 +197,10 @@ def run(
     for index, item in enumerate(pool["items"]):
         teacher_id = str(item["id"])
         target_id = str(item["target_id"])
-        source_path = arguments.source_root / str(item["filename"])
+        source_path, source_digest = model_sources[teacher_id]
         source = base._extract_pair_tensors(
             control,
-            pair(teacher_id, source_path, str(item["source_sha256"])),
+            pair(teacher_id, source_path, source_digest),
             process_audio=process_audio,
             config=config,
             torch=torch,
@@ -212,6 +234,7 @@ def run(
                 "teacher_id": teacher_id,
                 "jsut_category": item["jsut_category"],
                 "curriculum_position": item["curriculum_position"],
+                "model_source_sha256": source_digest,
                 "output_sha256": digest,
             }
         )

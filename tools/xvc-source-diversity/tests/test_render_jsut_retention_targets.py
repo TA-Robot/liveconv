@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 TOOL_ROOT = Path(__file__).resolve().parents[1]
@@ -46,3 +47,21 @@ def test_source_pool_rejects_duplicate_teacher_identity() -> None:
 
     with pytest.raises(render.JsutTargetError, match="duplicated"):
         render.source_pool(value)
+
+
+def test_model_window_right_pads_short_audio_without_reselection() -> None:
+    samples = np.arange(10, dtype=np.int16)
+
+    window = render.model_window(samples)
+
+    assert window.shape == (render.base.WINDOW_48K,)
+    assert np.array_equal(window[:10], samples)
+    assert np.count_nonzero(window[10:]) == 0
+
+
+def test_model_window_truncates_long_audio_deterministically() -> None:
+    samples = np.arange(render.base.WINDOW_48K + 10, dtype=np.int32)
+
+    window = render.model_window(samples)
+
+    assert np.array_equal(window, samples[: render.base.WINDOW_48K])
