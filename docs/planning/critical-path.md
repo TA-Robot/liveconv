@@ -199,7 +199,9 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-177 fresh48 (no candidate-added gross row)
         -> EXP-178 Hadou31 (beam-5-only repeated-number stop retracted)
         -> v4 two-decode-consensus / common-stable reassessment of existing WAVs
-        -> stress60 and JSUT24 only if the v4 checkpoint gate survives
+        -> EXP-179 stress60 (no consensus gross; noise gain, tempo/silence tradeoff)
+        -> EXP-180 JSUT24 (no consensus gross; mixed source/known-text result)
+        -> paired PCGrad retained as mixed, unheard technical survivor
         -> operator hearing when available
 ```
 

@@ -1,6 +1,6 @@
 # EXP-176: paired hard-repair and retention PCGrad
 
-Status: v2 ASR rejection retracted; committed v4 machine reassessment pending
+Status: completed v4 technical survivor; human listening pending
 
 ## Goal
 
@@ -68,10 +68,25 @@ the candidate as the same 11-character sentence. VAD did not alter either
 decode. Spectral inspection also cannot support a claim that the audio
 literally spoke the reported sequence dozens of times.
 
-The beam-5-only gross-loop rejection is therefore retracted. The candidate is
-not accepted or selected; all 430 existing WAVs must be reassessed with the
-committed v4 screen. Gross flags require greedy and beam-5 agreement. Content
-summaries separately count rows where the two decodes differ by normalized
-distance greater than `0.5`; cross-arm decisions use only their common stable
-rows. Only that result may open stress60 and JSUT24. Do not tune projection,
-pairing, or task weights from this finding.
+The beam-5-only gross-loop rejection is therefore retracted. The v4 screen
+requires greedy and beam-5 agreement for gross repetition and compares content
+only on cross-arm common decoder-stable, non-gross rows. Under that rule the
+unchanged checkpoint survived every frozen gate with zero candidate-added
+consensus gross row:
+
+- external5 common stable: source-relative exactly tied at `0.256`; known-text
+  improved `0.371 -> 0.309`;
+- fresh36: source-relative slightly regressed `0.216 -> 0.229`, while known-text
+  was effectively tied `0.568 -> 0.566`;
+- Hadou25: source-relative improved `0.133 -> 0.110` and known-text improved
+  `0.369 -> 0.352`;
+- stress44: macro source-relative was near-tied `0.221 -> 0.214`, known-text was
+  equal at `0.593`; noise20 improved strongly, while tempo1.2 and leading
+  silence regressed;
+- JSUT22: source-relative regressed `0.115 -> 0.136`, while known-text improved
+  `0.553 -> 0.536`; counters and onomatopoeia were unchanged.
+
+This is a mixed technical survivor, not a machine-selected winner. The 850
+comparison WAVs across external7, fresh48, Hadou31, stress60, and balanced
+JSUT24 remain on port 8878 for naturalness, identity, and condition robustness
+hearing. Do not tune projection, pairing, or task weights from these results.

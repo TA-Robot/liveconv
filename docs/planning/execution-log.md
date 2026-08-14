@@ -4081,3 +4081,27 @@ job queue.
   exceeds `0.5`. Report stable and all-row summaries separately; compare arms
   only on their common decoder-stable, non-gross set. Commit as v4 and rerun the
   same WAVs before any new render.
+
+## 2026-08-14T03:11:00Z - EXP-176--180 survived the corrected diverse gates
+
+- Agent: `primary-integrator`.
+- Task: apply committed v4 to existing audio, then render only the still-closed
+  stress60 and balanced JSUT24 gates for the unchanged PCGrad checkpoint.
+- Dependencies: commit `17f7a9c`; canonical adapter SHA-256 `f755f6d7`;
+  frozen evaluation manifests; gpu0 single lease.
+- Result: v4 found no candidate-added consensus gross row on external7,
+  fresh48, or Hadou31. Common stable/non-gross results were external5 source
+  tie and known improvement, fresh36 source `0.216 -> 0.229` and known
+  `0.568 -> 0.566`, Hadou25 source `0.133 -> 0.110` and known `0.369 -> 0.352`.
+  EXP-179 then published 300 stress WAVs: common stable44 macro source was
+  `0.221 -> 0.214` and known was equal at `0.593`, with strong noise20 gain but
+  tempo1.2 and leading-silence regressions. EXP-180 published 120 JSUT WAVs:
+  common stable22 source regressed `0.115 -> 0.136` while known improved
+  `0.553 -> 0.536`; consensus gross remained zero.
+- Problems: decoder instability excluded 5--25% of rows depending on set/arm,
+  and remaining evidence is mixed by metric and condition. Auxiliary ASR cannot
+  convert this technical survival into naturalness or target-identity quality.
+- Rework: retain all 850 canonical comparison WAVs on 8878 as an unselected
+  candidate. Do not tune PCGrad. Before training another method, re-screen the
+  recent EXP-171 data-method checkpoint under v4 because its identical Hadou
+  stop may also have been a beam-search false rejection.
