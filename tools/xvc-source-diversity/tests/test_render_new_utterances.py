@@ -514,6 +514,19 @@ def test_clean_post_rehearsal_jsut_policy_is_exp144() -> None:
     assert "clean-post-rehearsal-jsut" in choices
 
 
+def test_hard_negative_curriculum_policies_cover_three_frozen_sets() -> None:
+    fresh = NEW.candidate_policy("hard-negative-curriculum-fresh48")
+    hadou = NEW.candidate_policy("hard-negative-curriculum-hadou")
+    jsut = NEW.candidate_policy("hard-negative-curriculum-jsut")
+
+    assert [fresh["experiment_id"], hadou["experiment_id"], jsut["experiment_id"]] == [
+        "EXP-147",
+        "EXP-148",
+        "EXP-149",
+    ]
+    assert fresh["variant_id"] == hadou["variant_id"] == jsut["variant_id"]
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"

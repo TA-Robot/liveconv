@@ -34,6 +34,12 @@ from prepare_clean_post_rehearsal import (  # noqa: E402
     load_json,
     sha256_file,
 )
+from prepare_hard_negative_curriculum import (  # noqa: E402
+    EXPECTED_COMPOSITION as HARD_EXPECTED_DOMAINS,
+)
+from prepare_hard_negative_curriculum import (  # noqa: E402
+    OUTPUT_KIND as HARD_OUTPUT_KIND,
+)
 
 CANDIDATE_ID = "cv12-clean-post-rehearsal170"
 RESULT_KIND = "liveconv-exp141-xvc-clean-post-rehearsal-result/v1"
@@ -44,9 +50,31 @@ class PostRehearsalError(RuntimeError):
     """The bounded clean post-adaptation rehearsal cannot safely continue."""
 
 
-def listening_policy() -> dict[str, str]:
-    """Return the complete shared-listener identity for EXP-141."""
+def listening_policy(manifest_kind: str = OUTPUT_KIND) -> dict[str, str]:
+    """Return the complete shared-listener identity for the admitted method."""
 
+    if manifest_kind == HARD_OUTPUT_KIND:
+        return {
+            "slug": "exp146",
+            "candidate_id": "cv12-hard-negative-curriculum170",
+            "candidate_name": (
+                "EXP-146 / control69 + failure-triggered 50/50 curriculum"
+            ),
+            "run_kind": "EXP-146 X-VC hard-negative curriculum evaluation",
+            "result_kind": "liveconv-exp146-xvc-hard-negative-curriculum/v1",
+            "question": (
+                "Does training-only failure-triggered sampling repair control69 "
+                "collapse without broad heldout regression?"
+            ),
+            "independent_variable": (
+                "same 170 clean base-teacher updates, resampled from one-pass "
+                "coverage to alternating 85 control-hard and 85 domain-stratified "
+                "easy positions; initialization, loss, LR, clip, scope, target, "
+                "and zero frame condition stay fixed"
+            ),
+        }
+    if manifest_kind != OUTPUT_KIND:
+        raise PostRehearsalError("unknown post-rehearsal manifest kind")
     return {
         "slug": "exp141",
         "candidate_id": CANDIDATE_ID,
@@ -54,9 +82,16 @@ def listening_policy() -> dict[str, str]:
             "EXP-141 / control69 + one clean unique teacher rehearsal pass"
         ),
         "run_kind": "EXP-141 X-VC clean post-rehearsal external evaluation",
+        "result_kind": RESULT_KIND,
         "question": (
             "Does a clean post-adaptation teacher pass retain control69 while "
             "reducing off-distribution corruption?"
+        ),
+        "independent_variable": (
+            "optimization sequence: fresh-base mixed 835 standard + 209 "
+            "unfiltered teacher updates versus frozen control69 initialization "
+            "followed by one pass over 170 unique, non-gross teacher outputs "
+            "with fixed source-relative distance < 0.5 admission"
         ),
     }
 
@@ -64,9 +99,13 @@ def listening_policy() -> dict[str, str]:
 def load_manifest(path: Path, source_work: Path) -> dict[str, Any]:
     value = load_json(path)
     items = value.get("items")
+    kind = value.get("kind")
+    expected_domains = (
+        HARD_EXPECTED_DOMAINS if kind == HARD_OUTPUT_KIND else EXPECTED_DOMAINS
+    )
     if (
-        value.get("kind") != OUTPUT_KIND
-        or value.get("composition") != EXPECTED_DOMAINS
+        kind not in {OUTPUT_KIND, HARD_OUTPUT_KIND}
+        or value.get("composition") != expected_domains
         or not isinstance(items, list)
         or len(items) != EXPECTED_ROWS
     ):
@@ -85,7 +124,7 @@ def load_manifest(path: Path, source_work: Path) -> dict[str, Any]:
             not isinstance(identifier, str)
             or identifier in ids
             or not isinstance(teacher_id, str)
-            or teacher_id in teachers
+            or (kind == OUTPUT_KIND and teacher_id in teachers)
             or not isinstance(source_file, str)
             or not isinstance(target_file, str)
             or Path(source_file).is_absolute()
@@ -98,6 +137,11 @@ def load_manifest(path: Path, source_work: Path) -> dict[str, Any]:
             or float(item["source_relative_distance"]) >= 0.5
         ):
             raise PostRehearsalError("clean rehearsal identity drifted")
+        if kind == HARD_OUTPUT_KIND and (
+            item.get("curriculum_role") not in {"hard", "easy"}
+            or not isinstance(item.get("source_manifest_id"), str)
+        ):
+            raise PostRehearsalError("hard curriculum identity drifted")
         for filename, digest in (
             (source_file, item["source_sha256"]),
             (target_file, item["target_sha256"]),
@@ -112,7 +156,7 @@ def load_manifest(path: Path, source_work: Path) -> dict[str, Any]:
         ids.add(identifier)
         teachers.add(teacher_id)
         domains[str(item.get("domain"))] += 1
-    if dict(domains) != EXPECTED_DOMAINS:
+    if dict(domains) != expected_domains:
         raise PostRehearsalError("clean rehearsal composition drifted")
     return value
 
@@ -207,6 +251,7 @@ def run(
         raise PostRehearsalError("EXP-141 requires the explicit gpu0 lease")
     started = time.monotonic()
     arguments.work_dir.mkdir()
+    policy = listening_policy(str(manifest["kind"]))
 
     import torch
     from peft import PeftModel
@@ -351,7 +396,6 @@ def run(
     del plain_base
     torch.cuda.empty_cache()
 
-    policy = listening_policy()
     staging = arguments.work_dir / "listener-staging"
     staging.mkdir()
     listener_rows: list[dict[str, Any]] = []
@@ -371,7 +415,7 @@ def run(
                 control_outputs[index],
                 sample_rate,
             ),
-            CANDIDATE_ID: base._write_float_wav(
+            policy["candidate_id"]: base._write_float_wav(
                 row_root / "30-xvc-candidate.wav",
                 candidate_outputs[index],
                 sample_rate,
@@ -385,24 +429,19 @@ def run(
     staging.rename(arguments.listener_dir)
     result = {
         "schema_version": 1,
-        "kind": RESULT_KIND,
+        "kind": policy["result_kind"],
         "status": "completed-listen-now-unselected",
         "git_commit": base._git_output(
             ["git", "rev-parse", "HEAD"], "repository commit"
         ),
         "question": policy["question"],
-        "independent_variable": (
-            "optimization sequence: fresh-base mixed 835 standard + 209 unfiltered "
-            "teacher updates versus frozen control69 initialization followed by "
-            "one pass over 170 unique, non-gross teacher outputs with fixed "
-            "source-relative distance < 0.5 admission"
-        ),
+        "independent_variable": policy["independent_variable"],
         "training_manifest_sha256": sha256_file(arguments.training_manifest),
         "source_result_sha256": sha256_file(arguments.source_work / "result.json"),
         "control_adapter": str(arguments.control_adapter),
         "updates": len(losses),
         "role_counts": {"real-donor-teacher-output": len(losses)},
-        "composition": EXPECTED_DOMAINS,
+        "composition": manifest["composition"],
         "learning_rate": LEARNING_RATE,
         "gradient_clip_norm": base.GRADIENT_CLIP_NORM,
         "trainable_parameters": expected_trainable,
@@ -471,7 +510,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     {
                         "status": "checked-no-cuda",
                         "training_rows": len(manifest["items"]),
-                        "composition": EXPECTED_DOMAINS,
+                        "composition": manifest["composition"],
                         "evaluation_rows": len(evaluation["items"]),
                         "initialization": "EXP-035-control69",
                     },

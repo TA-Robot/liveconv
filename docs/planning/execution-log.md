@@ -3487,3 +3487,27 @@ job queue.
   untouched JSUT24 on this failed checkpoint. Admit only a training-only
   control-collapse probe; if it finds no reproducible hard negatives, redirect
   directly to loss, conditioning, or trainable-target design.
+
+## 2026-08-14T00:02:06Z - EXP-145 reproduced a control-only collapse
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-13T23:59:07Z.
+- End: 2026-08-14T00:02:06Z.
+- Dependencies: commit `19aaf74`; all 170 clean training-only sources from
+  EXP-141; frozen control69; gpu0. No evaluation row was opened.
+- Result: 170 control outputs rendered in 128.66 seconds at 2.48 GiB peak and
+  were screened against their own source ASR. Eleven had source-relative
+  distance at least `0.5`; one was gross. On training-only
+  `hadou-RECITATION324_031-start`, the frozen base teacher transcribed the
+  source exactly at distance `0.0`, while control69 repeated `コ` 216 times at
+  distance `23.78`.
+- Problems: two Common Voice source windows had empty prior ASR text. The CPU
+  admission initially required non-empty text and stopped before GPU launch;
+  the contract was corrected to make known text optional while preserving
+  audio identity and source-relative screening.
+- Rework: the hard-negative mechanism is reproducible independently of heldout
+  rows. Admit one 170-update sampling-method change: alternate 85 positions
+  round-robin over the 11 hard rows with 85 distinct domain-stratified easy
+  rows, retaining control69 initialization and every objective/hyperparameter.
+  Do not run a ratio or exposure neighbor. JSUT stays untouched until the
+  fresh48 and Hadou31 stop gates survive.

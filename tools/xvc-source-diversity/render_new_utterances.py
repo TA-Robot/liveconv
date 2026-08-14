@@ -697,6 +697,41 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "and travel categories?"
             ),
         }
+    if kind in {
+        "hard-negative-curriculum-fresh48",
+        "hard-negative-curriculum-hadou",
+        "hard-negative-curriculum-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        jsut = kind.endswith("-jsut")
+        return {
+            "experiment_id": "EXP-149" if jsut else "EXP-148" if hadou else "EXP-147",
+            "variant_id": "cv12-hard-negative-curriculum170",
+            "display_name": (
+                "EXP-146 / control69 + failure-triggered 50/50 curriculum"
+            ),
+            "result_kind": (
+                "liveconv-exp149-xvc-hard-negative-curriculum-jsut24/v1"
+                if jsut
+                else (
+                    "liveconv-exp148-xvc-hard-negative-curriculum-hadou31/v1"
+                    if hadou
+                    else "liveconv-exp147-xvc-hard-negative-curriculum-fresh48/v1"
+                )
+            ),
+            "question": (
+                "Does training-only failure-triggered sampling avoid corruption "
+                "across untouched JSUT categories?"
+                if jsut
+                else (
+                    "Does training-only failure-triggered sampling repair the "
+                    "heldout Hadou collapse without broad regression?"
+                    if hadou
+                    else "Does training-only failure-triggered sampling repair "
+                    "control69 collapse on frozen fresh48?"
+                )
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1234,6 +1269,9 @@ def _parser() -> argparse.ArgumentParser:
             "clean-post-rehearsal-fresh48",
             "clean-post-rehearsal-hadou",
             "clean-post-rehearsal-jsut",
+            "hard-negative-curriculum-fresh48",
+            "hard-negative-curriculum-hadou",
+            "hard-negative-curriculum-jsut",
         ),
         default="speaker7",
     )

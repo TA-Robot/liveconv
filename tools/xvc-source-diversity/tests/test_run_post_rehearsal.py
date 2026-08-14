@@ -30,3 +30,11 @@ def test_listening_policy_satisfies_shared_index_contract() -> None:
     assert index["variants"][2]["profile_id"] == (
         f"xvc.exp141.{post.CANDIDATE_ID}.listen-now"
     )
+
+
+def test_hard_curriculum_has_distinct_listener_identity() -> None:
+    policy = post.listening_policy(post.HARD_OUTPUT_KIND)
+
+    assert policy["slug"] == "exp146"
+    assert policy["candidate_id"] == "cv12-hard-negative-curriculum170"
+    assert policy["result_kind"].startswith("liveconv-exp146-")
