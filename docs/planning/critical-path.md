@@ -271,6 +271,11 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-251 ECAPA direction is flat/mixed: +0.000246 target cosine, 155W/159L
         -> close SRC4VC substitution completely; ECAPA is not a new-lane gate
         -> EXP-252 return to EXP-238; add direct frozen-ERes2Net loss on final WAV only
+        -> EXP-253--257 publish fresh48 / Hadou31 / stress60 / JSUT24 / expanded144
+        -> zero added gross, but fresh/stress regress and decoder instability increases
+        -> EXP-258 independent ECAPA: target cosine +0.007629 on 314 rows, 232W/82L
+        -> speaker direction generalizes; close weight/scope neighbors and avoid PCGrad retry
+        -> EXP-259 freeze EXP-238; train only a zero-init 192-value speaker-condition delta
         -> operator hearing when available
 ```
 

@@ -101,6 +101,7 @@ ACOUSTIC_ENCODER_TARGET = "acoustic-encoder"
 LORA69_TARGET = "lora69"
 SOURCE36_TARGET = "source36"
 SPEAKER7_OVERLAY_TARGET = "speaker7-overlay"
+SPEAKER_CONDITION_CALIBRATOR_TARGET = "speaker-condition-calibrator"
 CONVERTER_PREFIX = "acoustic_converter"
 EXPECTED_CONVERTER_PARAMETERS = 42_357_760
 CONVERTER_CHECKPOINT_KIND = "liveconv-xvc-merged-control69-converter/v1"
@@ -121,6 +122,9 @@ SPEAKER_PATH_UNPAIRED_OBJECTIVE = "factorized-unpaired-human-speaker-path-advers
 PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE = "pseudoparallel-generative-real-adversarial"
 PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE = (
     "pseudoparallel-generative-real-adversarial-output-speaker"
+)
+PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE = (
+    "pseudoparallel-generative-real-adversarial-condition-calibrator"
 )
 OUTPUT_CYCLE_CONTENT_WEIGHT = 1000.0
 CONTRASTIVE_CONTENT_TEMPERATURE = 0.1
@@ -143,6 +147,13 @@ SOURCE_ACTIVITY_ENVELOPE_IMPLEMENTATION = (
 OUTPUT_SPEAKER_IDENTITY_WEIGHT = 10.0
 OUTPUT_SPEAKER_IDENTITY_IMPLEMENTATION = (
     "frozen-xvc-eres2net-final-waveform-cosine/v1"
+)
+SPEAKER_CONDITION_DIMENSION = 192
+SPEAKER_CONDITION_CALIBRATOR_KIND = (
+    "liveconv-xvc-speaker-condition-calibrator/v1"
+)
+EXP238_ADAPTER_SHA256 = (
+    "778b430133b5397d86bd70bd7c9fa7bd4f7f9cc4d737ca94e4b91e5c7bc8a9da"
 )
 DIVERSE_RETENTION_KINDS = {
     JSUT_RETENTION_OUTPUT_KIND,
@@ -173,6 +184,51 @@ def listening_policy(
     source_activity_envelope: bool = False,
 ) -> dict[str, str]:
     """Return the complete shared-listener identity for the admitted method."""
+
+    if (
+        trainable_target == SPEAKER_CONDITION_CALIBRATOR_TARGET
+        or training_objective == PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE
+    ):
+        if (
+            manifest_kind != PSEUDOPARALLEL_OUTPUT_KIND
+            or trainable_target != SPEAKER_CONDITION_CALIBRATOR_TARGET
+            or training_objective
+            != PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE
+            or not use_adapter_ema
+            or optimizer_mode != SEQUENTIAL_OPTIMIZER
+            or parameter_anchor
+            or source_activity_envelope
+        ):
+            raise PostRehearsalError(
+                "speaker-condition calibration requires the exact EXP-259 pilot"
+            )
+        return {
+            "slug": "exp259",
+            "candidate_id": (
+                "exp238-speaker-condition-delta-output-speaker-ema170"
+            ),
+            "candidate_name": (
+                "EXP-259 / frozen EXP-238 + speaker-condition delta / EMA"
+            ),
+            "run_kind": "EXP-259 X-VC speaker-condition calibration evaluation",
+            "result_kind": (
+                "liveconv-exp259-xvc-speaker-condition-calibrator-ema/v1"
+            ),
+            "question": (
+                "Can a 192-parameter target-speaker condition calibration retain "
+                "EXP-252's identity direction without changing content weights?"
+            ),
+            "independent_variable": (
+                "freeze the exact EXP-238 EMA adapter and add only one zero-"
+                "initialized 192-value delta to the frozen target-speaker "
+                "embedding immediately before the acoustic converter; train that "
+                "delta with EXP-252's unchanged weight-10 final-WAV ERes2Net loss "
+                "plus the exact EXP-238 complete generative and real-adversarial "
+                "objectives; curriculum, source-aligned targets, real Amitaro "
+                "references, LR, sequential 170 updates, clip, zero frame "
+                "condition, discriminator, and EMA remain fixed"
+            ),
+        }
 
     if (
         manifest_kind in PSEUDOPARALLEL_KINDS
@@ -1141,6 +1197,26 @@ def validate_inputs(
         or not (arguments.control_adapter / "adapter_model.safetensors").is_file()
     ):
         raise PostRehearsalError("control69 adapter is unavailable")
+    if arguments.trainable_target == SPEAKER_CONDITION_CALIBRATOR_TARGET:
+        initial = arguments.initial_adapter
+        weights = (
+            initial / "adapter_model.safetensors"
+            if initial is not None
+            else None
+        )
+        if (
+            initial is None
+            or initial.is_symlink()
+            or weights is None
+            or weights.is_symlink()
+            or not weights.is_file()
+            or sha256_file(weights) != EXP238_ADAPTER_SHA256
+        ):
+            raise PostRehearsalError("exact EXP-238 EMA adapter is required")
+    elif arguments.initial_adapter is not None:
+        raise PostRehearsalError(
+            "initial adapter is admitted only for speaker-condition calibration"
+        )
     method._validate_xvc(arguments)
     base._require_new_output(
         arguments.work_dir,
@@ -1591,6 +1667,160 @@ def _set_existing_adapter_scope_training_only(
     if active == 0 or sum(parameter.numel() for parameter in trainable) != expected:
         raise PostRehearsalError("existing adapter scope topology drifted")
     return trainable
+
+
+def _base_xvc(model: Any) -> Any:
+    return model.get_base_model() if hasattr(model, "get_base_model") else model
+
+
+def attach_speaker_condition_calibrator(model: Any, *, torch: Any) -> Any:
+    """Insert one zero-delta speaker calibration before the frozen converter."""
+
+    xvc = _base_xvc(model)
+    converter = getattr(xvc, "acoustic_converter", None)
+    if converter is None or getattr(converter, "condition_dim", None) != (
+        SPEAKER_CONDITION_DIMENSION
+    ):
+        raise PostRehearsalError("speaker-condition converter topology drifted")
+
+    class SpeakerConditionCalibratedConverter(torch.nn.Module):
+        def __init__(self, base_converter: Any) -> None:
+            super().__init__()
+            self.base_converter = base_converter
+            self.condition_dim = SPEAKER_CONDITION_DIMENSION
+            self.speaker_condition_delta = torch.nn.Parameter(
+                torch.zeros(SPEAKER_CONDITION_DIMENSION, dtype=torch.float32)
+            )
+
+        def forward(
+            self,
+            acoustic_latent: Any,
+            frame_condition: Any = None,
+            speaker_condition: Any = None,
+            mask: Any = None,
+        ) -> Any:
+            if (
+                speaker_condition is None
+                or speaker_condition.ndim != 2
+                or speaker_condition.shape[-1] != self.condition_dim
+            ):
+                raise PostRehearsalError(
+                    "speaker-condition calibrator input drifted"
+                )
+            calibrated = speaker_condition + self.speaker_condition_delta.to(
+                device=speaker_condition.device,
+                dtype=speaker_condition.dtype,
+            ).unsqueeze(0)
+            return self.base_converter(
+                acoustic_latent,
+                frame_condition,
+                calibrated,
+                mask=mask,
+            )
+
+    wrapped = SpeakerConditionCalibratedConverter(converter)
+    xvc.acoustic_converter = wrapped
+    return wrapped
+
+
+def _speaker_condition_calibrator(model: Any) -> Any:
+    converter = getattr(_base_xvc(model), "acoustic_converter", None)
+    delta = getattr(converter, "speaker_condition_delta", None)
+    if (
+        converter is None
+        or delta is None
+        or tuple(delta.shape) != (SPEAKER_CONDITION_DIMENSION,)
+    ):
+        raise PostRehearsalError("speaker-condition calibrator is unavailable")
+    return converter
+
+
+def _set_speaker_condition_calibrator_training_only(model: Any) -> list[Any]:
+    model.eval()
+    converter = _speaker_condition_calibrator(model)
+    selected: list[Any] = []
+    for parameter in model.parameters():
+        trainable = parameter is converter.speaker_condition_delta
+        parameter.requires_grad_(trainable)
+        if trainable:
+            selected.append(parameter)
+    if (
+        len(selected) != 1
+        or sum(parameter.numel() for parameter in selected)
+        != SPEAKER_CONDITION_DIMENSION
+    ):
+        raise PostRehearsalError("speaker-condition trainable topology drifted")
+    return selected
+
+
+def save_speaker_condition_calibrator(
+    model: Any, directory: Path, *, torch: Any
+) -> dict[str, Any]:
+    from safetensors.torch import load_file, save_file
+
+    directory.mkdir()
+    converter = _speaker_condition_calibrator(model)
+    delta = converter.speaker_condition_delta.detach().cpu().float().contiguous()
+    if not bool(torch.isfinite(delta).all()):
+        raise PostRehearsalError("speaker-condition delta is non-finite")
+    weights = directory / "calibrator.safetensors"
+    save_file(
+        {"speaker_condition_delta": delta},
+        str(weights),
+        metadata={"format": "xvc_speaker_condition_calibrator_v1"},
+    )
+    reloaded = load_file(str(weights), device="cpu")
+    if (
+        set(reloaded) != {"speaker_condition_delta"}
+        or not torch.equal(reloaded["speaker_condition_delta"], delta)
+    ):
+        raise PostRehearsalError(
+            "speaker-condition calibrator serialization drifted"
+        )
+    metadata = {
+        "schema_version": 1,
+        "kind": SPEAKER_CONDITION_CALIBRATOR_KIND,
+        "initialization": "zero-delta-over-frozen-exp238-ema",
+        "parameter_count": SPEAKER_CONDITION_DIMENSION,
+        "weights_sha256": sha256_file(weights),
+        "delta_l2_norm": float(torch.linalg.vector_norm(delta)),
+    }
+    method._write_json(directory / "calibrator.json", metadata)
+    return metadata
+
+
+def load_speaker_condition_calibrator(
+    model: Any, directory: Path, *, torch: Any, device: Any
+) -> dict[str, Any]:
+    from safetensors.torch import load_file
+
+    metadata_path = directory / "calibrator.json"
+    weights = directory / "calibrator.safetensors"
+    if (
+        directory.is_symlink()
+        or metadata_path.is_symlink()
+        or weights.is_symlink()
+        or not metadata_path.is_file()
+        or not weights.is_file()
+    ):
+        raise PostRehearsalError("speaker-condition calibrator is unavailable")
+    metadata = load_json(metadata_path)
+    if (
+        metadata.get("kind") != SPEAKER_CONDITION_CALIBRATOR_KIND
+        or metadata.get("parameter_count") != SPEAKER_CONDITION_DIMENSION
+        or metadata.get("weights_sha256") != sha256_file(weights)
+    ):
+        raise PostRehearsalError("speaker-condition calibrator identity drifted")
+    stored = load_file(str(weights), device="cpu")
+    value = stored.get("speaker_condition_delta")
+    if value is None or tuple(value.shape) != (SPEAKER_CONDITION_DIMENSION,):
+        raise PostRehearsalError("speaker-condition calibrator tensor drifted")
+    converter = attach_speaker_condition_calibrator(model, torch=torch)
+    with torch.no_grad():
+        converter.speaker_condition_delta.copy_(
+            value.to(device=device, dtype=torch.float32)
+        )
+    return metadata
 
 
 def _converter_snapshot(model: Any, torch: Any) -> dict[str, Any]:
@@ -2282,7 +2512,15 @@ def run(
         else "control69"
     )
     scope = role_mix.training_scope(arguments.inventory, scope_name)
-    if arguments.trainable_target in {
+    calibrator = None
+    if arguments.trainable_target == SPEAKER_CONDITION_CALIBRATOR_TARGET:
+        trained = PeftModel.from_pretrained(
+            model, str(arguments.initial_adapter), is_trainable=False
+        )
+        calibrator = attach_speaker_condition_calibrator(trained, torch=torch)
+        trainable = _set_speaker_condition_calibrator_training_only(trained)
+        expected_trainable = SPEAKER_CONDITION_DIMENSION
+    elif arguments.trainable_target in {
         FULL_CONVERTER_TARGET,
         ACOUSTIC_ENCODER_TARGET,
     }:
@@ -2365,6 +2603,7 @@ def run(
         SPEAKER_PATH_UNPAIRED_OBJECTIVE,
         PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
         PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
+        PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
     }:
         discriminator, discriminator_optimizer = breadth._load_pretrained_discriminator(
             arguments, config, torch=torch, device=device
@@ -2373,6 +2612,7 @@ def run(
             REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
+            PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
         }:
             target_by_id = {
                 target_id: _pair(target_id, path, digest)
@@ -2385,6 +2625,7 @@ def run(
                     in {
                         PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
                         PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
+                        PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
                     }
                 ):
                     real_target = arguments.source_work / str(item["real_target_file"])
@@ -2411,7 +2652,9 @@ def run(
     def batch_for(
         item: Mapping[str, Any], negative_item: Mapping[str, Any] | None = None
     ) -> Any:
-        if arguments.trainable_target == FULL_CONVERTER_TARGET:
+        if arguments.trainable_target == SPEAKER_CONDITION_CALIBRATOR_TARGET:
+            _set_speaker_condition_calibrator_training_only(trained)
+        elif arguments.trainable_target == FULL_CONVERTER_TARGET:
             _set_converter_training_only(trained)
         elif arguments.trainable_target == ACOUSTIC_ENCODER_TARGET:
             _set_acoustic_encoder_training_only(trained)
@@ -2562,6 +2805,7 @@ def run(
                             REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
                             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
                             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
+                            PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
                         }
                         else None
                     ),
@@ -2585,6 +2829,15 @@ def run(
                         if arguments.trainable_target == SOURCE36_TARGET
                         else (
                             lambda current: (
+                                _set_speaker_condition_calibrator_training_only(
+                                    current
+                                )
+                            )
+                        )
+                        if arguments.trainable_target
+                        == SPEAKER_CONDITION_CALIBRATOR_TARGET
+                        else (
+                            lambda current: (
                                 _set_acoustic_encoder_training_only(current)
                                 if arguments.trainable_target == ACOUSTIC_ENCODER_TARGET
                                 else None
@@ -2603,7 +2856,10 @@ def run(
                             )
                         )
                         if arguments.training_objective
-                        == PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE
+                        in {
+                            PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
+                            PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
+                        }
                         else
                         (
                             lambda reconstruction, current_batch: (
@@ -2745,6 +3001,25 @@ def run(
             arguments.work_dir / f"acoustic-encoder-{EXPECTED_ROWS}",
             torch,
         )
+    elif arguments.trainable_target == SPEAKER_CONDITION_CALIBRATOR_TARGET:
+        online_dir = arguments.work_dir / f"online-calibrator-{EXPECTED_ROWS}"
+        online_metadata = save_speaker_condition_calibrator(
+            trained, online_dir, torch=torch
+        )
+        if adapter_ema is None:
+            raise PostRehearsalError("speaker-condition calibrator requires EMA")
+        adapter_ema.copy_to()
+        calibrator_dir = arguments.work_dir / f"calibrator-{EXPECTED_ROWS}"
+        checkpoint_metadata = save_speaker_condition_calibrator(
+            trained, calibrator_dir, torch=torch
+        )
+        checkpoint_metadata.update(
+            {
+                "directory": calibrator_dir.name,
+                "online_directory": online_dir.name,
+                "online_weights_sha256": online_metadata["weights_sha256"],
+            }
+        )
     else:
         checkpoint_steps = (
             optimizer_steps
@@ -2872,6 +3147,11 @@ def run(
             else None
         ),
         "control_adapter": str(arguments.control_adapter),
+        "initial_adapter": (
+            str(arguments.initial_adapter)
+            if arguments.initial_adapter is not None
+            else None
+        ),
         "trainable_target": arguments.trainable_target,
         "training_objective": arguments.training_objective,
         "optimizer_mode": arguments.optimizer_mode,
@@ -2916,7 +3196,10 @@ def run(
                 ],
             }
             if arguments.training_objective
-            == PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE
+            in {
+                PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
+                PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
+            }
             else None
         ),
         "adapter_ema": adapter_ema.receipt() if adapter_ema is not None else None,
@@ -2963,6 +3246,8 @@ def run(
                     == PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE
                     or arguments.training_objective
                     == PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE
+                    or arguments.training_objective
+                    == PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE
                     else "selective-repair-or-retention-target"
                 ),
             }
@@ -3029,6 +3314,7 @@ def parser() -> argparse.ArgumentParser:
             LORA69_TARGET,
             SOURCE36_TARGET,
             SPEAKER7_OVERLAY_TARGET,
+            SPEAKER_CONDITION_CALIBRATOR_TARGET,
             FULL_CONVERTER_TARGET,
             ACOUSTIC_ENCODER_TARGET,
         ),
@@ -3046,6 +3332,7 @@ def parser() -> argparse.ArgumentParser:
             SPEAKER_PATH_UNPAIRED_OBJECTIVE,
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
+            PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
         ),
         default=GENERATIVE_OBJECTIVE,
     )
@@ -3059,6 +3346,7 @@ def parser() -> argparse.ArgumentParser:
         default=SEQUENTIAL_OPTIMIZER,
     )
     value.add_argument("--adapter-ema", action="store_true")
+    value.add_argument("--initial-adapter", type=Path)
     value.add_argument("--parameter-anchor", action="store_true")
     value.add_argument("--source-activity-envelope", action="store_true")
     value.add_argument("--xvc-source-root", type=Path, required=True)
@@ -3088,7 +3376,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "training_rows": len(manifest["items"]),
                         "composition": manifest["composition"],
                         "evaluation_rows": len(evaluation["items"]),
-                        "initialization": "EXP-035-control69",
+                        "initialization": (
+                            "EXP-238-EMA-plus-zero-speaker-condition-delta"
+                            if arguments.trainable_target
+                            == SPEAKER_CONDITION_CALIBRATOR_TARGET
+                            else "EXP-035-control69"
+                        ),
                     },
                     sort_keys=True,
                 )

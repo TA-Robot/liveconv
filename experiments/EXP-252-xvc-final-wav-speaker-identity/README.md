@@ -1,6 +1,7 @@
 # EXP-252: X-VC final-WAV speaker identity supervision
 
-Status: trained; broad corruption screen admitted; unheard and unselected
+Status: completed and technically mixed; exact LoRA69 method closed; unheard
+and unselected
 
 ## Goal
 
@@ -57,6 +58,24 @@ ties, zero regressions). This is only a corruption/content admission result;
 it does not establish audible identity, naturalness, or a winner. Reuse the
 fixed fresh48, Hadou31, stress60, JSUT24, and expanded144 surfaces next, with
 no retraining or weight neighbor.
+
+Those five surfaces completed with no candidate-added gross row, but the exact
+jointly stable/non-gross EXP-238-to-EXP-252 comparison was mixed: external7
+`0.256410 -> 0.223077` (1/4/0), fresh48 `0.244284 -> 0.263410`
+(2/32/5), Hadou31 `0.110603 -> 0.097011` (3/22/0), stress60
+`0.146248 -> 0.177051` (2/35/4), JSUT24 exact tie `0.123253`, and
+expanded144 `0.305099 -> 0.307066` (6/91/7). Decoder instability increased
+by five net rows on stress60 and three on expanded144. All 314 candidate WAVs
+changed.
+
+EXP-258's independent ECAPA direction screen nevertheless found target cosine
+improvement on every surface: aggregate `0.492870 -> 0.500499`, with 232
+increases and 82 decreases, while target-over-source advantage improved by
+`+0.007835`. The speaker objective therefore generalized beyond its training
+encoder, but updating all LoRA69 content/converter paths traded away content
+stability. Close this exact mutable scope and all speaker-weight neighbors.
+Retain the audio for later hearing only; neither encoder establishes audible
+identity or naturalness.
 
 ## Command
 

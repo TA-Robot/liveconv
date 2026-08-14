@@ -270,6 +270,77 @@ def test_pseudoparallel_output_speaker_policy_changes_only_final_wav_loss() -> N
     assert "weight-10 cosine loss" in policy["independent_variable"]
 
 
+def test_condition_calibrator_policy_freezes_exp238_and_moves_only_condition() -> None:
+    policy = post.listening_policy(
+        post.PSEUDOPARALLEL_OUTPUT_KIND,
+        post.SPEAKER_CONDITION_CALIBRATOR_TARGET,
+        post.PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp259"
+    assert policy["candidate_id"] == (
+        "exp238-speaker-condition-delta-output-speaker-ema170"
+    )
+    assert "192-value delta" in policy["independent_variable"]
+    assert "freeze the exact EXP-238" in policy["independent_variable"]
+
+
+def test_condition_calibrator_changes_only_converter_condition(tmp_path: Path) -> None:
+    import torch
+
+    class FakeConverter(torch.nn.Module):
+        condition_dim = post.SPEAKER_CONDITION_DIMENSION
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.content = torch.nn.Parameter(torch.tensor(3.0))
+            self.last_condition = None
+
+        def forward(
+            self, acoustic_latent, frame_condition, speaker_condition, mask=None
+        ):
+            del frame_condition, mask
+            self.last_condition = speaker_condition
+            return acoustic_latent + speaker_condition[:, :1].unsqueeze(-1)
+
+    class FakeXVC(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.acoustic_converter = FakeConverter()
+            self.unrelated = torch.nn.Parameter(torch.tensor(5.0))
+
+    model = FakeXVC()
+    wrapped = post.attach_speaker_condition_calibrator(model, torch=torch)
+    trainable = post._set_speaker_condition_calibrator_training_only(model)
+    with torch.no_grad():
+        wrapped.speaker_condition_delta[0] = 0.25
+    output = model.acoustic_converter(
+        torch.zeros(1, 1, 1),
+        torch.zeros(1, 1, 1),
+        torch.ones(1, post.SPEAKER_CONDITION_DIMENSION),
+    )
+
+    assert trainable == [wrapped.speaker_condition_delta]
+    assert trainable[0].numel() == post.SPEAKER_CONDITION_DIMENSION
+    assert model.unrelated.requires_grad is False
+    assert wrapped.base_converter.content.requires_grad is False
+    assert output.item() == 1.25
+    assert wrapped.base_converter.last_condition[0, 0].item() == 1.25
+
+    metadata = post.save_speaker_condition_calibrator(
+        model, tmp_path / "saved", torch=torch
+    )
+    reloaded = FakeXVC()
+    post.load_speaker_condition_calibrator(
+        reloaded, tmp_path / "saved", torch=torch, device=torch.device("cpu")
+    )
+    assert metadata["parameter_count"] == post.SPEAKER_CONDITION_DIMENSION
+    assert post._speaker_condition_calibrator(
+        reloaded
+    ).speaker_condition_delta[0].item() == 0.25
+
+
 def test_output_speaker_identity_reaches_final_waveform_gradient() -> None:
     from types import SimpleNamespace
 

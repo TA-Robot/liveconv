@@ -5430,3 +5430,51 @@ job queue.
   speaker-weight neighbor, encoder comparison, new data mixture, or promotion
   work. Keep ASR limited to content/corruption screening and retain all audio
   as unheard/unselected.
+
+## 2026-08-14T13:22:16Z - Grok audit continues EXP-252 fixed surfaces
+
+- Agent: `grok-4.6-project-progress-auditor` in tmux
+  `liveconv-grok-auditor`; independent, read-only, and no delegation.
+- Task: decide whether EXP-252 and its queued renders remain the shortest route
+  to improved audible X-VC quality.
+- Result: `CONTINUE`. New external7/fresh48/Hadou audio satisfied the progress
+  criterion; the one-variable final-WAV method and one gpu0 lane were accepted.
+  The auditor required all frozen surfaces and a technical stop before another
+  training lane, and prohibited treating cosine or ASR as a winner.
+- Adopted: yes. The active serial render/screen job was not interrupted. No
+  speaker-weight/encoder/data neighbor, ECAPA gate, review, receipt, or promote
+  work was added.
+- Problems: operator localStorage and audible naturalness/identity remained
+  unavailable. The snapshot could not inspect the complete running job.
+- Rework: finish stress60, JSUT24, and expanded144, then join exact EXP-238/252
+  rows before selecting a different method variable.
+
+## 2026-08-14T13:36:00Z - EXP-252 broad closure and EXP-258 direction result
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T13:11:00Z.
+- End: 2026-08-14T13:36:00Z.
+- Dependencies: commit `26e3642`; fixed EXP-238--243 surfaces; v4
+  faster-whisper; commit `74b1c88`; pinned auxiliary ECAPA runtime; gpu0.
+- Result: published fresh48, Hadou31, stress60, JSUT24, and expanded144, for
+  314 paired candidate rows total. Every EXP-252 WAV changed and no
+  candidate-added gross row appeared. Exact jointly stable/non-gross
+  EXP-238-to-EXP-252 source distance moved external7
+  `0.256410 -> 0.223077` (1/4/0), fresh48 `0.244284 -> 0.263410`
+  (2/32/5), Hadou31 `0.110603 -> 0.097011` (3/22/0), stress60
+  `0.146248 -> 0.177051` (2/35/4), JSUT24 exact tie `0.123253`, and
+  expanded144 `0.305099 -> 0.307066` (6/91/7). Decoder instability rose
+  by five net stress rows and three expanded rows.
+- Result: the decision-changing EXP-258 batch embedded 943 unique WAVs in one
+  ECAPA load. Target cosine improved on all six surfaces; aggregate moved
+  `0.492870 -> 0.500499`, delta `+0.007629`, with 232 increases and 82
+  decreases. Target-over-source advantage improved `+0.007835`. Report
+  SHA-256 is
+  `14e06ed6bb28f9359bfc514a4f55c3b85d8727ce20fb60c5a0b0a36df7c8b54f`.
+- Problems: machine evidence establishes neither audible identity nor
+  naturalness. The speaker direction generalized, but training all LoRA69
+  paths caused mixed content and stability regressions. EXP-228 already closed
+  symmetric optimizer surgery, and EXP-233 closed speaker7 scope neighbors.
+- Rework: close exact EXP-252 and its weight neighbors. Admit EXP-259 as one
+  conditioning-contract change: freeze EXP-238 completely and train only a
+  zero-initialized 192-value delta at the converter speaker-condition input.
