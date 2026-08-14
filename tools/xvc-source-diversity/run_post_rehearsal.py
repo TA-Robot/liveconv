@@ -3372,8 +3372,8 @@ def run(
             "acoustic_code_dropout": (
                 {
                     "implementation": ACOUSTIC_CODE_DROPOUT_IMPLEMENTATION,
-                    "clean_rows": acoustic_code_dropout.clean_calls,
-                    "masked_rows": acoustic_code_dropout.masked_calls,
+                    "clean_rows": acoustic_code_dropout_modes.count(False),
+                    "masked_rows": acoustic_code_dropout_modes.count(True),
                     "inference": "unmasked",
                 }
                 if acoustic_code_dropout is not None
@@ -3601,8 +3601,8 @@ def run(
         "acoustic_code_dropout": (
             {
                 "implementation": ACOUSTIC_CODE_DROPOUT_IMPLEMENTATION,
-                "clean_rows": acoustic_code_dropout.clean_calls,
-                "masked_rows": acoustic_code_dropout.masked_calls,
+                "clean_rows": acoustic_code_dropout_modes.count(False),
+                "masked_rows": acoustic_code_dropout_modes.count(True),
                 "training_only": True,
                 "inference": "unmasked",
                 "first_row_masked": bool(

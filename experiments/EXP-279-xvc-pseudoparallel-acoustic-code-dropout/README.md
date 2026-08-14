@@ -45,3 +45,28 @@ Stop on nonfinite loss or gradient, OOM, wrong mask counts, a masked row whose
 content regression. Do not sweep dropout share/pattern, rank, LR, scope,
 horizon, data mix, target, loss, or EMA. Machine diagnostics cannot select
 naturalness, target identity, emotion, a keeper, or a winner.
+
+## Training and external result
+
+Commit `485380d` passed 61 focused runner tests, Ruff, exact CPU admission, and
+a real two-row CUDA smoke. The smoke observed 122,867 nonzero quantized values
+on the clean row. The masked row's real quantizer output had 122,866 nonzero
+values and exactly zero values after the training-only mask. It exercised one
+clean and one masked call, 835,584 trainable LoRA69 parameters, finite losses,
+and 4,636,175,872 peak allocated bytes.
+
+The one full lane completed 170 updates in 143.93 seconds at 6,163,570,688 peak
+bytes. Its first/last total losses were `106.4064` and `224.2843`; this increase
+is diagnostic, not a quality decision. The EMA adapter SHA-256 is
+`2e22fb2ef6ac36e1347f4321ab5d95358f3c0ebfcc7f71773ebf0246106fe867`.
+The result receipt initially counted seven unmasked external inference calls as
+training calls (`92` instead of `85`); the runner now records the immutable
+training schedule and the ignored result was corrected without retraining or
+changing the adapter/audio.
+
+External7 published seven changed candidate WAVs with no gross row. On six
+exact source-ID/hash rows where EXP-238 and EXP-279 were both decoder-stable
+and non-gross, source-relative distance moved `0.338675 -> 0.298077`, W/T/L
+`2/4/0`; decoder instability stayed `1 -> 1`. This admits EXP-280--284 on the
+unchanged adapter for fresh48, Hadou31, stress60, JSUT24, and expanded144. It
+does not establish audible quality or a winner.

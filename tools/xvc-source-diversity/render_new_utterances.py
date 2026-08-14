@@ -1577,6 +1577,59 @@ def candidate_policy(kind: str) -> dict[str, str]:
             ),
         }
     if kind in {
+        "acoustic-dropout-pseudoparallel-ema-fresh48",
+        "acoustic-dropout-pseudoparallel-ema-hadou",
+        "acoustic-dropout-pseudoparallel-ema-stress",
+        "acoustic-dropout-pseudoparallel-ema-jsut",
+        "acoustic-dropout-pseudoparallel-ema-expanded-stress",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress") and not kind.endswith(
+            "-expanded-stress"
+        )
+        jsut = kind.endswith("-jsut")
+        expanded = kind.endswith("-expanded-stress")
+        experiment_id = (
+            "EXP-284"
+            if expanded
+            else "EXP-283"
+            if jsut
+            else "EXP-282"
+            if stress
+            else "EXP-281"
+            if hadou
+            else "EXP-280"
+        )
+        suffix = (
+            "expanded-stress144"
+            if expanded
+            else "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": (
+                "cross-corpus170-pseudoparallel-acoustic-dropout-"
+                "real-adv-ema170"
+            ),
+            "display_name": (
+                "EXP-279 / source-aligned targets / acoustic-code dropout / EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-acoustic-dropout-"
+                f"pseudoparallel-{suffix}/v1"
+            ),
+            "question": (
+                "Does training-time acoustic-code dropout improve robust content "
+                "across the established broad surfaces?"
+            ),
+        }
+    if kind in {
         "speaker-condition-calibrator-fresh48",
         "speaker-condition-calibrator-hadou",
         "speaker-condition-calibrator-stress",
@@ -2771,6 +2824,11 @@ def _parser() -> argparse.ArgumentParser:
             "fresh-lora-pseudoparallel-ema-stress",
             "fresh-lora-pseudoparallel-ema-jsut",
             "fresh-lora-pseudoparallel-ema-expanded-stress",
+            "acoustic-dropout-pseudoparallel-ema-fresh48",
+            "acoustic-dropout-pseudoparallel-ema-hadou",
+            "acoustic-dropout-pseudoparallel-ema-stress",
+            "acoustic-dropout-pseudoparallel-ema-jsut",
+            "acoustic-dropout-pseudoparallel-ema-expanded-stress",
             "speaker-condition-calibrator-fresh48",
             "speaker-condition-calibrator-hadou",
             "speaker-condition-calibrator-stress",

@@ -303,6 +303,8 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-279 keep EXP-238 data/targets/loss/init/scope/LR/170/EMA exact
         -> zero only quantized source-acoustic code on 85 alternating train rows
         -> inference stays unmasked; CPU admission + two-row CUDA smoke gates one lane
+        -> 170 updates complete; external7 is 2W/4T/0L with unchanged instability
+        -> EXP-280--284 bind the unchanged adapter to the five frozen broad surfaces
         -> operator hearing when available
 ```
 

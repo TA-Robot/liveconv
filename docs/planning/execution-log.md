@@ -5767,3 +5767,30 @@ job queue.
 - Rework: commit the slice, run exact CPU admission, then one two-row CUDA smoke
   containing one clean and one masked row. Stop before full training if any
   mask, gradient, loss, or memory invariant fails.
+
+## 2026-08-14T16:02:00Z - EXP-279 trained and external7 published
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T15:54:00Z.
+- End: 2026-08-14T16:02:00Z.
+- Dependencies: commit `485380d`; exact EXP-238 curriculum/targets/control69
+  initialization/loss; gpu0; listener 8878.
+- Result: CPU admission reported exact CV48 48 / JSUT 85 / JVS 3 / Hadou 34
+  composition and 85 clean / 85 masked rows. The two-row CUDA smoke observed
+  `122867 -> 122867` nonzero quantized/output values on clean and `122866 -> 0`
+  on masked, with 835,584 trainable parameters and 4,636,175,872 peak bytes.
+- Result: the full lane completed 170 updates in 143.93 seconds at
+  6,163,570,688 peak bytes. Loss moved `106.4064 -> 224.2843`. EMA adapter
+  SHA-256 is
+  `2e22fb2ef6ac36e1347f4321ab5d95358f3c0ebfcc7f71773ebf0246106fe867`.
+  Seven changed external WAVs were published with no gross row. Exact jointly
+  stable/non-gross EXP-238-to-EXP-279 content moved `0.338675 -> 0.298077`,
+  W/T/L `2/4/0`; instability stayed `1 -> 1`.
+- Problems: the result receipt initially included seven disabled-wrapper
+  external inference calls in its clean count (`92` instead of training `85`).
+  The runner now derives counts from the immutable training schedule and the
+  ignored result was corrected. The adapter and audio were not retrained.
+- Rework: commit the receipt fix plus EXP-280--284 renderer identities, then
+  render the unchanged adapter on the five frozen broad surfaces. Do not tune
+  dropout share/pattern or infer audible quality from the positive external7
+  machine screen.

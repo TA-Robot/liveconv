@@ -1139,6 +1139,34 @@ def test_fresh_lora_pseudoparallel_prebinds_five_surface_contract() -> None:
     assert all(kind in choices for kind in kinds)
 
 
+def test_acoustic_dropout_pseudoparallel_prebinds_five_surface_contract() -> None:
+    kinds = [
+        "acoustic-dropout-pseudoparallel-ema-fresh48",
+        "acoustic-dropout-pseudoparallel-ema-hadou",
+        "acoustic-dropout-pseudoparallel-ema-stress",
+        "acoustic-dropout-pseudoparallel-ema-jsut",
+        "acoustic-dropout-pseudoparallel-ema-expanded-stress",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-280",
+        "EXP-281",
+        "EXP-282",
+        "EXP-283",
+        "EXP-284",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "cross-corpus170-pseudoparallel-acoustic-dropout-real-adv-ema170"
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert all(kind in choices for kind in kinds)
+
+
 def test_src4vc_pseudoparallel_prebinds_broad_evaluation_contract() -> None:
     kinds = [
         "src4vc-pseudoparallel-ema-fresh48",

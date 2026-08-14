@@ -21,13 +21,12 @@ committed, single-variable job at a time, publish its comparison on 8878, apply
 only coarse machine rejection for corruption/content failure, and replan after
 each result. Accumulated candidates remain unselected until human hearing.
 
-Current GPU lane (2026-08-14 15:53 UTC): EXP-279 keeps the exact EXP-238
-contract and changes only 85 alternating training rows by zeroing the quantized
-source-acoustic code before semantic/acoustic concatenation. The other 85 rows
-and all inference remain unmasked. CPU admission and a two-row finite CUDA
-smoke gate one 170-update lane. This is not an initialization, rank, LR, scope,
-horizon, identity-patch, or condition-augmentation neighbor. All hearing claims
-remain open.
+Current GPU lane (2026-08-14 16:02 UTC): EXP-279 completed 170 updates and
+published external7. Exact common-stable content improved `0.338675 ->
+0.298077` with 2W/4T/0L, no gross row, and unchanged decoder instability.
+EXP-280--284 now bind the unchanged adapter to fresh48, Hadou31, stress60,
+JSUT24, and expanded144. This broad render is a corruption/content gate, not an
+audible-quality or winner decision. All hearing claims remain open.
 
 Provenance correction (2026-08-13): the retained 8.17-second recording saying
 `隣の客はよく柿食う客だ` is a local tongue-twister diagnostic, **not** audio
