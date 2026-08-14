@@ -174,6 +174,16 @@ def _text(value: Any, label: str) -> str:
     return value
 
 
+def _report_kind(plan: Mapping[str, Any]) -> str:
+    value = _text(
+        plan.get("report_kind", "liveconv-exp251-xvc-speaker-fit-screen/v1"),
+        "report_kind",
+    )
+    if not value.startswith("liveconv-") or not value.endswith("/v1"):
+        raise SpeakerFitScreenError("report_kind must be a liveconv v1 kind")
+    return value
+
+
 def _resolve_repo_path(value: Any, label: str) -> Path:
     relative = Path(_text(value, label))
     if relative.is_absolute() or ".." in relative.parts:
@@ -416,7 +426,7 @@ def run(
     ).stdout.strip()
     report = {
         "schema_version": 1,
-        "kind": "liveconv-exp251-xvc-speaker-fit-screen/v1",
+        "kind": _report_kind(plan),
         "status": "completed-auxiliary-unselected",
         "git_commit": git_commit,
         "surface_plan_sha256": _sha256(arguments.surface_plan),

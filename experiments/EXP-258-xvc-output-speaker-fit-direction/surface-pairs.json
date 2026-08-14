@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "report_kind": "liveconv-exp258-xvc-output-speaker-fit-direction/v1",
+  "target": {
+    "archive_sha256": "1fc131f18554625038aaa9876bab0d75660f266ff5e9e18d74cdbb3e6e0df000",
+    "listener_sha256": "76f5a4a9b989ed692a55343a7681623fa4f18e354ca04026f022e3e449195ca2",
+    "manifest_row_id": "ITA:EMOTION100_003",
+    "raw_sha256": "2a7e0ec0686fa92f7508c518156dc196c76748c18848da6c8c1cfe94a711e55b"
+  },
+  "surfaces": [
+    {
+      "name": "external7",
+      "old_listener_root": "artifacts/ms3/listening/exp238-xvc-pseudoparallel-real-adv-ema-v1",
+      "new_listener_root": "artifacts/ms3/listening/exp252-xvc-output-speaker-external7-v1",
+      "old_variant_id": "cross-corpus170-pseudoparallel-real-adv-ema170",
+      "new_variant_id": "cross-corpus170-pseudoparallel-output-speaker-ema170"
+    },
+    {
+      "name": "fresh48",
+      "old_listener_root": "artifacts/ms3/listening/exp239-xvc-pseudoparallel-real-adv-ema-fresh48-v1",
+      "new_listener_root": "artifacts/ms3/listening/exp253-xvc-output-speaker-ema-fresh48-v1",
+      "old_variant_id": "cross-corpus170-pseudoparallel-real-adv-ema170",
+      "new_variant_id": "cross-corpus170-pseudoparallel-output-speaker-ema170"
+    },
+    {
+      "name": "hadou31",
+      "old_listener_root": "artifacts/ms3/listening/exp240-xvc-pseudoparallel-real-adv-ema-hadou31-v1",
+      "new_listener_root": "artifacts/ms3/listening/exp254-xvc-output-speaker-ema-hadou31-v1",
+      "old_variant_id": "cross-corpus170-pseudoparallel-real-adv-ema170",
+      "new_variant_id": "cross-corpus170-pseudoparallel-output-speaker-ema170"
+    },
+    {
+      "name": "stress60",
+      "old_listener_root": "artifacts/ms3/listening/exp241-xvc-pseudoparallel-real-adv-ema-stress60-v1",
+      "new_listener_root": "artifacts/ms3/listening/exp255-xvc-output-speaker-ema-stress60-v1",
+      "old_variant_id": "cross-corpus170-pseudoparallel-real-adv-ema170",
+      "new_variant_id": "cross-corpus170-pseudoparallel-output-speaker-ema170"
+    },
+    {
+      "name": "jsut24",
+      "old_listener_root": "artifacts/ms3/listening/exp242-xvc-pseudoparallel-real-adv-ema-jsut24-v1",
+      "new_listener_root": "artifacts/ms3/listening/exp256-xvc-output-speaker-ema-jsut24-v1",
+      "old_variant_id": "cross-corpus170-pseudoparallel-real-adv-ema170",
+      "new_variant_id": "cross-corpus170-pseudoparallel-output-speaker-ema170"
+    },
+    {
+      "name": "expanded144",
+      "old_listener_root": "artifacts/ms3/listening/exp243-xvc-pseudoparallel-expanded-stress144-v1",
+      "new_listener_root": "artifacts/ms3/listening/exp257-xvc-output-speaker-ema-expanded-stress144-v1",
+      "old_variant_id": "cross-corpus170-pseudoparallel-real-adv-ema170",
+      "new_variant_id": "cross-corpus170-pseudoparallel-output-speaker-ema170"
+    }
+  ]
+}

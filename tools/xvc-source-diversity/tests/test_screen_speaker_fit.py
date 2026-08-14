@@ -135,3 +135,12 @@ def test_validate_target_lineage_binds_archive_and_row(tmp_path: Path) -> None:
         }
     }
     assert screen._validate_target_lineage(plan, manifest) == "c" * 64
+
+
+def test_report_kind_defaults_and_accepts_plan_override() -> None:
+    assert screen._report_kind({}) == "liveconv-exp251-xvc-speaker-fit-screen/v1"
+    assert screen._report_kind(
+        {"report_kind": "liveconv-exp258-xvc-output-speaker-fit-direction/v1"}
+    ) == "liveconv-exp258-xvc-output-speaker-fit-direction/v1"
+    with pytest.raises(screen.SpeakerFitScreenError, match="liveconv v1"):
+        screen._report_kind({"report_kind": "wrong"})
