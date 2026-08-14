@@ -1,6 +1,6 @@
 # EXP-228: X-VC content-versus-voice gradient surgery
 
-Status: admitted listen-now training pilot; not selected
+Status: completed and technically rejected; not selected
 
 ## Goal
 
@@ -53,3 +53,33 @@ common-stable regression. Do not tune task weights/grouping, projection,
 content frontend, data, scope, LR, horizon, discriminator, or EMA after this
 run. If content/voice conflicts are rare, or common JSUT still regresses, close
 this route and move away from loss/optimizer surgery.
+
+## Result
+
+Commit `33be19c` passed 240 focused tests, exact no-CUDA admission, and a real
+two-row backward smoke. The smoke used 5,371,280,896 peak allocated bytes and
+observed a real content/voice conflict with cosine `-0.08924`. The single
+admitted pilot then completed 170 updates in 127.28 seconds at 5,872,224,256
+peak allocated bytes. Conflicts occurred on 92 of 170 rows (54.1%), with
+cosine mean `-0.02275`, minimum `-0.95679`, and maximum `0.77897`. The EMA
+adapter SHA-256 is
+`6d09a5bd053e448cdc56b90a3aa5890bb903278620cf4c4aae1991e95080ccb0`.
+
+The unchanged checkpoint published and screened 850 WAVs across external7,
+fresh48, Hadou31, stress60, and JSUT24. No candidate-added consensus gross row
+appeared; fresh48 retained control69's same two gross rows. On exact cross-arm
+common-stable rows, source-relative auxiliary distance moved external7
+`0.256410 -> 0.223077` (W/T/L `2/2/1`), fresh48 `0.195897 -> 0.187880`
+(`8/22/5`), Hadou31 `0.148912 -> 0.129832` (`6/17/3`), and stress60
+`0.221115 -> 0.198264` (`14/19/12`). Within stress60, clean, silence300, and
+tempo1.2 improved; noise20 was mixed and pitch+3 regressed.
+
+The predefined stop fired on ordinary JSUT: its 22 common-stable rows regressed
+`0.115028 -> 0.145764` with W/T/L `2/17/3`, including basic5000
+`0.103554 -> 0.170221`. PCGrad exposed frequent objective conflict but did not
+repair the motivating broad-JSUT residual and was worse there than EXP-213.
+Reject this exact optimizer-composition method and close loss weights, task
+grouping, projection rules, and adjacent optimizer-surgery points. The audio
+remains available for optional diagnosis; it is not a keeper or perceptual
+winner. The next pilot must change the mutable function path, data target, or
+conditioning contract rather than another content loss or gradient rule.

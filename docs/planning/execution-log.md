@@ -5025,3 +5025,42 @@ job queue.
   smoke and one 170-step lane. Stop if task-sum/geometry is nonfinite, conflicts
   are absent, a gross row is added, or broad JSUT remains worse. Do not sweep
   weights, grouping, projection, data, scope, LR, horizon, or EMA.
+
+## 2026-08-14T10:22:28Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux `liveconv-grok-auditor`; independent, read-only,
+  no tools or delegation.
+- Verdict: `CONTINUE`.
+- Adopted: finish the already committed EXP-228 lane through its five fixed
+  surfaces and one coarse screen, then replan once. Do not open PCGrad weight,
+  grouping, projection, data, scope, LR, horizon, or EMA neighbors.
+- Discarded as requested: content-cycle neighbors, human87/DTW retries, the
+  local tongue-twister as a browser target, hash/review ceremony, automatic
+  quality claims, and a second training lane.
+- Evidence gap resolved: the auditor snapshot ended just after commit and could
+  not see the smoke or 170-step job. Direct runtime evidence below records both;
+  its observed GPU load was the active screen, not an idle or stray process.
+
+## 2026-08-14T10:24:00Z - EXP-228--232 content/voice PCGrad rejected
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T10:09:00Z.
+- End: 2026-08-14T10:24:00Z.
+- Dependencies: commit `33be19c`; exact cross-corpus170 curriculum; fixed
+  external7/fresh48/Hadou31/stress60/JSUT24 sets; gpu0; listener 8878.
+- Result: the real two-row smoke was finite at 5,371,280,896 peak allocated
+  bytes and observed cosine `-0.08924`. Training completed 170 updates in
+  127.28 seconds at 5,872,224,256 peak bytes. PCGrad found 92 conflicts in 170
+  rows, cosine mean `-0.02275`. EMA adapter SHA-256 is
+  `6d09a5bd053e448cdc56b90a3aa5890bb903278620cf4c4aae1991e95080ccb0`.
+  Published and screened 850 WAVs. No candidate-added consensus gross row
+  appeared. Exact common-stable source distance moved external7
+  `0.256410 -> 0.223077`, fresh48 `0.195897 -> 0.187880`, Hadou31
+  `0.148912 -> 0.129832`, stress60 `0.221115 -> 0.198264`, and JSUT24
+  `0.115028 -> 0.145764`.
+- Problems: the motivating ordinary-JSUT stop still fired despite conflicts on
+  more than half the rows; basic5000 regressed `0.103554 -> 0.170221`. The
+  auxiliary ASR screen cannot decide naturalness, target identity, or emotion.
+- Rework: reject this exact method and close optimizer-surgery neighbors. Do
+  not tune weights or projection. Move to a function-path, target-data, or
+  conditioning intervention while retaining one committed GPU lane at a time.

@@ -245,7 +245,8 @@ claims from that artifact are superseded. The active join is now:
         -> retain EXP-213 as the unheard cross-corpus technical survivor
         -> EXP-228 return to EXP-213 MSE; split per-row content vs voice gradients with PCGrad
         -> EXP-229--232 prebound fresh48 / Hadou31 / stress60 / JSUT24
-        -> one fixed task grouping; no loss-weight/projection/data/scope sweep
+        -> 850 WAVs; 92/170 conflicts, no added gross, but ordinary JSUT regresses
+        -> optimizer surgery closed; next change mutable function path, data target, or condition
         -> operator hearing when available
 ```
 
