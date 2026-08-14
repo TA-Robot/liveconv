@@ -1,6 +1,6 @@
 # EXP-223: X-VC discrete final-waveform semantic cycle
 
-Status: Admitted listen-now training pilot; not selected
+Status: completed listen-now; rejected by broad JSUT stop; not selected
 
 ## Goal
 
@@ -60,4 +60,36 @@ Focused policy, codebook-loss, runner, and render tests passed `100/100`. Exact
 CPU admission on curriculum SHA-256
 `44d2ba9c03d44437711c7b7d359f519672dca32696ba73b3fcd178b07024b931`
 reported 170 training rows and seven external evaluation rows. A real-model
-two-row backward must still prove the actual 50 Hz / pooled-token boundary.
+two-row backward subsequently proved the actual 50 Hz / pooled-token boundary.
+
+## Result
+
+The first real smoke exposed a channel/time-axis mismatch in the local loss
+adapter, not a model or codebook mismatch. The real X-VC boundary is
+`[batch, 1280, time]`; commit `3972ab0` aligned the loss and its test with the
+official channel-first pooling path. Smoke v3 then completed two finite
+backward steps with 5,414,245,888 peak allocated bytes and a nonzero final-WAV
+gradient.
+
+The one admitted pilot completed 170 updates in 112.79 seconds with
+5,876,832,256 peak allocated bytes. The EMA adapter SHA-256 is
+`6915c3129cea36f7f729c55a5b6c5d42aaa8988bb7266f5b73c84330ebbc9aad`.
+It published 850 comparison WAVs across external7, fresh48, Hadou31, stress60,
+and JSUT24. No candidate-added consensus gross row appeared; fresh48 retained
+the same two gross rows as control69.
+
+On exact cross-arm common-stable rows, source-relative auxiliary distance moved
+external7 `0.256410 -> 0.189744`, fresh48 `0.191800 -> 0.196676`, Hadou31
+`0.133050 -> 0.095950`, stress60 `0.222633 -> 0.170793`, and JSUT24
+`0.115028 -> 0.152474`. Noise20 improved `0.271445 -> 0.172727` and tempo1.2
+improved source-relative `0.261932 -> 0.237879`, although its known-text
+distance slightly worsened `0.473903 -> 0.481542`. The training token objective
+also diverged from normalized `1.309` to `5.315` while token accuracy fell from
+`0.267` to `0.133`.
+
+The broad JSUT regression fires the predefined stop. Reject this exact method
+and close token-weight, distance-scale, codebook, pooling, layer, LR, horizon,
+and EMA neighbors. The audio remains available for optional diagnosis, but it
+is not a keeper or perceptual winner. After three final-WAV content
+representations produced the same cross-domain tradeoff, the next retraining
+method must change a different axis rather than tune this content-cycle family.

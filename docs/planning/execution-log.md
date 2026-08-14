@@ -4939,3 +4939,67 @@ job queue.
   lane only if codebook shape, finite loss, waveform gradient, and memory pass.
   Do not sweep token weight, distance scale, codebook, pooling, layer, data,
   pairing, scope, LR, horizon, or EMA.
+
+## 2026-08-14T09:20:25Z - Grok progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux `liveconv-grok-auditor`.
+- Task: independent 30-minute direction and GPU-idle audit.
+- Result: `REDIRECT`. The method and five fixed surfaces remained relevant, but
+  no new audio existed and the committed EXP-223 smoke had not actually
+  launched for more than 40 minutes.
+- Problems: the original terminal had exited without a smoke result while GPU0
+  remained idle. Operator localStorage remained unobservable.
+- Rework: verdict adopted. Stop additional design, recover the exact committed
+  command, and execute smoke -> one 170-update lane -> five screens.
+
+## 2026-08-14T09:40:00Z - EXP-223 real-axis correction committed
+
+- Agent: `primary-integrator`.
+- Task: resolve the real smoke's `discrete output-cycle codebook drifted` stop.
+- Dependencies: commit `7c029b2`; official local WhisperVQ implementation; one
+  failed real smoke with no checkpoint or audio.
+- Result: the codebook was correctly 16,384 by 1,280. The adapter had mistaken
+  the official `[batch, channel, time]` saved hidden state for
+  `[batch, time, channel]`. Commit `3972ab0` changed only that axis boundary and
+  its test. The X-VC-runtime focused test passed; smoke v3 completed two finite
+  backward steps with nonzero waveform gradient at 5,414,245,888 peak bytes.
+- Problems: the lightweight project `.venv` does not contain torch; ten
+  torch-dependent tests fail to import there. The pinned X-VC runtime is the
+  admitted environment and passed the changed test.
+- Rework: no method parameter changed. Launch the already-admitted full lane.
+
+## 2026-08-14T09:50:25Z - Grok progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux `liveconv-grok-auditor`.
+- Task: independent 30-minute direction, method-value, and GPU-use audit.
+- Result: `CONTINUE`. New committed code and EXP-223 audio satisfied the time
+  gate. It required completing the same checkpoint's fixed five screens before
+  another training idea and closing the content-cycle family on broad
+  fresh/JSUT regression.
+- Problems: its snapshot could not yet prove all five surfaces or see operator
+  localStorage.
+- Rework: verdict adopted. Finish the frozen surfaces and screen once; do not
+  open a token-weight, codebook, pooling, layer, LR, or horizon neighbor.
+
+## 2026-08-14T09:56:26Z - EXP-223--227 discrete semantic cycle rejected
+
+- Agent: `primary-integrator`.
+- Task: train the one fixed categorical final-WAV objective and publish/screen
+  the unchanged EMA checkpoint on all five surfaces.
+- Dependencies: commits `7c029b2` and `3972ab0`; exact cross-corpus170 source
+  and target schedule; fixed external7/fresh48/Hadou31/stress60/JSUT24 sets.
+- Result: training completed 170 updates in 112.79 seconds at 5,876,832,256
+  peak allocated bytes. EMA adapter SHA-256 is
+  `6915c3129cea36f7f729c55a5b6c5d42aaa8988bb7266f5b73c84330ebbc9aad`.
+  Published and screened 850 WAVs. Exact common-stable source distance moved
+  external7 `0.256 -> 0.190`, fresh48 `0.192 -> 0.197`, Hadou31
+  `0.133 -> 0.096`, stress60 `0.223 -> 0.171`, and JSUT24
+  `0.115 -> 0.152`. Fresh retained control69's same two gross rows and added
+  none; every other surface had zero consensus gross rows.
+- Problems: the normalized training token loss diverged `1.309 -> 5.315` and
+  accuracy fell `0.267 -> 0.133`. Despite external/Hadou/noise gains, JSUT
+  produced only one win, seventeen ties, and four losses on common-stable rows.
+- Rework: the predefined broad-content stop rejects this exact method. Close
+  discrete loss neighbors and the three-point final-WAV content-cycle family.
+  Retain EXP-213 as the unheard cross-corpus technical survivor and choose a
+  genuinely different retraining axis next.

@@ -240,6 +240,9 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-223 frozen 16,384-way WhisperVQ token classification on final WAV
         -> EXP-224--227 prebound fresh48 / Hadou31 / stress60 / JSUT24
         -> one normalized categorical objective; no token/codebook/pooling sweep
+        -> 850 WAVs; external/Hadou/noise improve but JSUT regresses broadly
+        -> exact discrete objective and final-WAV content-cycle representation family closed
+        -> retain EXP-213 as the unheard cross-corpus technical survivor
         -> operator hearing when available
 ```
 
