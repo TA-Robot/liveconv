@@ -1014,6 +1014,7 @@ def run(
             smoke["adapter_ema"] = adapter_ema.receipt()
         if pcgrad_metrics:
             smoke["pcgrad"] = pcgrad_metrics[0]
+        method._write_json(arguments.work_dir / "smoke.json", smoke)
         print(json.dumps(smoke, sort_keys=True))
         return 0
     if len(losses) != EXPECTED_ROWS:

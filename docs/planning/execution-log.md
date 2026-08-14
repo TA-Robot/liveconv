@@ -3956,3 +3956,17 @@ job queue.
 - Rework: commit before CUDA, smoke one hard/easy pair, then run one full lane.
   Stop at the first candidate-added gross corruption; do not tune projection or
   reopen EXP-150/171 ratios.
+
+## 2026-08-14T02:32:00Z - EXP-174 first smoke output was not observable
+
+- Agent: `primary-integrator`.
+- Task: run the committed hard/easy PCGrad smoke before full training.
+- Dependencies: commit `77728a1`; exact pinned X-VC runtime and gpu0 lease.
+- Result: the process loaded the 5 GB checkpoint, occupied CUDA, and exited,
+  but the execution wrapper detached during the quiet load and lost the final
+  stdout-only JSON. No full job was admitted from an unobservable smoke.
+- Problems: the inherited smoke path created its work directory but persisted
+  no result file, so process exit alone could not distinguish a finite method
+  smoke from an external execution-wrapper loss.
+- Rework: persist the same smoke payload as `smoke.json`, commit that operational
+  fix, and rerun once. Do not change projection, data, loss, or GPU admission.
