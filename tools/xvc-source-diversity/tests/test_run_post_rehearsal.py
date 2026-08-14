@@ -254,6 +254,55 @@ def test_src4vc_pseudoparallel_policy_changes_only_source_corpus_block() -> None
     assert "LR" in policy["independent_variable"]
 
 
+def test_pseudoparallel_output_speaker_policy_changes_only_final_wav_loss() -> None:
+    policy = post.listening_policy(
+        post.PSEUDOPARALLEL_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp252"
+    assert policy["candidate_id"] == (
+        "cross-corpus170-pseudoparallel-output-speaker-ema170"
+    )
+    assert "final converted waveform" in policy["independent_variable"]
+    assert "weight-10 cosine loss" in policy["independent_variable"]
+
+
+def test_output_speaker_identity_reaches_final_waveform_gradient() -> None:
+    from types import SimpleNamespace
+
+    import torch
+
+    class FakeSpeakerModel(torch.nn.Module):
+        def forward(self, features):
+            embedding = features.mean(dim=1)
+            return embedding, features
+
+    speaker_encoder = SimpleNamespace(
+        feat_extractor=lambda waveform: torch.stack(
+            (waveform, torch.ones_like(waveform)), dim=-1
+        ),
+        model=FakeSpeakerModel().eval(),
+    )
+    reconstruction = torch.tensor([[[1.0, 0.0, -1.0, 0.0]]], requires_grad=True)
+    target = torch.tensor([[[2.0, 2.0, 2.0, 2.0]]])
+
+    loss, metrics = post.output_speaker_identity_regularizer(
+        reconstruction,
+        target,
+        speaker_encoder=speaker_encoder,
+        torch=torch,
+    )
+    loss.backward()
+
+    assert metrics["output_speaker_identity_similarity"] < 1.0
+    assert metrics["output_speaker_identity_loss"] > 0.0
+    assert reconstruction.grad is not None
+    assert torch.count_nonzero(reconstruction.grad).item() > 0
+
+
 def test_speaker_path_loss_contains_only_the_weighted_voice_target() -> None:
     import torch
 

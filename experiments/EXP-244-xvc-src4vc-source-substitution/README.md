@@ -1,6 +1,7 @@
 # EXP-244: SRC4VC smartphone source substitution
 
-Status: trained; broad listen-now rendering in progress; unheard and unselected
+Status: technically completed; exact substitution closed for content improvement;
+unheard and unselected
 
 ## Goal
 
@@ -80,3 +81,34 @@ The initial external7 screen found no gross row. On exact decoder-stable rows,
 source-relative distance moved from control69 `0.256410` to candidate
 `0.223077`, and known-text distance moved `0.370868 -> 0.270868`. This admits
 the prebound broad render only; it does not establish audible quality.
+
+## Broad result and decision
+
+EXP-245--250 published fresh48, Hadou31, stress60, balanced JSUT24, the
+expanded 144-row matrix, and thirty rows from fifteen SRC4VC speakers excluded
+from training. No surface added a candidate-only gross corruption row.
+
+The direct comparison below joins only decoder-stable rows shared by the old
+EXP-238 and new EXP-244 listener bundles. W/T/L is new versus old with the
+source-relative auxiliary content distance; lower is better.
+
+| Surface | Rows | EXP-238 -> EXP-244 | W/T/L |
+|---|---:|---:|---:|
+| external7 | 5 | `0.256410 -> 0.223077` | 1/4/0 |
+| fresh48 | 37 | `0.209879 -> 0.236170` | 3/29/5 |
+| Hadou31 | 26 | `0.127328 -> 0.120486` | 4/21/1 |
+| stress60 | 46 | `0.203333 -> 0.214828` | 3/39/4 |
+| JSUT24 | 22 | `0.123253 -> 0.123253` | 0/22/0 |
+| expanded144 | 105 | `0.363638 -> 0.369667` | 6/91/8 |
+
+On expanded144, clean, noise30, long, and very-long subsets improved slightly;
+short, pitch+3, and several individual silence/tempo rows regressed. The
+SRC4VC-heldout surface had no EXP-238 render; against control69 its 24 stable
+rows moved `0.124526 -> 0.120641`, W/T/L `2/19/3`.
+
+The exact SRC4VC85-for-JSUT85 substitution therefore does not improve content
+robustness broadly and is closed on that claim. It remains on 8878 only as an
+unheard audible alternative: every joined candidate WAV changed, and ASR
+cannot determine whether naturalness or target-voice fit improved. Do not open
+a corpus-ratio, neighbor-speaker, horizon, loss, or optimizer sweep from this
+result.

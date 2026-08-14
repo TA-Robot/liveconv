@@ -119,6 +119,9 @@ DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE = (
 )
 SPEAKER_PATH_UNPAIRED_OBJECTIVE = "factorized-unpaired-human-speaker-path-adversarial"
 PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE = "pseudoparallel-generative-real-adversarial"
+PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE = (
+    "pseudoparallel-generative-real-adversarial-output-speaker"
+)
 OUTPUT_CYCLE_CONTENT_WEIGHT = 1000.0
 CONTRASTIVE_CONTENT_TEMPERATURE = 0.1
 SEQUENTIAL_OPTIMIZER = "sequential"
@@ -136,6 +139,10 @@ PARAMETER_ANCHOR_IMPLEMENTATION = "l2-sp-control69-trainable-parameters/v1"
 SOURCE_ACTIVITY_ENVELOPE_WEIGHT = 10.0
 SOURCE_ACTIVITY_ENVELOPE_IMPLEMENTATION = (
     "normalized-abs-envelope-20ms-window-10ms-hop/v1"
+)
+OUTPUT_SPEAKER_IDENTITY_WEIGHT = 10.0
+OUTPUT_SPEAKER_IDENTITY_IMPLEMENTATION = (
+    "frozen-xvc-eres2net-final-waveform-cosine/v1"
 )
 DIVERSE_RETENTION_KINDS = {
     JSUT_RETENTION_OUTPUT_KIND,
@@ -169,12 +176,20 @@ def listening_policy(
 
     if (
         manifest_kind in PSEUDOPARALLEL_KINDS
-        or training_objective == PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE
+        or training_objective
+        in {
+            PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+            PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
+        }
     ):
         if (
             manifest_kind not in PSEUDOPARALLEL_KINDS
             or trainable_target != LORA69_TARGET
-            or training_objective != PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE
+            or training_objective
+            not in {
+                PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+                PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
+            }
             or not use_adapter_ema
             or optimizer_mode != SEQUENTIAL_OPTIMIZER
             or parameter_anchor
@@ -182,6 +197,13 @@ def listening_policy(
         ):
             raise PostRehearsalError(
                 "pseudoparallel supervision requires an exact admitted pilot"
+            )
+        if (
+            manifest_kind == SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND
+            and training_objective == PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE
+        ):
+            raise PostRehearsalError(
+                "output speaker identity requires the retained EXP-238 curriculum"
             )
         if manifest_kind == SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND:
             return {
@@ -207,6 +229,34 @@ def listening_policy(
                     "control69 LoRA69 initialization, complete generative and real "
                     "adversarial losses, LR, sequential optimizer, 170 updates, "
                     "gradient clip, zero condition, and EMA remain fixed"
+                ),
+            }
+        if training_objective == PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE:
+            return {
+                "slug": "exp252",
+                "candidate_id": (
+                    "cross-corpus170-pseudoparallel-output-speaker-ema170"
+                ),
+                "candidate_name": (
+                    "EXP-252 / source-aligned targets / final-WAV speaker / EMA"
+                ),
+                "run_kind": "EXP-252 X-VC final-WAV speaker identity evaluation",
+                "result_kind": (
+                    "liveconv-exp252-xvc-pseudoparallel-output-speaker-ema/v1"
+                ),
+                "question": (
+                    "Does direct final-WAV target-speaker supervision improve "
+                    "X-VC identity without broad content corruption?"
+                ),
+                "independent_variable": (
+                    "relative to EXP-238, add one weight-10 cosine loss between "
+                    "the final converted waveform and the assigned real Amitaro "
+                    "target in X-VC's frozen ERes2Net speaker space; the exact "
+                    "CV48/JSUT85/JVS3/Hadou34 curriculum, source-aligned control69 "
+                    "generative targets, real-wave discriminator target, internal "
+                    "speaker predictor loss, LoRA69 initialization and scope, LR, "
+                    "sequential optimizer, 170 updates, clip, zero condition, and "
+                    "EMA remain fixed"
                 ),
             }
         return {
@@ -2112,6 +2162,66 @@ def source_activity_envelope_regularizer(
     }
 
 
+def differentiable_xvc_speaker_embedding(
+    speaker_encoder: Any,
+    waveform: Any,
+    *,
+    torch: Any,
+) -> Any:
+    """Run X-VC's frozen ERes2Net without its evaluation-time detach."""
+    extractor = getattr(speaker_encoder, "feat_extractor", None)
+    model = getattr(speaker_encoder, "model", None)
+    if (
+        extractor is None
+        or model is None
+        or waveform.ndim != 3
+        or waveform.shape[1] != 1
+    ):
+        raise PostRehearsalError("output speaker identity encoder is unavailable")
+    with torch.autocast(device_type="cuda", enabled=False):
+        mono = waveform.squeeze(1).float()
+        features = torch.stack([extractor(item) for item in mono])
+        embedding, _latent = model(features)
+        embedding = torch.nn.functional.normalize(embedding.float(), dim=-1)
+    if embedding.ndim != 2 or not bool(torch.isfinite(embedding).all()):
+        raise PostRehearsalError("output speaker identity embedding is malformed")
+    return embedding
+
+
+def output_speaker_identity_regularizer(
+    reconstruction: Any,
+    target_waveform: Any,
+    *,
+    speaker_encoder: Any,
+    torch: Any,
+    weight: float = OUTPUT_SPEAKER_IDENTITY_WEIGHT,
+) -> tuple[Any, dict[str, float]]:
+    """Pull the final converted WAV toward the real target speaker embedding."""
+    if not math.isfinite(weight) or weight <= 0.0:
+        raise PostRehearsalError("output speaker identity weight is invalid")
+    output_embedding = differentiable_xvc_speaker_embedding(
+        speaker_encoder, reconstruction, torch=torch
+    )
+    with torch.no_grad():
+        target_embedding = differentiable_xvc_speaker_embedding(
+            speaker_encoder, target_waveform, torch=torch
+        )
+    if output_embedding.shape != target_embedding.shape:
+        raise PostRehearsalError("output speaker identity shape drifted")
+    similarity = torch.nn.functional.cosine_similarity(
+        output_embedding, target_embedding, dim=-1
+    ).mean()
+    distance = 1.0 - similarity
+    loss = weight * distance
+    if not bool(torch.isfinite(loss)):
+        raise PostRehearsalError("output speaker identity loss is non-finite")
+    return loss, {
+        "output_speaker_identity_similarity": float(similarity.detach().cpu()),
+        "output_speaker_identity_distance": float(distance.detach().cpu()),
+        "output_speaker_identity_loss": float(loss.detach().cpu()),
+    }
+
+
 def run(
     arguments: argparse.Namespace,
     manifest: Mapping[str, Any],
@@ -2251,6 +2361,7 @@ def run(
         DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
         SPEAKER_PATH_UNPAIRED_OBJECTIVE,
         PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+        PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
     }:
         discriminator, discriminator_optimizer = breadth._load_pretrained_discriminator(
             arguments, config, torch=torch, device=device
@@ -2258,6 +2369,7 @@ def run(
         if arguments.training_objective in {
             REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+            PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
         }:
             target_by_id = {
                 target_id: _pair(target_id, path, digest)
@@ -2267,7 +2379,10 @@ def run(
                 target_id = str(item["target_id"])
                 if (
                     arguments.training_objective
-                    == PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE
+                    in {
+                        PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+                        PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
+                    }
                 ):
                     real_target = arguments.source_work / str(item["real_target_file"])
                     pair = _pair(
@@ -2443,6 +2558,7 @@ def run(
                         in {
                             REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
                             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+                            PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
                         }
                         else None
                     ),
@@ -2473,6 +2589,19 @@ def run(
                         )
                     ),
                     output_regularizer=(
+                        (
+                            lambda reconstruction, _current_batch: (
+                                output_speaker_identity_regularizer(
+                                    reconstruction,
+                                    realism_targets[str(item["target_id"])],
+                                    speaker_encoder=trained.speaker_encoder,
+                                    torch=torch,
+                                )
+                            )
+                        )
+                        if arguments.training_objective
+                        == PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE
+                        else
                         (
                             lambda reconstruction, current_batch: (
                                 source_activity_envelope_regularizer(
@@ -2771,6 +2900,22 @@ def run(
             if arguments.source_activity_envelope
             else None
         ),
+        "output_speaker_identity": (
+            {
+                "implementation": OUTPUT_SPEAKER_IDENTITY_IMPLEMENTATION,
+                "weight": OUTPUT_SPEAKER_IDENTITY_WEIGHT,
+                "target": "assigned-authorized-real-Amitaro-window",
+                "first_similarity": adversarial_metrics[0][
+                    "output_speaker_identity_similarity"
+                ],
+                "last_similarity": adversarial_metrics[-1][
+                    "output_speaker_identity_similarity"
+                ],
+            }
+            if arguments.training_objective
+            == PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE
+            else None
+        ),
         "adapter_ema": adapter_ema.receipt() if adapter_ema is not None else None,
         "candidate_checkpoint": checkpoint_metadata,
         "optimizer_steps": optimizer_steps,
@@ -2813,6 +2958,8 @@ def run(
                     else "source-aligned-control69-complete-generative-target"
                     if arguments.training_objective
                     == PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE
+                    or arguments.training_objective
+                    == PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE
                     else "selective-repair-or-retention-target"
                 ),
             }
@@ -2895,6 +3042,7 @@ def parser() -> argparse.ArgumentParser:
             DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
             SPEAKER_PATH_UNPAIRED_OBJECTIVE,
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+            PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
         ),
         default=GENERATIVE_OBJECTIVE,
     )

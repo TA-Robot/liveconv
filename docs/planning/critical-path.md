@@ -265,6 +265,12 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-244 replace JSUT85 training rows with 85 distinct SRC4VC smartphone speakers
         -> retain CV48/JVS3/Hadou34, ordered Amitaro targets, loss/scope/LR/170 updates/EMA
         -> reserve 15 disjoint SRC4VC speakers x two rows for evaluation
+        -> EXP-245--250 publish six fixed surfaces; no candidate-added gross row
+        -> direct EXP-238 comparison improves external/Hadou but regresses fresh/stress/expanded
+        -> close exact source substitution for broad content improvement; retain unheard only
+        -> EXP-251 ECAPA direction is flat/mixed: +0.000246 target cosine, 155W/159L
+        -> close SRC4VC substitution completely; ECAPA is not a new-lane gate
+        -> EXP-252 return to EXP-238; add direct frozen-ERes2Net loss on final WAV only
         -> operator hearing when available
 ```
 

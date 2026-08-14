@@ -41,3 +41,18 @@ satisfy a promote-tier speaker-evidence gate.
 This screen cannot identify a person, measure naturalness, prosody, or emotion,
 select a perceptual winner, or promote a profile. Human hearing remains the
 quality decision when an operator is available.
+
+## Result
+
+Commit `92e1c9f` embedded 943 unique WAV identities covering 314 paired rows.
+Aggregate target-to-output cosine moved only `0.492870 -> 0.493116`, a mean
+delta of `+0.000246`, with 155 increases and 159 decreases. Target-over-source
+advantage changed by only `+0.000430`. Expanded144 regressed target similarity
+by `-0.001260` and target advantage by `-0.002143`; the other five surfaces
+showed small mixed movements.
+
+The SRC4VC substitution therefore has no consistent target-fit direction in
+this auxiliary encoder. Combined with the broad content result, close the
+exact substitution completely and return to EXP-238 for a method-level change.
+Do not use this result to reopen SRC4VC ratios, neighboring speaker sets, or an
+identity-path overlay, and do not infer audible identity or naturalness.

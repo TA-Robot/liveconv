@@ -5312,3 +5312,90 @@ job queue.
   EXP-245--249 to fresh48, Hadou31, stress60, JSUT24, and EXP-243 expanded
   stress. Add the disjoint SRC4VC30 evaluation separately. Automatic output
   remains content/corruption evidence only.
+
+## 2026-08-14T12:22:19Z - Grok audit requires EXP-244 closure before a new lane
+
+- Agent: `grok-4.6-project-progress-auditor` in tmux
+  `liveconv-grok-auditor`; independent, read-only, and no delegation.
+- Task: decide whether the SRC4VC lane remains the shortest route to better
+  voice quality while human hearing is unavailable.
+- Result: `CONTINUE`. New external7 audio satisfied the thirty-minute audio
+  criterion. Complete the remaining prebound surfaces, run only coarse
+  content/corruption screening, then write either a technical stop or
+  `viable/unselected` before another experiment.
+- Adopted: yes. EXP-245--250 were rendered and published without opening a
+  second training lane. No hash, receipt, review, promote, neighboring corpus
+  ratio, or hyperparameter sweep was added.
+- Problems: the auditor snapshot could not yet see the completed training
+  report, all remaining listener indexes, or operator localStorage.
+- Rework: close the lane from its complete result and use any next diagnostic
+  only if its outcomes choose different training work.
+
+## 2026-08-14T12:44:00Z - EXP-244 broad closure and EXP-251 direction screen admitted
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T12:19:00Z.
+- End: 2026-08-14T12:44:00Z.
+- Dependencies: exact EXP-238/244 listener joins; EXP-245--250 renders; v4
+  faster-whisper screen; verified local SpeechBrain ECAPA runtime; commit
+  `ccc8e0e`; gpu0.
+- Result: all six additional surfaces completed with no candidate-added gross
+  row. Direct decoder-stable EXP-238-to-EXP-244 source-relative results were:
+  external7 `0.256410 -> 0.223077` (1/4/0), fresh48
+  `0.209879 -> 0.236170` (3/29/5), Hadou31 `0.127328 -> 0.120486`
+  (4/21/1), stress60 `0.203333 -> 0.214828` (3/39/4), JSUT24 exact
+  tie `0.123253`, and expanded144 `0.363638 -> 0.369667` (6/91/8).
+  The heldout SRC4VC surface had no EXP-238 arm; versus control69 its 24 stable
+  rows moved `0.124526 -> 0.120641` (2/19/3).
+- Problems: the source substitution changes every paired candidate WAV, but
+  ASR says only that broad content robustness did not improve. It cannot say
+  whether target fit or naturalness improved. Human hearing is unavailable.
+- Rework: close exact SRC4VC85 substitution as a content-improvement method and
+  retain its audio unheard/unselected. Admit one batch ECAPA direction screen
+  across the 314 paired rows, loading the model once. This diagnostic cannot
+  identify a person, measure naturalness, or select a winner; its only decision
+  is identity-path work versus returning to EXP-238 for another method family.
+
+## 2026-08-14T12:50:00Z - EXP-251 speaker-fit direction completed
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T12:44:00Z.
+- End: 2026-08-14T12:50:00Z.
+- Dependencies: commits `ccc8e0e` and `92e1c9f`; exact paired EXP-238/244
+  listener rows; operator-authorized Amitaro lineage; local ECAPA tree SHA-256
+  `8addaeebdfb312b55d9f7c020f4e6529c65ce4e4fb0772af40398a66b9aa6ea8`;
+  gpu0.
+- Result: embedded 943 unique WAV identities over 314 paired rows in one model
+  load. Aggregate target cosine moved `0.492870 -> 0.493116`, delta
+  `+0.000246`, with 155 increases and 159 decreases. Target-over-source
+  advantage moved only `+0.000430`. Expanded144 regressed target cosine
+  `-0.001260` and advantage `-0.002143`; other surfaces were small and mixed.
+  Report SHA-256 is
+  `50d48706fbd59a1ed90714ba6a99d86ca14a7dc2b1a9000265c5ad0b3576916e`.
+- Problems: the formal speaker package locks Torch 2.6 while the installed
+  private CUDA batch runtime is Torch/TorchAudio 2.8. The formal lock was not
+  weakened; the exact actual runtime tuple is recorded, so this cannot satisfy
+  promote-tier evidence. ECAPA cannot judge audible identity or naturalness.
+- Rework: close SRC4VC85 substitution completely. Do not reopen a ratio,
+  speaker-set neighbor, or SRC identity overlay. Return to EXP-238 for one
+  method-level training change.
+
+## 2026-08-14T12:53:04Z - Grok audit simplifies the next training decision
+
+- Agent: `grok-4.6-project-progress-auditor` in tmux
+  `liveconv-grok-auditor`; independent, read-only, and no delegation.
+- Task: decide whether EXP-251 and the next lane remain the shortest route to
+  improved audible X-VC quality.
+- Result: `SIMPLIFY`. The auditor accepted the completed multi-surface audio
+  and EXP-244 closure, but rejected making ECAPA a training admission gate or
+  reopening any SRC4VC neighbor. It directed one immediate method-level pilot
+  from EXP-238 with one variable and the existing fixed evaluation surfaces.
+- Adopted: yes. EXP-251 is reference-only and does not block the next lane.
+  EXP-252 changes no source data, scope, LR, horizon, optimizer, or EMA; it adds
+  one direct frozen-ERes2Net cosine loss on the final WAV because the existing
+  speaker predictor supervises only converter latent `x`.
+- Problems: gpu0 became idle after the short EXP-251 batch. Operator hearing
+  remains unavailable and machine evidence cannot select quality.
+- Rework: skip more metrics and commit EXP-252 after focused tests and real
+  170-row CPU admission, then run a two-row backward smoke and one 170-update
+  gpu0 lane. Publish audio before any neighboring method is considered.
