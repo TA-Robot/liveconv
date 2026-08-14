@@ -46,6 +46,12 @@ from prepare_jsut_retention_curriculum import (  # noqa: E402
 from prepare_jsut_retention_curriculum import (  # noqa: E402
     OUTPUT_KIND as JSUT_RETENTION_OUTPUT_KIND,
 )
+from prepare_commonvoice_retention_curriculum import (  # noqa: E402
+    EXPECTED_COMPOSITION as COMMONVOICE_RETENTION_EXPECTED_DOMAINS,
+)
+from prepare_commonvoice_retention_curriculum import (  # noqa: E402
+    OUTPUT_KIND as COMMONVOICE_RETENTION_OUTPUT_KIND,
+)
 from prepare_selective_retention_curriculum import (  # noqa: E402
     OUTPUT_KIND as SELECTIVE_OUTPUT_KIND,
 )
@@ -75,6 +81,10 @@ EMA_POWER = 2.0 / 3.0
 EMA_MIN_VALUE = 0.0
 PARAMETER_ANCHOR_COEFFICIENT = 1.0
 PARAMETER_ANCHOR_IMPLEMENTATION = "l2-sp-control69-trainable-parameters/v1"
+DIVERSE_RETENTION_KINDS = {
+    JSUT_RETENTION_OUTPUT_KIND,
+    COMMONVOICE_RETENTION_OUTPUT_KIND,
+}
 
 
 class PostRehearsalError(RuntimeError):
@@ -156,7 +166,12 @@ def listening_policy(
         raise PostRehearsalError("unknown optimizer mode")
     if use_adapter_ema:
         if (
-            manifest_kind not in {SELECTIVE_OUTPUT_KIND, JSUT_RETENTION_OUTPUT_KIND}
+            manifest_kind
+            not in {
+                SELECTIVE_OUTPUT_KIND,
+                JSUT_RETENTION_OUTPUT_KIND,
+                COMMONVOICE_RETENTION_OUTPUT_KIND,
+            }
             or trainable_target != LORA69_TARGET
             or training_objective != REAL_REFERENCE_ADVERSARIAL_OBJECTIVE
         ):
@@ -180,6 +195,35 @@ def listening_policy(
                     "precommitted category-balanced JSUT; hard85, target IDs, "
                     "updates, scope, objective, optimizer, clip, condition, and "
                     "upstream EMA remain fixed"
+                ),
+            }
+        if manifest_kind == COMMONVOICE_RETENTION_OUTPUT_KIND:
+            return {
+                "slug": "exp186",
+                "candidate_id": (
+                    "cv12-commonvoice48-retention-real-adversarial-ema170"
+                ),
+                "candidate_name": (
+                    "EXP-186 / Common Voice 48-speaker retention + "
+                    "real-adversarial + EMA"
+                ),
+                "run_kind": (
+                    "EXP-186 X-VC Common Voice 48-speaker retention "
+                    "external evaluation"
+                ),
+                "result_kind": (
+                    "liveconv-exp186-xvc-commonvoice48-retention-ema/v1"
+                ),
+                "question": (
+                    "Does speaker-balanced retention data improve the surviving "
+                    "EXP-163 method across independent frozen gates?"
+                ),
+                "independent_variable": (
+                    "only the easy85 retention source and frozen control69 target "
+                    "data changes from EXP-163's mostly one-speaker Hadou mix to "
+                    "85 balanced exposures from 48 precommitted Common Voice "
+                    "speakers; hard85, target IDs, updates, scope, objective, "
+                    "optimizer, clip, condition, and upstream EMA remain fixed"
                 ),
             }
         return {
@@ -328,6 +372,8 @@ def load_manifest(
     kind = value.get("kind")
     if kind == JSUT_RETENTION_OUTPUT_KIND:
         expected_domains = JSUT_EXPECTED_DOMAINS
+    elif kind == COMMONVOICE_RETENTION_OUTPUT_KIND:
+        expected_domains = COMMONVOICE_RETENTION_EXPECTED_DOMAINS
     elif kind in {HARD_OUTPUT_KIND, SELECTIVE_OUTPUT_KIND}:
         expected_domains = HARD_EXPECTED_DOMAINS
     else:
@@ -339,6 +385,7 @@ def load_manifest(
             HARD_OUTPUT_KIND,
             SELECTIVE_OUTPUT_KIND,
             JSUT_RETENTION_OUTPUT_KIND,
+            COMMONVOICE_RETENTION_OUTPUT_KIND,
         }
         or value.get("composition") != expected_domains
         or not isinstance(items, list)
@@ -370,7 +417,7 @@ def load_manifest(
             or not base._is_sha256(item.get("target_sha256"))
             or not isinstance(item.get("source_relative_distance"), (int, float))
             or (
-                kind != JSUT_RETENTION_OUTPUT_KIND
+                kind not in DIVERSE_RETENTION_KINDS
                 and float(item["source_relative_distance"]) >= 0.5
             )
         ):
@@ -379,6 +426,7 @@ def load_manifest(
             HARD_OUTPUT_KIND,
             SELECTIVE_OUTPUT_KIND,
             JSUT_RETENTION_OUTPUT_KIND,
+            COMMONVOICE_RETENTION_OUTPUT_KIND,
         } and (
             item.get("curriculum_role") not in {"hard", "easy"}
             or not isinstance(item.get("source_manifest_id"), str)
@@ -390,7 +438,11 @@ def load_manifest(
         if source_root is None:
             raise PostRehearsalError("diverse retention work is required")
         target_root = source_work
-        if kind in {SELECTIVE_OUTPUT_KIND, JSUT_RETENTION_OUTPUT_KIND}:
+        if kind in {
+            SELECTIVE_OUTPUT_KIND,
+            JSUT_RETENTION_OUTPUT_KIND,
+            COMMONVOICE_RETENTION_OUTPUT_KIND,
+        }:
             learning_target = item.get("learning_target")
             base_target_file = item.get("base_teacher_target_file")
             expected_target = (
@@ -402,7 +454,7 @@ def load_manifest(
             if learning_target == RETENTION_TARGET:
                 expected_root = (
                     "diverse-work"
-                    if kind == JSUT_RETENTION_OUTPUT_KIND
+                    if kind in DIVERSE_RETENTION_KINDS
                     else "control-work"
                 )
             requires_base_target = (
@@ -430,7 +482,7 @@ def load_manifest(
                     raise PostRehearsalError("base repair target drifted")
             if learning_target == RETENTION_TARGET:
                 target_root = (
-                    diverse_work if kind == JSUT_RETENTION_OUTPUT_KIND else control_work
+                    diverse_work if kind in DIVERSE_RETENTION_KINDS else control_work
                 )
                 if target_root is None:
                     raise PostRehearsalError("retention work is required")
@@ -755,7 +807,7 @@ def smoke_rows(
         return items[:2]
     if parameter_anchor:
         return items[:2]
-    if manifest.get("kind") != JSUT_RETENTION_OUTPUT_KIND:
+    if manifest.get("kind") not in DIVERSE_RETENTION_KINDS:
         return items[:1]
     hard = next(item for item in items if item.get("curriculum_role") == "hard")
     easy = next(item for item in items if item.get("curriculum_role") == "easy")

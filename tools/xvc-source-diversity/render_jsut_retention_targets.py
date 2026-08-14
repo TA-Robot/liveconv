@@ -145,12 +145,19 @@ def run(
     arguments: argparse.Namespace,
     pool: Mapping[str, Any],
     target_rows: Sequence[tuple[str, Path, str]],
+    *,
+    result_kind: str = OUTPUT_KIND,
+    question: str = (
+        "Can a category-balanced Japanese retention branch preserve normal "
+        "behavior under the surviving EXP-163 method?"
+    ),
+    experiment_id: str = "EXP-170",
 ) -> int:
     for name in ("HF_DATASETS_OFFLINE", "HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"):
         if os.environ.get(name) != "1":
             raise JsutTargetError(f"{name}=1 is required before model import")
     if arguments.confirm_gpu_lease != "gpu0" or arguments.device != "cuda:0":
-        raise JsutTargetError("EXP-170 requires the explicit gpu0 lease")
+        raise JsutTargetError(f"{experiment_id} requires the explicit gpu0 lease")
     started = time.monotonic()
     arguments.work_dir.mkdir()
     output_root = arguments.work_dir / "control-outputs"
@@ -162,7 +169,7 @@ def run(
         teacher_id = str(item["id"])
         source_path = arguments.source_root / str(item["filename"])
         samples = base._parse_pcm16_wav(source_path.read_bytes(), teacher_id)
-        model_path = model_source_root / str(item["filename"])
+        model_path = model_source_root / f"{teacher_id}.wav"
         base._write_pcm16(model_path, model_window(samples))
         model_sources[teacher_id] = (model_path, base.sha256_file(model_path))
 
@@ -228,29 +235,32 @@ def run(
         row_root.mkdir(exist_ok=True)
         output_path = row_root / f"teacher-output-{teacher_id}-16k.wav"
         digest = base._write_float_wav(output_path, waveform, sample_rate)
-        output_rows.append(
-            {
-                "target_id": target_id,
-                "teacher_id": teacher_id,
-                "jsut_category": item["jsut_category"],
-                "curriculum_position": item["curriculum_position"],
-                "model_source_sha256": source_digest,
-                "output_sha256": digest,
-            }
-        )
+        output_row = {
+            "target_id": target_id,
+            "teacher_id": teacher_id,
+            "curriculum_position": item["curriculum_position"],
+            "model_source_sha256": source_digest,
+            "output_sha256": digest,
+        }
+        for name in (
+            "jsut_category",
+            "source_id",
+            "exposure",
+            "client_id_sha256",
+        ):
+            if name in item:
+                output_row[name] = item[name]
+        output_rows.append(output_row)
 
     method._write_json(arguments.work_dir / "pool.json", pool)
     result = {
         "schema_version": 1,
-        "kind": OUTPUT_KIND,
+        "kind": result_kind,
         "status": "completed-training-only-target-render",
         "git_commit": base._git_output(
             ["git", "rev-parse", "HEAD"], "repository commit"
         ),
-        "question": (
-            "Can a category-balanced Japanese retention branch preserve normal "
-            "behavior under the surviving EXP-163 method?"
-        ),
+        "question": question,
         "source_manifest_sha256": base.sha256_file(arguments.source_manifest),
         "control_adapter": str(arguments.control_adapter),
         "rows": output_rows,

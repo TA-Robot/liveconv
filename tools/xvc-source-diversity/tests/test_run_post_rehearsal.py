@@ -118,6 +118,21 @@ def test_jsut_retention_changes_only_easy_data_identity() -> None:
     assert "easy85" in policy["independent_variable"]
 
 
+def test_commonvoice_retention_changes_only_easy_data_identity() -> None:
+    policy = post.listening_policy(
+        post.COMMONVOICE_RETENTION_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp186"
+    assert policy["candidate_id"] == (
+        "cv12-commonvoice48-retention-real-adversarial-ema170"
+    )
+    assert "48 precommitted Common Voice" in policy["independent_variable"]
+
+
 def test_paired_pcgrad_has_distinct_listener_identity() -> None:
     policy = post.listening_policy(
         post.SELECTIVE_OUTPUT_KIND,
@@ -275,6 +290,23 @@ def test_parameter_anchor_regularizer_uses_control69_distance() -> None:
 def test_jsut_smoke_exercises_hard_and_diverse_easy_roots() -> None:
     manifest = {
         "kind": post.JSUT_RETENTION_OUTPUT_KIND,
+        "items": [
+            {"curriculum_role": "hard", "source_root": "source-work"},
+            {"curriculum_role": "easy", "source_root": "diverse-work"},
+        ],
+    }
+
+    rows = post.smoke_rows(manifest)
+
+    assert [row["source_root"] for row in rows] == [
+        "source-work",
+        "diverse-work",
+    ]
+
+
+def test_commonvoice_smoke_exercises_hard_and_diverse_easy_roots() -> None:
+    manifest = {
+        "kind": post.COMMONVOICE_RETENTION_OUTPUT_KIND,
         "items": [
             {"curriculum_role": "hard", "source_root": "source-work"},
             {"curriculum_role": "easy", "source_root": "diverse-work"},
