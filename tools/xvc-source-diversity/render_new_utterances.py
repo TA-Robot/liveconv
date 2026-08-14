@@ -1447,6 +1447,68 @@ def candidate_policy(kind: str) -> dict[str, str]:
             ),
         }
     if kind in {
+        "src4vc-pseudoparallel-ema-expanded-stress",
+    }:
+        return {
+            "experiment_id": "EXP-249",
+            "variant_id": "src4vc85-pseudoparallel-real-adv-ema170",
+            "display_name": (
+                "EXP-244 / SRC4VC85 source substitution / pseudoparallel / "
+                "real-adversarial / EMA"
+            ),
+            "result_kind": (
+                "liveconv-exp249-xvc-src4vc-pseudoparallel-expanded-stress144/v1"
+            ),
+            "question": (
+                "Does the SRC4VC85 source substitution remain content-stable "
+                "across the frozen symmetric length and condition matrix?"
+            ),
+        }
+    if kind in {
+        "src4vc-pseudoparallel-ema-fresh48",
+        "src4vc-pseudoparallel-ema-hadou",
+        "src4vc-pseudoparallel-ema-stress",
+        "src4vc-pseudoparallel-ema-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        experiment_id = (
+            "EXP-248"
+            if jsut
+            else "EXP-247"
+            if stress
+            else "EXP-246"
+            if hadou
+            else "EXP-245"
+        )
+        suffix = (
+            "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "src4vc85-pseudoparallel-real-adv-ema170",
+            "display_name": (
+                "EXP-244 / SRC4VC85 source substitution / pseudoparallel / "
+                "real-adversarial / EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-src4vc-pseudoparallel-"
+                f"ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does replacing only JSUT85 with 85 distinct SRC4VC smartphone "
+                "speakers improve the fixed pseudoparallel method across the "
+                "established evaluation surfaces?"
+            ),
+        }
+    if kind in {
         "pseudoparallel-real-adv-ema-fresh48",
         "pseudoparallel-real-adv-ema-hadou",
         "pseudoparallel-real-adv-ema-stress",
@@ -2370,6 +2432,11 @@ def _parser() -> argparse.ArgumentParser:
             "pseudoparallel-real-adv-ema-stress",
             "pseudoparallel-real-adv-ema-jsut",
             "pseudoparallel-real-adv-ema-expanded-stress",
+            "src4vc-pseudoparallel-ema-fresh48",
+            "src4vc-pseudoparallel-ema-hadou",
+            "src4vc-pseudoparallel-ema-stress",
+            "src4vc-pseudoparallel-ema-jsut",
+            "src4vc-pseudoparallel-ema-expanded-stress",
         ),
         default="speaker7",
     )

@@ -1024,6 +1024,34 @@ def test_pseudoparallel_expanded_stress_policy_is_exp243() -> None:
     assert "pseudoparallel-real-adv-ema-expanded-stress" in choices
 
 
+def test_src4vc_pseudoparallel_prebinds_broad_evaluation_contract() -> None:
+    kinds = [
+        "src4vc-pseudoparallel-ema-fresh48",
+        "src4vc-pseudoparallel-ema-hadou",
+        "src4vc-pseudoparallel-ema-stress",
+        "src4vc-pseudoparallel-ema-jsut",
+        "src4vc-pseudoparallel-ema-expanded-stress",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-245",
+        "EXP-246",
+        "EXP-247",
+        "EXP-248",
+        "EXP-249",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "src4vc85-pseudoparallel-real-adv-ema170"
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert all(kind in choices for kind in kinds)
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"

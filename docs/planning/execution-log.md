@@ -5285,3 +5285,30 @@ job queue.
   strict flat multiline parser and admitted only the inventoried native
   24/44.1/48 kHz mono PCM16 combinations, recording each row's actual rate. No
   resampling, row substitution, training method, or split changed.
+
+## 2026-08-14T12:19:00Z - EXP-244 SRC4VC pseudoparallel retraining completed
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T11:47:00Z.
+- End: 2026-08-14T12:19:00Z.
+- Dependencies: commits `d4f89ec`, `5fc51b6`, `659affa`, and `719abce`;
+  pinned SRC4VC archive; exact EXP-238 target sequence and method; gpu0;
+  listener 8878.
+- Result: materialized 115 private corpus rows with 85 disjoint train speakers
+  and fifteen heldout speakers x two rows. The 170-row curriculum composition
+  is CV48/JVS3/Hadou34/SRC4VC85. Control69 generated 170 source-aligned targets
+  in 94.17 seconds at 2,668,426,752 peak bytes. The two-row smoke was finite
+  with 835,584 trainable parameters. Full retraining completed 170 optimizer
+  steps in 142.27 seconds at 6,163,570,688 peak bytes. EMA adapter SHA-256 is
+  `1220290f223ad0e2235eeae6b128f2804d06f178f16d8aceec3480b7a621b4f6`.
+  External7 comparison audio was published on 8878.
+- Problems: initial screen invocation used a runtime without faster-whisper;
+  the next attempt correctly rejected a symlinked HF snapshot. Neither touched
+  audio or produced a result. Reusing the already materialized shared model
+  with exact tree SHA-256 `0d0b95ad...` completed the v4 screen. It found zero
+  gross rows; exact stable source distance moved control69
+  `0.256410 -> 0.223077` and known-text `0.370868 -> 0.270868`.
+- Rework: admit broad fixed rendering; do not select the candidate. Bind
+  EXP-245--249 to fresh48, Hadou31, stress60, JSUT24, and EXP-243 expanded
+  stress. Add the disjoint SRC4VC30 evaluation separately. Automatic output
+  remains content/corruption evidence only.

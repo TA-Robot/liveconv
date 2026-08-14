@@ -1,6 +1,6 @@
 # EXP-244: SRC4VC smartphone source substitution
 
-Status: prepared; private research subset acquisition pending
+Status: trained; broad listen-now rendering in progress; unheard and unselected
 
 ## Goal
 
@@ -61,3 +61,22 @@ Stop on archive or terms drift, invalid audio, speaker leakage, curriculum
 identity drift outside the intended JSUT85 substitution, nonfinite training,
 candidate-added gross corruption, or broad content regression. A passing
 machine screen produces another unheard technical candidate, not a winner.
+
+## Training result
+
+The private subset contains 115 rows with disjoint 85-train/15-evaluation
+speakers. Its manifest SHA-256 is
+`b18606f6bfbeed782f26e2e795d739e41dc9dad41f716436d4a9e37bd8ece96c`.
+The fixed 170-row curriculum SHA-256 is
+`bcef60a8c7157e6da65e9878366441664d6f6e075f110cca5b14fb6505e2ede4`.
+
+Control69 rendered 170 same-content targets in 94.17 seconds at 2,668,426,752
+peak allocated GPU bytes. The two-row smoke was finite with 835,584 trainable
+parameters. Full retraining completed all 170 optimizer steps in 142.27 seconds
+at 6,163,570,688 peak bytes. The EMA adapter SHA-256 is
+`1220290f223ad0e2235eeae6b128f2804d06f178f16d8aceec3480b7a621b4f6`.
+
+The initial external7 screen found no gross row. On exact decoder-stable rows,
+source-relative distance moved from control69 `0.256410` to candidate
+`0.223077`, and known-text distance moved `0.370868 -> 0.270868`. This admits
+the prebound broad render only; it does not establish audible quality.
