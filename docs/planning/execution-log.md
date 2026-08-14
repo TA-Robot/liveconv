@@ -6025,7 +6025,7 @@ job queue.
   MSE/SmoothL1-blend neighbors. Keep the 35 WAVs unheard and unselected. Move
   to a data, teacher-signal, conditioning, or learnable-target method.
 
-## 2026-08-14T17:52:00Z - EXP-303/304 exposure-matched data breadth selected
+## 2026-08-14T17:52:00Z - EXP-303/304 exposure-matched data breadth planned
 
 - Agent: `primary-integrator`; three bounded owners for materialization, runner,
   and renderer; two read-only data/gradient audits.
@@ -6038,13 +6038,50 @@ job queue.
   `outputs["pred"]` would require a new randomly initialized head. Only 167/170
   rows have text and 51 source-speaker classes are singletons, so CTC/GRL is not
   the shortest valid next lane.
-- Result: data inventory found 37 unused exposure-2 Common Voice utterances from
-  37 of EXP-238's 48 authorized training speakers. They total 88.8 seconds,
-  have 37 unique IDs/SHA/nonempty texts, overlap neither fresh48 nor expanded144
-  clients, and already have 37/37 same-content control69 outputs.
+- Result: an initial metadata-only inventory interpreted 37 `exposure=2` rows
+  as unused Common Voice utterances. This interpretation was subsequently
+  disproved by exact source identity preflight; see the 18:09 closure below.
 - Problems: running 207 unique rows only against EXP-238 would confound data
   breadth with 37 additional updates.
-- Rework: EXP-303 appends 37 matched repeats; EXP-304 appends the 37 new
-  utterances. Both use 207 updates and otherwise exact EXP-238 controls. Commit
-  method and plans, then run CPU admission, CUDA smoke, and the two external7
-  lanes sequentially before any broad render.
+- Rework: the planned matched comparison was committed so it could be checked,
+  but no CUDA was authorized until the exact source join passed.
+
+## 2026-08-14T17:53:23Z - Grok project-progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux
+  `liveconv-grok-auditor` (read-only, no tools or delegation).
+- Task: judge whether the last 30 minutes and the redirect after EXP-297 remain
+  the shortest path to broadly robust Japanese realtime X-VC.
+- Result: `CONTINUE`. The auditor accepted EXP-297 as a bounded committed lane
+  that produced 35 external7 WAVs and correctly stopped its neighbors. It
+  explicitly required ending representation/loss micro-edits, dropping generic
+  label/hook infrastructure, and committing one data, teacher, conditioning, or
+  trainable-target method within 15--25 minutes.
+- Adopted at audit time. EXP-303/304 were planned in commit `bc1a75a`, but the
+  later CPU identity failure superseded that admission. Naive CTC/GRL and
+  generic hook work remain discarded.
+- Problems: the 17:50 snapshot preceded the detailed EXP-303/304 board/plan, so
+  Grok could not yet inspect the 37-row method or exposure-matched control.
+- Rework: start with exact CPU identity materialization, then authorize CUDA
+  only if the new-data premise survives.
+
+## 2026-08-14T18:09:00Z - EXP-303/304 identity failure; stopped before CUDA
+
+- Agent: `primary-integrator`; bounded implementation agents were stopped once
+  the source join invalidated the experiment premise.
+- Task: prove that EXP-304 adds new Common Voice source audio/text before
+  spending the one gpu0 lane on the matched 207-update comparison.
+- Dependencies: commit `bc1a75a`; EXP-186 control69 pool85; exact
+  `(source_id, source_sha256, source_transcript, client_id_sha256)` join.
+- Result: all 37 `exposure=2` rows equal their `exposure=1` row on source ID,
+  SHA-256, transcript, and client. Zero of 37 retain the same real Amitaro
+  target ID. The pool represents repeated source exposures against different
+  discriminator references, not second utterances.
+- Problems: the initial read-only inventory trusted the exposure label and
+  target distinction without joining the source identity. Its claims of 37
+  new utterances and 88.8 seconds of new audio were false.
+- Rework: stopped EXP-303/304 before CUDA, reverted their uncommitted runner,
+  renderer, and materializer code, and removed 624 generated derived files
+  (about 102 MB). Original audio and tracked inputs remain intact; the removed
+  cache is reproducible. The next lane must prove genuinely new source IDs,
+  hashes, text, and evaluation-client exclusion before rendering targets.

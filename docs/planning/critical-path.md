@@ -328,12 +328,12 @@ claims from that artifact are superseded. The active join is now:
         -> common-stable 0W/5T/0L but instability 1 -> 2 on cv45141533
         -> skip EXP-298--302 and close beta/scale/weight/MSE-blend neighbors
         -> next method must change data, teacher signal, conditioning, or training target
-        -> EXP-303 append 37 matched repeats to exact EXP-238 order (207 updates)
-        -> EXP-304 replace those repeats with 37 unused CV second utterances
-        -> same 48 train speakers; 88.8 s new text/audio; zero evaluation-client overlap
-        -> exact standard loss/init/scope/LR/clip/discriminator/EMA/inference controls
-        -> CPU materialization + CUDA smoke, then sequential external7 lanes
-        -> broad EXP-305--309 only if EXP-304 clears EXP-238 and EXP-303 gates
+        -> EXP-303/304 stopped at CPU identity preflight; no CUDA
+        -> EXP-186 exposure-2 is 37 exact source ID/SHA/text repeats with new targets
+        -> retract 88.8 s new-audio claim; do not retry repeat-count/order neighbors
+        -> prove genuinely unused source IDs/audio/text and evaluation-client exclusion
+        -> pair one equal-update repeat control with one new-data lane
+        -> commit, CUDA smoke, sequential external7, then broad render only if safe
         -> operator hearing when available
 ```
 

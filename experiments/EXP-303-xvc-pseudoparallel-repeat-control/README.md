@@ -1,6 +1,6 @@
 # EXP-303: exposure-matched pseudoparallel repeat control
 
-Status: planned listen-now control; implementation and commit precede CUDA
+Status: stopped at CPU identity preflight; no CUDA or training run
 
 ## Milestone
 
@@ -54,3 +54,16 @@ auxiliary source-relative content. All seven rows are joined by
 `(source_id, source_sha256)`. EXP-303 supplies the exposure-matched baseline;
 it cannot select naturalness, target identity, a keeper, or a product winner.
 
+## Preflight result and closure
+
+The premise for the paired EXP-304 arm was false. All 37 purported
+`exposure=2` rows have the exact same source ID, source SHA-256, transcript,
+and Common Voice client as their `exposure=1` row. Only the assigned real
+Amitaro target ID differs. They are repeat exposures, not new utterances.
+
+Because EXP-304 therefore contained no new source audio or text, running this
+repeat control could not answer the declared data-breadth question. CPU
+materialization was discarded before CUDA; no adapter and no listening audio
+were produced. EXP-303 and EXP-304 are closed together. A future breadth lane
+must prove new source IDs, audio hashes, text, and evaluation-speaker
+disjointness before target rendering or training.

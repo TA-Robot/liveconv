@@ -1,6 +1,6 @@
 # EXP-304: Common Voice second-utterance pseudoparallel breadth
 
-Status: planned listen-now pilot; implementation and commit precede CUDA
+Status: stopped at CPU identity preflight; no CUDA or training run
 
 ## Milestone
 
@@ -67,3 +67,19 @@ If this bounded probe fails, close repetition-count and 37-row ordering
 neighbors. The next data method may build genuinely larger Hadou or JSUT
 same-content targets; it must not optimize the local tongue-twister or claim it
 is ChatGPT browser audio.
+
+## Preflight result and closure
+
+The EXP-186 `exposure=2` label does not identify a second utterance. Exact
+joining found 37/37 pairs with the same source ID, source SHA-256, transcript,
+and Common Voice client as `exposure=1`; 0/37 share the assigned real Amitaro
+target ID. Thus the pool repeats the same source against another discriminator
+reference and contains no added source-content breadth.
+
+The identity failure was caught before CUDA. Generated CPU materialization
+(624 derived files, about 102 MB) was removed and remains reproducible from the
+tracked inputs; no original audio was removed. No adapter or listening audio
+exists for EXP-304. The earlier claims of 37 new utterances and 88.8 seconds of
+new audio are retracted. The next lane will use a separately proven set of
+genuinely new Common Voice source IDs and speakers, excluding any client used
+by the fixed evaluation surfaces.
