@@ -3836,7 +3836,7 @@ job queue.
 - Dependencies: commit `e29cb86`; X-VC runtime with matching PEFT 0.20.0.
 - Result: the first launch used the wrong lightweight Python and exited before
   CUDA load. After restoring the pinned X-VC runtime dependency, the committed
-  runner loaded the checkpoint and produced 65 partial outputs before
+  runner loaded the checkpoint and produced 65 partial outputs before finding
   `LOANWORD128_078.wav` is 2.3 seconds, shorter than the exact 2.4-second model
   window.
 - Problems: the source freezer preserved official variable-length JSUT audio,
@@ -3895,3 +3895,30 @@ job queue.
   before the broader frozen gates.
 - Rework: continue the unchanged adapter through fresh48, then Hadou31 and
   stress60 only if no candidate-added gross corruption appears.
+
+## 2026-08-14T01:50:25Z - Grok progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux `liveconv-grok-auditor`.
+- Task: independent 30-minute direction and resource audit.
+- Result: `CONTINUE`. It judged the disjoint category-balanced data method to be
+  a valid one-variable lane, required immediate teacher render and gross screen,
+  and warned that JSUT24 is same-speaker evidence rather than the primary gate.
+- Rework: verdict adopted. The lane proceeded teacher render -> screen -> one
+  retraining run -> external7 -> fresh48 -> Hadou31, with stress/JSUT held behind
+  a candidate-added-gross stop.
+
+## 2026-08-14T02:18:00Z - EXP-172/173 froze and rejected EXP-171
+
+- Agent: `primary-integrator`.
+- Task: test the unchanged EXP-171 adapter on frozen fresh48 and Hadou31.
+- Dependencies: commit `1054bef`; exact EXP-171 EMA adapter; frozen evaluation
+  sets; auxiliary ASR/gross screen.
+- Result: fresh48 added no gross failure beyond control69. On 46 common
+  non-gross rows source-relative W/T/L was 14/24/8, mean 0.341 to 0.320, median
+  0.275 to 0.177; known-text mean moved 0.618 to 0.608. Hadou31 then added one
+  candidate-only gross failure on `RECITATION324_138`, repeating `三、四` 53
+  times. Control69 had no gross Hadou row.
+- Problems: raw Hadou mean improved 0.210 to 0.186 despite the catastrophic row;
+  aggregate means would falsely retain this checkpoint.
+- Rework: reject EXP-171, do not run stress60 or JSUT24, and do not sweep JSUT
+  share/category counts. Keep all comparison WAVs on 8878 for later hearing.
