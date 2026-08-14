@@ -1,6 +1,6 @@
 # EXP-158: selective retention with real-reference waveform adversarial loss
 
-Status: ready for one bounded gpu0 lane
+Status: rejected after frozen fresh48
 
 ## Goal
 
@@ -39,3 +39,19 @@ cannot select naturalness, voice identity, a keeper, or promotion.
 
 Do not tune discriminator weights, update ratio, LR, loss weights, curriculum
 ratio, retention blend, threshold, LoRA scope, or update count.
+
+## Result
+
+Commit `ca91011` completed 170 updates in 149.25 seconds at 5.47 GiB peak.
+Total loss moved `298.40 -> 102.46`; generator, adversarial, feature-matching,
+and discriminator components were finite. External7 added no gross repetition,
+with source-relative mean `0.360 -> 0.356` and known-text mean
+`0.399 -> 0.423`.
+
+Frozen fresh48 added one gross failure beyond control69. On `cv39042955f`, the
+source transcription `あ、すいません。エレ、ネクザー` became a phrase ending
+in nineteen consecutive `フ` characters. The candidate is rejected even though
+the 45 common non-gross rows improved source-relative W/T/L `12/24/9`, mean
+`0.319 -> 0.301`, and median `0.250 -> 0.200`. This objective improved ordinary
+content diagnostics but did not provide a collapse safety mechanism. Do not
+tune adversarial weights or run Hadou31, stress60, or JSUT24 for this checkpoint.

@@ -3675,3 +3675,27 @@ job queue.
 - Rework: focused tests and a real one-update smoke, then commit before one GPU
   lane. Gate external7 -> fresh48 -> Hadou31 -> stress60; only all-survival may
   consume JSUT24. Do not tune adversarial weights or neighboring schedules.
+
+## 2026-08-14T01:11:00Z - EXP-158--162 real-reference adversarial rejected
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T01:03:00Z.
+- End: 2026-08-14T01:11:00Z.
+- Dependencies: commit `ca91011`; selective 85-repair/85-retention targets;
+  original Amitaro discriminator references; external7 and frozen fresh48;
+  gpu0; listener 8878.
+- Result: the real smoke separated synthetic generative targets from original
+  discriminator-real audio with finite losses. Training completed 170 updates
+  in 149.25 seconds at 5.47 GiB peak, total loss `298.40 -> 102.46`, and
+  published external7 plus fresh48. External7 had no gross loop and nearly tied
+  source-relative mean (`0.360 -> 0.356`). On 45 common non-gross fresh rows,
+  source-relative W/T/L was `12/24/9`, mean improved `0.319 -> 0.301`, and
+  median improved `0.250 -> 0.200`.
+- Problems: the candidate added a gross `フ` run on fresh row `cv39042955f`.
+  Real-reference waveform adversarial improved ordinary rows but did not act as
+  a content-collapse safety mechanism.
+- Rework: reject without Hadou31, stress60, or JSUT24 and do not tune loss
+  weights. A differentiable output-to-Whisper cycle is not available through
+  the current wrapper because extraction is no-grad and crosses CPU NumPy.
+  The next bounded method restores the upstream-configured EMA omission once,
+  using pinned package defaults and the same training/evaluation contract.
