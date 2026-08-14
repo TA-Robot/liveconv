@@ -1,6 +1,6 @@
 # EXP-186: speaker-balanced Common Voice retention under the X-VC EMA method
 
-Status: speech-active v2 trained; external7 technical gate passed; hearing pending
+Status: all frozen technical gates complete; mixed survivor; hearing pending
 
 ## Goal
 
@@ -80,3 +80,28 @@ arms, source-relative distance moves `0.256 -> 0.206` and known-text distance
 moves `0.371 -> 0.254`; both have win/tie/loss `3/1/1`. This admits the frozen
 fresh48 gate as EXP-187. It is auxiliary content evidence, not naturalness,
 target identity, a keeper, or a product winner.
+
+## Frozen follow-up gates
+
+The unchanged adapter completed EXP-187 fresh48, EXP-188 Hadou31, EXP-189
+stress60, and EXP-190 JSUT24. The family now contributes 850 WAVs on port 8878.
+
+- Fresh48: the candidate and control69 share the same two gross rows and the
+  candidate adds none. Across 35 common stable rows, source distance moves
+  `0.210 -> 0.203` with W/T/L `6/24/5`; known text moves `0.560 -> 0.550`
+  with `8/23/4`.
+- Hadou31: zero gross rows. Across 24 common stable rows, source moves
+  `0.119 -> 0.0777` with `5/19/0`; known text moves `0.351 -> 0.323` with
+  `5/18/1`.
+- Stress60: zero gross rows. Across 44 common stable rows, source is nearly
+  neutral at `0.216 -> 0.212` while known text is mixed at `0.591 -> 0.601`.
+  Noise20 and leading silence improve; pitch is mixed; tempo1.2 has zero wins,
+  four ties, and four losses on both diagnostics.
+- JSUT24: zero gross rows. Across 22 common stable rows, source moves
+  `0.115 -> 0.131` with `2/16/4`; known text moves `0.553 -> 0.543` with
+  `4/17/1`. Category directions are mixed.
+
+The combined speech-active/multi-speaker retention construction is therefore a
+stronger technical survivor for ordinary fresh and Hadou content, not a generic
+constraint solution. Preserve it for hearing and close this training family.
+The next method must address its tempo/pitch residual without tuning EXP-186.

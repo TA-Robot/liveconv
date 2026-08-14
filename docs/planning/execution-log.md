@@ -4313,3 +4313,55 @@ job queue.
 - Rework: bind EXP-187--190 identities and render the unchanged adapter on
   frozen fresh48 next. Stop on candidate-added gross corruption or broad common
   stable regression; do not tune the source policy or training method.
+
+## 2026-08-14T04:32:00Z - EXP-187 fresh48 completed
+
+- Agent: `primary-integrator`.
+- Task: test the unchanged EXP-186 adapter on 48 disjoint speakers and texts.
+- Dependencies: commit `6e6acfa`; frozen EXP-112 inputs; no retraining.
+- Result: published 240 WAVs in 88.5 seconds. Candidate and control69 share the
+  same two gross rows, so the candidate adds none. Across 35 common stable rows,
+  source moves `0.210 -> 0.203` with W/T/L `6/24/5`; known text moves
+  `0.560 -> 0.550` with `8/23/4`.
+- Problems: most rows tie and the gain is small; this is technical survival, not
+  perceptual evidence.
+- Rework: continue the unchanged checkpoint to the prebound Hadou31 gate.
+
+## 2026-08-14T04:36:00Z - EXP-188 Hadou31 completed
+
+- Agent: `primary-integrator`.
+- Task: test the same adapter on a different single-speaker Japanese corpus.
+- Dependencies: frozen 31-row Hadou set; no retraining.
+- Result: published 155 WAVs with zero gross row. Across 24 common stable rows,
+  source moves `0.119 -> 0.0777` with W/T/L `5/19/0`; known text moves
+  `0.351 -> 0.323` with `5/18/1`.
+- Problems: one speaker cannot establish speaker generalization, but it is a
+  useful corpus/content shift after fresh48.
+- Rework: render stress60 to test named route constraints directly.
+
+## 2026-08-14T04:39:00Z - EXP-189 stress60 completed
+
+- Agent: `primary-integrator`.
+- Task: test six speakers crossed with clean, noise20, pitch+3, leading silence,
+  and tempo1.2.
+- Dependencies: unchanged EXP-186 adapter; frozen 60-row matrix.
+- Result: published 300 WAVs with zero gross row. Across 44 common stable rows,
+  source is `0.216 -> 0.212` and known text `0.591 -> 0.601`. Noise and leading
+  silence improve, pitch is mixed, and tempo has W/T/L `0/4/4` on both metrics.
+- Problems: multi-speaker retention did not repair the tempo residual shared by
+  earlier methods.
+- Rework: run the already-bound JSUT24 category gate once, then close the family.
+
+## 2026-08-14T04:41:00Z - EXP-190 JSUT24 completed
+
+- Agent: `primary-integrator`.
+- Task: test untouched basic, counter, loanword, onomatopoeia, and travel rows.
+- Dependencies: unchanged EXP-186 adapter; frozen category-balanced JSUT24.
+- Result: published 120 WAVs with zero gross row. Across 22 common stable rows,
+  source moves `0.115 -> 0.131` with W/T/L `2/16/4`; known text moves
+  `0.553 -> 0.543` with `4/17/1`. The complete family now has 850 WAVs.
+- Problems: source-relative and known-text evidence conflict and category
+  directions vary. Neither diagnostic can decide naturalness or identity.
+- Rework: preserve EXP-186 as an unheard mixed survivor and close its training
+  family. A next method may target condition retention, but must not repeat the
+  closed EXP-043 source-only or EXP-044 aligned-target augmentation methods.
