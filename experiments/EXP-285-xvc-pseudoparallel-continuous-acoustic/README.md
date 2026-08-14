@@ -1,6 +1,6 @@
 # EXP-285: pseudoparallel continuous acoustic latent
 
-Status: committed pilot; CUDA smoke and external7 are next
+Status: broad-content stop fired; technically rejected, unheard, and unselected
 
 ## Goal
 
@@ -61,3 +61,42 @@ corruption, and auxiliary CER/content distance. If the common-stable set
 regresses or a candidate adds gross corruption, close EXP-285 and do not tune
 the continuous path. If it survives, retain the unheard listener audio and
 consider the fixed broad queue; no human listening means no keeper or winner.
+
+## Training and external result
+
+Commit `d088ef7` passed 134 combined runner/renderer tests, Ruff, exact CPU
+admission, and the two-call CUDA smoke. The smoke retained nonzero quantized
+and projected tensors, observed a continuous/quantized RMS ratio of `1.16852`
+at inference, exposed `835,584` trainable LoRA69 parameters, and produced
+finite nonzero gradients at `4,598,926,848` peak allocated bytes.
+
+The only full lane completed 170 updates in 139.56 seconds at
+`6,163,570,688` peak bytes. Loss moved `57.6864 -> 87.5233`; this trajectory is
+diagnostic only. The EMA adapter SHA-256 is
+`cd090f984506f7b45c551fc541cd578b9eebfec5b840ec5c7d9fa5ac42faedaa`.
+It published 35 external comparison WAVs. No gross row was added, but decoder
+instability moved `1 -> 2`. On five exact source-ID/SHA rows where EXP-238 and
+EXP-285 were both stable and non-gross, source-relative content distance moved
+`0.256410 -> 0.241026`, W/T/L `1/4/0`. That admitted the fixed broad surfaces
+to decide whether the extra unstable row was isolated.
+
+## Broad result
+
+EXP-286--290 published 1,535 WAVs on the five frozen surfaces. Exact
+source-ID/SHA joins against EXP-238 changed all 307 candidate outputs and added
+no gross row (`2 -> 2`), but decoder instability increased `59 -> 68`. On 232
+rows where both candidates were stable and non-gross, source-relative distance
+regressed `0.227246 -> 0.264113`, W/T/L `43/156/33`.
+
+By surface, fresh48 was nearly flat on the restricted rows
+(`0.244284 -> 0.242421`, `5/25/9`) but instability rose `6 -> 7`; Hadou31
+improved (`0.110603 -> 0.073590`, `7/17/1`) while instability rose `5 -> 6`;
+stress60 regressed (`0.198327 -> 0.217207`, `7/31/7`) with instability
+`13 -> 14`; JSUT24 was nearly flat (`0.123253 -> 0.121321`, `3/17/2`); and
+expanded144 regressed (`0.285076 -> 0.371649`, `21/66/14`) while instability
+rose `33 -> 39`.
+
+The broad stop fired. Removing the acoustic nearest-code boundary is closed,
+including adjacent continuous/quantized blends. The mixed Hadou benefit may be
+heard later, but neither it nor auxiliary ASR establishes naturalness, target
+identity, a keeper, or a winner.

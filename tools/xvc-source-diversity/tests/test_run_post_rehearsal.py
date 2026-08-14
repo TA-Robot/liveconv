@@ -300,12 +300,85 @@ def test_pseudoparallel_continuous_acoustic_policy_changes_only_source_latent() 
     )
 
 
+def test_pseudoparallel_acoustic_temporal_jitter_policy_is_exp291() -> None:
+    policy = post.listening_policy(
+        post.PSEUDOPARALLEL_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp291"
+    assert policy["candidate_id"] == (
+        "cross-corpus170-pseudoparallel-acoustic-temporal-jitter-"
+        "real-adv-ema170"
+    )
+    assert "odd-indexed 85" in policy["independent_variable"]
+    assert "normal quantized zq_a" in policy["independent_variable"]
+    assert (
+        post.PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE
+        in post.parser()._option_string_actions["--training-objective"].choices
+    )
+
+
+def test_acoustic_temporal_jitter_requires_exact_exp238_contract() -> None:
+    for manifest_kind, use_ema in (
+        (post.SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND, True),
+        (post.PSEUDOPARALLEL_OUTPUT_KIND, False),
+    ):
+        try:
+            post.listening_policy(
+                manifest_kind,
+                post.LORA69_TARGET,
+                post.PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE,
+                use_ema,
+            )
+        except post.PostRehearsalError as error:
+            assert "exact EXP-238" in str(error)
+        else:
+            raise AssertionError("acoustic temporal jitter contract drifted")
+
+
 def test_acoustic_code_dropout_schedule_is_exactly_balanced() -> None:
     schedule = post.acoustic_code_dropout_schedule(post.EXPECTED_ROWS)
 
     assert schedule[:4] == [False, True, False, True]
     assert schedule.count(False) == 85
     assert schedule.count(True) == 85
+
+
+def test_acoustic_temporal_jitter_schedule_is_exactly_balanced() -> None:
+    schedule = post.acoustic_temporal_jitter_schedule(post.EXPECTED_ROWS)
+
+    assert schedule[:4] == [False, True, False, True]
+    assert schedule.count(False) == 85
+    assert schedule.count(True) == 85
+
+
+def test_acoustic_temporal_jitter_receipt_binds_ordered_row_identities() -> None:
+    items = [
+        {
+            "id": f"row-{index}",
+            "teacher_id": f"teacher-{index}",
+            "target_id": f"target-{index}",
+            "source_sha256": f"source-{index}",
+            "target_sha256": f"target-sha-{index}",
+            "real_target_sha256": f"real-{index}",
+        }
+        for index in range(post.EXPECTED_ROWS)
+    ]
+    manifest = {
+        "kind": post.PSEUDOPARALLEL_OUTPUT_KIND,
+        "items": items,
+    }
+
+    receipt = post.training_row_identity_receipt(manifest)
+
+    assert receipt["manifest_row_count"] == post.EXPECTED_ROWS
+    assert receipt["selected_row_count"] == post.EXPECTED_ROWS
+    assert receipt["selected_positions"] == list(range(post.EXPECTED_ROWS))
+    assert receipt["row_ids"] == [f"row-{index}" for index in range(post.EXPECTED_ROWS)]
+    assert receipt["unchanged"] is True
 
 
 def test_acoustic_code_dropout_masks_only_quantized_acoustic_tensor() -> None:
@@ -339,6 +412,49 @@ def test_acoustic_code_dropout_masks_only_quantized_acoustic_tensor() -> None:
     assert dropout.masked_calls == 1
     assert dropout.last_input_nonzero == 2
     assert dropout.last_output_nonzero == 2
+
+
+def test_acoustic_temporal_jitter_shifts_only_zq_and_preserves_gradient() -> None:
+    import torch
+
+    class FakeQuantizer(torch.nn.Module):
+        def forward(self, value):
+            return value * 3.0, value.new_tensor([7]), value.new_tensor(3.0)
+
+    class FakeXVC(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.acoustic_quantizer = FakeQuantizer()
+
+    model = FakeXVC()
+    jitter = post.attach_acoustic_temporal_jitter(model, torch=torch)
+    source = torch.tensor([[[1.0, -2.0, 4.0]]], requires_grad=True)
+
+    jitter.set_training_active(True)
+    jitter.set_enabled(False)
+    normal = model.acoustic_quantizer(source)
+    jitter.set_enabled(True)
+    shifted = model.acoustic_quantizer(source)
+    expected = torch.cat([normal[0][..., :1], normal[0][..., :-1]], dim=-1)
+    assert torch.equal(shifted[0], expected)
+    assert torch.equal(shifted[1], normal[1])
+    assert torch.equal(shifted[2], normal[2])
+    assert torch.count_nonzero(shifted[0]).item() > 0
+    shifted[0].sum().backward()
+    assert source.grad is not None
+    assert bool(torch.isfinite(source.grad).all())
+    assert torch.count_nonzero(source.grad).item() > 0
+
+    jitter.set_enabled(False)
+    jitter.set_training_active(False)
+    inference = model.acoustic_quantizer(source.detach())
+    diagnostics = jitter.diagnostics()
+    assert torch.equal(inference[0], normal[0])
+    assert diagnostics["training_normal_calls"] == 1
+    assert diagnostics["training_shifted_calls"] == 1
+    assert diagnostics["inference_normal_calls"] == 1
+    assert diagnostics["shifted_calls"] == 1
+    assert diagnostics["output_nonzero"] > 0
 
 
 def test_continuous_acoustic_wrapper_replaces_zq_and_reports_gradient_diagnostics(

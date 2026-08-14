@@ -1226,6 +1226,58 @@ def test_continuous_acoustic_attachment_is_candidate_only(
     assert calls == [(candidate, torch)]
 
 
+def test_acoustic_temporal_jitter_prebinds_five_surface_contract() -> None:
+    kinds = [
+        "acoustic-temporal-jitter-pseudoparallel-ema-fresh48",
+        "acoustic-temporal-jitter-pseudoparallel-ema-hadou",
+        "acoustic-temporal-jitter-pseudoparallel-ema-stress",
+        "acoustic-temporal-jitter-pseudoparallel-ema-jsut",
+        "acoustic-temporal-jitter-pseudoparallel-ema-expanded-stress",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-292",
+        "EXP-293",
+        "EXP-294",
+        "EXP-295",
+        "EXP-296",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "cross-corpus170-pseudoparallel-acoustic-temporal-jitter-real-adv-ema170"
+    }
+    assert {
+        policy["display_name"] for policy in policies
+    } == {"EXP-291 / source-aligned targets / acoustic temporal jitter / EMA"}
+    assert all("candidate_attachment" not in policy for policy in policies)
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert all(kind in choices for kind in kinds)
+
+
+def test_acoustic_temporal_jitter_candidate_does_not_attach_inference_wrapper(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail(*args: object, **kwargs: object) -> None:
+        raise AssertionError("training-only acoustic jitter attached at inference")
+
+    monkeypatch.setattr(
+        NEW.post, "attach_acoustic_temporal_jitter", fail, raising=False
+    )
+    candidate = object()
+    policy = NEW.candidate_policy(
+        "acoustic-temporal-jitter-pseudoparallel-ema-fresh48"
+    )
+
+    assert (
+        NEW._attach_candidate_representation(candidate, policy, torch=object())
+        is candidate
+    )
+
+
 def test_noncontinuous_candidate_does_not_attach_wrapper(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

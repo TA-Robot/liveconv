@@ -21,14 +21,14 @@ committed, single-variable job at a time, publish its comparison on 8878, apply
 only coarse machine rejection for corruption/content failure, and replan after
 each result. Accumulated candidates remain unselected until human hearing.
 
-Current GPU lane (2026-08-14 16:39 UTC): EXP-279 and EXP-280--284 are closed
-after the broad content stop. EXP-285 is the next single-variable lane: retain
-the complete source-acoustic branch but replace only the 16,384-way nearest-code
-VQ output with the frozen projected continuous pre-VQ latent at both training
-and inference. EXP-238 data, targets, control69 LoRA69 initialization/scope,
-losses, LR, 170 updates, and EMA stay exact. CPU admission and a one-train /
-one-inference CUDA smoke precede the only full lane. All hearing claims remain
-open.
+Current GPU lane (2026-08-14 17:08 UTC): EXP-285 and EXP-286--290 are closed
+after broad decoder instability increased `59 -> 68` and expanded144 content
+regressed. EXP-291 is the next single-variable lane: retain EXP-238's normal
+quantized acoustic representation at inference, but shift `zq_a` right by one
+frame on the odd 85 training rows only. Data, targets, control69 LoRA69
+initialization/scope, losses, LR, 170 updates, and EMA stay exact. CPU admission
+and a normal/shifted/inference CUDA smoke precede the only full lane. All
+hearing claims remain open.
 
 Provenance correction (2026-08-13): the retained 8.17-second recording saying
 `隣の客はよく柿食う客だ` is a local tongue-twister diagnostic, **not** audio
@@ -64,6 +64,7 @@ target.
 | EXP-267--272 X-VC real speaker-condition target | EXP-238 versus the one target-contract change that keeps its same-content reconstruction target but uses authorized real Amitaro for X-VC's global speaker condition and existing speaker MSE | optional identity/naturalness diagnosis after hearing returns; do not nominate this arm | 314/314 WAVs changed with zero added gross, but exact common-stable content is 17W/189T/26L and fresh/expanded decoder stability worsened; the exact target-contract method and adjacent mixture/weight/LR/scope points are closed |
 | EXP-273--278 X-VC fresh-LoRA pseudoparallel | EXP-238 versus fresh zero-init LoRA69 trained on the otherwise exact source-aligned pseudoparallel contract across all six fixed surfaces | optional diagnosis after hearing returns; do not nominate this arm | 314/314 candidate WAVs changed; expanded144 added one gross row, instability rose `33 -> 43`, and all-surface common-stable content was 45W/121T/60L with stress60 regression; initialization/rank/LR/scope/horizon neighbors are closed |
 | EXP-279--284 X-VC source-acoustic-code dropout | EXP-238 versus the exact pseudoparallel contract with only `zq_a` zeroed on alternating training rows, across all six fixed surfaces | optional diagnosis after hearing returns; do not nominate this arm | 314/314 candidates changed and no gross row was added, but broad common-stable content regressed `0.257143 -> 0.286194` with stress/expanded losses and instability `59 -> 61`; whole-branch dropout share/pattern neighbors are closed |
+| EXP-285--290 X-VC continuous pre-VQ acoustic | EXP-238 versus the exact pseudoparallel contract with the nearest-code output replaced by frozen projected continuous acoustic features at training and inference, across all six fixed surfaces | optional Hadou diagnosis after hearing returns; do not nominate this arm | 314/314 candidates changed and no gross row was added, but broad instability rose `59 -> 68` and common-stable content regressed `0.227246 -> 0.264113`; continuous/quantized blend neighbors are closed |
 | EXP-033 source diversity | Base vs legacy human87 control69-e12 vs JVS3 generated-pair X-VC on ten fixed cross-speaker/constraint rows | after hearing returns: prefer one arm per group or reject all; judge naturalness and target voice by ear | machine ASR may reject corruption only; a consistent audible result admits the next method decision, not promotion |
 | EXP-023 | 12 Qwen3-TTS Ono_Anna texts | per text: `continue` or `rejected` | one `rejected` stops this exact TTS profile; all `continue` only admits later TTS transport work, not a VC win |
 | EXP-025 whole-short 87 | Frozen base vs human-paired adapted X-VC on three public heldout source-only utterances | `keep` only if adapted is clearly preferable on the set; otherwise `rejected` | `keep` admits a separate promote pass; `rejected` closes this exact 87-pair schedule |

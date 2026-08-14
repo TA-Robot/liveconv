@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -129,6 +130,9 @@ PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE = (
 PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE = (
     "pseudoparallel-generative-real-adversarial-continuous-acoustic"
 )
+PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE = (
+    "pseudoparallel-generative-real-adversarial-acoustic-temporal-jitter"
+)
 PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE = (
     "pseudoparallel-generative-real-adversarial-output-speaker"
 )
@@ -174,6 +178,9 @@ ACOUSTIC_CODE_DROPOUT_IMPLEMENTATION = (
 CONTINUOUS_ACOUSTIC_IMPLEMENTATION = (
     "projected-pre-vq-continuous-source-acoustic/v1"
 )
+ACOUSTIC_TEMPORAL_JITTER_IMPLEMENTATION = (
+    "one-frame-right-shifted-quantized-source-acoustic/v1"
+)
 SPEAKER_CONDITION_DIMENSION = 192
 SPEAKER_CONDITION_CALIBRATOR_KIND = (
     "liveconv-xvc-speaker-condition-calibrator/v1"
@@ -210,6 +217,51 @@ def listening_policy(
     source_activity_envelope: bool = False,
 ) -> dict[str, str]:
     """Return the complete shared-listener identity for the admitted method."""
+
+    if training_objective == PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE:
+        if (
+            manifest_kind != PSEUDOPARALLEL_OUTPUT_KIND
+            or trainable_target != LORA69_TARGET
+            or not use_adapter_ema
+            or optimizer_mode != SEQUENTIAL_OPTIMIZER
+            or parameter_anchor
+            or source_activity_envelope
+        ):
+            raise PostRehearsalError(
+                "acoustic temporal jitter requires the exact EXP-238 contract"
+            )
+        return {
+            "slug": "exp291",
+            "candidate_id": (
+                "cross-corpus170-pseudoparallel-acoustic-temporal-jitter-"
+                "real-adv-ema170"
+            ),
+            "candidate_name": (
+                "EXP-291 / source-aligned targets / acoustic temporal jitter / EMA"
+            ),
+            "run_kind": (
+                "EXP-291 X-VC pseudoparallel acoustic temporal jitter evaluation"
+            ),
+            "result_kind": (
+                "liveconv-exp291-xvc-pseudoparallel-acoustic-temporal-jitter-"
+                "real-adv-ema/v1"
+            ),
+            "question": (
+                "Does a one-frame right shift of quantized source acoustics on "
+                "odd training rows improve robust X-VC conversion while normal "
+                "inference remains unchanged?"
+            ),
+            "independent_variable": (
+                "relative to the exact EXP-238 contract, only the quantizer's "
+                "first output zq_a changes on deterministic odd-indexed 85 of "
+                "170 training rows to torch.cat([zq_a[..., :1], zq_a[..., :-1]], "
+                "dim=-1); the other 85 rows use normal quantized zq_a, all "
+                "quantizer bookkeeping, data, targets, complete losses, LR, "
+                "control69 LoRA69 initialization and scope, discriminator, "
+                "optimizer, clip, zero frame condition, and EMA remain fixed; "
+                "inference uses normal quantized zq_a"
+            ),
+        }
 
     if (
         trainable_target == SPEAKER_CONDITION_CALIBRATOR_TARGET
@@ -264,6 +316,7 @@ def listening_policy(
             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
             PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
             PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
+            PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE,
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
             PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
@@ -278,6 +331,7 @@ def listening_policy(
                 PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
                 PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
                 PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
+                PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE,
                 PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
                 PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
                 PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
@@ -1889,6 +1943,116 @@ def acoustic_code_dropout_schedule(row_count: int) -> list[bool]:
     return schedule
 
 
+def acoustic_temporal_jitter_schedule(row_count: int) -> list[bool]:
+    """Alternate exact normal/shifted rows without training randomness."""
+
+    if row_count not in {2, EXPECTED_ROWS} or row_count % 2:
+        raise PostRehearsalError("acoustic temporal jitter row count drifted")
+    schedule = [bool(index % 2) for index in range(row_count)]
+    if schedule.count(False) != schedule.count(True):
+        raise PostRehearsalError("acoustic temporal jitter balance drifted")
+    return schedule
+
+
+def training_row_identity_receipt(
+    manifest: Mapping[str, Any], rows: Sequence[Mapping[str, Any]] | None = None
+) -> dict[str, Any]:
+    """Record the ordered EXP-238 row identity used by the jitter schedule."""
+
+    if manifest.get("kind") != PSEUDOPARALLEL_OUTPUT_KIND:
+        raise PostRehearsalError("acoustic temporal jitter requires EXP-238 rows")
+    items = manifest.get("items")
+    if not isinstance(items, list) or len(items) != EXPECTED_ROWS:
+        raise PostRehearsalError("EXP-238 training row identity drifted")
+    selected = list(items if rows is None else rows)
+    if not selected or len(selected) > len(items):
+        raise PostRehearsalError("acoustic temporal jitter row selection drifted")
+    expected_by_id = {
+        str(item["id"]): (position, item)
+        for position, item in enumerate(items)
+        if isinstance(item, Mapping) and isinstance(item.get("id"), str)
+    }
+    identities: list[dict[str, Any]] = []
+    for item in selected:
+        if not isinstance(item, Mapping) or not isinstance(item.get("id"), str):
+            raise PostRehearsalError("EXP-238 row identity changed")
+        expected = expected_by_id.get(item["id"])
+        if expected is None:
+            raise PostRehearsalError("EXP-238 row identity changed")
+        position, expected_item = expected
+        for key in (
+            "teacher_id",
+            "target_id",
+            "source_sha256",
+            "target_sha256",
+            "real_target_sha256",
+        ):
+            if item.get(key) != expected_item.get(key):
+                raise PostRehearsalError("EXP-238 row identity changed")
+        identities.append(
+            {
+                "position": position,
+                "id": item["id"],
+                "teacher_id": item.get("teacher_id"),
+                "target_id": item.get("target_id"),
+                "source_sha256": item.get("source_sha256"),
+                "target_sha256": item.get("target_sha256"),
+                "real_target_sha256": item.get("real_target_sha256"),
+            }
+        )
+    positions = [item["position"] for item in identities]
+    if positions != list(range(len(identities))):
+        raise PostRehearsalError("EXP-238 training row order changed")
+    encoded = json.dumps(
+        identities, ensure_ascii=True, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    return {
+        "source": "exact-exp238-ordered-training-manifest",
+        "manifest_kind": manifest["kind"],
+        "manifest_row_count": len(items),
+        "selected_row_count": len(identities),
+        "selected_positions": positions,
+        "row_ids": [item["id"] for item in identities],
+        "row_identity_sha256": hashlib.sha256(encoded).hexdigest(),
+        "unchanged": True,
+    }
+
+
+def finite_nonzero_gradient_diagnostics(
+    parameters: Sequence[Any], *, torch: Any
+) -> dict[str, float | int | bool]:
+    """Require and summarize finite, nonzero trainable gradients for smoke."""
+
+    gradients = [
+        parameter.grad for parameter in parameters if parameter.grad is not None
+    ]
+    if not gradients:
+        raise PostRehearsalError("acoustic temporal jitter produced no gradients")
+    if not all(bool(torch.isfinite(gradient).all()) for gradient in gradients):
+        raise PostRehearsalError(
+            "acoustic temporal jitter produced non-finite gradients"
+        )
+    nonzero_elements = sum(
+        int(torch.count_nonzero(gradient).detach().cpu()) for gradient in gradients
+    )
+    if nonzero_elements <= 0:
+        raise PostRehearsalError(
+            "acoustic temporal jitter produced zero trainable gradients"
+        )
+    squared_norm = sum(
+        float(torch.sum(torch.square(gradient.detach().float())).cpu())
+        for gradient in gradients
+    )
+    norm = math.sqrt(squared_norm)
+    if not math.isfinite(norm) or norm <= 0.0:
+        raise PostRehearsalError("acoustic temporal jitter gradient norm is invalid")
+    return {
+        "finite": True,
+        "nonzero_elements": nonzero_elements,
+        "l2_norm": norm,
+    }
+
+
 def attach_acoustic_code_dropout(model: Any, *, torch: Any) -> Any:
     """Mask only the quantized source-acoustic tensor for selected forwards."""
 
@@ -1933,6 +2097,158 @@ def attach_acoustic_code_dropout(model: Any, *, torch: Any) -> Any:
             return tuple(values) if isinstance(output, tuple) else values
 
     wrapped = AcousticCodeDropout(quantizer)
+    xvc.acoustic_quantizer = wrapped
+    return wrapped
+
+
+def attach_acoustic_temporal_jitter(model: Any, *, torch: Any) -> Any:
+    """Shift only ``zq_a`` on selected training forwards.
+
+    The wrapped quantizer still computes its normal output and all bookkeeping.
+    Only the first output tensor is replaced during explicitly enabled training
+    rows.  The wrapper is disabled before candidate inference, which therefore
+    uses normal quantized acoustics.
+    """
+
+    xvc = _base_xvc(model)
+    quantizer = getattr(xvc, "acoustic_quantizer", None)
+    if quantizer is None or hasattr(quantizer, "acoustic_temporal_jitter"):
+        raise PostRehearsalError("acoustic quantizer topology drifted")
+
+    class AcousticTemporalJitter(torch.nn.Module):
+        def __init__(self, base_quantizer: Any) -> None:
+            super().__init__()
+            self.base_quantizer = base_quantizer
+            self.acoustic_temporal_jitter = ACOUSTIC_TEMPORAL_JITTER_IMPLEMENTATION
+            self.enabled = False
+            self.training_active = False
+            self.inference_started = False
+            self.call_count = 0
+            self.normal_calls = 0
+            self.shifted_calls = 0
+            self.setup_normal_calls = 0
+            self.training_normal_calls = 0
+            self.training_shifted_calls = 0
+            self.inference_normal_calls = 0
+            self.last_mode = "normal"
+            self.last_input_nonzero = 0
+            self.last_output_nonzero = 0
+            self.last_input_rms = 0.0
+            self.last_output_rms = 0.0
+            self.last_input_abs_max = 0.0
+            self.last_output_abs_max = 0.0
+
+        def set_enabled(self, enabled: bool) -> None:
+            self.enabled = bool(enabled)
+            if self.enabled and not self.training_active and not self.inference_started:
+                self.training_active = True
+
+        def set_training_active(self, active: bool) -> None:
+            if not active and self.enabled:
+                raise PostRehearsalError(
+                    "acoustic temporal jitter must be disabled before inference"
+                )
+            self.training_active = bool(active)
+            if not active:
+                self.inference_started = True
+
+        def diagnostics(self) -> dict[str, float | int | str | bool]:
+            return {
+                "implementation": ACOUSTIC_TEMPORAL_JITTER_IMPLEMENTATION,
+                "call_count": self.call_count,
+                "normal_calls": self.normal_calls,
+                "shifted_calls": self.shifted_calls,
+                "setup_normal_calls": self.setup_normal_calls,
+                "training_normal_calls": self.training_normal_calls,
+                "training_shifted_calls": self.training_shifted_calls,
+                "inference_normal_calls": self.inference_normal_calls,
+                "enabled": self.enabled,
+                "training_active": self.training_active,
+                "last_mode": self.last_mode,
+                "input_nonzero": self.last_input_nonzero,
+                "output_nonzero": self.last_output_nonzero,
+                "input_rms": self.last_input_rms,
+                "output_rms": self.last_output_rms,
+                "input_abs_max": self.last_input_abs_max,
+                "output_abs_max": self.last_output_abs_max,
+            }
+
+        def forward(self, *args: Any, **kwargs: Any) -> Any:
+            output = self.base_quantizer(*args, **kwargs)
+            if not isinstance(output, (tuple, list)) or not output:
+                raise PostRehearsalError("acoustic quantizer output drifted")
+            quantized = output[0]
+            if (
+                not hasattr(quantized, "shape")
+                or quantized.ndim < 1
+                or quantized.shape[-1] < 1
+                or not bool(torch.isfinite(quantized).all())
+            ):
+                raise PostRehearsalError("quantized acoustic code is malformed")
+            input_nonzero = int(torch.count_nonzero(quantized).detach().cpu())
+            input_rms = torch.sqrt(torch.mean(torch.square(quantized.float())))
+            input_abs_max = torch.amax(torch.abs(quantized.float()))
+            if (
+                not bool(torch.isfinite(input_rms))
+                or not bool(torch.isfinite(input_abs_max))
+            ):
+                raise PostRehearsalError("quantized acoustic amplitude is invalid")
+            values = list(output)
+            if self.enabled:
+                shifted = torch.cat(
+                    [quantized[..., :1], quantized[..., :-1]], dim=-1
+                )
+                if shifted.shape != quantized.shape:
+                    raise PostRehearsalError(
+                        "acoustic temporal jitter shape drifted"
+                    )
+                values[0] = shifted
+                mode = "shifted"
+                self.shifted_calls += 1
+                if self.training_active:
+                    self.training_shifted_calls += 1
+                else:
+                    raise PostRehearsalError(
+                        "acoustic temporal jitter enabled outside training"
+                    )
+            else:
+                mode = "normal"
+                self.normal_calls += 1
+                if self.training_active:
+                    self.training_normal_calls += 1
+                elif not self.inference_started:
+                    self.setup_normal_calls += 1
+                else:
+                    self.inference_normal_calls += 1
+            transformed = values[0]
+            if not bool(torch.isfinite(transformed).all()):
+                raise PostRehearsalError("acoustic temporal jitter is non-finite")
+            output_nonzero = int(torch.count_nonzero(transformed).detach().cpu())
+            if input_nonzero > 0 and output_nonzero <= 0:
+                raise PostRehearsalError(
+                    "acoustic temporal jitter removed all acoustic signal"
+                )
+            output_rms = torch.sqrt(torch.mean(torch.square(transformed.float())))
+            output_abs_max = torch.amax(torch.abs(transformed.float()))
+            if (
+                not bool(torch.isfinite(output_rms))
+                or not bool(torch.isfinite(output_abs_max))
+                or (input_nonzero > 0 and not bool(output_rms > 0))
+            ):
+                raise PostRehearsalError(
+                    "acoustic temporal jitter amplitude is invalid"
+                )
+            self.call_count += 1
+            self.last_mode = mode
+            self.last_input_nonzero = input_nonzero
+            self.last_output_nonzero = output_nonzero
+            self.last_input_rms = float(input_rms.detach().cpu())
+            self.last_output_rms = float(output_rms.detach().cpu())
+            self.last_input_abs_max = float(input_abs_max.detach().cpu())
+            self.last_output_abs_max = float(output_abs_max.detach().cpu())
+            return tuple(values) if isinstance(output, tuple) else values
+
+    wrapped = AcousticTemporalJitter(quantizer)
     xvc.acoustic_quantizer = wrapped
     return wrapped
 
@@ -3065,11 +3381,23 @@ def run(
         == PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE
         else None
     )
+    acoustic_temporal_jitter = (
+        attach_acoustic_temporal_jitter(trained, torch=torch)
+        if arguments.training_objective
+        == PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE
+        else None
+    )
     acoustic_code_dropout_modes = (
         acoustic_code_dropout_schedule(len(rows))
         if acoustic_code_dropout is not None
         else [False] * len(rows)
     )
+    acoustic_temporal_jitter_modes = (
+        acoustic_temporal_jitter_schedule(len(rows))
+        if acoustic_temporal_jitter is not None
+        else [False] * len(rows)
+    )
+    jitter_gradient_diagnostics: dict[str, float | int | bool] | None = None
     discriminator = None
     discriminator_optimizer = None
     realism_targets: dict[str, Any] = {}
@@ -3084,6 +3412,7 @@ def run(
         PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
         PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
         PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
+        PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE,
         PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
         PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
         PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
@@ -3098,6 +3427,7 @@ def run(
             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
             PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
             PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
+            PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE,
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
             PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
@@ -3116,6 +3446,7 @@ def run(
                         PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
                         PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
                         PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
+                        PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE,
                         PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
                         PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
                         PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
@@ -3142,6 +3473,9 @@ def run(
                     torch=torch,
                     device=device,
                 )["target_wav"]
+
+    if acoustic_temporal_jitter is not None:
+        acoustic_temporal_jitter.set_training_active(True)
 
     def batch_for(
         item: Mapping[str, Any], negative_item: Mapping[str, Any] | None = None
@@ -3245,6 +3579,9 @@ def run(
             acoustic_code_dropout_mode = acoustic_code_dropout_modes[row_index]
             if acoustic_code_dropout is not None:
                 acoustic_code_dropout.set_enabled(acoustic_code_dropout_mode)
+            acoustic_temporal_jitter_mode = acoustic_temporal_jitter_modes[row_index]
+            if acoustic_temporal_jitter is not None:
+                acoustic_temporal_jitter.set_enabled(acoustic_temporal_jitter_mode)
             negative_item = (
                 rows[(row_index + 1) % len(rows)]
                 if arguments.training_objective
@@ -3498,6 +3835,34 @@ def run(
                     metrics["continuous_acoustic_rms_ratio"] = float(
                         continuous_metrics["rms_ratio"]
                     )
+                if acoustic_temporal_jitter is not None:
+                    jitter_metrics = acoustic_temporal_jitter.diagnostics()
+                    expected_nonzero = jitter_metrics["input_nonzero"]
+                    if (
+                        int(expected_nonzero) <= 0
+                        or int(jitter_metrics["output_nonzero"]) <= 0
+                    ):
+                        raise PostRehearsalError(
+                            "acoustic temporal jitter representation is zero"
+                        )
+                    metrics["acoustic_temporal_jitter_shifted"] = float(
+                        acoustic_temporal_jitter_mode
+                    )
+                    metrics["acoustic_temporal_jitter_input_nonzero"] = float(
+                        jitter_metrics["input_nonzero"]
+                    )
+                    metrics["acoustic_temporal_jitter_output_nonzero"] = float(
+                        jitter_metrics["output_nonzero"]
+                    )
+                    metrics["acoustic_temporal_jitter_input_rms"] = float(
+                        jitter_metrics["input_rms"]
+                    )
+                    metrics["acoustic_temporal_jitter_output_rms"] = float(
+                        jitter_metrics["output_rms"]
+                    )
+                    jitter_gradient_diagnostics = (
+                        finite_nonzero_gradient_diagnostics(trainable, torch=torch)
+                    )
                 if calibrator is not None:
                     delta_norm = float(
                         torch.linalg.vector_norm(
@@ -3536,6 +3901,17 @@ def run(
                 optimizer_steps += 1
             if adapter_ema is not None:
                 adapter_ema.update()
+    if acoustic_temporal_jitter is not None:
+        expected_each = len(rows) // 2
+        if (
+            acoustic_temporal_jitter.training_normal_calls != expected_each
+            or acoustic_temporal_jitter.training_shifted_calls != expected_each
+        ):
+            raise PostRehearsalError(
+                "acoustic temporal jitter training call count drifted"
+            )
+        acoustic_temporal_jitter.set_enabled(False)
+        acoustic_temporal_jitter.set_training_active(False)
     if acoustic_code_dropout is not None:
         expected_each = len(rows) // 2
         if (
@@ -3544,6 +3920,27 @@ def run(
         ):
             raise PostRehearsalError("acoustic-code dropout call count drifted")
         acoustic_code_dropout.set_enabled(False)
+    if acoustic_temporal_jitter is not None and arguments.smoke:
+        # The final smoke call must use ordinary quantized zq_a while the
+        # training-only wrapper remains installed for call-count evidence.
+        base._inference(
+            trained,
+            {
+                "source_wav": batch["source_wav"],
+                "semantic_tokens": batch["semantic_tokens"],
+            },
+            {
+                "target_wav": batch["target_wav"],
+                "ssl_feat": batch["ssl_feat"],
+            },
+            seed=base.SEED,
+            torch=torch,
+            device=device,
+        )
+        if acoustic_temporal_jitter.inference_normal_calls != 1:
+            raise PostRehearsalError(
+                "acoustic temporal jitter smoke requires normal inference"
+            )
     if continuous_acoustic is not None and arguments.smoke:
         # The second and final smoke call must enter XVC.inference while the
         # wrapper remains installed, matching the external7 candidate path.
@@ -3577,6 +3974,9 @@ def run(
                 else "smoked-continuous-acoustic-pseudoparallel"
                 if arguments.training_objective
                 == PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE
+                else "smoked-acoustic-temporal-jitter-pseudoparallel"
+                if arguments.training_objective
+                == PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE
                 else "smoked-control69-clean-post-rehearsal"
             ),
             "loss": losses[0],
@@ -3606,6 +4006,20 @@ def run(
                 if continuous_acoustic is not None
                 else None
             ),
+            "acoustic_temporal_jitter": (
+                {
+                    **acoustic_temporal_jitter.diagnostics(),
+                    "normal_rows": acoustic_temporal_jitter_modes.count(False),
+                    "shifted_rows": acoustic_temporal_jitter_modes.count(True),
+                    "inference": "normal-quantized-zq_a",
+                    "training_row_identity": training_row_identity_receipt(
+                        manifest, rows
+                    ),
+                }
+                if acoustic_temporal_jitter is not None
+                else None
+            ),
+            "gradient_diagnostics": jitter_gradient_diagnostics,
             "prospective_optimizer_steps": (
                 1 if arguments.optimizer_mode == PCGRAD_PAIRED_OPTIMIZER else len(rows)
             ),
@@ -3847,6 +4261,19 @@ def run(
             if continuous_acoustic is not None
             else None
         ),
+        "acoustic_temporal_jitter": (
+            {
+                **acoustic_temporal_jitter.diagnostics(),
+                "normal_rows": acoustic_temporal_jitter_modes.count(False),
+                "shifted_rows": acoustic_temporal_jitter_modes.count(True),
+                "training_only": True,
+                "inference": "normal-quantized-zq_a",
+                "training_row_identity": training_row_identity_receipt(manifest),
+            }
+            if acoustic_temporal_jitter is not None
+            else None
+        ),
+        "gradient_diagnostics": jitter_gradient_diagnostics,
         "output_speaker_identity": (
             {
                 "implementation": OUTPUT_SPEAKER_IDENTITY_IMPLEMENTATION,
@@ -3945,6 +4372,8 @@ def run(
                     or arguments.training_objective
                     == PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE
                     or arguments.training_objective
+                    == PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE
+                    or arguments.training_objective
                     == PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE
                     or arguments.training_objective
                     == PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE
@@ -4038,6 +4467,7 @@ def parser() -> argparse.ArgumentParser:
             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
             PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
             PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
+            PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE,
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
             PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
@@ -4113,6 +4543,23 @@ def main(argv: Sequence[str] | None = None) -> int:
                             }
                             if arguments.training_objective
                             == PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE
+                            else None
+                        ),
+                        "acoustic_temporal_jitter": (
+                            {
+                                "implementation": (
+                                    ACOUSTIC_TEMPORAL_JITTER_IMPLEMENTATION
+                                ),
+                                "normal_rows": EXPECTED_ROWS // 2,
+                                "shifted_rows": EXPECTED_ROWS // 2,
+                                "training_only": True,
+                                "inference": "normal-quantized-zq_a",
+                                "training_row_identity": (
+                                    training_row_identity_receipt(manifest)
+                                ),
+                            }
+                            if arguments.training_objective
+                            == PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE
                             else None
                         ),
                     },

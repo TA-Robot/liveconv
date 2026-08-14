@@ -5865,3 +5865,73 @@ job queue.
 - Rework: commit before CUDA. Run exact CPU admission and one train-forward plus
   one inference-forward smoke. Stop before the full lane on shape, finite,
   nonzero, gradient, loss, call-count, or RMS-ratio failure.
+
+## 2026-08-14T17:04:00Z - EXP-285--290 broad gate closed
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T16:40:00Z.
+- End: 2026-08-14T17:04:00Z.
+- Dependencies: commit `d088ef7`; exact EXP-238/285 adapters; frozen external7,
+  fresh48, Hadou31, stress60, JSUT24, and expanded144 surfaces; v4
+  faster-whisper; gpu0; listener 8878.
+- Result: CPU admission and the two-call CUDA smoke passed. The only training
+  lane completed 170 updates in 139.56 seconds at 6,163,570,688 peak bytes and
+  published 35 external7 WAVs. External gross stayed `0 -> 0`; instability
+  moved `1 -> 2`; five jointly stable/non-gross rows were `0.256410 ->
+  0.241026`, W/T/L `1/4/0`.
+- Result: the admitted broad render then published 1,535 WAVs. All 307
+  candidate outputs changed and gross rows stayed `2 -> 2`, but decoder
+  instability rose `59 -> 68`. On 232 jointly stable/non-gross rows,
+  source-relative content regressed `0.227246 -> 0.264113`, W/T/L
+  `43/156/33`. Hadou improved, while stress and expanded regressed; expanded
+  instability alone moved `33 -> 39`.
+- Problems: the external7 auxiliary mean looked positive despite one new
+  unstable row. The fixed broad set correctly prevented that small screen from
+  becoming a quality or method claim.
+- Rework: reject nearest-code removal and continuous/quantized blends. Keep the
+  audio unheard and unselected. Return to normal quantized inference and test
+  one training-only robustness mechanism rather than another representation
+  replacement.
+
+## 2026-08-14T16:52:18Z - Grok project-progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux
+  `liveconv-grok-auditor` (read-only, no delegation).
+- Task: decide whether EXP-285 and continued GPU use remain the shortest path
+  to broadly robust X-VC while hearing is unavailable.
+- Result: `CONTINUE`. It accepted the one-variable continuous acoustic pilot,
+  fixed diverse surfaces, and continued one-lane GPU use. It required the
+  external7 content/corruption screen before broad rendering and rejected
+  dropout neighbors, dirty-tree cleanup, review ceremony, and automatic
+  naturalness claims.
+- Adopted: yes. The external7 screen had already completed before the snapshot:
+  no added gross row and `1/4/0` on five jointly stable rows. EXP-286--290 were
+  therefore already safely rendering in the required sequence and were not
+  stopped. Their broad result subsequently closed EXP-285.
+- Problems: the audit snapshot could not observe completed external screening
+  or operator localStorage, so it described both as unknown.
+- Rework: record the exact broad stop and proceed with one committed method at
+  a time; do not turn auxiliary ASR into a winner.
+
+## 2026-08-14T17:08:00Z - EXP-291 acoustic temporal jitter prepared
+
+- Agent: `primary-integrator`, with one bounded implementation owner for the
+  runner and renderer.
+- Task: preserve normal quantized source acoustics but reduce reliance on exact
+  source-acoustic frame alignment during retraining.
+- Dependencies: EXP-238 technical survivor; EXP-285 broad closure; unchanged
+  170-row pseudoparallel curriculum and six fixed evaluation surfaces.
+- Result: the plan fixes the only change to a one-frame right shift of `zq_a`
+  on the odd 85 training rows. The even 85 rows and all candidate inference use
+  normal quantized `zq_a`; data, targets, control69 LoRA69 initialization and
+  scope, losses, LR, 170 updates, discriminator, and EMA remain exact.
+- Result: a read-only gpu0 probe across six clean/noise/silence/tempo/pitch
+  cases retained `(1, 1024, 120)`, finiteness, all 122,880 nonzero values, and
+  RMS `2.611289--2.734129` after shifting. Original-to-shifted cosine was
+  `0.128388--0.649042`, confirming a material perturbation; peak allocation was
+  2,569,888,256 bytes.
+- Problems: the perturbation is intentionally strong in frame identity despite
+  near-constant RMS, so CPU evidence alone cannot admit the 170-update lane.
+- Rework: commit implementation and plan, then require exact 85/85 admission
+  plus normal/shifted/inference CUDA smoke with finite nonzero gradients before
+  the only full lane.

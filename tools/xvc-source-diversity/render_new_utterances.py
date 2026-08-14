@@ -1684,6 +1684,60 @@ def candidate_policy(kind: str) -> dict[str, str]:
             "candidate_attachment": "continuous-acoustic-latent",
         }
     if kind in {
+        "acoustic-temporal-jitter-pseudoparallel-ema-fresh48",
+        "acoustic-temporal-jitter-pseudoparallel-ema-hadou",
+        "acoustic-temporal-jitter-pseudoparallel-ema-stress",
+        "acoustic-temporal-jitter-pseudoparallel-ema-jsut",
+        "acoustic-temporal-jitter-pseudoparallel-ema-expanded-stress",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress") and not kind.endswith(
+            "-expanded-stress"
+        )
+        jsut = kind.endswith("-jsut")
+        expanded = kind.endswith("-expanded-stress")
+        experiment_id = (
+            "EXP-296"
+            if expanded
+            else "EXP-295"
+            if jsut
+            else "EXP-294"
+            if stress
+            else "EXP-293"
+            if hadou
+            else "EXP-292"
+        )
+        suffix = (
+            "expanded-stress144"
+            if expanded
+            else "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": (
+                "cross-corpus170-pseudoparallel-acoustic-temporal-jitter-"
+                "real-adv-ema170"
+            ),
+            "display_name": (
+                "EXP-291 / source-aligned targets / acoustic temporal jitter / EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-acoustic-temporal-jitter-"
+                f"pseudoparallel-ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does training-only one-frame right-shifted quantized source "
+                "acoustics improve robust content across the established broad "
+                "evaluation surfaces while inference remains normal?"
+            ),
+        }
+    if kind in {
         "speaker-condition-calibrator-fresh48",
         "speaker-condition-calibrator-hadou",
         "speaker-condition-calibrator-stress",
@@ -2905,6 +2959,11 @@ def _parser() -> argparse.ArgumentParser:
             "continuous-acoustic-pseudoparallel-ema-stress",
             "continuous-acoustic-pseudoparallel-ema-jsut",
             "continuous-acoustic-pseudoparallel-ema-expanded-stress",
+            "acoustic-temporal-jitter-pseudoparallel-ema-fresh48",
+            "acoustic-temporal-jitter-pseudoparallel-ema-hadou",
+            "acoustic-temporal-jitter-pseudoparallel-ema-stress",
+            "acoustic-temporal-jitter-pseudoparallel-ema-jsut",
+            "acoustic-temporal-jitter-pseudoparallel-ema-expanded-stress",
             "speaker-condition-calibrator-fresh48",
             "speaker-condition-calibrator-hadou",
             "speaker-condition-calibrator-stress",

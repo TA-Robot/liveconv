@@ -311,7 +311,14 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-285 return to EXP-238 and remove only the acoustic nearest-code boundary
         -> projected continuous pre-VQ latent stays active at train and inference
         -> exact data/targets/init/scope/loss/LR/170/EMA; CPU + two-call CUDA smoke
-        -> external7 first; EXP-286--290 broad surfaces only after corruption/content pass
+        -> external7 adds no gross but instability 1 -> 2; render EXP-286--290 broad
+        -> 307/307 changed; no added gross; instability 59 -> 68
+        -> common-stable content 43W/156T/33L, 0.227246 -> 0.264113
+        -> close continuous/quantized blends and nearest-code-removal neighbors
+        -> EXP-291 return to normal EXP-238 quantized inference
+        -> shift zq_a right one frame on only 85 alternating training rows
+        -> exact data/targets/init/scope/loss/LR/170/EMA; CPU + three-mode CUDA smoke
+        -> external7 first; EXP-292--296 broad surfaces only after corruption/content pass
         -> operator hearing when available
 ```
 
