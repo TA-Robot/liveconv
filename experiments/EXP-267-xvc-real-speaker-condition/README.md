@@ -1,6 +1,7 @@
 # EXP-267: X-VC real target-speaker conditioning
 
-Status: committed listen-now training pilot; unheard and unselected
+Status: trained; external7 published; broad fixed-surface render admitted;
+unheard and unselected
 
 ## Goal
 
@@ -49,6 +50,21 @@ Stop on target-lineage drift, model/generator target aliasing, nonfinite loss or
 gradient, OOM, candidate-added gross corruption, or broad content regression.
 If external7 admits broader rendering, reuse only the frozen fresh48, Hadou31,
 stress60, JSUT24, and expanded144 surfaces.
+
+## Training and external result
+
+Commit `4aba288` passed the 170-row CPU admission and a finite two-row CUDA
+smoke, then completed 170 updates in 145.64 seconds at 6,163,570,688 peak
+allocated bytes. The EMA adapter SHA-256 is
+`4a694ae82c34d0454aca36aa36d4609a065bcade2ca403ad7bc4c44b2f0687ac`.
+
+All seven external candidate WAVs changed and no candidate-added gross row
+appeared. Among the five exact jointly decoder-stable/non-gross rows, EXP-238
+to EXP-267 source-relative ASR distance was `0.256410 -> 0.271795`, with
+W/T/L `0/4/1`; one additional decoder became unstable. This small surface is
+insufficient to classify the method. EXP-268--272 therefore bind the unchanged
+EMA adapter to fresh48, Hadou31, stress60, JSUT24, and expanded144. Those runs
+may close a technical method but cannot select audible quality.
 
 ## Command
 

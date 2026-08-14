@@ -1083,6 +1083,34 @@ def test_speaker_condition_calibrator_prebinds_broad_contract() -> None:
     assert all(kind in choices for kind in kinds)
 
 
+def test_real_speaker_condition_prebinds_complete_five_surface_contract() -> None:
+    kinds = [
+        "real-speaker-condition-ema-fresh48",
+        "real-speaker-condition-ema-hadou",
+        "real-speaker-condition-ema-stress",
+        "real-speaker-condition-ema-jsut",
+        "real-speaker-condition-ema-expanded-stress",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-268",
+        "EXP-269",
+        "EXP-270",
+        "EXP-271",
+        "EXP-272",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "cross-corpus170-pseudoparallel-real-speaker-condition-ema170"
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert all(kind in choices for kind in kinds)
+
+
 def test_src4vc_pseudoparallel_prebinds_broad_evaluation_contract() -> None:
     kinds = [
         "src4vc-pseudoparallel-ema-fresh48",

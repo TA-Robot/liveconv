@@ -5603,3 +5603,39 @@ job queue.
   neighbors. EXP-267 changes the target contract instead: retain generated
   same-content semantic/mel targets but use the assigned real target only for
   X-VC's existing speaker condition and speaker MSE.
+
+## 2026-08-14T14:50:25Z - EXP-267 trained and external7 published
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T14:36:35Z.
+- End: 2026-08-14T14:50:25Z.
+- Dependencies: commit `4aba288`; exact EXP-238 curriculum and controls; gpu0;
+  listener 8878.
+- Result: 62 focused tests, exact 170-row CPU admission, and a finite two-row
+  CUDA smoke passed. The full lane completed 170 updates in 145.64 seconds at
+  6,163,570,688 peak allocated bytes. Seven changed external candidate WAVs
+  were published with zero candidate-added gross row. On five exact jointly
+  stable/non-gross rows, source distance moved `0.256410 -> 0.271795` with
+  W/T/L `0/4/1`; decoder instability moved `1 -> 2`.
+- Problems: external7 is too small to classify broad robustness and machine ASR
+  cannot decide audible quality or target identity.
+- Rework: bind the unchanged EMA adapter to the five frozen broad surfaces and
+  render EXP-268--272 before choosing another training variable.
+
+## 2026-08-14T14:52:10Z - Grok audit continues broad EXP-267 screen
+
+- Agent: `grok-4.6-project-progress-auditor` in tmux
+  `liveconv-grok-auditor`; independent, read-only, and no delegation.
+- Task: challenge whether EXP-267 is another identity-patch detour and whether
+  GPU work should continue without operator hearing.
+- Result: `CONTINUE`. The auditor accepted EXP-266's inactive-gradient stop and
+  classified EXP-267 as a one-variable target-contract method change rather
+  than a calibrator/final-WAV identity neighbor. It required the existing broad
+  fixed surfaces before any next method decision.
+- Adopted: yes. Do not tune EXP-267's weight, LR, scope, rank, or horizon; do not
+  redesign evaluation or wait for hearing. Render fresh48, Hadou31, stress60,
+  JSUT24, and expanded144, apply content/corruption screening only, then replan.
+- Problems: gpu0 was idle at the audit snapshot and operator localStorage is
+  unavailable.
+- Rework: commit the minimal five-policy renderer slice and immediately return
+  gpu0 to sequential rendering.

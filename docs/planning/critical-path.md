@@ -289,6 +289,9 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-267 retain same-content teacher for semantic/mel reconstruction
         -> use assigned real Amitaro only for global speaker condition and sim MSE
         -> one target-contract change; exact data/scope/loss weights/LR/170/EMA
+        -> 170 updates complete; external7 changes 7/7 WAVs with zero added gross
+        -> external common-stable content is 0W/4T/1L; insufficient for a decision
+        -> EXP-268--272 render fresh48 / Hadou31 / stress60 / JSUT24 / expanded144
         -> operator hearing when available
 ```
 

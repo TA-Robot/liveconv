@@ -1471,6 +1471,60 @@ def candidate_policy(kind: str) -> dict[str, str]:
             ),
         }
     if kind in {
+        "real-speaker-condition-ema-fresh48",
+        "real-speaker-condition-ema-hadou",
+        "real-speaker-condition-ema-stress",
+        "real-speaker-condition-ema-jsut",
+        "real-speaker-condition-ema-expanded-stress",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress") and not kind.endswith(
+            "-expanded-stress"
+        )
+        jsut = kind.endswith("-jsut")
+        expanded = kind.endswith("-expanded-stress")
+        experiment_id = (
+            "EXP-272"
+            if expanded
+            else "EXP-271"
+            if jsut
+            else "EXP-270"
+            if stress
+            else "EXP-269"
+            if hadou
+            else "EXP-268"
+        )
+        suffix = (
+            "expanded-stress144"
+            if expanded
+            else "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": (
+                "cross-corpus170-pseudoparallel-real-speaker-condition-ema170"
+            ),
+            "display_name": (
+                "EXP-267 / real target speaker condition / pseudoparallel / "
+                "real-adversarial / EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-real-speaker-condition-"
+                f"ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does separating the real target speaker condition from the "
+                "same-content reconstruction target preserve content across "
+                "the established broad surfaces?"
+            ),
+        }
+    if kind in {
         "speaker-condition-calibrator-fresh48",
         "speaker-condition-calibrator-hadou",
         "speaker-condition-calibrator-stress",
@@ -2655,6 +2709,11 @@ def _parser() -> argparse.ArgumentParser:
             "output-speaker-ema-stress",
             "output-speaker-ema-jsut",
             "output-speaker-ema-expanded-stress",
+            "real-speaker-condition-ema-fresh48",
+            "real-speaker-condition-ema-hadou",
+            "real-speaker-condition-ema-stress",
+            "real-speaker-condition-ema-jsut",
+            "real-speaker-condition-ema-expanded-stress",
             "speaker-condition-calibrator-fresh48",
             "speaker-condition-calibrator-hadou",
             "speaker-condition-calibrator-stress",
