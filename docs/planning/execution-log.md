@@ -4695,3 +4695,29 @@ job queue.
   weight, pairing, window, scope, LR, horizon, or EMA neighbors. Preserve the
   unheard audio as unselected diagnosis and choose the next method from a
   different mechanism that explicitly preserves source content under tempo.
+
+## 2026-08-14T07:07:00Z - EXP-208--212 final-waveform content cycle prepared
+
+- Agent: `primary-integrator`.
+- Task: choose one method-level X-VC successor that explains EXP-203's internal
+  semantic improvement, final-waveform repetition, and tempo regression.
+- Dependencies: EXP-203--207's complete five-surface stop; X-VC's frozen
+  WhisperVQ encoder and exact differentiable torch log-mel definition; the
+  unchanged 170-row unpaired curriculum.
+- Result: selected one output-level linguistic cycle. Only the content loss
+  site changes: replace weight-1000 internal semantic-decoder MSE with
+  weight-1000 frame-aligned MSE between frozen source Whisper hidden states and
+  the same frozen encoder applied differentiably to the converted WAV. Target
+  speaker loss, real-wave adversarial/feature objective, data, pairing,
+  control69 LoRA69, 170 updates, LR, optimizer, clip, zero condition, EMA, and
+  all five evaluation identities stay fixed. All 225 focused source-diversity
+  tests and `make control-check` passed; exact CPU admission confirmed 170
+  training rows and seven external evaluation rows without CUDA.
+- Problems: X-VC's convenience extractor intentionally detaches through numpy;
+  the runner must reproduce its 400-point STFT, 160-hop, 128-bin mel frontend
+  in torch and demonstrate a real waveform gradient. The extra frozen-encoder
+  backward may increase memory or runtime.
+- Rework: pass focused tests plus one exact two-row backward smoke and commit
+  before the full lane. Stop on frontend mismatch, no waveform gradient,
+  nonfinite execution, or OOM. Do not sweep cycle weight, feature layer,
+  alignment, data, pairing, scope, LR, horizon, or EMA.

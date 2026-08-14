@@ -133,6 +133,19 @@ def test_unpaired_human_policy_factorizes_content_and_identity() -> None:
     assert "unrelated-text Amitaro" in policy["independent_variable"]
 
 
+def test_unpaired_output_cycle_policy_moves_content_loss_to_final_wav() -> None:
+    policy = post.listening_policy(
+        post.UNPAIRED_HUMAN_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp208"
+    assert policy["candidate_id"] == "human170-unpaired-output-cycle-ema170"
+    assert "final converted WAV" in policy["independent_variable"]
+
+
 def test_factorized_loss_uses_source_semantics_and_target_speaker() -> None:
     import torch
 
@@ -150,6 +163,101 @@ def test_factorized_loss_uses_source_semantics_and_target_speaker() -> None:
     assert losses["semantic"].item() == 2.5
     assert losses["speaker"].item() == 5.0
     assert losses["loss"].item() == 2_550.0
+
+
+def test_output_cycle_loss_backpropagates_from_final_wav(
+    monkeypatch,
+) -> None:
+    import torch
+
+    reconstruction = torch.tensor([[[1.0, 3.0]]], requires_grad=True)
+    outputs = {
+        "recons": reconstruction,
+        "pred_sim_feat": torch.tensor([[2.0, 4.0]]),
+        "sim_feat": torch.tensor([[1.0, 1.0]]),
+    }
+    batch = {"ssl_feat": torch.tensor([[[0.0, 1.0]]])}
+    monkeypatch.setattr(
+        post,
+        "differentiable_whisper_hidden_states",
+        lambda semantic_encoder, waveform, *, torch: waveform,
+    )
+
+    losses = post.output_cycle_unpaired_generator_loss(
+        outputs,
+        batch,
+        semantic_encoder=object(),
+        torch=torch,
+    )
+    losses["loss"].backward()
+
+    assert losses["output_cycle_content"].item() == 2.5
+    assert losses["speaker"].item() == 5.0
+    assert losses["loss"].item() == 2_550.0
+    assert reconstruction.grad is not None
+    assert torch.count_nonzero(reconstruction.grad).item() == 2
+
+
+def test_differentiable_whisper_frontend_keeps_waveform_gradient() -> None:
+    from types import SimpleNamespace
+
+    import numpy as np
+    import torch
+
+    class FakeEncoder:
+        def __call__(self, *, input_features, attention_mask):
+            assert attention_mask.shape == (
+                input_features.shape[0],
+                input_features.shape[-1],
+            )
+            return SimpleNamespace(whisper_hidden_states_50hz=input_features)
+
+    semantic_encoder = SimpleNamespace(
+        feature_extractor=SimpleNamespace(
+            n_fft=4,
+            hop_length=2,
+            mel_filters=np.asarray(
+                [[1.0, 0.0], [0.5, 0.5], [0.0, 1.0]], dtype=np.float32
+            ),
+        ),
+        encoder=FakeEncoder(),
+    )
+    waveform = torch.linspace(-0.5, 0.5, 16).reshape(1, 1, -1)
+    waveform.requires_grad_(True)
+
+    hidden = post.differentiable_whisper_hidden_states(
+        semantic_encoder, waveform, torch=torch
+    )
+    hidden.square().mean().backward()
+
+    assert hidden.shape[1] == 2
+    assert waveform.grad is not None
+    assert torch.count_nonzero(waveform.grad).item() > 0
+
+
+def test_output_cycle_frontend_equivalence_rejects_drift(monkeypatch) -> None:
+    import torch
+
+    monkeypatch.setattr(
+        post,
+        "differentiable_whisper_hidden_states",
+        lambda semantic_encoder, waveform, *, torch: waveform,
+    )
+    source = torch.tensor([[[1.0, 2.0]]])
+
+    metrics = post.validate_output_cycle_frontend(
+        object(), source, source + 1e-4, torch=torch
+    )
+    assert metrics["maximum_absolute_hidden_difference"] < 1e-3
+
+    try:
+        post.validate_output_cycle_frontend(
+            object(), source, source + 0.1, torch=torch
+        )
+    except post.PostRehearsalError as error:
+        assert "frontend mismatch" in str(error)
+    else:
+        raise AssertionError("drifted output-cycle frontend unexpectedly admitted")
 
 
 def test_unpaired_human_manifest_does_not_require_predecessor_result(

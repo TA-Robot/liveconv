@@ -90,6 +90,10 @@ ACOUSTIC_ENCODER_CHECKPOINT_KIND = (
 GENERATIVE_OBJECTIVE = "generative-only"
 REAL_REFERENCE_ADVERSARIAL_OBJECTIVE = "real-reference-adversarial"
 FACTORIZED_UNPAIRED_OBJECTIVE = "factorized-unpaired-human-adversarial"
+OUTPUT_CYCLE_UNPAIRED_OBJECTIVE = (
+    "factorized-unpaired-human-output-cycle-adversarial"
+)
+OUTPUT_CYCLE_CONTENT_WEIGHT = 1000.0
 SEQUENTIAL_OPTIMIZER = "sequential"
 PCGRAD_PAIRED_OPTIMIZER = "pcgrad-hard-easy-paired"
 EMA_IMPLEMENTATION = "ema-pytorch-0.7.7-defaults-adapter-equivalent"
@@ -229,7 +233,11 @@ def listening_policy(
         if manifest_kind == UNPAIRED_HUMAN_OUTPUT_KIND:
             if (
                 trainable_target != LORA69_TARGET
-                or training_objective != FACTORIZED_UNPAIRED_OBJECTIVE
+                or training_objective
+                not in {
+                    FACTORIZED_UNPAIRED_OBJECTIVE,
+                    OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+                }
                 or optimizer_mode != SEQUENTIAL_OPTIMIZER
                 or parameter_anchor
                 or source_activity_envelope
@@ -237,6 +245,34 @@ def listening_policy(
                 raise PostRehearsalError(
                     "unpaired human EMA requires the exact factorized LoRA69 pilot"
                 )
+            if training_objective == OUTPUT_CYCLE_UNPAIRED_OBJECTIVE:
+                return {
+                    "slug": "exp208",
+                    "candidate_id": "human170-unpaired-output-cycle-ema170",
+                    "candidate_name": (
+                        "EXP-208 / unpaired human output-cycle content / EMA"
+                    ),
+                    "run_kind": (
+                        "EXP-208 X-VC unpaired-human output-cycle evaluation"
+                    ),
+                    "result_kind": (
+                        "liveconv-exp208-xvc-unpaired-human-output-cycle-ema/v1"
+                    ),
+                    "question": (
+                        "Can frozen-Whisper content consistency on the final WAV "
+                        "close the collapse path left by internal semantic loss?"
+                    ),
+                    "independent_variable": (
+                        "only the content-supervision site changes from EXP-203's "
+                        "internal semantic-decoder MSE to weight-1000 frame-aligned "
+                        "MSE between source Whisper hidden states and the same "
+                        "frozen Whisper encoder applied differentiably to the final "
+                        "converted WAV; the 170 unpaired Hadou/Amitaro rows, target "
+                        "speaker loss, real-wave adversarial objective, control69 "
+                        "LoRA69 initialization, updates, LR, optimizer, clip, zero "
+                        "frame condition, and EMA stay fixed"
+                    ),
+                }
             return {
                 "slug": "exp203",
                 "candidate_id": "human170-factorized-unpaired-ema170",
@@ -843,6 +879,120 @@ def factorized_unpaired_generator_loss(
     if not bool(torch.isfinite(loss)):
         raise PostRehearsalError("factorized human loss is non-finite")
     return {"loss": loss, "semantic": semantic, "speaker": speaker}
+
+
+def differentiable_whisper_hidden_states(
+    semantic_encoder: Any, waveform: Any, *, torch: Any
+) -> Any:
+    """Reproduce Whisper's torch log-mel frontend without detaching the WAV."""
+    if waveform.ndim != 3 or waveform.shape[1] != 1:
+        raise PostRehearsalError("output-cycle waveform shape drifted")
+    feature_extractor = getattr(semantic_encoder, "feature_extractor", None)
+    encoder = getattr(semantic_encoder, "encoder", None)
+    if feature_extractor is None or encoder is None:
+        raise PostRehearsalError("output-cycle Whisper encoder is unavailable")
+    n_fft = int(getattr(feature_extractor, "n_fft", 0))
+    hop_length = int(getattr(feature_extractor, "hop_length", 0))
+    mel_values = getattr(feature_extractor, "mel_filters", None)
+    if n_fft <= 0 or hop_length <= 0 or mel_values is None:
+        raise PostRehearsalError("output-cycle Whisper frontend drifted")
+
+    audio = waveform.squeeze(1).float()
+    window = torch.hann_window(n_fft, device=audio.device, dtype=audio.dtype)
+    spectrum = torch.stft(
+        audio,
+        n_fft,
+        hop_length,
+        window=window,
+        return_complex=True,
+    )
+    magnitudes = spectrum[..., :-1].abs().square()
+    mel_filters = torch.as_tensor(
+        mel_values,
+        device=audio.device,
+        dtype=magnitudes.dtype,
+    )
+    if mel_filters.ndim != 2 or mel_filters.shape[0] != magnitudes.shape[-2]:
+        raise PostRehearsalError("output-cycle Whisper mel bank drifted")
+    mel_spec = mel_filters.transpose(0, 1) @ magnitudes
+    log_spec = torch.clamp(mel_spec, min=1e-10).log10()
+    maximum = log_spec.amax(dim=(-2, -1), keepdim=True)
+    log_spec = torch.maximum(log_spec, maximum - 8.0)
+    log_spec = (log_spec + 4.0) / 4.0
+    attention_mask = torch.ones(
+        (log_spec.shape[0], log_spec.shape[-1]),
+        device=log_spec.device,
+        dtype=torch.int32,
+    )
+    encoded = encoder(input_features=log_spec, attention_mask=attention_mask)
+    hidden = getattr(encoded, "whisper_hidden_states_50hz", None)
+    if hidden is None or not bool(torch.isfinite(hidden).all()):
+        raise PostRehearsalError("output-cycle Whisper hidden state is malformed")
+    return hidden
+
+
+def output_cycle_unpaired_generator_loss(
+    outputs: Mapping[str, Any],
+    batch: Mapping[str, Any],
+    *,
+    semantic_encoder: Any,
+    torch: Any,
+) -> dict[str, Any]:
+    """Bind source content to the final converted waveform, not an internal head."""
+    reconstruction = outputs.get("recons")
+    predicted_speaker = outputs.get("pred_sim_feat")
+    target_speaker = outputs.get("sim_feat")
+    target_hidden = batch.get("ssl_feat")
+    if (
+        reconstruction is None
+        or predicted_speaker is None
+        or target_speaker is None
+        or target_hidden is None
+    ):
+        raise PostRehearsalError("output-cycle human output shape drifted")
+    cycle_hidden = differentiable_whisper_hidden_states(
+        semantic_encoder, reconstruction, torch=torch
+    )
+    if cycle_hidden.shape != target_hidden.shape:
+        raise PostRehearsalError("output-cycle content shape drifted")
+    content = torch.nn.functional.mse_loss(cycle_hidden, target_hidden)
+    speaker = torch.nn.functional.mse_loss(predicted_speaker, target_speaker)
+    loss = (
+        OUTPUT_CYCLE_CONTENT_WEIGHT * content
+        + role_mix.STANDARD_LOSS_WEIGHTS["sim_mse_loss"] * speaker
+    )
+    if not bool(torch.isfinite(loss)):
+        raise PostRehearsalError("output-cycle human loss is non-finite")
+    return {"loss": loss, "output_cycle_content": content, "speaker": speaker}
+
+
+def validate_output_cycle_frontend(
+    semantic_encoder: Any,
+    source_waveform: Any,
+    expected_hidden: Any,
+    *,
+    torch: Any,
+    maximum_tolerance: float = 1e-3,
+) -> dict[str, float]:
+    """Prove the differentiable frontend matches X-VC's detached helper."""
+    with torch.no_grad():
+        actual = differentiable_whisper_hidden_states(
+            semantic_encoder, source_waveform, torch=torch
+        )
+    if actual.shape != expected_hidden.shape:
+        raise PostRehearsalError("output-cycle frontend equivalence shape drifted")
+    distance = (actual.float() - expected_hidden.float()).abs()
+    maximum = float(distance.max().cpu())
+    mean = float(distance.mean().cpu())
+    if not math.isfinite(maximum) or maximum > maximum_tolerance:
+        raise PostRehearsalError(
+            f"output-cycle frontend mismatch: maximum={maximum:.8f}"
+        )
+    return {
+        "maximum_absolute_hidden_difference": maximum,
+        "mean_absolute_hidden_difference": mean,
+        "maximum_tolerance": maximum_tolerance,
+    }
 
 
 def source_receipt_identities(
@@ -1458,6 +1608,7 @@ def run(
     )
     losses: list[float] = []
     adversarial_metrics: list[dict[str, float]] = []
+    output_cycle_frontend_metrics: dict[str, float] | None = None
     pcgrad_metrics: list[dict[str, float | bool]] = []
     optimizer_steps = 0
     rows = (
@@ -1476,6 +1627,7 @@ def run(
     if arguments.training_objective in {
         REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
         FACTORIZED_UNPAIRED_OBJECTIVE,
+        OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
     }:
         discriminator, discriminator_optimizer = breadth._load_pretrained_discriminator(
             arguments, config, torch=torch, device=device
@@ -1573,6 +1725,17 @@ def run(
     else:
         for item in rows:
             batch = batch_for(item)
+            if (
+                arguments.training_objective
+                == OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+                and output_cycle_frontend_metrics is None
+            ):
+                output_cycle_frontend_metrics = validate_output_cycle_frontend(
+                    trained.semantic_encoder,
+                    batch["source_wav"],
+                    batch["ssl_feat"],
+                    torch=torch,
+                )
             if discriminator is not None and discriminator_optimizer is not None:
                 metrics = breadth._adversarial_update(
                     trained,
@@ -1642,6 +1805,18 @@ def run(
                         )
                         if arguments.training_objective
                         == FACTORIZED_UNPAIRED_OBJECTIVE
+                        else (
+                            lambda outputs, current_batch: (
+                                output_cycle_unpaired_generator_loss(
+                                    outputs,
+                                    current_batch,
+                                    semantic_encoder=trained.semantic_encoder,
+                                    torch=torch,
+                                )
+                            )
+                        )
+                        if arguments.training_objective
+                        == OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
                         else None
                     ),
                 )
@@ -1680,6 +1855,7 @@ def run(
             "training_objective": arguments.training_objective,
             "optimizer_mode": arguments.optimizer_mode,
             "parameter_anchor": arguments.parameter_anchor,
+            "output_cycle_frontend": output_cycle_frontend_metrics,
             "prospective_optimizer_steps": (
                 1 if arguments.optimizer_mode == PCGRAD_PAIRED_OPTIMIZER else len(rows)
             ),
@@ -1891,14 +2067,19 @@ def run(
                 "last": adversarial_metrics[-1],
                 "real_audio": "authorized-original-Amitaro-target",
                 "generative_audio": (
-                    "source-semantic-plus-target-speaker-factorization"
-                    if arguments.training_objective == FACTORIZED_UNPAIRED_OBJECTIVE
+                    "final-waveform-source-content-cycle-plus-target-speaker"
+                    if arguments.training_objective
+                    == OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+                    else "source-semantic-plus-target-speaker-factorization"
+                    if arguments.training_objective
+                    == FACTORIZED_UNPAIRED_OBJECTIVE
                     else "selective-repair-or-retention-target"
                 ),
             }
             if adversarial_metrics
             else None
         ),
+        "output_cycle_frontend": output_cycle_frontend_metrics,
         "pcgrad_metrics": (
             {
                 "pairs": len(pcgrad_metrics),
@@ -1968,6 +2149,7 @@ def parser() -> argparse.ArgumentParser:
             GENERATIVE_OBJECTIVE,
             REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
             FACTORIZED_UNPAIRED_OBJECTIVE,
+            OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
         ),
         default=GENERATIVE_OBJECTIVE,
     )

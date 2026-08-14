@@ -1240,6 +1240,46 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "the complete frozen cross-corpus and condition contract?"
             ),
         }
+    if kind in {
+        "unpaired-output-cycle-ema-fresh48",
+        "unpaired-output-cycle-ema-hadou",
+        "unpaired-output-cycle-ema-stress",
+        "unpaired-output-cycle-ema-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        experiment_id = (
+            "EXP-212"
+            if jsut
+            else "EXP-211"
+            if stress
+            else "EXP-210"
+            if hadou
+            else "EXP-209"
+        )
+        suffix = (
+            "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "human170-unpaired-output-cycle-ema170",
+            "display_name": "EXP-208 / unpaired human output-cycle content / EMA",
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-unpaired-human-"
+                f"output-cycle-ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does final-WAV frozen-Whisper content cycling prevent corruption "
+                "and preserve tempo across the complete fixed evaluation contract?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1929,6 +1969,10 @@ def _parser() -> argparse.ArgumentParser:
             "unpaired-human-ema-hadou",
             "unpaired-human-ema-stress",
             "unpaired-human-ema-jsut",
+            "unpaired-output-cycle-ema-fresh48",
+            "unpaired-output-cycle-ema-hadou",
+            "unpaired-output-cycle-ema-stress",
+            "unpaired-output-cycle-ema-jsut",
         ),
         default="speaker7",
     )
