@@ -392,6 +392,21 @@ def test_parameter_anchor_smoke_exercises_nonzero_distance_step() -> None:
     assert rows == items[:2]
 
 
+def test_acoustic_encoder_smoke_exercises_hard_and_easy_roles() -> None:
+    items = [
+        {"id": "hard", "curriculum_role": "hard"},
+        {"id": "easy", "curriculum_role": "easy"},
+        {"id": "later", "curriculum_role": "hard"},
+    ]
+
+    rows = post.smoke_rows(
+        {"kind": post.SELECTIVE_OUTPUT_KIND, "items": items},
+        require_hard_easy=True,
+    )
+
+    assert rows == items[:2]
+
+
 def test_pcgrad_projects_only_conflicting_task_components() -> None:
     import torch
 

@@ -1106,13 +1106,17 @@ def smoke_rows(
     manifest: Mapping[str, Any],
     optimizer_mode: str = SEQUENTIAL_OPTIMIZER,
     parameter_anchor: bool = False,
+    require_hard_easy: bool = False,
 ) -> list[Mapping[str, Any]]:
     items = manifest["items"]
     if optimizer_mode == PCGRAD_PAIRED_OPTIMIZER:
         return items[:2]
     if parameter_anchor:
         return items[:2]
-    if manifest.get("kind") not in DIVERSE_RETENTION_KINDS:
+    if (
+        manifest.get("kind") not in DIVERSE_RETENTION_KINDS
+        and not require_hard_easy
+    ):
         return items[:1]
     hard = next(item for item in items if item.get("curriculum_role") == "hard")
     easy = next(item for item in items if item.get("curriculum_role") == "easy")
@@ -1362,6 +1366,7 @@ def run(
             manifest,
             arguments.optimizer_mode,
             arguments.parameter_anchor,
+            arguments.trainable_target == ACOUSTIC_ENCODER_TARGET,
         )
         if arguments.smoke
         else manifest["items"]
