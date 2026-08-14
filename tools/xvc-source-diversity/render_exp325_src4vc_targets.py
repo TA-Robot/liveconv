@@ -339,6 +339,7 @@ def _build_curriculum(
                 "target_sha256": rendered_row["output_sha256"],
                 "target_root": "diverse-work",
                 "target_text": item["source_text"],
+                "source_relative_distance": 0.0,
                 "output_position": position,
             }
         )

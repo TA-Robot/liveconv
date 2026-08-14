@@ -122,6 +122,7 @@ def test_build_curriculum_preserves_source_identity_and_target_order() -> None:
     ]
     assert all(row["target_text"] == row["source_text"] for row in rows)
     assert all(row["target_root"] == "diverse-work" for row in rows)
+    assert all(row["source_relative_distance"] == 0.0 for row in rows)
     assert all("target_file" in row and "target_sha256" in row for row in rows)
     assert [row["target_id"] for row in rows] == [
         f"target-{index:03d}" for index in range(170)
