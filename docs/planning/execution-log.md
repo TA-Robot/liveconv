@@ -5999,3 +5999,28 @@ job queue.
 - Rework: commit focused implementation only after component-substitution tests;
   require a real finite nonzero-gradient CUDA smoke before the only 170-update
   lane.
+
+## 2026-08-14T17:39:00Z - EXP-297 stopped at external7
+
+- Agent: `primary-integrator`, with one bounded implementation owner.
+- Start: 2026-08-14T17:25:00Z.
+- End: 2026-08-14T17:39:00Z.
+- Dependencies: commit `a9cf6f1`; exact EXP-238 curriculum, targets, control69
+  initialization, and non-semantic loss contract; gpu0; listener 8878.
+- Result: 147 focused runner/renderer tests, Ruff, control checks, exact CPU
+  admission, and a real CUDA gradient smoke passed. The smoke retained 835,584
+  trainable parameters, had 827,376 nonzero gradient elements with finite norm
+  5.000000, and peaked at 4,638,480,384 bytes.
+- Result: the only lane completed 170 updates in 157.74 seconds at
+  6,163,570,688 peak bytes and published 35 external7 WAVs. The EMA adapter
+  weights SHA-256 is
+  `79349f5d34665e69e0efb2a1c85e6a1c4d66e7f21646523b464a69948c83062c`.
+- Result: exact EXP-238 join changed all seven candidates, gross stayed
+  `0 -> 0`, and five jointly stable non-gross rows tied exactly at mean
+  `0.256410 -> 0.256410`, W/T/L `0/5/0`.
+- Problems: decoder instability increased `1 -> 2`; `cv45141533` became
+  unstable with unchanged source-relative distance `0.75`. The predeclared
+  external stability stop fired.
+- Rework: skip EXP-298--302 and close beta, scale, semantic-weight, and
+  MSE/SmoothL1-blend neighbors. Keep the 35 WAVs unheard and unselected. Move
+  to a data, teacher-signal, conditioning, or learnable-target method.

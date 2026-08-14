@@ -324,7 +324,10 @@ claims from that artifact are superseded. The active join is now:
         -> replace only semantic MSE with scale-matched 2 * SmoothL1(beta=1)
         -> preserve local MSE curvature; linearize only large residual tails
         -> exact data/targets/init/scope/other losses/LR/170/EMA; CPU + CUDA smoke
-        -> external7 first; EXP-298--302 broad surfaces only after corruption/content pass
+        -> 170 updates complete; external7 7/7 changed, gross 0 -> 0
+        -> common-stable 0W/5T/0L but instability 1 -> 2 on cv45141533
+        -> skip EXP-298--302 and close beta/scale/weight/MSE-blend neighbors
+        -> next method must change data, teacher signal, conditioning, or training target
         -> operator hearing when available
 ```
 

@@ -1,6 +1,6 @@
 # EXP-297: pseudoparallel robust semantic loss
 
-Status: planned listen-now pilot; implementation and commit precede CUDA
+Status: stopped at external7; broad EXP-298--302 skipped
 
 ## Goal
 
@@ -70,3 +70,27 @@ auxiliary source-relative content distance. A surviving unchanged adapter then
 uses the five frozen broad surfaces. Machine diagnostics cannot select
 naturalness, target identity, a keeper, or a product winner; all produced audio
 remains unselected until hearing returns.
+
+## Result
+
+Commit `a9cf6f1` passed 147 focused runner/renderer tests, Ruff, control checks,
+exact 170-row CPU admission, and a real CUDA gradient smoke. The smoke retained
+`835,584` trainable LoRA69 parameters, produced finite gradients with `827,376`
+nonzero elements and norm `5.000000`, and peaked at `4,638,480,384` allocated
+bytes.
+
+The only full lane completed all 170 ordered updates in `157.74` seconds and
+peaked at `6,163,570,688` bytes. It published 35 external7 WAVs from the EMA
+adapter whose weights SHA-256 is
+`79349f5d34665e69e0efb2a1c85e6a1c4d66e7f21646523b464a69948c83062c`.
+
+An exact `(source_id, source_sha256)` join against EXP-238 changed all seven
+candidate outputs. Gross repetition stayed `0 -> 0`, but decoder instability
+increased `1 -> 2`: `cv45141533` changed from stable to unstable while its
+source-relative distance remained `0.75`. The five jointly stable, non-gross
+rows were exact content ties, mean `0.256410 -> 0.256410`, W/T/L `0/5/0`.
+
+The predeclared stability stop therefore fired. EXP-298--302 were not rendered.
+Do not sweep beta, scale, semantic weight, or MSE/SmoothL1 mixtures. This result
+rejects the scale-matched robust semantic-loss substitution for the current
+EXP-238 contract; it does not make an audible-quality claim.
