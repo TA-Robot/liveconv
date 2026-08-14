@@ -105,6 +105,57 @@ def test_upstream_ema_policy_changes_reported_adapter_state() -> None:
     assert "EMA" in policy["independent_variable"]
 
 
+def test_acoustic_encoder_policy_moves_learning_before_converter() -> None:
+    policy = post.listening_policy(
+        post.SELECTIVE_OUTPUT_KIND,
+        post.ACOUSTIC_ENCODER_TARGET,
+        post.REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp198"
+    assert policy["candidate_id"] == (
+        "cv12-selective-acoustic-encoder-real-adversarial-ema170"
+    )
+    assert "21,521,536" in policy["independent_variable"]
+
+
+def test_acoustic_encoder_setter_freezes_every_other_module() -> None:
+    class FakeModule:
+        def train(self, value: bool) -> None:
+            self.training = value
+
+    class FakeParameter:
+        def __init__(self, count: int) -> None:
+            self.count = count
+            self.requires_grad = True
+
+        def requires_grad_(self, value: bool) -> None:
+            self.requires_grad = value
+
+        def numel(self) -> int:
+            return self.count
+
+    selected = FakeParameter(post.EXPECTED_ACOUSTIC_ENCODER_PARAMETERS)
+    excluded = FakeParameter(99)
+
+    class FakeModel:
+        acoustic_encoder = FakeModule()
+
+        def eval(self) -> None:
+            self.training = False
+
+        def named_parameters(self):
+            yield "acoustic_encoder.weight", selected
+            yield "acoustic_converter.weight", excluded
+
+    trainable = post._set_acoustic_encoder_training_only(FakeModel())
+
+    assert trainable == [selected]
+    assert selected.requires_grad is True
+    assert excluded.requires_grad is False
+
+
 def test_jsut_retention_changes_only_easy_data_identity() -> None:
     policy = post.listening_policy(
         post.JSUT_RETENTION_OUTPUT_KIND,

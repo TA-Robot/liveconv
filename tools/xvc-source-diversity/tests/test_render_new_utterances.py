@@ -767,6 +767,35 @@ def test_source_envelope_retention_stress_policy_is_prebound() -> None:
     assert "source-envelope-retention-ema-stress" in choices
 
 
+def test_acoustic_encoder_policy_prebinds_complete_five_surface_contract() -> None:
+    kinds = [
+        "acoustic-encoder-ema-fresh48",
+        "acoustic-encoder-ema-hadou",
+        "acoustic-encoder-ema-stress",
+        "acoustic-encoder-ema-jsut",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-199",
+        "EXP-200",
+        "EXP-201",
+        "EXP-202",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "cv12-selective-acoustic-encoder-real-adversarial-ema170"
+    }
+    assert {policy["candidate_format"] for policy in policies} == {
+        "merged-control69-acoustic-encoder"
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert all(kind in choices for kind in kinds)
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"

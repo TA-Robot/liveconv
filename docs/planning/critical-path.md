@@ -215,7 +215,8 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-195 stress60 (mixed; tempo/silence residual; family closed)
         -> EXP-196 source activity-envelope objective
         -> EXP-197 stress60 (tempo 0/4/4; objective family closed)
-        -> next method must not be an adjacent timing-loss point (Ready)
+        -> EXP-198 acoustic-encoder representation target / EXP-163 mixed data
+        -> EXP-199--202 prebound fresh48 / Hadou31 / stress60 / JSUT24
         -> operator hearing when available
 ```
 

@@ -4542,3 +4542,39 @@ job queue.
 - Rework: close source-envelope weight/window/hop and adjacent timing-loss
   points after 335 WAVs. Keep the audio unselected on 8878 and choose the next
   lane from a different mechanism; do not optimize the old tongue twister.
+
+## 2026-08-14T05:50:25Z - Grok progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux `liveconv-grok-auditor`.
+- Task: independent 30-minute direction, evidence-cost, and idle-resource audit.
+- Result: `REDIRECT`. It accepted the two committed source36/envelope pilots,
+  their 670 WAVs, and immediate family closures, but rejected another
+  EXP-163/186 retention/timing/LoRA-neighbor point evaluated only on external7
+  plus stress60.
+- Problems: its recent-WAV listing stopped at EXP-194 despite the committed
+  EXP-196 result, and it could not observe operator localStorage. Neither gap
+  changes the direction verdict.
+- Rework: verdict adopted. Freeze external7/fresh48/Hadou31/stress60/JSUT24
+  before the next CUDA run. Move to one different mechanism that can explain
+  why converter-only changes fail, keep the plan to one page, and do not let
+  evaluation documentation become a GPU-idle project.
+
+## 2026-08-14T05:54:00Z - EXP-198--202 acoustic representation prepared
+
+- Agent: `primary-integrator`.
+- Task: select one non-neighbor X-VC retraining mechanism under the five-surface
+  audit contract.
+- Dependencies: recurring converter-only tempo/silence residual; EXP-196's
+  activity loss rose `0.253 -> 0.293`; local X-VC module inspection.
+- Result: selected the source `acoustic_encoder` as the sole mutable target
+  after merging control69. It has 21,521,536 parameters across 119 tensors;
+  converter, quantizer, prenet, decoders, predictors, speaker path, and all
+  other modules remain frozen. EXP-163's CV/Hadou/JVS data, targets,
+  adversarial objective, 170 updates, LR, optimizer, clip, zero condition, and
+  upstream EMA remain fixed. All five evaluation identities are prebound.
+- Problems: representation adaptation could destabilize the frozen quantizer
+  interface or consume more memory. A smoke can establish finiteness/resource
+  use only; it cannot predict audible quality.
+- Rework: implement exact save/reload and focused tests, commit, then run one
+  smoke and one full lane. Stop this target family afterward; no encoder-depth,
+  LR, or adjacent-module sweep.

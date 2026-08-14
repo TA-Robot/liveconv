@@ -1153,6 +1153,51 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "frozen clean, noise, pitch, silence, and tempo behavior?"
             ),
         }
+    if kind in {
+        "acoustic-encoder-ema-fresh48",
+        "acoustic-encoder-ema-hadou",
+        "acoustic-encoder-ema-stress",
+        "acoustic-encoder-ema-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        experiment_id = (
+            "EXP-202"
+            if jsut
+            else "EXP-201"
+            if stress
+            else "EXP-200"
+            if hadou
+            else "EXP-199"
+        )
+        suffix = (
+            "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": (
+                "cv12-selective-acoustic-encoder-real-adversarial-ema170"
+            ),
+            "display_name": (
+                "EXP-198 / selective real-adversarial / acoustic encoder / EMA"
+            ),
+            "candidate_format": "merged-control69-acoustic-encoder",
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-acoustic-encoder-"
+                f"real-adversarial-ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does source acoustic-representation adaptation survive the "
+                "complete frozen cross-corpus and condition contract?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1349,6 +1394,7 @@ def validate_inputs(
         if (
             arguments.candidate_adapter is not None
             or arguments.candidate_converter is None
+            or arguments.candidate_acoustic_encoder is not None
         ):
             raise NewUtteranceError("full converter candidate arguments drifted")
         metadata_path = arguments.candidate_converter / "converter.json"
@@ -1368,8 +1414,39 @@ def validate_inputs(
             or metadata.get("weights_sha256") != base.sha256_file(weights)
         ):
             raise NewUtteranceError("full converter candidate identity drifted")
+    elif policy.get("candidate_format") == "merged-control69-acoustic-encoder":
+        if (
+            arguments.candidate_adapter is not None
+            or arguments.candidate_converter is not None
+            or arguments.candidate_acoustic_encoder is None
+        ):
+            raise NewUtteranceError("acoustic encoder candidate arguments drifted")
+        metadata_path = (
+            arguments.candidate_acoustic_encoder / "acoustic-encoder.json"
+        )
+        weights = (
+            arguments.candidate_acoustic_encoder
+            / "acoustic-encoder-parameters.safetensors"
+        )
+        if (
+            arguments.candidate_acoustic_encoder.is_symlink()
+            or metadata_path.is_symlink()
+            or weights.is_symlink()
+            or not metadata_path.is_file()
+            or not weights.is_file()
+        ):
+            raise NewUtteranceError("acoustic encoder candidate is unavailable")
+        metadata = post.load_json(metadata_path)
+        if (
+            metadata.get("kind") != post.ACOUSTIC_ENCODER_CHECKPOINT_KIND
+            or metadata.get("parameter_count")
+            != post.EXPECTED_ACOUSTIC_ENCODER_PARAMETERS
+            or metadata.get("weights_sha256") != base.sha256_file(weights)
+        ):
+            raise NewUtteranceError("acoustic encoder candidate identity drifted")
     elif (
         arguments.candidate_converter is not None
+        or arguments.candidate_acoustic_encoder is not None
         or arguments.candidate_adapter is None
     ):
         raise NewUtteranceError("adapter candidate arguments drifted")
@@ -1598,6 +1675,17 @@ def run(
             torch=torch,
             device=device,
         )
+    elif policy.get("candidate_format") == "merged-control69-acoustic-encoder":
+        candidate_control = PeftModel.from_pretrained(
+            candidate_base, str(arguments.control_adapter), is_trainable=False
+        )
+        candidate = candidate_control.merge_and_unload(safe_merge=True)
+        post.load_acoustic_encoder_checkpoint(
+            candidate,
+            arguments.candidate_acoustic_encoder,
+            torch=torch,
+            device=device,
+        )
     else:
         candidate = PeftModel.from_pretrained(
             candidate_base, str(arguments.candidate_adapter), is_trainable=False
@@ -1791,6 +1879,10 @@ def _parser() -> argparse.ArgumentParser:
             "conditioned-retention-ema-stress",
             "source36-retention-ema-stress",
             "source-envelope-retention-ema-stress",
+            "acoustic-encoder-ema-fresh48",
+            "acoustic-encoder-ema-hadou",
+            "acoustic-encoder-ema-stress",
+            "acoustic-encoder-ema-jsut",
         ),
         default="speaker7",
     )
@@ -1800,6 +1892,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--control-adapter", type=Path, required=True)
     parser.add_argument("--candidate-adapter", type=Path)
     parser.add_argument("--candidate-converter", type=Path)
+    parser.add_argument("--candidate-acoustic-encoder", type=Path)
     parser.add_argument("--xvc-source-root", type=Path, required=True)
     parser.add_argument("--xvc-config", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, required=True)

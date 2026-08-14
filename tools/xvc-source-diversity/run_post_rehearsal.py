@@ -70,11 +70,17 @@ CANDIDATE_ID = "cv12-clean-post-rehearsal170"
 RESULT_KIND = "liveconv-exp141-xvc-clean-post-rehearsal-result/v1"
 LEARNING_RATE = 1e-4
 FULL_CONVERTER_TARGET = "full-converter"
+ACOUSTIC_ENCODER_TARGET = "acoustic-encoder"
 LORA69_TARGET = "lora69"
 SOURCE36_TARGET = "source36"
 CONVERTER_PREFIX = "acoustic_converter"
 EXPECTED_CONVERTER_PARAMETERS = 42_357_760
 CONVERTER_CHECKPOINT_KIND = "liveconv-xvc-merged-control69-converter/v1"
+ACOUSTIC_ENCODER_PREFIX = "acoustic_encoder"
+EXPECTED_ACOUSTIC_ENCODER_PARAMETERS = 21_521_536
+ACOUSTIC_ENCODER_CHECKPOINT_KIND = (
+    "liveconv-xvc-merged-control69-acoustic-encoder/v1"
+)
 GENERATIVE_OBJECTIVE = "generative-only"
 REAL_REFERENCE_ADVERSARIAL_OBJECTIVE = "real-reference-adversarial"
 SEQUENTIAL_OPTIMIZER = "sequential"
@@ -213,6 +219,41 @@ def listening_policy(
     if optimizer_mode != SEQUENTIAL_OPTIMIZER:
         raise PostRehearsalError("unknown optimizer mode")
     if use_adapter_ema:
+        if trainable_target == ACOUSTIC_ENCODER_TARGET:
+            if (
+                manifest_kind != SELECTIVE_OUTPUT_KIND
+                or training_objective != REAL_REFERENCE_ADVERSARIAL_OBJECTIVE
+            ):
+                raise PostRehearsalError(
+                    "acoustic encoder EMA is admitted only for EXP-163 data"
+                )
+            return {
+                "slug": "exp198",
+                "candidate_id": (
+                    "cv12-selective-acoustic-encoder-real-adversarial-ema170"
+                ),
+                "candidate_name": (
+                    "EXP-198 / selective real-adversarial / acoustic encoder / EMA"
+                ),
+                "run_kind": "EXP-198 X-VC acoustic-encoder evaluation",
+                "result_kind": (
+                    "liveconv-exp198-xvc-acoustic-encoder-real-adversarial-ema/v1"
+                ),
+                "question": (
+                    "Does adapting the frozen source acoustic representation "
+                    "repair cross-condition timing/content residuals that "
+                    "converter-only objectives did not?"
+                ),
+                "independent_variable": (
+                    "only the mutable learning target moves from control69's "
+                    "69 acoustic-converter LoRA modules to all 21,521,536 source "
+                    "acoustic-encoder parameters after merging control69; the "
+                    "exact EXP-163 CV/Hadou/JVS hard85/easy85 data, targets, "
+                    "real-reference adversarial objective, 170 sequential "
+                    "updates, LR, optimizer, clip, zero condition, and upstream "
+                    "EMA schedule remain fixed"
+                ),
+            }
         if trainable_target == SOURCE36_TARGET:
             if (
                 manifest_kind != COMMONVOICE_RETENTION_OUTPUT_KIND
@@ -742,6 +783,26 @@ def _set_converter_training_only(model: Any) -> list[Any]:
     return trainable
 
 
+def _set_acoustic_encoder_training_only(model: Any) -> list[Any]:
+    model.eval()
+    encoder = getattr(model, ACOUSTIC_ENCODER_PREFIX, None)
+    if encoder is None:
+        raise PostRehearsalError("X-VC acoustic encoder is unavailable")
+    encoder.train(True)
+    trainable: list[Any] = []
+    for name, parameter in model.named_parameters():
+        selected = name.startswith(ACOUSTIC_ENCODER_PREFIX + ".")
+        parameter.requires_grad_(selected)
+        if selected:
+            trainable.append(parameter)
+    if (
+        sum(parameter.numel() for parameter in trainable)
+        != EXPECTED_ACOUSTIC_ENCODER_PARAMETERS
+    ):
+        raise PostRehearsalError("acoustic encoder parameter count drifted")
+    return trainable
+
+
 def _set_existing_adapter_scope_training_only(
     model: Any, scope: Mapping[str, object]
 ) -> list[Any]:
@@ -866,6 +927,106 @@ def load_converter_checkpoint(
     actual = _converter_snapshot(model, torch)
     if any(not torch.equal(actual[name], stored[name]) for name in stored):
         raise PostRehearsalError("full converter checkpoint reload is not exact")
+    return metadata
+
+
+def _acoustic_encoder_snapshot(model: Any, torch: Any) -> dict[str, Any]:
+    snapshot: dict[str, Any] = {}
+    for name, parameter in model.named_parameters():
+        if not name.startswith(ACOUSTIC_ENCODER_PREFIX + "."):
+            continue
+        relative = name.removeprefix(ACOUSTIC_ENCODER_PREFIX + ".")
+        value = parameter.detach().cpu().contiguous()
+        if not bool(torch.isfinite(value).all()):
+            raise PostRehearsalError(
+                f"non-finite acoustic encoder parameter: {relative}"
+            )
+        snapshot[relative] = value
+    if (
+        sum(value.numel() for value in snapshot.values())
+        != EXPECTED_ACOUSTIC_ENCODER_PARAMETERS
+    ):
+        raise PostRehearsalError("acoustic encoder snapshot count drifted")
+    return snapshot
+
+
+def save_acoustic_encoder_checkpoint(
+    model: Any, directory: Path, torch: Any
+) -> dict[str, Any]:
+    from safetensors.torch import load_file, save_file
+
+    directory.mkdir()
+    weights = directory / "acoustic-encoder-parameters.safetensors"
+    snapshot = _acoustic_encoder_snapshot(model, torch)
+    save_file(
+        snapshot,
+        str(weights),
+        metadata={"format": "merged_control69_acoustic_encoder_parameters_v1"},
+    )
+    reloaded = load_file(str(weights), device="cpu")
+    if set(reloaded) != set(snapshot) or any(
+        not torch.equal(reloaded[name], snapshot[name]) for name in snapshot
+    ):
+        raise PostRehearsalError("acoustic encoder serialization drifted")
+    metadata = {
+        "schema_version": 1,
+        "kind": ACOUSTIC_ENCODER_CHECKPOINT_KIND,
+        "initialization": "base-xvc-plus-merged-control69",
+        "parameter_prefix": ACOUSTIC_ENCODER_PREFIX,
+        "tensor_count": len(snapshot),
+        "parameter_count": EXPECTED_ACOUSTIC_ENCODER_PARAMETERS,
+        "weights_sha256": sha256_file(weights),
+    }
+    method._write_json(directory / "acoustic-encoder.json", metadata)
+    return metadata
+
+
+def load_acoustic_encoder_checkpoint(
+    model: Any, directory: Path, *, torch: Any, device: Any
+) -> dict[str, Any]:
+    from safetensors.torch import load_file
+
+    metadata_path = directory / "acoustic-encoder.json"
+    weights = directory / "acoustic-encoder-parameters.safetensors"
+    if (
+        directory.is_symlink()
+        or metadata_path.is_symlink()
+        or weights.is_symlink()
+        or not metadata_path.is_file()
+        or not weights.is_file()
+    ):
+        raise PostRehearsalError("acoustic encoder checkpoint is unavailable")
+    metadata = load_json(metadata_path)
+    if (
+        metadata.get("kind") != ACOUSTIC_ENCODER_CHECKPOINT_KIND
+        or metadata.get("parameter_prefix") != ACOUSTIC_ENCODER_PREFIX
+        or metadata.get("parameter_count") != EXPECTED_ACOUSTIC_ENCODER_PARAMETERS
+        or metadata.get("weights_sha256") != sha256_file(weights)
+    ):
+        raise PostRehearsalError("acoustic encoder checkpoint identity drifted")
+    stored = load_file(str(weights), device="cpu")
+    destinations = {
+        name.removeprefix(ACOUSTIC_ENCODER_PREFIX + "."): parameter
+        for name, parameter in model.named_parameters()
+        if name.startswith(ACOUSTIC_ENCODER_PREFIX + ".")
+    }
+    if (
+        set(stored) != set(destinations)
+        or sum(value.numel() for value in stored.values())
+        != EXPECTED_ACOUSTIC_ENCODER_PARAMETERS
+    ):
+        raise PostRehearsalError("acoustic encoder tensor set drifted")
+    with torch.no_grad():
+        for name, value in stored.items():
+            destination = destinations[name]
+            if tuple(value.shape) != tuple(destination.shape):
+                raise PostRehearsalError(
+                    f"acoustic encoder shape drifted: {name}"
+                )
+            destination.copy_(value.to(device=device, dtype=destination.dtype))
+    actual = _acoustic_encoder_snapshot(model, torch)
+    if any(not torch.equal(actual[name], stored[name]) for name in stored):
+        raise PostRehearsalError("acoustic encoder checkpoint reload is not exact")
     return metadata
 
 
@@ -1157,13 +1318,20 @@ def run(
         arguments.inventory,
         "source36" if arguments.trainable_target == SOURCE36_TARGET else "control69",
     )
-    if arguments.trainable_target == FULL_CONVERTER_TARGET:
+    if arguments.trainable_target in {
+        FULL_CONVERTER_TARGET,
+        ACOUSTIC_ENCODER_TARGET,
+    }:
         control = PeftModel.from_pretrained(
             model, str(arguments.control_adapter), is_trainable=False
         )
         trained = control.merge_and_unload(safe_merge=True)
-        trainable = _set_converter_training_only(trained)
-        expected_trainable = EXPECTED_CONVERTER_PARAMETERS
+        if arguments.trainable_target == FULL_CONVERTER_TARGET:
+            trainable = _set_converter_training_only(trained)
+            expected_trainable = EXPECTED_CONVERTER_PARAMETERS
+        else:
+            trainable = _set_acoustic_encoder_training_only(trained)
+            expected_trainable = EXPECTED_ACOUSTIC_ENCODER_PARAMETERS
     else:
         trained = PeftModel.from_pretrained(
             model, str(arguments.control_adapter), is_trainable=True
@@ -1227,6 +1395,8 @@ def run(
     def batch_for(item: Mapping[str, Any]) -> Any:
         if arguments.trainable_target == FULL_CONVERTER_TARGET:
             _set_converter_training_only(trained)
+        elif arguments.trainable_target == ACOUSTIC_ENCODER_TARGET:
+            _set_acoustic_encoder_training_only(trained)
         elif arguments.trainable_target == SOURCE36_TARGET:
             _set_existing_adapter_scope_training_only(trained, scope)
         else:
@@ -1322,7 +1492,14 @@ def run(
                             )
                         )
                         if arguments.trainable_target == SOURCE36_TARGET
-                        else None
+                        else (
+                            lambda current: _set_acoustic_encoder_training_only(
+                                current
+                            )
+                            if arguments.trainable_target
+                            == ACOUSTIC_ENCODER_TARGET
+                            else None
+                        )
                     ),
                     output_regularizer=(
                         (
@@ -1397,6 +1574,12 @@ def run(
     if arguments.trainable_target == FULL_CONVERTER_TARGET:
         checkpoint_metadata = save_converter_checkpoint(
             trained, arguments.work_dir / f"converter-{EXPECTED_ROWS}", torch
+        )
+    elif arguments.trainable_target == ACOUSTIC_ENCODER_TARGET:
+        checkpoint_metadata = save_acoustic_encoder_checkpoint(
+            trained,
+            arguments.work_dir / f"acoustic-encoder-{EXPECTED_ROWS}",
+            torch,
         )
     else:
         checkpoint_steps = (
@@ -1633,7 +1816,12 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--control-adapter", type=Path, required=True)
     value.add_argument(
         "--trainable-target",
-        choices=(LORA69_TARGET, SOURCE36_TARGET, FULL_CONVERTER_TARGET),
+        choices=(
+            LORA69_TARGET,
+            SOURCE36_TARGET,
+            FULL_CONVERTER_TARGET,
+            ACOUSTIC_ENCODER_TARGET,
+        ),
         default=LORA69_TARGET,
     )
     value.add_argument(
