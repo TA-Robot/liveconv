@@ -1,6 +1,6 @@
 # EXP-252: X-VC final-WAV speaker identity supervision
 
-Status: admitted one-point retraining lane; unheard and unselected
+Status: trained; broad corruption screen admitted; unheard and unselected
 
 ## Goal
 
@@ -41,6 +41,22 @@ identity quality, a keeper, or a winner.
 Stop on a detached/zero waveform gradient, nonfinite ERes2Net features, target
 lineage drift, gross corruption, or broad content regression. Do not vary the
 speaker weight, encoder, curriculum, scope, LR, horizon, or EMA in this lane.
+
+## Training result
+
+The committed 170-update gpu0 run completed from `f513614` in 145.88 seconds
+with 6,161,235,968 peak allocated bytes. The frozen final-WAV ERes2Net cosine
+increased from `0.318931` on the first update to `0.412770` on the last update.
+The resulting EMA adapter SHA-256 is
+`c4a2d6779384d10238c99cda816a84e23ab53c596c76e847470d58a2549dbbd8`.
+
+External7 produced no candidate-added gross repetition. On the five rows whose
+candidate decoding was stable for both EXP-238 and EXP-252, auxiliary
+source-relative distance moved `0.256410 -> 0.223077` (one improvement, four
+ties, zero regressions). This is only a corruption/content admission result;
+it does not establish audible identity, naturalness, or a winner. Reuse the
+fixed fresh48, Hadou31, stress60, JSUT24, and expanded144 surfaces next, with
+no retraining or weight neighbor.
 
 ## Command
 

@@ -5399,3 +5399,34 @@ job queue.
 - Rework: skip more metrics and commit EXP-252 after focused tests and real
   170-row CPU admission, then run a two-row backward smoke and one 170-update
   gpu0 lane. Publish audio before any neighboring method is considered.
+
+## 2026-08-14T13:11:00Z - EXP-252 final-WAV speaker supervision trained
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T12:53:04Z.
+- End: 2026-08-14T13:11:00Z.
+- Dependencies: commits `d98b477` and `f513614`; exact EXP-238 curriculum,
+  controls, LoRA scope, optimizer, 170-update horizon, and EMA; frozen X-VC
+  ERes2Net speaker encoder; authorized Amitaro target windows; gpu0.
+- Result: 117 focused runner tests and the real 170-row CPU admission passed.
+  A finite two-row CUDA backward smoke established that the new final-WAV
+  speaker loss contributed about 5--6% of total loss. The full run completed
+  170 optimizer steps in 145.88 seconds at 6,161,235,968 peak allocated bytes.
+  Frozen final-WAV target cosine moved `0.318931 -> 0.412770`; EMA adapter
+  SHA-256 is
+  `c4a2d6779384d10238c99cda816a84e23ab53c596c76e847470d58a2549dbbd8`.
+  External7 audio was published on 8878 with no candidate-added gross row.
+  Across the five jointly decoder-stable old/new rows, auxiliary source
+  distance moved `0.256410 -> 0.223077` (one improvement, four ties, zero
+  regressions).
+- Problems: the first two-row smoke stopped before saving because the target
+  waveform remained on CPU while the frozen encoder was on CUDA. The empty
+  work directory was moved recoverably to
+  `exp252-output-speaker-ema-smoke-v1.failed-cpu-target`; the device fix is
+  covered by tests. Last-step total loss is not itself a gate because ordered
+  rows and adversarial terms differ by update. No machine metric can select
+  audible quality while operator hearing is unavailable.
+- Rework: admit only the five already frozen broad surfaces. Do not run a
+  speaker-weight neighbor, encoder comparison, new data mixture, or promotion
+  work. Keep ASR limited to content/corruption screening and retain all audio
+  as unheard/unselected.

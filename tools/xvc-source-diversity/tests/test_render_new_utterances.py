@@ -1024,6 +1024,34 @@ def test_pseudoparallel_expanded_stress_policy_is_exp243() -> None:
     assert "pseudoparallel-real-adv-ema-expanded-stress" in choices
 
 
+def test_output_speaker_prebinds_complete_five_surface_contract() -> None:
+    kinds = [
+        "output-speaker-ema-fresh48",
+        "output-speaker-ema-hadou",
+        "output-speaker-ema-stress",
+        "output-speaker-ema-jsut",
+        "output-speaker-ema-expanded-stress",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-253",
+        "EXP-254",
+        "EXP-255",
+        "EXP-256",
+        "EXP-257",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "cross-corpus170-pseudoparallel-output-speaker-ema170"
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert all(kind in choices for kind in kinds)
+
+
 def test_src4vc_pseudoparallel_prebinds_broad_evaluation_contract() -> None:
     kinds = [
         "src4vc-pseudoparallel-ema-fresh48",

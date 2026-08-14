@@ -1454,6 +1454,65 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "symmetric speed, pitch, silence, noise, and text-length strata?"
             ),
         }
+    if kind == "output-speaker-ema-expanded-stress":
+        return {
+            "experiment_id": "EXP-257",
+            "variant_id": "cross-corpus170-pseudoparallel-output-speaker-ema170",
+            "display_name": (
+                "EXP-252 / final-WAV speaker identity / pseudoparallel / "
+                "real-adversarial / EMA"
+            ),
+            "result_kind": (
+                "liveconv-exp257-xvc-output-speaker-expanded-stress144/v1"
+            ),
+            "question": (
+                "Does final-WAV speaker supervision retain content across the "
+                "frozen symmetric length and condition matrix?"
+            ),
+        }
+    if kind in {
+        "output-speaker-ema-fresh48",
+        "output-speaker-ema-hadou",
+        "output-speaker-ema-stress",
+        "output-speaker-ema-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        experiment_id = (
+            "EXP-256"
+            if jsut
+            else "EXP-255"
+            if stress
+            else "EXP-254"
+            if hadou
+            else "EXP-253"
+        )
+        suffix = (
+            "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "cross-corpus170-pseudoparallel-output-speaker-ema170",
+            "display_name": (
+                "EXP-252 / final-WAV speaker identity / pseudoparallel / "
+                "real-adversarial / EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-output-speaker-"
+                f"ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does final-WAV speaker supervision improve target identity "
+                "without losing content on the established broad surfaces?"
+            ),
+        }
     if kind in {
         "src4vc-pseudoparallel-ema-expanded-stress",
     }:
@@ -2481,6 +2540,11 @@ def _parser() -> argparse.ArgumentParser:
             "pseudoparallel-real-adv-ema-stress",
             "pseudoparallel-real-adv-ema-jsut",
             "pseudoparallel-real-adv-ema-expanded-stress",
+            "output-speaker-ema-fresh48",
+            "output-speaker-ema-hadou",
+            "output-speaker-ema-stress",
+            "output-speaker-ema-jsut",
+            "output-speaker-ema-expanded-stress",
             "src4vc-pseudoparallel-ema-fresh48",
             "src4vc-pseudoparallel-ema-hadou",
             "src4vc-pseudoparallel-ema-stress",
