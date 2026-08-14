@@ -38,3 +38,11 @@ def test_hard_curriculum_has_distinct_listener_identity() -> None:
     assert policy["slug"] == "exp146"
     assert policy["candidate_id"] == "cv12-hard-negative-curriculum170"
     assert policy["result_kind"].startswith("liveconv-exp146-")
+
+
+def test_selective_retention_has_distinct_listener_identity() -> None:
+    policy = post.listening_policy(post.SELECTIVE_OUTPUT_KIND)
+
+    assert policy["slug"] == "exp150"
+    assert policy["candidate_id"] == "cv12-selective-retention170"
+    assert policy["result_kind"].startswith("liveconv-exp150-")

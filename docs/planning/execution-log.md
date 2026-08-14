@@ -3554,3 +3554,21 @@ job queue.
 - Changed action: follow the audit's own failure branch immediately: sampling
   is closed and the next single lane must change loss, conditioning, or the
   learning target. Preserve JSUT24 and make no machine quality selection.
+
+## 2026-08-14T00:29:00Z - EXP-150--153 selective retention prepared
+
+- Agent: `primary-integrator`.
+- Dependencies: EXP-146 rejection; frozen 170-position hard curriculum;
+  EXP-145's 170 training-only control outputs; frozen external7/fresh48/
+  Hadou31/JSUT24; control69; gpu0.
+- Result: bind the same 85-hard/85-easy EXP-146 schedule while changing only
+  easy-row learning targets from base-X-VC outputs to their frozen non-gross
+  control69 outputs. Hard rows retain clean base-teacher repair targets. The
+  manifest has SHA-256 `6322a9c`, composition 56 Common Voice/111 Hadou/3 JVS,
+  and exact 85 repair/85 retention targets. Focused tests and real CPU runner
+  admission passed all 170 audio identities and the external7 contract.
+- Problems: none. The method deliberately retains EXP-146's hard exposure so
+  its causal comparison changes learning-target policy rather than sampling.
+- Rework: commit, then run one lane and the external7/fresh48/Hadou31 stop
+  sequence. Do not add blend, ratio, exposure, threshold, or scope neighbors.
+  Open JSUT24 only if all earlier screens survive.

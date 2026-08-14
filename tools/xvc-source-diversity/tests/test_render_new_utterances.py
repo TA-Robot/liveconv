@@ -527,6 +527,19 @@ def test_hard_negative_curriculum_policies_cover_three_frozen_sets() -> None:
     assert fresh["variant_id"] == hadou["variant_id"] == jsut["variant_id"]
 
 
+def test_selective_retention_policies_cover_three_frozen_sets() -> None:
+    fresh = NEW.candidate_policy("selective-retention-fresh48")
+    hadou = NEW.candidate_policy("selective-retention-hadou")
+    jsut = NEW.candidate_policy("selective-retention-jsut")
+
+    assert [fresh["experiment_id"], hadou["experiment_id"], jsut["experiment_id"]] == [
+        "EXP-151",
+        "EXP-152",
+        "EXP-153",
+    ]
+    assert fresh["variant_id"] == hadou["variant_id"] == jsut["variant_id"]
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"

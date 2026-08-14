@@ -732,6 +732,40 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 )
             ),
         }
+    if kind in {
+        "selective-retention-fresh48",
+        "selective-retention-hadou",
+        "selective-retention-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        jsut = kind.endswith("-jsut")
+        return {
+            "experiment_id": "EXP-153" if jsut else "EXP-152" if hadou else "EXP-151",
+            "variant_id": "cv12-selective-retention170",
+            "display_name": (
+                "EXP-150 / hard repair + control69 retention distillation"
+            ),
+            "result_kind": (
+                "liveconv-exp153-xvc-selective-retention-jsut24/v1"
+                if jsut
+                else (
+                    "liveconv-exp152-xvc-selective-retention-hadou31/v1"
+                    if hadou
+                    else "liveconv-exp151-xvc-selective-retention-fresh48/v1"
+                )
+            ),
+            "question": (
+                "Does selective failure repair survive untouched JSUT categories?"
+                if jsut
+                else (
+                    "Does selective failure repair remove the heldout Hadou loop "
+                    "without regression?"
+                    if hadou
+                    else "Does selective failure repair preserve broad fresh48 "
+                    "control69 behavior?"
+                )
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1272,6 +1306,9 @@ def _parser() -> argparse.ArgumentParser:
             "hard-negative-curriculum-fresh48",
             "hard-negative-curriculum-hadou",
             "hard-negative-curriculum-jsut",
+            "selective-retention-fresh48",
+            "selective-retention-hadou",
+            "selective-retention-jsut",
         ),
         default="speaker7",
     )

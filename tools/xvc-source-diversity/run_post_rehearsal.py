@@ -40,6 +40,13 @@ from prepare_hard_negative_curriculum import (  # noqa: E402
 from prepare_hard_negative_curriculum import (  # noqa: E402
     OUTPUT_KIND as HARD_OUTPUT_KIND,
 )
+from prepare_selective_retention_curriculum import (  # noqa: E402
+    OUTPUT_KIND as SELECTIVE_OUTPUT_KIND,
+)
+from prepare_selective_retention_curriculum import (  # noqa: E402
+    REPAIR_TARGET,
+    RETENTION_TARGET,
+)
 
 CANDIDATE_ID = "cv12-clean-post-rehearsal170"
 RESULT_KIND = "liveconv-exp141-xvc-clean-post-rehearsal-result/v1"
@@ -53,6 +60,26 @@ class PostRehearsalError(RuntimeError):
 def listening_policy(manifest_kind: str = OUTPUT_KIND) -> dict[str, str]:
     """Return the complete shared-listener identity for the admitted method."""
 
+    if manifest_kind == SELECTIVE_OUTPUT_KIND:
+        return {
+            "slug": "exp150",
+            "candidate_id": "cv12-selective-retention170",
+            "candidate_name": (
+                "EXP-150 / hard repair + control69 retention distillation"
+            ),
+            "run_kind": "EXP-150 X-VC selective retention evaluation",
+            "result_kind": "liveconv-exp150-xvc-selective-retention/v1",
+            "question": (
+                "Can base-teacher repair on training-only failures coexist with "
+                "control69 retention targets on normal rows?"
+            ),
+            "independent_variable": (
+                "same EXP-146 85-hard/85-easy schedule, but easy rows change "
+                "from base-X-VC teacher targets to their frozen non-gross "
+                "control69 outputs; initialization, hard targets, loss, LR, "
+                "clip, scope, target references, and zero frame condition stay fixed"
+            ),
+        }
     if manifest_kind == HARD_OUTPUT_KIND:
         return {
             "slug": "exp146",
@@ -96,15 +123,19 @@ def listening_policy(manifest_kind: str = OUTPUT_KIND) -> dict[str, str]:
     }
 
 
-def load_manifest(path: Path, source_work: Path) -> dict[str, Any]:
+def load_manifest(
+    path: Path, source_work: Path, control_work: Path | None = None
+) -> dict[str, Any]:
     value = load_json(path)
     items = value.get("items")
     kind = value.get("kind")
     expected_domains = (
-        HARD_EXPECTED_DOMAINS if kind == HARD_OUTPUT_KIND else EXPECTED_DOMAINS
+        HARD_EXPECTED_DOMAINS
+        if kind in {HARD_OUTPUT_KIND, SELECTIVE_OUTPUT_KIND}
+        else EXPECTED_DOMAINS
     )
     if (
-        kind not in {OUTPUT_KIND, HARD_OUTPUT_KIND}
+        kind not in {OUTPUT_KIND, HARD_OUTPUT_KIND, SELECTIVE_OUTPUT_KIND}
         or value.get("composition") != expected_domains
         or not isinstance(items, list)
         or len(items) != EXPECTED_ROWS
@@ -137,16 +168,47 @@ def load_manifest(path: Path, source_work: Path) -> dict[str, Any]:
             or float(item["source_relative_distance"]) >= 0.5
         ):
             raise PostRehearsalError("clean rehearsal identity drifted")
-        if kind == HARD_OUTPUT_KIND and (
+        if kind in {HARD_OUTPUT_KIND, SELECTIVE_OUTPUT_KIND} and (
             item.get("curriculum_role") not in {"hard", "easy"}
             or not isinstance(item.get("source_manifest_id"), str)
         ):
             raise PostRehearsalError("hard curriculum identity drifted")
-        for filename, digest in (
-            (source_file, item["source_sha256"]),
-            (target_file, item["target_sha256"]),
+        target_root = source_work
+        if kind == SELECTIVE_OUTPUT_KIND:
+            learning_target = item.get("learning_target")
+            base_target_file = item.get("base_teacher_target_file")
+            expected_target = (
+                REPAIR_TARGET
+                if item.get("curriculum_role") == "hard"
+                else RETENTION_TARGET
+            )
+            expected_root = (
+                "source-work" if learning_target == REPAIR_TARGET else "control-work"
+            )
+            if (
+                learning_target != expected_target
+                or item.get("target_root") != expected_root
+                or not base._is_sha256(item.get("base_teacher_target_sha256"))
+                or not isinstance(base_target_file, str)
+                or Path(base_target_file).is_absolute()
+                or ".." in Path(base_target_file).parts
+            ):
+                raise PostRehearsalError("selective learning-target identity drifted")
+            base_target = source_work / base_target_file
+            if (
+                base_target.is_symlink()
+                or not base_target.is_file()
+                or sha256_file(base_target) != item["base_teacher_target_sha256"]
+            ):
+                raise PostRehearsalError("base repair target drifted")
+            if learning_target == RETENTION_TARGET:
+                if control_work is None:
+                    raise PostRehearsalError("control retention work is required")
+                target_root = control_work
+        for audio, digest in (
+            (source_work / source_file, item["source_sha256"]),
+            (target_root / target_file, item["target_sha256"]),
         ):
-            audio = source_work / filename
             if (
                 audio.is_symlink()
                 or not audio.is_file()
@@ -164,7 +226,9 @@ def load_manifest(path: Path, source_work: Path) -> dict[str, Any]:
 def validate_inputs(
     arguments: argparse.Namespace,
 ) -> tuple[dict[str, Any], dict[str, Any], list[tuple[str, Path, str]]]:
-    manifest = load_manifest(arguments.training_manifest, arguments.source_work)
+    manifest = load_manifest(
+        arguments.training_manifest, arguments.source_work, arguments.control_work
+    )
     evaluation = breadth._load_manifest(
         arguments.evaluation_set,
         kind=breadth.EVALUATION_KIND,
@@ -207,13 +271,19 @@ def _batch_from_item(
     item: Mapping[str, Any],
     *,
     source_work: Path,
+    control_work: Path | None,
     process_audio: Any,
     config: Mapping[str, Any],
     torch: Any,
     device: Any,
 ) -> dict[str, Any]:
     source_path = source_work / str(item["source_file"])
-    target_path = source_work / str(item["target_file"])
+    target_root = (
+        control_work if item.get("target_root") == "control-work" else source_work
+    )
+    if target_root is None:
+        raise PostRehearsalError("control retention work is required")
+    target_path = target_root / str(item["target_file"])
     source = base._extract_pair_tensors(
         model,
         _pair(str(item["teacher_id"]), source_path, str(item["source_sha256"])),
@@ -298,6 +368,7 @@ def run(
             trained,
             item,
             source_work=arguments.source_work,
+            control_work=arguments.control_work,
             process_audio=process_audio,
             config=config,
             torch=torch,
@@ -438,9 +509,17 @@ def run(
         "independent_variable": policy["independent_variable"],
         "training_manifest_sha256": sha256_file(arguments.training_manifest),
         "source_result_sha256": sha256_file(arguments.source_work / "result.json"),
+        "control_probe_result_sha256": (
+            sha256_file(arguments.control_work / "result.json")
+            if arguments.control_work is not None
+            else None
+        ),
         "control_adapter": str(arguments.control_adapter),
         "updates": len(losses),
         "role_counts": {"real-donor-teacher-output": len(losses)},
+        "learning_target_counts": manifest.get(
+            "learning_target_counts", {"base-teacher": len(losses)}
+        ),
         "composition": manifest["composition"],
         "learning_rate": LEARNING_RATE,
         "gradient_clip_norm": base.GRADIENT_CLIP_NORM,
@@ -481,6 +560,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--smoke", action="store_true")
     value.add_argument("--training-manifest", type=Path, required=True)
     value.add_argument("--source-work", type=Path, required=True)
+    value.add_argument("--control-work", type=Path)
     value.add_argument("--evaluation-set", type=Path, required=True)
     value.add_argument("--source-root", type=Path, required=True)
     value.add_argument("--pair-root", type=Path, required=True)
