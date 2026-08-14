@@ -371,6 +371,8 @@ claims from that artifact are superseded. The active join is now:
         -> instability 70 -> 67 but 7 new/10 recovered; gross 2 -> 2, no added row
         -> expanded144 4W/126T/14L rejects generic broad-content improvement
         -> close GRL weight/head/data/horizon/loss/scope neighbors; replan method
+        -> Ready: EXP333 one-batch ECAPA direction screen on all 344 matched rows
+        -> decide whether GRL reached its intended speaker mechanism; no retraining
         -> operator hearing when available
 ```
 

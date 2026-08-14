@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "report_kind": "liveconv-exp333-xvc-grl-speaker-fit-direction/v1",
+  "target": {
+    "archive_sha256": "1fc131f18554625038aaa9876bab0d75660f266ff5e9e18d74cdbb3e6e0df000",
+    "listener_sha256": "76f5a4a9b989ed692a55343a7681623fa4f18e354ca04026f022e3e449195ca2",
+    "manifest_row_id": "ITA:EMOTION100_003",
+    "raw_sha256": "2a7e0ec0686fa92f7508c518156dc196c76748c18848da6c8c1cfe94a711e55b"
+  },
+  "surfaces": [
+    {
+      "name": "external7",
+      "old_listener_root": "artifacts/ms3/listening/exp325-src4vc-two-utterance-control-external7-v1",
+      "new_listener_root": "artifacts/ms3/listening/exp326-src4vc-two-utterance-source-speaker-grl-external7-v1",
+      "old_variant_id": "src4vc170-two-utterance-pseudoparallel-real-adv-ema170",
+      "new_variant_id": "src4vc170-two-utterance-pseudoparallel-source-speaker-grl-real-adv-ema170"
+    },
+    {
+      "name": "fresh48",
+      "old_listener_root": "artifacts/ms3/listening/exp327-src4vc-two-utterance-control-fresh48-v1",
+      "new_listener_root": "artifacts/ms3/listening/exp327-src4vc-two-utterance-grl-fresh48-v1",
+      "old_variant_id": "src4vc170-two-utterance-pseudoparallel-real-adv-ema170",
+      "new_variant_id": "src4vc170-two-utterance-pseudoparallel-source-speaker-grl-real-adv-ema170"
+    },
+    {
+      "name": "hadou31",
+      "old_listener_root": "artifacts/ms3/listening/exp328-src4vc-two-utterance-control-hadou31-v1",
+      "new_listener_root": "artifacts/ms3/listening/exp328-src4vc-two-utterance-grl-hadou31-v1",
+      "old_variant_id": "src4vc170-two-utterance-pseudoparallel-real-adv-ema170",
+      "new_variant_id": "src4vc170-two-utterance-pseudoparallel-source-speaker-grl-real-adv-ema170"
+    },
+    {
+      "name": "stress60",
+      "old_listener_root": "artifacts/ms3/listening/exp329-src4vc-two-utterance-control-stress60-v1",
+      "new_listener_root": "artifacts/ms3/listening/exp329-src4vc-two-utterance-grl-stress60-v1",
+      "old_variant_id": "src4vc170-two-utterance-pseudoparallel-real-adv-ema170",
+      "new_variant_id": "src4vc170-two-utterance-pseudoparallel-source-speaker-grl-real-adv-ema170"
+    },
+    {
+      "name": "jsut24",
+      "old_listener_root": "artifacts/ms3/listening/exp330-src4vc-two-utterance-control-jsut24-v1",
+      "new_listener_root": "artifacts/ms3/listening/exp330-src4vc-two-utterance-grl-jsut24-v1",
+      "old_variant_id": "src4vc170-two-utterance-pseudoparallel-real-adv-ema170",
+      "new_variant_id": "src4vc170-two-utterance-pseudoparallel-source-speaker-grl-real-adv-ema170"
+    },
+    {
+      "name": "expanded144",
+      "old_listener_root": "artifacts/ms3/listening/exp331-src4vc-two-utterance-control-expanded144-v1",
+      "new_listener_root": "artifacts/ms3/listening/exp331-src4vc-two-utterance-grl-expanded144-v1",
+      "old_variant_id": "src4vc170-two-utterance-pseudoparallel-real-adv-ema170",
+      "new_variant_id": "src4vc170-two-utterance-pseudoparallel-source-speaker-grl-real-adv-ema170"
+    },
+    {
+      "name": "src4vc-heldout30",
+      "old_listener_root": "artifacts/ms3/listening/exp332-src4vc-two-utterance-control-heldout30-v1",
+      "new_listener_root": "artifacts/ms3/listening/exp332-src4vc-two-utterance-grl-heldout30-v1",
+      "old_variant_id": "src4vc170-two-utterance-pseudoparallel-real-adv-ema170",
+      "new_variant_id": "src4vc170-two-utterance-pseudoparallel-source-speaker-grl-real-adv-ema170"
+    }
+  ]
+}

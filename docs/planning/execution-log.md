@@ -6584,3 +6584,23 @@ job queue.
 - Rework: two independent read-only designers are screening only untried
   method-level hypotheses. Commit the selected plan and implementation before
   CUDA; do not let planning expand into another evaluation redesign.
+
+## 2026-08-14T22:09:00Z - EXP-333 GRL speaker-direction screen admitted
+
+- Agent: `primary-integrator`; two independent read-only designers rejected
+  three proposed retraining neighbors before CUDA.
+- Task: use the completed 344 matched audio rows to test whether EXP-326 reached
+  its intended source-versus-target speaker mechanism despite broad content
+  regression.
+- Dependencies: EXP-325/326 external7 and EXP-327--332 listener artifacts;
+  pinned auxiliary ECAPA model/runtime; authorized private Amitaro lineage;
+  existing batch screen used by EXP-251/258/265.
+- Result: commit one seven-surface plan only. No runner change, new audio,
+  embedding persistence, or perceptual claim is needed.
+- Problems: global speaker-centroid conditioning collides with EXP-259/267;
+  semantic agreement weighting assumes unproved source/teacher frame alignment;
+  post-converter activation anchoring reopens EXP-181/285/291/326 retention and
+  representation families. None is admitted for training.
+- Rework: run one cached ECAPA batch on gpu0, record aggregate and per-surface
+  target/source direction, then close or retain EXP-326 as unheard only. Do not
+  use the result to reopen GRL coefficients or select a winner.
