@@ -1,6 +1,6 @@
 # EXP-146: failure-triggered X-VC curriculum
 
-Status: prepared; one bounded gpu0 lane
+Status: rejected after one bounded gpu0 lane
 
 ## Goal
 
@@ -32,3 +32,21 @@ the unchanged candidate consume the frozen JSUT24 evaluation. No hard/easy
 ratio, exposure count, threshold, LR, loss, scope, or curriculum neighbor is
 admitted. Auxiliary ASR cannot select naturalness, target identity, a keeper,
 or promotion.
+
+## Result
+
+Commit `3c158df` completed the real backward smoke, 170 updates, and the
+external7/fresh48/Hadou31 render-and-screen chain. Training took 149.62 seconds
+at 5.10 GiB peak and moved composite loss `227.88 -> 66.92`.
+
+The candidate added no external7 loop, but regressed source-relative mean from
+control69's `0.360` to `0.455`. On the 46 common non-gross fresh rows it scored
+`10/20/16` wins/ties/losses, regressing mean `0.341 -> 0.402` and median
+`0.275 -> 0.326`. On 30 non-gross Hadou rows it improved mean `0.185 -> 0.153`
+and scored `9/18/3`, but it added the mandatory-stop numeric loop on
+`RECITATION324_138`, repeating `24` through a long tail.
+
+Reject this sampling method. Do not run EXP-149, fit a hard/easy ratio, change
+the threshold, or vary exposure count. The next training point must change the
+loss, conditioning, or learning-target policy while keeping heldout evaluation
+closed to training.

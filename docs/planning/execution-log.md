@@ -3511,3 +3511,46 @@ job queue.
   rows, retaining control69 initialization and every objective/hyperparameter.
   Do not run a ratio or exposure neighbor. JSUT stays untouched until the
   fresh48 and Hadou31 stop gates survive.
+
+## 2026-08-14T00:20:05Z - EXP-146--149 hard-negative sampling rejected
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T00:10:04Z.
+- End: 2026-08-14T00:20:05Z.
+- Dependencies: commit `3c158df`; hard-curriculum manifest SHA-256
+  `419fd1a9`; frozen control69; 11 training-only hard rows; external7,
+  fresh48, Hadou31; gpu0; listener 8878.
+- Result: the real smoke passed with loss `227.88`, finite pre-clip gradient
+  norm `143.75`, and 3.30 GiB peak. Training completed 170 updates in 149.62
+  seconds at 5.10 GiB peak and moved loss `227.88 -> 66.92`. It published 35
+  external, 240 fresh48, and 155 Hadou31 WAVs. The external mean regressed
+  `0.360 -> 0.455`. On 46 common non-gross fresh rows the candidate scored
+  `10/20/16`, regressing mean `0.341 -> 0.402` and median `0.275 -> 0.326`.
+  On 30 non-gross Hadou rows it improved mean `0.185 -> 0.153` with `9/18/3`.
+- Problems: the candidate retained fresh48's control `32.4` collapse and added
+  the mandatory-stop `RECITATION324_138` failure, repeating `24` through a
+  long numeric tail. Hard-row oversampling repaired many ordinary Hadou rows
+  but did not remove the heldout collapse mechanism and caused broad Common
+  Voice drift.
+- Rework: reject EXP-146 and do not run conditional JSUT EXP-149. Close the
+  hard/easy ratio, exposure-count, and threshold neighbors. The next admitted
+  lane must change one method-level loss, conditioning, or learning-target
+  policy while preserving training/evaluation separation; machine screening
+  remains corruption/content evidence only.
+
+## 2026-08-14T00:22:54Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux `liveconv-grok-auditor`; independent, read-only,
+  no tools or delegation.
+- Verdict: `CONTINUE`.
+- Adopted: run the single committed EXP-146 hard-negative lane, preserve
+  external7/fresh48/Hadou31 as the stop sequence, keep JSUT unopened, and close
+  ratio/exposure/threshold neighbors on failure. That exact lane and all three
+  screens had already completed while the audit prompt was sampled.
+- Not adopted: Grok inferred `3c158df` had not launched from `gpu=0%`,
+  `active_audio_jobs=0`, and retained WAV mtimes. Direct result/status evidence
+  showed exit `0`, 430 new model-output WAVs, broad fresh48 regression, and the
+  added Hadou numeric loop. Relaunching would duplicate a failed experiment.
+- Changed action: follow the audit's own failure branch immediately: sampling
+  is closed and the next single lane must change loss, conditioning, or the
+  learning target. Preserve JSUT24 and make no machine quality selection.
