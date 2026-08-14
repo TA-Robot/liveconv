@@ -1161,6 +1161,29 @@ def test_exp325_exp326_manifest_has_deterministic_85_x2_labels() -> None:
     assert receipt["same_manifest_for_control_and_treatment"] is True
 
 
+def test_exp326_realism_target_uses_row_real_target_not_target_inventory(tmp_path: Path) -> None:
+    real_target = tmp_path / "real-target.wav"
+    real_target.write_bytes(b"row-real-target")
+    item = {
+        "target_id": "RECITATION324_113",
+        "real_target_file": real_target.name,
+        "real_target_sha256": hashlib.sha256(real_target.read_bytes()).hexdigest(),
+    }
+
+    pair = post._realism_target_pair(
+        post.PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE,
+        item,
+        source_work=tmp_path,
+        target_by_id={},
+    )
+
+    assert pair.pair_id == "RECITATION324_113"
+    assert pair.source_path == real_target
+    assert pair.target_path == real_target
+    assert pair.source_sha256 == item["real_target_sha256"]
+    assert pair.target_sha256 == item["real_target_sha256"]
+
+
 def test_source_speaker_mean_std_pool_and_cross_utterance_probe() -> None:
     import torch
 

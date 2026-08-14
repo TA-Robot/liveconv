@@ -199,6 +199,19 @@ SOURCE_SPEAKER_PROBE_IMPLEMENTATION = (
 )
 SOURCE_SPEAKER_PROBE_MIN_TOP1_MULTIPLE = 2.0
 SOURCE_SPEAKER_PROBE_MIN_TOP5_MULTIPLE = 2.0
+PSEUDOPARALLEL_REAL_TARGET_OBJECTIVES = {
+    PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+    PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
+    PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
+    PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
+    PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
+    PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE,
+    PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
+    PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
+    PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
+    PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
+    PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE,
+}
 OUTPUT_CYCLE_CONTENT_WEIGHT = 1000.0
 CONTRASTIVE_CONTENT_TEMPERATURE = 0.1
 SEQUENTIAL_OPTIMIZER = "sequential"
@@ -2630,6 +2643,29 @@ def _pair(identifier: str, path: Path, digest: str) -> base.MaterializedPair:
     return base.MaterializedPair(identifier, path, path, digest, digest)
 
 
+def _realism_target_pair(
+    training_objective: str,
+    item: Mapping[str, Any],
+    *,
+    source_work: Path,
+    target_by_id: Mapping[str, base.MaterializedPair],
+) -> base.MaterializedPair:
+    """Resolve pseudoparallel real-audio supervision from the row itself."""
+
+    target_id = str(item["target_id"])
+    if training_objective in PSEUDOPARALLEL_REAL_TARGET_OBJECTIVES:
+        real_target = source_work / str(item["real_target_file"])
+        return _pair(
+            target_id,
+            real_target,
+            str(item["real_target_sha256"]),
+        )
+    pair = target_by_id.get(target_id)
+    if pair is None:
+        raise PostRehearsalError(f"real adversarial target is unavailable: {target_id}")
+    return pair
+
+
 def _batch_from_item(
     model: Any,
     item: Mapping[str, Any],
@@ -5022,33 +5058,12 @@ def run(
             }
             for item in rows:
                 target_id = str(item["target_id"])
-                if (
-                    arguments.training_objective
-                    in {
-                        PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
-                        PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
-                        PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
-                        PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
-                        PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
-                        PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE,
-                        PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
-                        PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
-                        PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
-                        PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
-                    }
-                ):
-                    real_target = arguments.source_work / str(item["real_target_file"])
-                    pair = _pair(
-                        target_id,
-                        real_target,
-                        str(item["real_target_sha256"]),
-                    )
-                else:
-                    pair = target_by_id.get(target_id)
-                    if pair is None:
-                        raise PostRehearsalError(
-                            f"real adversarial target is unavailable: {target_id}"
-                        )
+                pair = _realism_target_pair(
+                    arguments.training_objective,
+                    item,
+                    source_work=arguments.source_work,
+                    target_by_id=target_by_id,
+                )
                 realism_targets[target_id] = base._extract_pair_tensors(
                     trained,
                     pair,
