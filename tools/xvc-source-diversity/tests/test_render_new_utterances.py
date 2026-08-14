@@ -1452,6 +1452,39 @@ def test_cv32_replacement_external7_prebinds_exp317_without_attachment() -> None
     )
 
 
+def test_cv26_window_policies_prebind_exp318_and_exp319_without_attachment() -> None:
+    expected = {
+        "cv26-current-window-control-pseudoparallel-ema-external7": (
+            "EXP-318",
+            "cross-corpus170-pseudoparallel-cv26-current-window-real-adv-ema170",
+            "liveconv-exp318-xvc-pseudoparallel-cv26-current-window-real-adv-ema/v1",
+        ),
+        "cv26-active-window-pseudoparallel-ema-external7": (
+            "EXP-319",
+            "cross-corpus170-pseudoparallel-cv26-active-window-real-adv-ema170",
+            "liveconv-exp319-xvc-pseudoparallel-cv26-active-window-real-adv-ema/v1",
+        ),
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    for kind, (experiment_id, variant_id, result_kind) in expected.items():
+        policy = NEW.candidate_policy(kind)
+        assert policy["experiment_id"] == experiment_id
+        assert policy["variant_id"] == variant_id
+        assert policy["result_kind"] == result_kind
+        assert "candidate_format" not in policy
+        assert "candidate_attachment" not in policy
+        assert kind in choices
+        candidate = object()
+        assert (
+            NEW._attach_candidate_representation(candidate, policy, torch=object())
+            is candidate
+        )
+
+
 def test_noncontinuous_candidate_does_not_attach_wrapper(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

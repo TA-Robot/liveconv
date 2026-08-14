@@ -1929,6 +1929,44 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "on the fixed external7 evaluation?"
             ),
         }
+    if kind == "cv26-current-window-control-pseudoparallel-ema-external7":
+        return {
+            "experiment_id": "EXP-318",
+            "variant_id": (
+                "cross-corpus170-pseudoparallel-cv26-current-window-real-adv-ema170"
+            ),
+            "display_name": (
+                "EXP-318 / CV26 current-window control / source-aligned targets / "
+                "real-adversarial / EMA"
+            ),
+            "result_kind": (
+                "liveconv-exp318-xvc-pseudoparallel-cv26-current-window-real-"
+                "adv-ema/v1"
+            ),
+            "question": (
+                "Does the evaluation-style CV26 current-window construction "
+                "preserve content and avoid corruption on external7?"
+            ),
+        }
+    if kind == "cv26-active-window-pseudoparallel-ema-external7":
+        return {
+            "experiment_id": "EXP-319",
+            "variant_id": (
+                "cross-corpus170-pseudoparallel-cv26-active-window-real-adv-ema170"
+            ),
+            "display_name": (
+                "EXP-319 / CV26 active-window treatment / source-aligned targets / "
+                "real-adversarial / EMA"
+            ),
+            "result_kind": (
+                "liveconv-exp319-xvc-pseudoparallel-cv26-active-window-real-"
+                "adv-ema/v1"
+            ),
+            "question": (
+                "Does speech-active CV26 window construction preserve content "
+                "and avoid corruption on external7?"
+            ),
+        }
     if kind in {
         "speaker-condition-calibrator-fresh48",
         "speaker-condition-calibrator-hadou",
@@ -3174,6 +3212,8 @@ def _parser() -> argparse.ArgumentParser:
             "repeat-control-pseudoparallel-ema-jsut",
             "repeat-control-pseudoparallel-ema-expanded144",
             "cv32-replacement-pseudoparallel-ema-external7",
+            "cv26-current-window-control-pseudoparallel-ema-external7",
+            "cv26-active-window-pseudoparallel-ema-external7",
             "speaker-condition-calibrator-fresh48",
             "speaker-condition-calibrator-hadou",
             "speaker-condition-calibrator-stress",
