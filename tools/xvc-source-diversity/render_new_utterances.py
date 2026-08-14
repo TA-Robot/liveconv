@@ -1323,6 +1323,48 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "content behavior?"
             ),
         }
+    if kind in {
+        "contrastive-output-cycle-ema-fresh48",
+        "contrastive-output-cycle-ema-hadou",
+        "contrastive-output-cycle-ema-stress",
+        "contrastive-output-cycle-ema-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        experiment_id = (
+            "EXP-222"
+            if jsut
+            else "EXP-221"
+            if stress
+            else "EXP-220"
+            if hadou
+            else "EXP-219"
+        )
+        suffix = (
+            "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "cross-corpus170-contrastive-output-cycle-ema170",
+            "display_name": (
+                "EXP-218 / cross-corpus contrastive output-cycle / EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-contrastive-"
+                f"output-cycle-ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does source-versus-negative final-WAV content discrimination "
+                "reduce collapse without losing the cross-corpus stability signal?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -2020,6 +2062,10 @@ def _parser() -> argparse.ArgumentParser:
             "cross-corpus-output-cycle-ema-hadou",
             "cross-corpus-output-cycle-ema-stress",
             "cross-corpus-output-cycle-ema-jsut",
+            "contrastive-output-cycle-ema-fresh48",
+            "contrastive-output-cycle-ema-hadou",
+            "contrastive-output-cycle-ema-stress",
+            "contrastive-output-cycle-ema-jsut",
         ),
         default="speaker7",
     )

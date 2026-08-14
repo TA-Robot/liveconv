@@ -99,7 +99,11 @@ FACTORIZED_UNPAIRED_OBJECTIVE = "factorized-unpaired-human-adversarial"
 OUTPUT_CYCLE_UNPAIRED_OBJECTIVE = (
     "factorized-unpaired-human-output-cycle-adversarial"
 )
+CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE = (
+    "factorized-unpaired-human-contrastive-output-cycle-adversarial"
+)
 OUTPUT_CYCLE_CONTENT_WEIGHT = 1000.0
+CONTRASTIVE_CONTENT_TEMPERATURE = 0.1
 SEQUENTIAL_OPTIMIZER = "sequential"
 PCGRAD_PAIRED_OPTIMIZER = "pcgrad-hard-easy-paired"
 EMA_IMPLEMENTATION = "ema-pytorch-0.7.7-defaults-adapter-equivalent"
@@ -247,6 +251,7 @@ def listening_policy(
                 not in {
                     FACTORIZED_UNPAIRED_OBJECTIVE,
                     OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+                    CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
                 }
                 or optimizer_mode != SEQUENTIAL_OPTIMIZER
                 or parameter_anchor
@@ -256,12 +261,58 @@ def listening_policy(
                     "unpaired human EMA requires the exact factorized LoRA69 pilot"
                 )
             if (
-                manifest_kind == CROSS_CORPUS_UNPAIRED_OUTPUT_KIND
-                and training_objective != OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+                manifest_kind == UNPAIRED_HUMAN_OUTPUT_KIND
+                and training_objective
+                == CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
             ):
                 raise PostRehearsalError(
-                    "cross-corpus unpaired data requires the fixed output-cycle objective"
+                    "contrastive output cycle requires the fixed cross-corpus data"
                 )
+            if (
+                manifest_kind == CROSS_CORPUS_UNPAIRED_OUTPUT_KIND
+                and training_objective
+                not in {
+                    OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+                    CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+                }
+            ):
+                raise PostRehearsalError(
+                    "cross-corpus unpaired data requires a fixed output-cycle objective"
+                )
+            if (
+                manifest_kind == CROSS_CORPUS_UNPAIRED_OUTPUT_KIND
+                and training_objective
+                == CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+            ):
+                return {
+                    "slug": "exp218",
+                    "candidate_id": (
+                        "cross-corpus170-contrastive-output-cycle-ema170"
+                    ),
+                    "candidate_name": (
+                        "EXP-218 / cross-corpus contrastive output-cycle / EMA"
+                    ),
+                    "run_kind": (
+                        "EXP-218 X-VC contrastive output-cycle evaluation"
+                    ),
+                    "result_kind": (
+                        "liveconv-exp218-xvc-contrastive-output-cycle-ema/v1"
+                    ),
+                    "question": (
+                        "Can utterance-discriminative final-WAV content training "
+                        "avoid the mean-content collapse path left by pointwise MSE?"
+                    ),
+                    "independent_variable": (
+                        "only final-WAV content comparison changes from pointwise "
+                        "Whisper-hidden MSE to two-way framewise cosine InfoNCE at "
+                        "fixed temperature 0.1 against the next row in the frozen "
+                        "mixed schedule; the exact CV48/JSUT85/JVS3/Hadou34 rows, "
+                        "ordered Amitaro target multiset, target speaker loss, "
+                        "real-wave adversarial objective, control69 LoRA69 "
+                        "initialization, 170 updates, LR, optimizer, clip, zero "
+                        "condition, and EMA stay fixed"
+                    ),
+                }
             if (
                 manifest_kind == CROSS_CORPUS_UNPAIRED_OUTPUT_KIND
                 and training_objective == OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
@@ -1020,6 +1071,59 @@ def output_cycle_unpaired_generator_loss(
     return {"loss": loss, "output_cycle_content": content, "speaker": speaker}
 
 
+def contrastive_output_cycle_unpaired_generator_loss(
+    outputs: Mapping[str, Any],
+    batch: Mapping[str, Any],
+    *,
+    semantic_encoder: Any,
+    torch: Any,
+) -> dict[str, Any]:
+    """Make the final WAV identify its source content against another utterance."""
+    reconstruction = outputs.get("recons")
+    predicted_speaker = outputs.get("pred_sim_feat")
+    target_speaker = outputs.get("sim_feat")
+    positive_hidden = batch.get("ssl_feat")
+    negative_hidden = batch.get("negative_ssl_feat")
+    if (
+        reconstruction is None
+        or predicted_speaker is None
+        or target_speaker is None
+        or positive_hidden is None
+        or negative_hidden is None
+        or positive_hidden.shape != negative_hidden.shape
+    ):
+        raise PostRehearsalError("contrastive output-cycle shape drifted")
+    cycle_hidden = differentiable_whisper_hidden_states(
+        semantic_encoder, reconstruction, torch=torch
+    )
+    if cycle_hidden.shape != positive_hidden.shape:
+        raise PostRehearsalError("contrastive output-cycle content shape drifted")
+    positive_cosine = torch.nn.functional.cosine_similarity(
+        cycle_hidden.float(), positive_hidden.float(), dim=-1
+    ).mean()
+    negative_cosine = torch.nn.functional.cosine_similarity(
+        cycle_hidden.float(), negative_hidden.float(), dim=-1
+    ).mean()
+    logits = torch.stack((positive_cosine, negative_cosine), dim=0).reshape(1, 2)
+    logits = logits / CONTRASTIVE_CONTENT_TEMPERATURE
+    labels = torch.zeros((1,), device=logits.device, dtype=torch.long)
+    content = torch.nn.functional.cross_entropy(logits, labels)
+    speaker = torch.nn.functional.mse_loss(predicted_speaker, target_speaker)
+    loss = (
+        OUTPUT_CYCLE_CONTENT_WEIGHT * content
+        + role_mix.STANDARD_LOSS_WEIGHTS["sim_mse_loss"] * speaker
+    )
+    if not bool(torch.isfinite(loss)):
+        raise PostRehearsalError("contrastive output-cycle loss is non-finite")
+    return {
+        "loss": loss,
+        "output_cycle_contrastive_content": content,
+        "positive_cosine": positive_cosine,
+        "negative_cosine": negative_cosine,
+        "speaker": speaker,
+    }
+
+
 def validate_output_cycle_frontend(
     semantic_encoder: Any,
     source_waveform: Any,
@@ -1682,6 +1786,7 @@ def run(
         REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
         FACTORIZED_UNPAIRED_OBJECTIVE,
         OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+        CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
     }:
         discriminator, discriminator_optimizer = breadth._load_pretrained_discriminator(
             arguments, config, torch=torch, device=device
@@ -1706,7 +1811,9 @@ def run(
                     device=device,
                 )["target_wav"]
 
-    def batch_for(item: Mapping[str, Any]) -> Any:
+    def batch_for(
+        item: Mapping[str, Any], negative_item: Mapping[str, Any] | None = None
+    ) -> Any:
         if arguments.trainable_target == FULL_CONVERTER_TARGET:
             _set_converter_training_only(trained)
         elif arguments.trainable_target == ACOUSTIC_ENCODER_TARGET:
@@ -1729,6 +1836,31 @@ def run(
                 manifest.get("kind") in UNPAIRED_HUMAN_KINDS
             ),
         )
+        if (
+            arguments.training_objective
+            == CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+        ):
+            if negative_item is None or negative_item.get("id") == item.get("id"):
+                raise PostRehearsalError(
+                    "contrastive output cycle requires a distinct negative row"
+                )
+            negative = _batch_from_item(
+                trained,
+                negative_item,
+                source_work=arguments.source_work,
+                control_work=arguments.control_work,
+                diverse_work=arguments.diverse_work,
+                process_audio=process_audio,
+                config=config,
+                torch=torch,
+                device=device,
+                factorized_unpaired=True,
+            )
+            if negative["ssl_feat"].shape != tensors["ssl_feat"].shape:
+                raise PostRehearsalError(
+                    "contrastive negative content shape drifted"
+                )
+            tensors["negative_ssl_feat"] = negative["ssl_feat"]
         return base._gpu_batch(tensors, torch=torch, device=device)
 
     if arguments.optimizer_mode == PCGRAD_PAIRED_OPTIMIZER:
@@ -1777,11 +1909,20 @@ def run(
                 optimizer.step()
                 optimizer_steps += 1
     else:
-        for item in rows:
-            batch = batch_for(item)
+        for row_index, item in enumerate(rows):
+            negative_item = (
+                rows[(row_index + 1) % len(rows)]
+                if arguments.training_objective
+                == CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+                else None
+            )
+            batch = batch_for(item, negative_item)
             if (
                 arguments.training_objective
-                == OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+                in {
+                    OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+                    CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+                }
                 and output_cycle_frontend_metrics is None
             ):
                 output_cycle_frontend_metrics = validate_output_cycle_frontend(
@@ -1871,6 +2012,18 @@ def run(
                         )
                         if arguments.training_objective
                         == OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+                        else (
+                            lambda outputs, current_batch: (
+                                contrastive_output_cycle_unpaired_generator_loss(
+                                    outputs,
+                                    current_batch,
+                                    semantic_encoder=trained.semantic_encoder,
+                                    torch=torch,
+                                )
+                            )
+                        )
+                        if arguments.training_objective
+                        == CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
                         else None
                     ),
                 )
@@ -2124,6 +2277,12 @@ def run(
                     "final-waveform-source-content-cycle-plus-target-speaker"
                     if arguments.training_objective
                     == OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+                    else (
+                        "final-waveform-contrastive-source-content-cycle-plus-"
+                        "target-speaker"
+                    )
+                    if arguments.training_objective
+                    == CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
                     else "source-semantic-plus-target-speaker-factorization"
                     if arguments.training_objective
                     == FACTORIZED_UNPAIRED_OBJECTIVE
@@ -2204,6 +2363,7 @@ def parser() -> argparse.ArgumentParser:
             REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
             FACTORIZED_UNPAIRED_OBJECTIVE,
             OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+            CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
         ),
         default=GENERATIVE_OBJECTIVE,
     )

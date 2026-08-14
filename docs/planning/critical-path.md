@@ -232,6 +232,9 @@ claims from that artifact are superseded. The active join is now:
         -> one unchanged output-cycle checkpoint; no corpus-ratio/count sweep
         -> 850 WAVs; no candidate-added gross row, Hadou/noise improve, tempo/JSUT remain mixed
         -> cross-corpus checkpoint retained as an unheard technical survivor
+        -> EXP-218 final-WAV source-vs-next-row contrastive content objective
+        -> EXP-219--222 prebound fresh48 / Hadou31 / stress60 / JSUT24
+        -> one fixed temperature/negative point; no mining or coefficient sweep
         -> operator hearing when available
 ```
 

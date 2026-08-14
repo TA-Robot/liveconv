@@ -4851,3 +4851,27 @@ job queue.
   Close corpus ratio/count/schedule neighbors. A next independent lane may test
   an explicit anti-collapse content architecture while holding this exact data,
   targets, updates, and evaluation contract fixed.
+
+## 2026-08-14T08:12:00Z - EXP-218--222 contrastive output cycle prepared
+
+- Agent: `primary-integrator`.
+- Task: select one anti-collapse X-VC objective that acts on EXP-213's remaining
+  content failure without reopening corpus, target, scope, LR, or horizon axes.
+- Dependencies: EXP-213--217's no-added-gross technical survival; the exact
+  cross-corpus170 curriculum; frozen final-WAV Whisper frontend; no operator
+  hearing availability.
+- Result: replaced only pointwise final-WAV/source hidden-state MSE with a
+  two-way framewise cosine InfoNCE classification at temperature 0.1. Each row's
+  own source is positive and the next row in the frozen mixed schedule is the
+  sole negative. The exact source/target rows, speaker/adversarial objectives,
+  control69 LoRA69 initialization, 170 updates, LR, optimizer, clip, zero
+  condition, EMA, and five evaluation surfaces remain fixed. Focused tests
+  passed `97/97`; exact CPU admission passed all 170 rows and external7.
+- Problems: one deterministic negative is only a collapse probe, not complete
+  contrastive learning, and temperature 0.1 is a fixed method choice rather
+  than an optimized value. Double source extraction may increase admission
+  time or memory. Pointwise frame comparison may still miss tempo behavior.
+- Rework: commit this exact point, run one two-row real backward smoke, then one
+  170-update lane and all five screens. Stop on shape/gradient/nonfinite/OOM or
+  candidate-added corruption. Do not sweep temperature, negative count/mining,
+  weight, data, pairing, frontend, scope, LR, horizon, or EMA.

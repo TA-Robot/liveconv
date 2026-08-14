@@ -176,6 +176,56 @@ def test_cross_corpus_policy_rejects_internal_semantic_objective() -> None:
         raise AssertionError("cross-corpus internal semantic objective admitted")
 
 
+def test_contrastive_output_cycle_policy_changes_only_content_comparison() -> None:
+    policy = post.listening_policy(
+        post.CROSS_CORPUS_UNPAIRED_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp218"
+    assert policy["candidate_id"] == (
+        "cross-corpus170-contrastive-output-cycle-ema170"
+    )
+    assert "two-way framewise cosine InfoNCE" in policy["independent_variable"]
+    assert "temperature 0.1" in policy["independent_variable"]
+
+
+def test_contrastive_output_cycle_prefers_source_over_negative(monkeypatch) -> None:
+    import torch
+
+    reconstruction = torch.tensor([[[1.0, 0.0], [0.0, 1.0]]], requires_grad=True)
+    outputs = {
+        "recons": reconstruction,
+        "pred_sim_feat": torch.tensor([[2.0, 4.0]]),
+        "sim_feat": torch.tensor([[1.0, 1.0]]),
+    }
+    batch = {
+        "ssl_feat": torch.tensor([[[1.0, 0.0], [0.0, 1.0]]]),
+        "negative_ssl_feat": torch.tensor([[[0.0, 1.0], [1.0, 0.0]]]),
+    }
+    monkeypatch.setattr(
+        post,
+        "differentiable_whisper_hidden_states",
+        lambda semantic_encoder, waveform, *, torch: waveform,
+    )
+
+    losses = post.contrastive_output_cycle_unpaired_generator_loss(
+        outputs,
+        batch,
+        semantic_encoder=object(),
+        torch=torch,
+    )
+    losses["loss"].backward()
+
+    assert losses["positive_cosine"].item() == 1.0
+    assert losses["negative_cosine"].item() == 0.0
+    assert losses["output_cycle_contrastive_content"].item() < 0.001
+    assert reconstruction.grad is not None
+    assert torch.count_nonzero(reconstruction.grad).item() > 0
+
+
 def test_factorized_loss_uses_source_semantics_and_target_speaker() -> None:
     import torch
 
