@@ -137,6 +137,9 @@ DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE = (
 )
 SPEAKER_PATH_UNPAIRED_OBJECTIVE = "factorized-unpaired-human-speaker-path-adversarial"
 PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE = "pseudoparallel-generative-real-adversarial"
+PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE = (
+    "pseudoparallel-generative-real-adversarial-feature-statistics"
+)
 PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE = (
     "pseudoparallel-generative-real-adversarial-robust-semantic"
 )
@@ -171,6 +174,10 @@ PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE = (
     "pseudoparallel-generative-real-adversarial-source-speaker-grl"
 )
 SOURCE_SPEAKER_GRL_OBJECTIVE = PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE
+FEATURE_STATISTICS_EPSILON = 1e-6
+FEATURE_STATISTICS_IMPLEMENTATION = (
+    "per-channel-global-mean-std-statistics-l1-nonlogit-features/v1"
+)
 SRC4VC_TWO_UTTERANCE_OUTPUT_KIND = (
     "liveconv-exp325-exp326-xvc-src4vc-two-utterance-inputs/v1"
 )
@@ -201,6 +208,7 @@ SOURCE_SPEAKER_PROBE_MIN_TOP1_MULTIPLE = 2.0
 SOURCE_SPEAKER_PROBE_MIN_TOP5_MULTIPLE = 2.0
 PSEUDOPARALLEL_REAL_TARGET_OBJECTIVES = {
     PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+    PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE,
     PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
     PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
     PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
@@ -1441,6 +1449,7 @@ def listening_policy(
         or training_objective
         in {
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+            PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE,
             PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
             PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
@@ -1457,6 +1466,7 @@ def listening_policy(
             or training_objective
             not in {
                 PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+                PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE,
                 PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
                 PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
                 PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
@@ -1474,6 +1484,43 @@ def listening_policy(
             raise PostRehearsalError(
                 "pseudoparallel supervision requires an exact admitted pilot"
             )
+        if training_objective == PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE:
+            if manifest_kind != PSEUDOPARALLEL_OUTPUT_KIND:
+                raise PostRehearsalError(
+                    "feature-statistics adversarial requires exact EXP-238 curriculum"
+                )
+            return {
+                "slug": "exp334",
+                "candidate_id": (
+                    "cross-corpus170-pseudoparallel-feature-statistics-"
+                    "real-adv-ema170"
+                ),
+                "candidate_name": (
+                    "EXP-334 / feature-statistics adversarial / EMA"
+                ),
+                "run_kind": "EXP-334 X-VC feature-statistics external7 evaluation",
+                "result_kind": (
+                    "liveconv-exp334-xvc-pseudoparallel-feature-statistics-"
+                    "real-adv-ema/v1"
+                ),
+                "question": (
+                    "Does global per-channel feature-statistics matching improve "
+                    "X-VC conversion while retaining the generator adversarial "
+                    "score and discriminator objectives?"
+                ),
+                "independent_variable": (
+                    "relative to exact EXP-238, only generator-side discriminator "
+                    "feature matching changes: each non-logit feature map reduces "
+                    "all axes after [B,C] to concat(mean, sqrt(var+1e-6)) and uses "
+                    "L1 between fake statistics and detached real statistics; "
+                    "adv_gen_loss, its weight, discriminator update/loss, standard "
+                    "generative loss, control69 LoRA69, CV48/JSUT85/JVS3/Hadou34 "
+                    "rows, source-aligned targets, real Amitaro references, LR, "
+                    "170 sequential updates, clip, zero frame condition, EMA, and "
+                    "ordinary inference remain fixed"
+                ),
+            }
+
         if (
             manifest_kind == SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND
             and training_objective == PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE
@@ -3128,6 +3175,156 @@ def _base_xvc(model: Any) -> Any:
     return model.get_base_model() if hasattr(model, "get_base_model") else model
 
 
+def feature_statistics(
+    feature: Any, *, torch: Any, epsilon: float = FEATURE_STATISTICS_EPSILON
+) -> Any:
+    """Reduce every discriminator feature axis after [B,C] to mean and std."""
+
+    if not hasattr(feature, "ndim") or feature.ndim < 3:
+        raise PostRehearsalError("EXP-334 discriminator feature rank is below 3")
+    if not bool(torch.isfinite(feature).all()):
+        raise PostRehearsalError("EXP-334 discriminator feature is non-finite")
+    reduce_dims = tuple(range(2, feature.ndim))
+    mean = feature.mean(dim=reduce_dims)
+    centered = feature - mean.reshape(
+        feature.shape[0], feature.shape[1], *([1] * (feature.ndim - 2))
+    )
+    std = torch.sqrt(centered.square().mean(dim=reduce_dims) + epsilon)
+    statistics = torch.cat((mean, std), dim=1)
+    if not bool(torch.isfinite(statistics).all()):
+        raise PostRehearsalError("EXP-334 discriminator statistics are non-finite")
+    return statistics
+
+
+def feature_statistics_adversarial_loss_from_outputs(
+    d_fake: Any,
+    d_real: Any,
+    *,
+    loss_weights: Mapping[str, Any],
+    torch: Any,
+) -> dict[str, Any]:
+    """Keep adversarial logits and replace only non-logit feature matching."""
+
+    if not isinstance(d_fake, (list, tuple)) or not isinstance(d_real, (list, tuple)):
+        raise PostRehearsalError("EXP-334 discriminator scale output is malformed")
+    if len(d_fake) == 0 or len(d_fake) != len(d_real):
+        raise PostRehearsalError("EXP-334 discriminator scale count drifted")
+    adv_gen = None
+    adv_feat = None
+    feature_layers = 0
+    for fake_scale, real_scale in zip(d_fake, d_real, strict=True):
+        if (
+            not isinstance(fake_scale, (list, tuple))
+            or not isinstance(real_scale, (list, tuple))
+            or len(fake_scale) < 2
+            or len(fake_scale) != len(real_scale)
+        ):
+            raise PostRehearsalError("EXP-334 discriminator layer count drifted")
+        fake_logit = fake_scale[-1]
+        real_logit = real_scale[-1]
+        if (
+            not hasattr(fake_logit, "shape")
+            or not hasattr(real_logit, "shape")
+            or tuple(fake_logit.shape) != tuple(real_logit.shape)
+            or not bool(torch.isfinite(fake_logit).all())
+            or not bool(torch.isfinite(real_logit).all())
+        ):
+            raise PostRehearsalError("EXP-334 discriminator logit is non-finite")
+        current_gen = torch.mean((1 - fake_logit) ** 2)
+        adv_gen = current_gen if adv_gen is None else adv_gen + current_gen
+        for fake_feature, real_feature in zip(
+            fake_scale[:-1], real_scale[:-1], strict=True
+        ):
+            if (
+                not hasattr(fake_feature, "shape")
+                or not hasattr(real_feature, "shape")
+                or len(fake_feature.shape) < 3
+                or len(real_feature.shape) < 3
+                or tuple(fake_feature.shape) != tuple(real_feature.shape)
+                or fake_feature.shape[0] != real_feature.shape[0]
+                or fake_feature.shape[1] != real_feature.shape[1]
+            ):
+                raise PostRehearsalError("EXP-334 discriminator feature shape drifted")
+            fake_statistics = feature_statistics(fake_feature, torch=torch)
+            real_statistics = feature_statistics(real_feature.detach(), torch=torch)
+            current_feat = torch.nn.functional.l1_loss(fake_statistics, real_statistics)
+            adv_feat = current_feat if adv_feat is None else adv_feat + current_feat
+            feature_layers += 1
+    if feature_layers == 0 or adv_gen is None or adv_feat is None:
+        raise PostRehearsalError("EXP-334 discriminator has no feature layers")
+    weighted = sum(
+        weight * value
+        for key, value in {
+            "adv_gen_loss": adv_gen,
+            "adv_feat_loss": adv_feat,
+        }.items()
+        if (weight := loss_weights.get(key)) is not None
+    )
+    if not bool(torch.isfinite(weighted)):
+        raise PostRehearsalError("EXP-334 adversarial statistics loss is non-finite")
+    return {
+        "adv_gen_loss": adv_gen,
+        "adv_feat_loss": adv_feat,
+        "feature_layer_count": feature_layers,
+        "loss": weighted,
+    }
+
+
+def feature_statistics_adversarial_loss(
+    discriminator: Any, inputs: Mapping[str, Any], *, torch: Any
+) -> dict[str, Any]:
+    """Build the upstream discriminator inputs and use the local feature loss."""
+
+    from audiotools import AudioSignal
+
+    signal = AudioSignal(inputs["audios"], discriminator.loss_config["sample_rate"])
+    recons = AudioSignal(inputs["recons"], signal.sample_rate)
+    d_fake, d_real = discriminator.forward(recons, signal)
+    return feature_statistics_adversarial_loss_from_outputs(
+        d_fake,
+        d_real,
+        loss_weights=discriminator.loss_config["loss_weights"],
+        torch=torch,
+    )
+
+
+class _FeatureStatisticsDiscriminator:
+    """Delegate discriminator updates while swapping only G-side feature loss."""
+
+    def __init__(self, discriminator: Any, *, torch: Any) -> None:
+        self._discriminator = discriminator
+        self._torch = torch
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._discriminator, name)
+
+    def train(self, mode: bool = True) -> Any:
+        self._discriminator.train(mode)
+        return self
+
+    def parameters(self) -> Any:
+        return self._discriminator.parameters()
+
+    def discriminative_loss(self, inputs: Mapping[str, Any]) -> Any:
+        return self._discriminator.discriminative_loss(inputs)
+
+    def adversarial_loss(self, inputs: Mapping[str, Any]) -> dict[str, Any]:
+        return feature_statistics_adversarial_loss(
+            self._discriminator, inputs, torch=self._torch
+        )
+
+
+def feature_statistics_receipt() -> dict[str, Any]:
+    return {
+        "implementation": FEATURE_STATISTICS_IMPLEMENTATION,
+        "epsilon": FEATURE_STATISTICS_EPSILON,
+        "reduce_axes": "all_axes_after_batch_channel",
+        "matching": "l1(concat(mean,std)_fake,concat(mean,std)_real_detached)",
+        "logit_term_unchanged": True,
+        "discriminator_update_unchanged": True,
+    }
+
+
 def acoustic_code_dropout_schedule(row_count: int) -> list[bool]:
     """Alternate exact clean/masked rows without adding training randomness."""
 
@@ -3460,7 +3657,9 @@ def source_speaker_grl_adversarial_update(
         outputs = trained(breadth._generator_model_inputs(batch, None))
         reconstruction = outputs.get("recons") if isinstance(outputs, dict) else None
         if reconstruction is None or not bool(torch.isfinite(reconstruction).all()):
-            raise PostRehearsalError("source-speaker discriminator reconstruction malformed")
+            raise PostRehearsalError(
+                "source-speaker discriminator reconstruction malformed"
+            )
         discriminator_real = real_audios[..., : reconstruction.shape[-1]]
         outputs["audios"] = discriminator_real
         discriminator_losses = discriminator.discriminative_loss(outputs)
@@ -3521,7 +3720,9 @@ def source_speaker_grl_adversarial_update(
             outputs = trained(breadth._generator_model_inputs(batch, None))
             reconstruction = outputs.get("recons")
             if reconstruction is None or not bool(torch.isfinite(reconstruction).all()):
-                raise PostRehearsalError("source-speaker generator reconstruction malformed")
+                raise PostRehearsalError(
+                    "source-speaker generator reconstruction malformed"
+                )
             outputs["audios"] = batch["target_wav"][..., : reconstruction.shape[-1]]
             generator_losses = trained.generative_loss(outputs)
             outputs["audios"] = discriminator_real
@@ -3538,9 +3739,9 @@ def source_speaker_grl_adversarial_update(
             )
             features = hook.pooled()
             logits = classifier(features)
-            normalized_ce = torch.nn.functional.cross_entropy(logits, labels) / math.log(
-                float(SOURCE_SPEAKER_CLASS_COUNT)
-            )
+            normalized_ce = torch.nn.functional.cross_entropy(
+                logits, labels
+            ) / math.log(float(SOURCE_SPEAKER_CLASS_COUNT))
             reversed_loss = -SOURCE_SPEAKER_GRL_WEIGHT * normalized_ce
             total_loss = generator_loss + adversarial_loss + reversed_loss
         if not bool(torch.isfinite(total_loss)):
@@ -3550,7 +3751,9 @@ def source_speaker_grl_adversarial_update(
             trainable, base.GRADIENT_CLIP_NORM
         )
         if not math.isfinite(float(generator_norm.detach().cpu())):
-            raise PostRehearsalError("source-speaker GRL-to-LoRA gradient is non-finite")
+            raise PostRehearsalError(
+                "source-speaker GRL-to-LoRA gradient is non-finite"
+            )
         generator_nonzero = sum(
             int(torch.count_nonzero(parameter.grad).detach().cpu())
             for parameter in trainable
@@ -5027,6 +5230,7 @@ def run(
         DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
         SPEAKER_PATH_UNPAIRED_OBJECTIVE,
         PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+        PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE,
         PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
         PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
         PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
@@ -5044,6 +5248,7 @@ def run(
         if arguments.training_objective in {
             REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+            PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE,
             PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
             PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
@@ -5075,6 +5280,14 @@ def run(
                     torch=torch,
                     device=device,
                 )["target_wav"]
+
+    adversarial_discriminator = (
+        _FeatureStatisticsDiscriminator(discriminator, torch=torch)
+        if discriminator is not None
+        and arguments.training_objective
+        == PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE
+        else discriminator
+    )
 
     if acoustic_temporal_jitter is not None:
         acoustic_temporal_jitter.set_training_active(True)
@@ -5175,7 +5388,8 @@ def run(
             )
             if not source_speaker_probe["materially_above_chance"]:
                 raise PostRehearsalError(
-                    "frozen control69 source-speaker signal is not materially above chance"
+                    "frozen control69 source-speaker signal is not materially "
+                    "above chance"
                 )
 
     if arguments.training_objective == PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE:
@@ -5303,7 +5517,7 @@ def run(
             elif discriminator is not None and discriminator_optimizer is not None:
                 metrics = breadth._adversarial_update(
                     trained,
-                    discriminator,
+                    adversarial_discriminator,
                     optimizer,
                     discriminator_optimizer,
                     trainable,
@@ -5317,6 +5531,7 @@ def run(
                         in {
                             REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
                             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+                            PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE,
                             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
                             PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
                             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
@@ -5706,6 +5921,9 @@ def run(
                 "smoked-fresh-lora-pseudoparallel"
                 if arguments.training_objective
                 == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE
+                else "smoked-feature-statistics-pseudoparallel"
+                if arguments.training_objective
+                == PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE
                 else "smoked-robust-semantic-pseudoparallel"
                 if arguments.training_objective
                 == PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE
@@ -5732,6 +5950,12 @@ def run(
                 else "exp035-control69-adapter"
             ),
             "training_objective": arguments.training_objective,
+            "adversarial_feature_statistics": (
+                feature_statistics_receipt()
+                if arguments.training_objective
+                == PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE
+                else None
+            ),
             "optimizer_mode": arguments.optimizer_mode,
             "parameter_anchor": arguments.parameter_anchor,
             "source_speaker": (
@@ -5743,10 +5967,14 @@ def run(
                         == PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE
                         else "ordinary-matched-control"
                     ),
-                    "pool_implementation": SOURCE_SPEAKER_POOL_IMPLEMENTATION,
+                        "pool_implementation": (
+                            SOURCE_SPEAKER_POOL_IMPLEMENTATION
+                        ),
                     "grl_implementation": SOURCE_SPEAKER_GRL_IMPLEMENTATION,
                     "grl_weight": SOURCE_SPEAKER_GRL_WEIGHT,
-                    "classifier_feature_dimension": SOURCE_SPEAKER_FEATURE_DIMENSION,
+                        "classifier_feature_dimension": (
+                            SOURCE_SPEAKER_FEATURE_DIMENSION
+                        ),
                     "classifier_class_count": SOURCE_SPEAKER_CLASS_COUNT,
                     "probe": source_speaker_probe,
                     "head_exported": False,
@@ -6000,6 +6228,12 @@ def run(
         ),
         "trainable_target": arguments.trainable_target,
         "training_objective": arguments.training_objective,
+        "adversarial_feature_statistics": (
+            feature_statistics_receipt()
+            if arguments.training_objective
+            == PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE
+            else None
+        ),
         "source_speaker": (
             {
                 **(source_speaker_receipt or {}),
@@ -6009,10 +6243,14 @@ def run(
                     == PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE
                     else "ordinary-matched-control"
                 ),
-                "pool_implementation": SOURCE_SPEAKER_POOL_IMPLEMENTATION,
+                        "pool_implementation": (
+                            SOURCE_SPEAKER_POOL_IMPLEMENTATION
+                        ),
                 "grl_implementation": SOURCE_SPEAKER_GRL_IMPLEMENTATION,
                 "grl_weight": SOURCE_SPEAKER_GRL_WEIGHT,
-                "classifier_feature_dimension": SOURCE_SPEAKER_FEATURE_DIMENSION,
+                        "classifier_feature_dimension": (
+                            SOURCE_SPEAKER_FEATURE_DIMENSION
+                        ),
                 "classifier_class_count": SOURCE_SPEAKER_CLASS_COUNT,
                 "probe": source_speaker_probe,
                 "head_exported": False,
@@ -6206,6 +6444,8 @@ def run(
                     if arguments.training_objective
                     == PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE
                     or arguments.training_objective
+                    == PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE
+                    or arguments.training_objective
                     == PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE
                     or arguments.training_objective
                     == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE
@@ -6308,6 +6548,7 @@ def parser() -> argparse.ArgumentParser:
             DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
             SPEAKER_PATH_UNPAIRED_OBJECTIVE,
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+            PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE,
             PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
             PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
@@ -6428,10 +6669,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                                     == PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE
                                     else "ordinary-matched-control"
                                 ),
-                                "pool_implementation": SOURCE_SPEAKER_POOL_IMPLEMENTATION,
+                                "pool_implementation": (
+                                    SOURCE_SPEAKER_POOL_IMPLEMENTATION
+                                ),
                                 "grl_implementation": SOURCE_SPEAKER_GRL_IMPLEMENTATION,
                                 "grl_weight": SOURCE_SPEAKER_GRL_WEIGHT,
-                                "classifier_feature_dimension": SOURCE_SPEAKER_FEATURE_DIMENSION,
+                                "classifier_feature_dimension": (
+                                    SOURCE_SPEAKER_FEATURE_DIMENSION
+                                ),
                                 "classifier_class_count": SOURCE_SPEAKER_CLASS_COUNT,
                                 "head_exported": False,
                                 "head_inference_attachment": None,

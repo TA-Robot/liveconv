@@ -2227,6 +2227,60 @@ def candidate_policy(kind: str) -> dict[str, str]:
             "candidate_format": "frozen-exp238-plus-speaker-condition-calibrator",
         }
     if kind in {
+        "feature-statistics-pseudoparallel-ema-fresh48",
+        "feature-statistics-pseudoparallel-ema-hadou",
+        "feature-statistics-pseudoparallel-ema-stress",
+        "feature-statistics-pseudoparallel-ema-jsut",
+        "feature-statistics-pseudoparallel-ema-expanded144",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        expanded = kind.endswith("-expanded144")
+        experiment_id = (
+            "EXP-339"
+            if expanded
+            else "EXP-338"
+            if jsut
+            else "EXP-337"
+            if stress
+            else "EXP-336"
+            if hadou
+            else "EXP-335"
+        )
+        suffix = (
+            "expanded144"
+            if expanded
+            else "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": (
+                "cross-corpus170-pseudoparallel-feature-statistics-"
+                "real-adv-ema170"
+            ),
+            "display_name": (
+                "EXP-334 / replacing pointwise real-reference feature matching "
+                "with time-order-free mean/std feature statistics / "
+                "real-adversarial / EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-feature-statistics-"
+                f"pseudoparallel-ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does replacing pointwise real-reference feature matching with "
+                "time-order-free mean/std feature statistics preserve broad "
+                "content?"
+            ),
+        }
+    if kind in {
         "output-speaker-ema-fresh48",
         "output-speaker-ema-hadou",
         "output-speaker-ema-stress",
@@ -3440,6 +3494,11 @@ def _parser() -> argparse.ArgumentParser:
             "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-jsut",
             "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-expanded144",
             "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-heldout30",
+            "feature-statistics-pseudoparallel-ema-fresh48",
+            "feature-statistics-pseudoparallel-ema-hadou",
+            "feature-statistics-pseudoparallel-ema-stress",
+            "feature-statistics-pseudoparallel-ema-jsut",
+            "feature-statistics-pseudoparallel-ema-expanded144",
             "speaker-condition-calibrator-fresh48",
             "speaker-condition-calibrator-hadou",
             "speaker-condition-calibrator-stress",

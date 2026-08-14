@@ -6626,3 +6626,28 @@ job queue.
   neighbor completely. Preserve audio unheard. The next training pilot must
   introduce a genuinely different target/architecture rather than another
   source-speaker-removal or control69-anchor objective.
+
+## 2026-08-14T22:24:43Z - Grok redirects idle GPU to one new training signal
+
+- Agent: `grok-project-progress-auditor` in tmux
+  `liveconv-grok-auditor` (read-only, no tools, web, or delegation).
+- Task: judge whether the post-GRL work remained the shortest route toward
+  robust Japanese X-VC audio and a usable realtime conversation system.
+- Result: `REDIRECT`. No new audio or operator decision appeared in the prior
+  30 minutes; the auditor accepted the frozen diverse evaluation surfaces but
+  rejected more GRL autopsy, hypothesis screening, and evaluation redesign
+  while gpu0 was idle.
+- Adopted: yes. Stop GRL and closed-window work. Use the existing external7 and
+  broad surfaces, commit exactly one different learning signal, then run one
+  sequential training pilot and publish on 8878.
+- Changed action: EXP-334 changes only the generator-side feature matching to
+  unrelated-text real Amitaro references. Existing pointwise discriminator
+  features become per-channel mean/std statistics across all temporal/periodic/
+  spectral axes. EXP-238 data, source-aligned teachers, LoRA69, complete
+  generative loss, adversarial score, discriminator update, LR, horizon, and
+  EMA remain fixed.
+- Problems: gpu0 is idle during the bounded implementation. Local inspection
+  corrected the initial rank-3 assumption: MPD/MRD features also have rank 4,
+  so the single rule reduces every axis after batch and channel.
+- Rework: discard the provisional prenet-scope draft before commit. Finish only
+  the EXP-334 runner, tests, plan, and render bindings; commit before CUDA.

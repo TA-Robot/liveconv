@@ -374,6 +374,10 @@ claims from that artifact are superseded. The active join is now:
         -> EXP333 ECAPA direction screen embeds 1,033 unique WAVs / 344 rows
         -> target cosine -0.000361; source cosine +0.000124; advantage -0.000486
         -> GRL misses its intended mechanism; close the exact method completely
+        -> Grok REDIRECT: stop mechanism autopsy and commit one new training signal
+        -> EXP334 keeps exact EXP238 but replaces pointwise unrelated-text feature matching
+        -> per-channel mean/std reduces every discriminator axis after batch/channel
+        -> commit -> two-row CUDA smoke -> 170 updates -> external7 -> fixed broad only if green
         -> operator hearing when available
 ```
 

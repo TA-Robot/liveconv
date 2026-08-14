@@ -1712,7 +1712,90 @@ def test_src4vc_two_utterance_control_broad_policies_share_exp327_to_exp332() ->
     assert all(kind in choices for kind in kinds)
 
 
-def test_src4vc_two_utterance_control_broad_candidates_are_normal_peft_without_attachment(
+def test_feature_statistics_broad_policies_prebind_exp335_to_exp339() -> None:
+    kinds = [
+        "feature-statistics-pseudoparallel-ema-fresh48",
+        "feature-statistics-pseudoparallel-ema-hadou",
+        "feature-statistics-pseudoparallel-ema-stress",
+        "feature-statistics-pseudoparallel-ema-jsut",
+        "feature-statistics-pseudoparallel-ema-expanded144",
+    ]
+    expected_experiment_ids = [
+        "EXP-335",
+        "EXP-336",
+        "EXP-337",
+        "EXP-338",
+        "EXP-339",
+    ]
+    expected_result_kinds = [
+        "liveconv-exp-335-xvc-feature-statistics-pseudoparallel-ema-fresh48/v1",
+        "liveconv-exp-336-xvc-feature-statistics-pseudoparallel-ema-hadou31/v1",
+        "liveconv-exp-337-xvc-feature-statistics-pseudoparallel-ema-stress60/v1",
+        "liveconv-exp-338-xvc-feature-statistics-pseudoparallel-ema-jsut24/v1",
+        "liveconv-exp-339-xvc-feature-statistics-pseudoparallel-ema-expanded144/v1",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == (
+        expected_experiment_ids
+    )
+    assert {
+        policy["variant_id"] for policy in policies
+    } == {
+        "cross-corpus170-pseudoparallel-feature-statistics-real-adv-ema170"
+    }
+    assert [policy["result_kind"] for policy in policies] == expected_result_kinds
+    assert {
+        policy["display_name"] for policy in policies
+    } == {
+        "EXP-334 / replacing pointwise real-reference feature matching "
+        "with time-order-free mean/std feature statistics / real-adversarial / "
+        "EMA"
+    }
+    assert {
+        policy["question"] for policy in policies
+    } == {
+        "Does replacing pointwise real-reference feature matching with "
+        "time-order-free mean/std feature statistics preserve broad content?"
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert all(kind in choices for kind in kinds)
+
+
+def test_feature_statistics_candidates_are_normal_peft_without_wrapper_or_attachment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail(*args: object, **kwargs: object) -> None:
+        raise AssertionError("feature-statistics candidate unexpectedly wrapped")
+
+    monkeypatch.setattr(
+        NEW.post, "attach_continuous_acoustic_latent", fail, raising=False
+    )
+    monkeypatch.setattr(
+        NEW.post, "attach_acoustic_temporal_jitter", fail, raising=False
+    )
+    for kind in (
+        "feature-statistics-pseudoparallel-ema-fresh48",
+        "feature-statistics-pseudoparallel-ema-hadou",
+        "feature-statistics-pseudoparallel-ema-stress",
+        "feature-statistics-pseudoparallel-ema-jsut",
+        "feature-statistics-pseudoparallel-ema-expanded144",
+    ):
+        policy = NEW.candidate_policy(kind)
+        assert policy.get("candidate_format") is None
+        assert policy.get("candidate_attachment") is None
+        candidate = object()
+        assert (
+            NEW._attach_candidate_representation(candidate, policy, torch=object())
+            is candidate
+        )
+
+
+def test_src4vc_control_broad_candidates_are_normal_peft_without_attachment(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fail(*args: object, **kwargs: object) -> None:

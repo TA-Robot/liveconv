@@ -21,15 +21,16 @@ committed, single-variable job at a time, publish its comparison on 8878, apply
 only coarse machine rejection for corruption/content failure, and replan after
 each result. Accumulated candidates remain unselected until human hearing.
 
-Current GPU lane (2026-08-14 21:04 UTC): EXP-326 passed its two-row gradient and
-inference smoke, its 85-speaker cross-utterance signal probe, and all 170
-matched GRL updates. It published 35 external7 WAVs; all seven candidate hashes
-changed versus EXP-325 while the coarse screen tied `0W/7T/0L`, gross remained
-`0 -> 0`, decoder instability remained `1 -> 1`, and there were no new
-unstable rows. Admit only the six frozen fresh48, Hadou31, stress60, JSUT24,
-expanded144, and SRC4VC-heldout30 surfaces, then replan. The operator still
-cannot listen; both arms remain unselected and neither may produce a keep or
-winner claim.
+Current GPU lane (2026-08-14 22:25 UTC): EXP-326/333 is closed after the six
+fixed broad surfaces regressed aggregate content and the independent ECAPA
+screen found that source similarity moved in the wrong direction. EXP-334 is
+the sole admitted next method. It keeps EXP-238's data, teachers, LoRA69,
+generator loss, discriminator update, LR, 170 updates, and EMA, but replaces
+only generator-side pointwise matching to unrelated-text real Amitaro
+discriminator features with per-channel mean/std matching over all remaining
+feature axes. Commit, run the two-row CUDA smoke, then one 170-update lane and
+external7. The operator still cannot listen; every arm remains unselected and
+none may produce a keep or winner claim.
 
 EXP-317 then removed the horizon confound by replacing 32 Common Voice tuples
 inside the original 170-row schedule. It produced 35 more external7 WAVs with
@@ -114,6 +115,7 @@ target.
 | EXP-305/306 X-VC matched new-speaker breadth | Exact EXP-238 first170 plus 32 old-row repeats versus 32 new Common Voice speakers/texts, both at 202 updates and matched real-target assignment | optional diagnosis after hearing returns; do not nominate either arm because the instability stop fired | both produced 35 external7 WAVs with zero added gross; repeat32 raised instability `1 -> 3`, while new32 raised it `1 -> 2` and improved secondary known-text distance `2W/2T/0L` on four jointly stable rows; stop broad EXP-307--316 and retain the disjoint CV32 data for a horizon-matched method |
 | EXP-325 X-VC two-utterance SRC4VC control | Base, control69, EXP-238, and the ordinary 85-speaker x2 SRC4VC control on external7 | after hearing returns: optional naturalness and target-voice comparison; no machine winner | 35 WAVs; exact EXP-238 comparison `0W/6T/1L`, gross `0 -> 0`, instability `1 -> 1`, no new unstable row; safe enough only to admit the matched EXP-326 GRL test, not a data-method claim |
 | EXP-326--333 X-VC source-speaker GRL | EXP-325 versus the identical 85-speaker x2 contract with only a training-only post-converter source-speaker GRL, across external7 and six fixed broad surfaces | after hearing returns: optional naturalness and target-voice diagnosis only; do not nominate this technically closed arm | 3,440 matched listener WAVs; broad content `15W/303T/19L`, mean `0.609039 -> 0.628134`; ECAPA over all 344 rows moved target cosine `-0.000361`, source cosine the wrong way `+0.000124`, and target advantage `-0.000486`; the GRL neither preserves broad content nor reaches its intended speaker direction, so all neighbors are closed |
+| EXP-334--339 X-VC adversarial feature statistics | EXP-238 versus the same method with only unrelated-text real-reference discriminator feature matching reduced from pointwise frames to per-channel mean/std statistics | after rendering: coarse external7 content/corruption gate only; after hearing returns judge naturalness and target-voice fit | implementation admitted; external7 precedes the already-frozen fresh48/Hadou31/stress60/JSUT24/expanded144 surfaces; unheard and unselected |
 | EXP-317 X-VC CV32 replacement at 170 updates | EXP-238 versus the same 170-row corpus composition with its first 32 Common Voice source/teacher tuples replaced by the admitted CV32 rows | optional diagnosis after hearing returns; do not nominate because the instability stop fired | 35 external7 WAVs, zero added gross, stable source rows `0W/5T/0L`, secondary known text `1W/4T/0L`, but instability `1 -> 2`; stop broad and investigate the CV window-construction mismatch |
 | EXP-033 source diversity | Base vs legacy human87 control69-e12 vs JVS3 generated-pair X-VC on ten fixed cross-speaker/constraint rows | after hearing returns: prefer one arm per group or reject all; judge naturalness and target voice by ear | machine ASR may reject corruption only; a consistent audible result admits the next method decision, not promotion |
 | EXP-023 | 12 Qwen3-TTS Ono_Anna texts | per text: `continue` or `rejected` | one `rejected` stops this exact TTS profile; all `continue` only admits later TTS transport work, not a VC win |

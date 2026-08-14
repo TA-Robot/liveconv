@@ -5,6 +5,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 TOOL_ROOT = Path(__file__).resolve().parents[1]
 if str(TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOL_ROOT))
@@ -1129,9 +1131,10 @@ def test_exp325_exp326_share_manifest_and_bind_only_grl_as_treatment() -> None:
     assert control["source_speaker_grl"] is False
     assert treatment["source_speaker_grl"] is True
     assert "same ordered 170" in treatment["independent_variable"]
-    assert post.PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE in post.parser()._option_string_actions[
+    objective_choices = post.parser()._option_string_actions[
         "--training-objective"
     ].choices
+    assert post.PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE in objective_choices
 
 
 def test_exp325_exp326_manifest_has_deterministic_85_x2_labels() -> None:
@@ -1161,7 +1164,9 @@ def test_exp325_exp326_manifest_has_deterministic_85_x2_labels() -> None:
     assert receipt["same_manifest_for_control_and_treatment"] is True
 
 
-def test_exp326_realism_target_uses_row_real_target_not_target_inventory(tmp_path: Path) -> None:
+def test_exp326_realism_target_uses_row_real_target(
+    tmp_path: Path,
+) -> None:
     real_target = tmp_path / "real-target.wav"
     real_target.write_bytes(b"row-real-target")
     item = {
@@ -1987,3 +1992,98 @@ def test_adapter_ema_matches_pinned_default_update_schedule() -> None:
     assert float(tracker.shadow["weight"].item()) < 161.0
     tracker.copy_to()
     assert torch.equal(model.weight, tracker.shadow["weight"])
+
+
+def test_exp334_feature_statistics_changes_only_nonlogit_feature_term() -> None:
+    import torch
+
+    fake_feature_3d = torch.randn(2, 3, 5, requires_grad=True)
+    real_feature_3d = torch.randn(2, 3, 5, requires_grad=True)
+    fake_feature_4d = torch.randn(2, 4, 3, 2, requires_grad=True)
+    real_feature_4d = torch.randn(2, 4, 3, 2, requires_grad=True)
+    fake_logit = torch.randn(2, 1, 4, requires_grad=True)
+    real_logit = torch.randn(2, 1, 4, requires_grad=True)
+    fake = [[fake_feature_3d, fake_feature_4d, fake_logit]]
+    real = [[real_feature_3d, real_feature_4d, real_logit]]
+
+    losses = post.feature_statistics_adversarial_loss_from_outputs(
+        fake,
+        real,
+        loss_weights={"adv_gen_loss": 3.0, "adv_feat_loss": 2.0},
+        torch=torch,
+    )
+    expected_gen = torch.mean((1 - fake_logit) ** 2)
+    pointwise = torch.nn.functional.l1_loss(fake_feature_3d, real_feature_3d)
+    pointwise = pointwise + torch.nn.functional.l1_loss(
+        fake_feature_4d, real_feature_4d
+    )
+
+    assert torch.equal(losses["adv_gen_loss"], expected_gen)
+    assert losses["feature_layer_count"] == 2
+    assert not torch.equal(losses["adv_feat_loss"], pointwise)
+    assert torch.equal(
+        losses["loss"],
+        3.0 * losses["adv_gen_loss"] + 2.0 * losses["adv_feat_loss"],
+    )
+    losses["loss"].backward()
+    assert fake_feature_3d.grad is not None
+    assert fake_feature_4d.grad is not None
+    assert fake_logit.grad is not None
+    assert real_feature_3d.grad is None
+    assert real_feature_4d.grad is None
+    assert real_logit.grad is None
+
+
+def test_exp334_feature_statistics_reduces_all_post_channel_axes() -> None:
+    import torch
+
+    feature = torch.tensor([[[[1.0, 3.0], [5.0, 7.0]]]])
+    statistics = post.feature_statistics(feature, torch=torch, epsilon=0.0)
+
+    assert statistics.shape == (1, 2)
+    assert torch.allclose(statistics, torch.tensor([[4.0, 2.2360679]]), atol=1e-6)
+
+
+def test_exp334_feature_statistics_rejects_rank_and_layer_drift() -> None:
+    import torch
+
+    with pytest.raises(post.PostRehearsalError, match="rank"):
+        post.feature_statistics(torch.zeros(1, 2), torch=torch)
+    with pytest.raises(post.PostRehearsalError, match="layer count"):
+        post.feature_statistics_adversarial_loss_from_outputs(
+            [[torch.zeros(1, 2, 3), torch.zeros(1, 1, 3)]],
+            [[torch.zeros(1, 2, 3)]],
+            loss_weights={"adv_gen_loss": 1.0, "adv_feat_loss": 1.0},
+            torch=torch,
+        )
+
+
+def test_exp334_policy_and_parser_bind_exact_exp238_contract() -> None:
+    policy = post.listening_policy(
+        post.PSEUDOPARALLEL_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp334"
+    assert policy["candidate_id"] == (
+        "cross-corpus170-pseudoparallel-feature-statistics-real-adv-ema170"
+    )
+    assert "mean, sqrt(var+1e-6)" in policy["independent_variable"]
+    choices = post.parser()._option_string_actions["--training-objective"].choices
+    assert post.PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE in choices
+    for kwargs in (
+        {"manifest_kind": post.SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND},
+        {"use_adapter_ema": False},
+        {"optimizer_mode": post.PCGRAD_CONTENT_VOICE_OPTIMIZER},
+    ):
+        arguments = {
+            "manifest_kind": post.PSEUDOPARALLEL_OUTPUT_KIND,
+            "trainable_target": post.LORA69_TARGET,
+            "training_objective": post.PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE,
+            "use_adapter_ema": True,
+        }
+        arguments.update(kwargs)
+        with pytest.raises(post.PostRehearsalError):
+            post.listening_policy(**arguments)
