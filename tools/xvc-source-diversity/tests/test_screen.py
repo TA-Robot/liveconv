@@ -28,6 +28,22 @@ def test_repetition_metrics_flags_gross_character_and_ngram_loops() -> None:
     assert SCREEN.repetition_metrics("今日は晴れです")["gross_repetition"] is False
 
 
+def test_consensus_repetition_does_not_promote_one_decoder_hallucination() -> None:
+    unstable = SCREEN.consensus_repetition(
+        "笑いかけながら一二歩近寄った",
+        "三四三四三四三四三四三四",
+    )
+    agreed = SCREEN.consensus_repetition(
+        "三四三四三四三四",
+        "三四三四三四三四三四",
+    )
+
+    assert unstable["greedy_gross_repetition"] is False
+    assert unstable["beam5_gross_repetition"] is True
+    assert unstable["gross_repetition"] is False
+    assert agreed["gross_repetition"] is True
+
+
 def test_aggregate_is_groupwise_and_never_invents_quality_score() -> None:
     rows = [
         {

@@ -197,8 +197,9 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-169--173 category-balanced JSUT retention (Hadou loop; rejected)
         -> EXP-176 paired hard/easy PCGrad (74/85 gradient conflicts)
         -> EXP-177 fresh48 (no candidate-added gross row)
-        -> EXP-178 Hadou31 (candidate-only repeated-number loop; rejected)
-        -> stress60 and JSUT24 stopped for the rejected PCGrad checkpoint
+        -> EXP-178 Hadou31 (beam-5-only repeated-number stop retracted)
+        -> v3 greedy-primary / two-decode-consensus reassessment of existing WAVs
+        -> stress60 and JSUT24 only if the v3 checkpoint gate survives
         -> operator hearing when available
 ```
 

@@ -4025,3 +4025,40 @@ job queue.
   stop EXP-179 stress60 and EXP-180 JSUT24. Do not tune projection, pair order,
   weights, or data mix. Wait for the concurrent 02:50 Grok verdict before
   selecting another materially different method.
+
+## 2026-08-14T02:50:25Z - Grok progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux `liveconv-grok-auditor`.
+- Task: independent 30-minute direction, evidence-cost, and idle-resource audit.
+- Result: `SIMPLIFY`. It accepted the committed PCGrad pilot and new audio, but
+  challenged the smoke/ID rework, the paired method's coupled step geometry,
+  and any move to another training method before screening existing audio and
+  binding diverse frozen evaluation conditions.
+- Problems: the snapshot arrived before the canonical exact rerun, fresh48,
+  and Hadou gate had completed, so its request to stop the ID rerun could no
+  longer change that action. It also did not observe that fresh48, Hadou31,
+  stress60, JSUT24, and expanded33 were already frozen.
+- Rework: verdict adopted where actionable: stop new training-method work,
+  screen the existing checkpoint, and do not spend on receipts/review. The
+  completed canonical rerun is retained because it proved exact adapter and
+  WAV reproducibility; no further identity rerun is admitted.
+
+## 2026-08-14T02:57:00Z - beam-5 gross-loop decision invalidated
+
+- Agent: `primary-integrator`.
+- Task: determine whether the repeated-number Hadou stop was an acoustic loop
+  or an artifact of the acknowledged weak auxiliary ASR evaluation.
+- Dependencies: existing EXP-178 WAVs only; no new model or training job.
+- Result: every arm is exactly 2.4 seconds. Beam 5 transcribed the source as a
+  physically impossible 428-character number sequence and the PCGrad candidate
+  as 223 repeated-number characters. Beam 1 instead produced a plausible
+  13-character source and the same short 11-character text for control69 and
+  candidate. VAD on/off changed neither result. The prior claim that the audio
+  literally repeated `三、四` dozens of times is unsupported.
+- Problems: `screen.py` used only beam 5 and promoted its transcript repetition
+  directly into the gross corruption gate. It did not expose decoder
+  disagreement, so a single ASR search hallucination could reject a method.
+- Rework: retract the v2 rejection, keep the checkpoint unselected, and commit
+  a v3 screen: greedy primary transcript for content, beam-5 diagnostic, and a
+  gross repetition flag only when both deterministic decodes agree. Re-screen
+  existing external7/fresh48/Hadou31 before opening any new GPU render.

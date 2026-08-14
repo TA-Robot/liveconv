@@ -94,6 +94,26 @@ def repetition_metrics(value: str) -> dict[str, object]:
     }
 
 
+def consensus_repetition(greedy: str, beam5: str) -> dict[str, object]:
+    """Require two deterministic decoders to agree before calling a gross loop."""
+
+    primary = repetition_metrics(greedy)
+    diagnostic = repetition_metrics(beam5)
+    return {
+        **primary,
+        "gross_repetition": bool(primary["gross_repetition"])
+        and bool(diagnostic["gross_repetition"]),
+        "greedy_gross_repetition": bool(primary["gross_repetition"]),
+        "beam5_gross_repetition": bool(diagnostic["gross_repetition"]),
+        "beam5_normalized_characters": diagnostic["normalized_characters"],
+        "beam5_maximum_character_run": diagnostic["maximum_character_run"],
+        "beam5_maximum_repeated_ngram_count": diagnostic[
+            "maximum_repeated_ngram_count"
+        ],
+        "decoder_normalized_distance": normalized_distance(greedy, beam5),
+    }
+
+
 def aggregate_rows(rows: Sequence[Mapping[str, object]]) -> dict[str, object]:
     buckets: dict[tuple[str, str], list[Mapping[str, object]]] = defaultdict(list)
     for row in rows:
@@ -184,21 +204,25 @@ def _load_listener_variants(row_root: Path) -> tuple[str, dict[str, str]]:
     return source_file, variants
 
 
-def _transcribe(model: Any, path: Path) -> str:
+def _transcribe_pair(model: Any, path: Path) -> tuple[str, str]:
     from faster_whisper.audio import decode_audio
 
     audio = decode_audio(str(path), sampling_rate=16_000)
-    segments, _ = model.transcribe(
-        audio,
-        language="ja",
-        task="transcribe",
-        beam_size=5,
-        temperature=0.0,
-        condition_on_previous_text=False,
-        log_progress=False,
-        word_timestamps=False,
-    )
-    return "".join(str(segment.text) for segment in segments).strip()
+
+    def decode(beam_size: int) -> str:
+        segments, _ = model.transcribe(
+            audio,
+            language="ja",
+            task="transcribe",
+            beam_size=beam_size,
+            temperature=0.0,
+            condition_on_previous_text=False,
+            log_progress=False,
+            word_timestamps=False,
+        )
+        return "".join(str(segment.text) for segment in segments).strip()
+
+    return decode(1), decode(5)
 
 
 def run(arguments: argparse.Namespace) -> int:
@@ -224,6 +248,7 @@ def run(arguments: argparse.Namespace) -> int:
     )
     rows: list[dict[str, object]] = []
     transcripts: dict[str, str] = {}
+    beam5_transcripts: dict[str, str] = {}
     expected_variants: dict[str, str] | None = None
     for index, item in enumerate(evaluation["items"]):
         row_root = arguments.listener_root / f"{index:02d}-{item['id']}"
@@ -236,15 +261,19 @@ def run(arguments: argparse.Namespace) -> int:
         expected_files = [source_path, *(row_root / name for name in variants.values())]
         if any(path.is_symlink() or not path.is_file() for path in expected_files):
             raise ScreenError(f"listener row is incomplete: {item['id']}")
-        source_transcript = _transcribe(model, source_path)
+        source_transcript, source_beam5_transcript = _transcribe_pair(
+            model, source_path
+        )
         known_text = item.get("text")
         if known_text is not None and not isinstance(known_text, str):
             raise ScreenError(f"known text is malformed: {item['id']}")
         transcripts[f"{item['id']}/source"] = source_transcript
+        beam5_transcripts[f"{item['id']}/source"] = source_beam5_transcript
         for variant, filename in variants.items():
             output_path = row_root / filename
-            transcript = _transcribe(model, output_path)
+            transcript, beam5_transcript = _transcribe_pair(model, output_path)
             transcripts[f"{item['id']}/{variant}"] = transcript
+            beam5_transcripts[f"{item['id']}/{variant}"] = beam5_transcript
             source_normalized = normalize_japanese(source_transcript)
             output_normalized = normalize_japanese(transcript)
             rows.append(
@@ -255,7 +284,9 @@ def run(arguments: argparse.Namespace) -> int:
                     "source_sha256": sha256_file(source_path),
                     "output_sha256": sha256_file(output_path),
                     "source_transcript": source_transcript,
+                    "source_beam5_transcript": source_beam5_transcript,
                     "output_transcript": transcript,
+                    "output_beam5_transcript": beam5_transcript,
                     "source_normalized_characters": len(source_normalized),
                     "output_normalized_characters": len(output_normalized),
                     "source_relative_distance": normalized_distance(
@@ -271,15 +302,22 @@ def run(arguments: argparse.Namespace) -> int:
                         if known_text is not None
                         else None
                     ),
-                    "repetition": repetition_metrics(transcript),
+                    "beam5_source_relative_distance": normalized_distance(
+                        source_beam5_transcript, beam5_transcript
+                    ),
+                    "repetition": consensus_repetition(transcript, beam5_transcript),
+                    "source_repetition": consensus_repetition(
+                        source_transcript, source_beam5_transcript
+                    ),
                 }
             )
     result = {
         "schema_version": 1,
-        "kind": "liveconv-xvc-machine-content-screen/v2",
+        "kind": "liveconv-xvc-machine-content-screen/v3",
         "boundary": (
-            "Auxiliary source-relative ASR and repetition only. This cannot rank "
-            "naturalness, target-voice fit, speaker similarity, or a winner."
+            "Auxiliary greedy-ASR content and two-decode repetition consensus "
+            "only. This cannot rank naturalness, target-voice fit, speaker "
+            "similarity, or a winner."
         ),
         "model": {
             "engine": "faster-whisper==1.2.1",
@@ -287,9 +325,11 @@ def run(arguments: argparse.Namespace) -> int:
             "device": arguments.device,
             "compute_type": arguments.compute_type,
             "decode": {
-                "beam_size": 5,
+                "primary_beam_size": 1,
+                "diagnostic_beam_size": 5,
                 "temperature": 0.0,
                 "condition_on_previous_text": False,
+                "gross_repetition_policy": ("greedy-and-beam5-must-both-trigger"),
             },
         },
         "evaluation_set_sha256": sha256_file(arguments.evaluation_set),
@@ -298,6 +338,7 @@ def run(arguments: argparse.Namespace) -> int:
         "rows": rows,
         "aggregate": aggregate_rows(rows),
         "transcripts": transcripts,
+        "beam5_transcripts": beam5_transcripts,
         "claims": {
             "perceptual_winner": False,
             "promoted": False,

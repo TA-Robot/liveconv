@@ -1,6 +1,6 @@
 # EXP-176: paired hard-repair and retention PCGrad
 
-Status: technically rejected on frozen Hadou31; human diagnosis optional
+Status: v2 ASR rejection retracted; committed v3 machine reassessment pending
 
 ## Goal
 
@@ -59,10 +59,17 @@ failures. On the 46 common non-gross rows, source-relative mean improved
 `0.341 -> 0.299` with W/T/L `13/25/8`, while its median slightly regressed
 `0.275 -> 0.293`; known-text mean improved `0.618 -> 0.606`.
 
-Hadou31 rejects the method. Control69 had no gross row, while the candidate
-again collapsed on `RECITATION324_138`, repeating `三、四` through a long
-numeric run. Excluding that failure, the other 30 rows looked favorable
-(`0.185 -> 0.171`, W/T/L `6/22/2`), demonstrating why aggregate content scores
-cannot override the corruption gate. Do not run stress60 or JSUT24 and do not
-tune projection, pairing, or task weights. The 430 canonical comparison WAVs
-remain on port 8878 for later human diagnosis; this is not a perceptual verdict.
+The original beam-5-only Hadou screen appeared to reject the method because
+`RECITATION324_138` produced a 223-character repeated-number transcript. That
+claim was invalid: the 2.4-second source itself produced a physically
+impossible 428-character number sequence under beam 5, while deterministic
+beam 1 transcribed the source in 13 characters and transcribed control69 and
+the candidate as the same 11-character sentence. VAD did not alter either
+decode. Spectral inspection also cannot support a claim that the audio
+literally spoke the reported sequence dozens of times.
+
+The beam-5-only gross-loop rejection is therefore retracted. The candidate is
+not accepted or selected; all 430 existing WAVs must be reassessed with the
+committed v3 screen, whose primary content transcript is greedy and whose gross
+flag requires greedy and beam-5 agreement. Only that result may open stress60
+and JSUT24. Do not tune projection, pairing, or task weights from this finding.
