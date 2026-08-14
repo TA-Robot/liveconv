@@ -260,15 +260,16 @@ def test_discrete_output_cycle_classifies_source_tokens_from_final_wav(
             codebook=codebook,
         )
     )
+    # The real WhisperVQ ``whisper_hidden_states_50hz`` boundary is B, D, T.
     reconstruction = torch.tensor(
-        [[[1.0, 0.0], [0.0, 1.0]]], requires_grad=True
+        [[[1.0, 0.0, 1.0], [0.0, 1.0, 0.0]]], requires_grad=True
     )
     outputs = {
         "recons": reconstruction,
         "pred_sim_feat": torch.tensor([[2.0, 4.0]]),
         "sim_feat": torch.tensor([[1.0, 1.0]]),
     }
-    batch = {"semantic_tokens": torch.tensor([[5, 9]], dtype=torch.long)}
+    batch = {"semantic_tokens": torch.tensor([[5, 9, 5]], dtype=torch.long)}
     monkeypatch.setattr(
         post,
         "differentiable_whisper_hidden_states",

@@ -1182,10 +1182,13 @@ def differentiable_whisper_token_logits(
         or hidden_states_50hz.ndim != 3
         or codebook_weight.ndim != 2
         or codebook_weight.shape[0] != 16_384
-        or codebook_weight.shape[1] != hidden_states_50hz.shape[-1]
+        or codebook_weight.shape[1] != hidden_states_50hz.shape[1]
     ):
         raise PostRehearsalError("discrete output-cycle codebook drifted")
-    pooled = pooling(hidden_states_50hz.transpose(1, 2)).transpose(1, 2)
+    # WhisperVQ exposes its saved pre-pooling states as [batch, channel, time].
+    # Keep that official channel-first boundary through Pool1d and transpose only
+    # for the token-classification view below.
+    pooled = pooling(hidden_states_50hz).transpose(1, 2)
     flat = pooled.float().reshape(-1, pooled.shape[-1])
     frozen_codebook = codebook_weight.detach().float()
     distances = (
