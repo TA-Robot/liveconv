@@ -1540,6 +1540,67 @@ def test_cv26_active_window_broad_policies_prebind_exp320_to_exp324() -> None:
         )
 
 
+def test_src4vc_two_utterance_external7_policies_prebind_exp325_and_exp326() -> None:
+    expected = {
+        "src4vc-two-utterance-control-pseudoparallel-ema-external7": (
+            "EXP-325",
+            "src4vc85-two-utterance-control-pseudoparallel-real-adv-ema170",
+            "liveconv-exp325-xvc-src4vc-two-utterance-control-"
+            "pseudoparallel-real-adv-ema/v1",
+        ),
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-external7": (
+            "EXP-326",
+            "src4vc85-two-utterance-source-speaker-grl-"
+            "pseudoparallel-real-adv-ema170",
+            "liveconv-exp326-xvc-src4vc-two-utterance-source-speaker-grl-"
+            "pseudoparallel-real-adv-ema/v1",
+        ),
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    policies = []
+    for kind, (experiment_id, variant_id, result_kind) in expected.items():
+        policy = NEW.candidate_policy(kind)
+        policies.append(policy)
+        assert policy["experiment_id"] == experiment_id
+        assert policy["variant_id"] == variant_id
+        assert policy["result_kind"] == result_kind
+        assert kind in choices
+
+    assert len({policy["experiment_id"] for policy in policies}) == 2
+    assert len({policy["variant_id"] for policy in policies}) == 2
+    assert len({policy["result_kind"] for policy in policies}) == 2
+
+
+def test_src4vc_two_utterance_external7_candidates_are_normal_peft_without_attachment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail(*args: object, **kwargs: object) -> None:
+        raise AssertionError("source-speaker training head attached at inference")
+
+    monkeypatch.setattr(
+        NEW.post, "attach_continuous_acoustic_latent", fail, raising=False
+    )
+    monkeypatch.setattr(
+        NEW.post, "attach_acoustic_temporal_jitter", fail, raising=False
+    )
+    for kind in (
+        "src4vc-two-utterance-control-pseudoparallel-ema-external7",
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-external7",
+    ):
+        policy = NEW.candidate_policy(kind)
+        assert policy.get("candidate_format") is None
+        assert policy.get("candidate_attachment") is None
+        candidate = object()
+        assert (
+            NEW._attach_candidate_representation(candidate, policy, torch=object())
+            is candidate
+        )
+
+
 def test_noncontinuous_candidate_does_not_attach_wrapper(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

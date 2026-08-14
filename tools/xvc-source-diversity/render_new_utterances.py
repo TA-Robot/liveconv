@@ -1967,6 +1967,48 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "and avoid corruption on external7?"
             ),
         }
+    if kind == "src4vc-two-utterance-control-pseudoparallel-ema-external7":
+        return {
+            "experiment_id": "EXP-325",
+            "variant_id": (
+                "src4vc85-two-utterance-control-pseudoparallel-real-adv-ema170"
+            ),
+            "display_name": (
+                "EXP-325 / SRC4VC two-utterance control / source-aligned targets / "
+                "real-adversarial / EMA"
+            ),
+            "result_kind": (
+                "liveconv-exp325-xvc-src4vc-two-utterance-control-"
+                "pseudoparallel-real-adv-ema/v1"
+            ),
+            "question": (
+                "Does the matched two-utterance SRC4VC control preserve content "
+                "and avoid corruption on external7?"
+            ),
+        }
+    if (
+        kind
+        == "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-external7"
+    ):
+        return {
+            "experiment_id": "EXP-326",
+            "variant_id": (
+                "src4vc85-two-utterance-source-speaker-grl-"
+                "pseudoparallel-real-adv-ema170"
+            ),
+            "display_name": (
+                "EXP-326 / SRC4VC two-utterance source-speaker GRL / "
+                "source-aligned targets / real-adversarial / EMA"
+            ),
+            "result_kind": (
+                "liveconv-exp326-xvc-src4vc-two-utterance-source-speaker-grl-"
+                "pseudoparallel-real-adv-ema/v1"
+            ),
+            "question": (
+                "Does source-speaker GRL on identical two-utterance SRC4VC data "
+                "preserve content and avoid corruption on external7?"
+            ),
+        }
     if kind in {
         "cv26-active-window-pseudoparallel-ema-fresh48",
         "cv26-active-window-pseudoparallel-ema-hadou",
@@ -3266,6 +3308,8 @@ def _parser() -> argparse.ArgumentParser:
             "cv32-replacement-pseudoparallel-ema-external7",
             "cv26-current-window-control-pseudoparallel-ema-external7",
             "cv26-active-window-pseudoparallel-ema-external7",
+            "src4vc-two-utterance-control-pseudoparallel-ema-external7",
+            "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-external7",
             "cv26-active-window-pseudoparallel-ema-fresh48",
             "cv26-active-window-pseudoparallel-ema-hadou",
             "cv26-active-window-pseudoparallel-ema-stress",
