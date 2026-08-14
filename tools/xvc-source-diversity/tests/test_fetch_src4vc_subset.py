@@ -132,7 +132,7 @@ unknown: value
         FETCH.parse_metadata(value)
 
 
-@pytest.mark.parametrize("sample_rate", [44_100, 48_000])
+@pytest.mark.parametrize("sample_rate", [24_000, 44_100, 48_000])
 def test_wav_validator_preserves_published_native_rates(sample_rate: int) -> None:
     value = io.BytesIO()
     with wave.open(value, "wb") as handle:

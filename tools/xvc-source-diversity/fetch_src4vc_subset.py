@@ -246,7 +246,7 @@ def validate_wav(value: bytes, *, label: str) -> tuple[float, int]:
             if (
                 handle.getnchannels() != 1
                 or handle.getsampwidth() != 2
-                or sample_rate not in {44_100, 48_000}
+                or sample_rate not in {24_000, 44_100, 48_000}
                 or handle.getcomptype() != "NONE"
                 or handle.getnframes() <= 0
             ):

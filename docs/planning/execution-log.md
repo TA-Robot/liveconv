@@ -5274,13 +5274,14 @@ job queue.
 - Result: archive identity, central directory, selected member inventory, ZIP
   CRCs, transcripts, and most audio passed. Two real corpus shapes required a
   bounded parser correction: three speaker metadata files contain quoted
-  indented continuation lines, and SRC4VC025 RECITATION audio is native
-  44.1 kHz rather than 48 kHz. Both rates remain mono PCM16 and the existing
-  curriculum window preserves native rate.
+  indented continuation lines, while four selected WAVs use native 24 or 44.1
+  kHz rather than 48 kHz. A complete 115-row header inventory froze the exact
+  set at 111 x 48 kHz, 2 x 44.1 kHz, and 2 x 24 kHz; all are mono PCM16 and the
+  existing curriculum window preserves native rate.
 - Problems: the first two attempts stopped safely after writing 3 files/8.3 MB
   and 28 files/44 MB. Neither wrote `subset.json`.
 - Rework: moved the incomplete outputs to explicit recoverable
   `.partial-metadata-shape` and `.partial-native-rate` directories. Added a
-  strict flat multiline parser and admitted only native 44.1/48 kHz mono PCM16,
-  recording each row's actual rate. No resampling, row substitution, training
-  method, or split changed.
+  strict flat multiline parser and admitted only the inventoried native
+  24/44.1/48 kHz mono PCM16 combinations, recording each row's actual rate. No
+  resampling, row substitution, training method, or split changed.
