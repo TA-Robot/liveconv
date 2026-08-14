@@ -3719,3 +3719,44 @@ job queue.
 - Rework: run one real smoke, commit, then one unchanged GPU lane. Do not sweep
   EMA settings. Gate external7 -> fresh48 -> Hadou31 -> stress60, then JSUT24
   only on all-survival.
+
+## 2026-08-14T01:20:25Z - Grok project-progress audit
+
+- Agent: `grok-4.6` in tmux `liveconv-grok-auditor`; independent, read-only,
+  no tools or delegation.
+- Verdict: `CONTINUE`.
+- Adopted: finish the exact committed EMA lane, reject on external7/fresh48
+  gross corruption, proceed to Hadou31 only on survival, make no metric quality
+  winner, and do not sweep EMA settings or start a second method early.
+- Clarification: the sampled GPU utilization was zero during checkpoint load,
+  but PID and later result evidence show the committed EMA job was active. No
+  duplicate launch was performed.
+- Changed action: after fresh48 added no gross row and improved common non-gross
+  summaries, continue unchanged to Hadou31, then the preregistered stress60 and
+  JSUT24 gates.
+
+## 2026-08-14T01:34:00Z - EXP-163--167 upstream EMA technical survivor
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T01:18:00Z.
+- End: 2026-08-14T01:34:00Z.
+- Dependencies: commit `7658d61`; exact EXP-158 online trajectory; pinned
+  upstream EMA defaults; external7, fresh48, Hadou31, stress60, JSUT24; gpu0;
+  listener 8878.
+- Result: 170 online updates completed in 155.74 seconds at 5.47 GiB peak. EMA
+  performed 11 copies and six moving-average updates, last decay `0.93547`.
+  External7 regressed source-relative mean `0.360 -> 0.411`, but no later set
+  reproduced a broad technical failure. Fresh46 common non-gross improved mean
+  `0.341 -> 0.328`, W/T/L `12/25/9`, with no candidate-added gross row. Hadou31
+  had no gross row and improved source-relative mean `0.210 -> 0.171`, W/T/L
+  `6/23/2`; the prior numeric loop did not recur. Stress60 added no gross row,
+  tied source-relative macro `0.31959 -> 0.32000`, and improved known-text macro
+  `0.6726 -> 0.6588`. Untouched JSUT24 added no gross row and improved
+  source-relative macro `0.165 -> 0.142`, W/T/L `3/21/0`, while known-text mean
+  regressed `0.552 -> 0.571`.
+- Problems: metrics conflict by set and condition; external7/clean/pitch/tempo
+  have regressions, and no machine measure decides naturalness or target voice.
+- Rework: retain exact EMA and online checkpoints plus 850 new comparison WAVs
+  on 8878. Mark the EMA arm a technical survivor only. Stop EMA/adversarial
+  sweeps and await human hearing for keep/reject; further GPU work must use a
+  distinct data or model method and a frozen cross-corpus gate.

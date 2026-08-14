@@ -1,6 +1,6 @@
 # EXP-163: upstream EMA for selective real-adversarial retraining
 
-Status: ready for one bounded gpu0 lane
+Status: technical survivor; human listening pending
 
 ## Goal
 
@@ -33,3 +33,29 @@ metrics cannot select naturalness, target identity, a keeper, or promotion.
 
 Do not vary EMA beta, warmup, frequency, loss, LR, update count, scope, data,
 retention ratio, or adversarial settings.
+
+## Result
+
+Commit `7658d61` completed the same 170 online updates in 155.74 seconds at
+5.47 GiB peak, then reported the preregistered EMA state after 11 copy updates
+and six moving-average updates (last decay `0.93547`). External7 had no gross
+loop but regressed source-relative mean `0.360 -> 0.411` and known-text mean
+`0.399 -> 0.421`.
+
+The broader frozen gates did not reproduce that regression as a generic
+failure. Fresh48 added no gross row and improved the 46 common non-gross rows:
+source-relative W/T/L `12/25/9`, mean `0.341 -> 0.328`, median
+`0.300 -> 0.235`; known-text mean `0.618 -> 0.607`. Hadou31 had no gross row,
+source-relative W/T/L `6/23/2`, and means `0.210 -> 0.171` source-relative and
+`0.436 -> 0.425` known-text. The prior `RECITATION324_138` loop did not recur.
+
+Stress60 added no gross row. Macro source-relative was tied
+`0.31959 -> 0.32000`, while known-text improved `0.6726 -> 0.6588`; noise and
+leading-silence means improved, while clean, pitch, and tempo source-relative
+means worsened slightly. Untouched JSUT24 also added no gross row and improved
+source-relative macro `0.165 -> 0.142`, W/T/L `3/21/0`; known-text W/T/L was
+`0/20/4` and mean regressed `0.552 -> 0.571`.
+
+This is a technical survivor and a new listening candidate, not a keep,
+naturalness winner, target-voice winner, route decision, or promotion. Preserve
+the exact EMA checkpoint and stop EMA or adversarial sweeps until human hearing.
