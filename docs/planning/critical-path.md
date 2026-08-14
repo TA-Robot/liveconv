@@ -194,7 +194,8 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-124 full-output teacher / CV24 + Hadou21 + JVS3 sources
         -> EXP-125 frozen fresh48 gate
         -> EXP-163--168 selective real-adversarial upstream-EMA survivor
-        -> EXP-169--173 category-balanced JSUT retention (Hadou loop; rejected)
+        -> EXP-169--175 category-balanced JSUT retention
+        -> v4 retracts the beam-5 Hadou false loop; mixed technical survivor
         -> EXP-176 paired hard/easy PCGrad (74/85 gradient conflicts)
         -> EXP-177 fresh48 (no candidate-added gross row)
         -> EXP-178 Hadou31 (beam-5-only repeated-number stop retracted)
@@ -202,6 +203,7 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-179 stress60 (no consensus gross; noise gain, tempo/silence tradeoff)
         -> EXP-180 JSUT24 (no consensus gross; mixed source/known-text result)
         -> paired PCGrad retained as mixed, unheard technical survivor
+        -> EXP-181 control69 parameter-anchor on the exact EXP-163 method
         -> operator hearing when available
 ```
 

@@ -1,6 +1,6 @@
 # EXP-171: category-balanced JSUT retention under the surviving EMA method
 
-Status: rejected on frozen Hadou31; human listening pending
+Status: completed v4 technical survivor; human listening pending
 
 ## Goal
 
@@ -41,10 +41,26 @@ the 46 common non-gross rows, candidate versus control69 source-relative W/T/L
 was `14/24/8`, mean `0.341 -> 0.320`, and median `0.275 -> 0.177`; known-text
 mean moved `0.618 -> 0.608`.
 
-Hadou31 rejected the method. Control69 had zero gross rows, while the candidate
-added a gross collapse on `RECITATION324_138`: after `笑いかけながら` it
-repeated the number pattern `三、四` 53 times. The raw candidate mean improved
-`0.210 -> 0.186`, but that average cannot override a candidate-added gross
-failure. Do not run stress60 or JSUT24 and do not sweep the JSUT ratio or
-category mix. Preserve the comparison audio for later human diagnosis; this is
-not a naturalness or target-voice decision.
+The original beam-5-only Hadou screen falsely rejected the method. The same
+2.4-second source produced a physically impossible 428-character number
+sequence under beam 5, while greedy decoding returned a short plausible
+sentence. The candidate's alleged 53 repetitions therefore were ASR search
+hallucination, not supported acoustic evidence. V4 now requires greedy/beam-5
+agreement for gross repetition and compares content only on cross-arm common
+decoder-stable, non-gross rows.
+
+Under v4, the unchanged checkpoint added zero consensus gross rows across all
+five frozen gates. Common stable results versus control69 were:
+
+- external5: source-relative `0.256 -> 0.253`, known-text `0.371 -> 0.283`;
+- fresh33: source-relative `0.198 -> 0.187`, known-text `0.545 -> 0.523`;
+- Hadou25: source-relative `0.133 -> 0.108`, known-text `0.369 -> 0.347`;
+- stress44: source-relative `0.218 -> 0.212`, known-text effectively tied
+  `0.598 -> 0.599`; noise and leading silence improved, tempo1.2 regressed;
+- JSUT22: source-relative regressed `0.115 -> 0.134`, while known-text improved
+  `0.553 -> 0.544`; counters, loanwords, and most other rows tied.
+
+The 850 comparison WAVs across external7, fresh48, Hadou31, stress60, and
+balanced JSUT24 remain on port 8878. This is an unselected mixed technical
+survivor, not a naturalness, identity, keeper, or promotion decision. Do not
+sweep JSUT share or category counts.

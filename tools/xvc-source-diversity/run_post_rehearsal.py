@@ -73,6 +73,8 @@ EMA_UPDATE_EVERY = 10
 EMA_INV_GAMMA = 1.0
 EMA_POWER = 2.0 / 3.0
 EMA_MIN_VALUE = 0.0
+PARAMETER_ANCHOR_COEFFICIENT = 1.0
+PARAMETER_ANCHOR_IMPLEMENTATION = "l2-sp-control69-trainable-parameters/v1"
 
 
 class PostRehearsalError(RuntimeError):
@@ -85,9 +87,41 @@ def listening_policy(
     training_objective: str = GENERATIVE_OBJECTIVE,
     use_adapter_ema: bool = False,
     optimizer_mode: str = SEQUENTIAL_OPTIMIZER,
+    parameter_anchor: bool = False,
 ) -> dict[str, str]:
     """Return the complete shared-listener identity for the admitted method."""
 
+    if parameter_anchor:
+        if (
+            manifest_kind != SELECTIVE_OUTPUT_KIND
+            or trainable_target != LORA69_TARGET
+            or training_objective != REAL_REFERENCE_ADVERSARIAL_OBJECTIVE
+            or not use_adapter_ema
+            or optimizer_mode != SEQUENTIAL_OPTIMIZER
+        ):
+            raise PostRehearsalError(
+                "parameter anchor is admitted only for the exact EXP-163 baseline"
+            )
+        return {
+            "slug": "exp181",
+            "candidate_id": "cv12-selective-real-adversarial-anchor-ema170",
+            "candidate_name": (
+                "EXP-181 / selective real-adversarial / control69 anchor / EMA"
+            ),
+            "run_kind": "EXP-181 X-VC parameter-anchor external evaluation",
+            "result_kind": "liveconv-exp181-xvc-parameter-anchor-ema/v1",
+            "question": (
+                "Can a light control69 parameter anchor retain EXP-163's repair "
+                "signal while reducing tempo and ordinary-content forgetting?"
+            ),
+            "independent_variable": (
+                "only a coefficient-1 L2-SP penalty around the immutable control69 "
+                "LoRA69 initialization is added to EXP-163; its hard85/easy85 "
+                "curriculum, real-reference adversarial objective, 170 sequential "
+                "updates, LR, AdamW, clip, scope, zero condition, and upstream EMA "
+                "schedule stay fixed"
+            ),
+        }
     if optimizer_mode == PCGRAD_PAIRED_OPTIMIZER:
         if (
             manifest_kind != SELECTIVE_OUTPUT_KIND
@@ -433,6 +467,7 @@ def validate_inputs(
         arguments.training_objective,
         arguments.adapter_ema,
         arguments.optimizer_mode,
+        arguments.parameter_anchor,
     )
     evaluation = breadth._load_manifest(
         arguments.evaluation_set,
@@ -713,9 +748,12 @@ class AdapterEMA:
 def smoke_rows(
     manifest: Mapping[str, Any],
     optimizer_mode: str = SEQUENTIAL_OPTIMIZER,
+    parameter_anchor: bool = False,
 ) -> list[Mapping[str, Any]]:
     items = manifest["items"]
     if optimizer_mode == PCGRAD_PAIRED_OPTIMIZER:
+        return items[:2]
+    if parameter_anchor:
         return items[:2]
     if manifest.get("kind") != JSUT_RETENTION_OUTPUT_KIND:
         return items[:1]
@@ -795,6 +833,37 @@ def project_conflicting_pair(
     }
 
 
+def parameter_anchor_regularizer(
+    parameters: Sequence[Any],
+    anchors: Sequence[Any],
+    *,
+    torch: Any,
+    coefficient: float = PARAMETER_ANCHOR_COEFFICIENT,
+) -> tuple[Any, dict[str, float]]:
+    """Return a finite L2-SP loss around the immutable control69 parameters."""
+
+    if (
+        not parameters
+        or len(parameters) != len(anchors)
+        or not math.isfinite(coefficient)
+        or coefficient <= 0.0
+    ):
+        raise PostRehearsalError("parameter anchor identity drifted")
+    squared_distance = sum(
+        (parameter.float() - anchor.float()).square().sum()
+        for parameter, anchor in zip(parameters, anchors, strict=True)
+    )
+    loss = squared_distance * (0.5 * coefficient)
+    if not bool(torch.isfinite(loss)):
+        raise PostRehearsalError("parameter anchor loss is non-finite")
+    return loss, {
+        "parameter_anchor_loss": float(loss.detach().cpu()),
+        "parameter_anchor_squared_distance": float(
+            squared_distance.detach().cpu()
+        ),
+    }
+
+
 def run(
     arguments: argparse.Namespace,
     manifest: Mapping[str, Any],
@@ -814,6 +883,7 @@ def run(
         arguments.training_objective,
         arguments.adapter_ema,
         arguments.optimizer_mode,
+        arguments.parameter_anchor,
     )
 
     import torch
@@ -862,12 +932,21 @@ def run(
         raise PostRehearsalError("control69 trainable parameter count drifted")
     optimizer = torch.optim.AdamW(trainable, lr=LEARNING_RATE)
     adapter_ema = AdapterEMA(trained, torch) if arguments.adapter_ema else None
+    parameter_anchors = (
+        [parameter.detach().clone() for parameter in trainable]
+        if arguments.parameter_anchor
+        else None
+    )
     losses: list[float] = []
     adversarial_metrics: list[dict[str, float]] = []
     pcgrad_metrics: list[dict[str, float | bool]] = []
     optimizer_steps = 0
     rows = (
-        smoke_rows(manifest, arguments.optimizer_mode)
+        smoke_rows(
+            manifest,
+            arguments.optimizer_mode,
+            arguments.parameter_anchor,
+        )
         if arguments.smoke
         else manifest["items"]
     )
@@ -975,6 +1054,17 @@ def run(
                     real_audios=realism_targets[str(item["target_id"])].to(
                         device=device, dtype=torch.float32
                     ),
+                    generator_regularizer=(
+                        (
+                            lambda: parameter_anchor_regularizer(
+                                trainable,
+                                parameter_anchors,
+                                torch=torch,
+                            )
+                        )
+                        if parameter_anchors is not None
+                        else None
+                    ),
                 )
                 losses.append(metrics["total"])
                 adversarial_metrics.append(metrics)
@@ -1010,13 +1100,17 @@ def run(
             "trainable_parameters": expected_trainable,
             "training_objective": arguments.training_objective,
             "optimizer_mode": arguments.optimizer_mode,
+            "parameter_anchor": arguments.parameter_anchor,
             "prospective_optimizer_steps": (
                 1 if arguments.optimizer_mode == PCGRAD_PAIRED_OPTIMIZER else len(rows)
             ),
             "peak_gpu_bytes": int(torch.cuda.max_memory_allocated(device)),
         }
         if adversarial_metrics:
-            smoke["adversarial_metrics"] = adversarial_metrics[0]
+            smoke["adversarial_metrics"] = {
+                "first": adversarial_metrics[0],
+                "last": adversarial_metrics[-1],
+            }
         else:
             smoke["gradient_norm"] = float(gradient_norm.detach().cpu())
         if adapter_ema is not None:
@@ -1158,6 +1252,20 @@ def run(
         "trainable_target": arguments.trainable_target,
         "training_objective": arguments.training_objective,
         "optimizer_mode": arguments.optimizer_mode,
+        "parameter_anchor": (
+            {
+                "implementation": PARAMETER_ANCHOR_IMPLEMENTATION,
+                "coefficient": PARAMETER_ANCHOR_COEFFICIENT,
+                "reference": "immutable EXP-035 control69 trainable parameters",
+                "first_loss": adversarial_metrics[0]["parameter_anchor_loss"],
+                "last_loss": adversarial_metrics[-1]["parameter_anchor_loss"],
+                "last_squared_distance": adversarial_metrics[-1][
+                    "parameter_anchor_squared_distance"
+                ],
+            }
+            if arguments.parameter_anchor
+            else None
+        ),
         "adapter_ema": adapter_ema.receipt() if adapter_ema is not None else None,
         "candidate_checkpoint": checkpoint_metadata,
         "optimizer_steps": optimizer_steps,
@@ -1253,6 +1361,7 @@ def parser() -> argparse.ArgumentParser:
         default=SEQUENTIAL_OPTIMIZER,
     )
     value.add_argument("--adapter-ema", action="store_true")
+    value.add_argument("--parameter-anchor", action="store_true")
     value.add_argument("--xvc-source-root", type=Path, required=True)
     value.add_argument("--xvc-config", type=Path, required=True)
     value.add_argument("--checkpoint", type=Path, required=True)

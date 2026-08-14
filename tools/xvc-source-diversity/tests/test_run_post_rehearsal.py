@@ -132,6 +132,43 @@ def test_paired_pcgrad_has_distinct_listener_identity() -> None:
     assert "all 170 sources and targets" in policy["independent_variable"]
 
 
+def test_parameter_anchor_changes_only_exp163_objective_identity() -> None:
+    policy = post.listening_policy(
+        post.SELECTIVE_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
+        True,
+        post.SEQUENTIAL_OPTIMIZER,
+        True,
+    )
+
+    assert policy["slug"] == "exp181"
+    assert policy["candidate_id"] == (
+        "cv12-selective-real-adversarial-anchor-ema170"
+    )
+    assert "L2-SP" in policy["independent_variable"]
+
+
+def test_parameter_anchor_requires_exact_exp163_baseline() -> None:
+    for manifest_kind, use_ema in (
+        (post.SELECTIVE_OUTPUT_KIND, False),
+        (post.JSUT_RETENTION_OUTPUT_KIND, True),
+    ):
+        try:
+            post.listening_policy(
+                manifest_kind,
+                post.LORA69_TARGET,
+                post.REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
+                use_ema,
+                post.SEQUENTIAL_OPTIMIZER,
+                True,
+            )
+        except post.PostRehearsalError as error:
+            assert "exact EXP-163 baseline" in str(error)
+        else:
+            raise AssertionError("unsupported parameter anchor policy admitted")
+
+
 def test_paired_pcgrad_rejects_ema_or_other_curriculum() -> None:
     for manifest_kind, use_ema in (
         (post.SELECTIVE_OUTPUT_KIND, True),
@@ -185,6 +222,17 @@ def test_pcgrad_smoke_keeps_one_complete_hard_easy_pair() -> None:
     assert [row["curriculum_role"] for row in rows] == ["hard", "easy"]
 
 
+def test_parameter_anchor_smoke_exercises_nonzero_distance_step() -> None:
+    items = [{"id": "first"}, {"id": "second"}, {"id": "third"}]
+
+    rows = post.smoke_rows(
+        {"kind": post.SELECTIVE_OUTPUT_KIND, "items": items},
+        parameter_anchor=True,
+    )
+
+    assert rows == items[:2]
+
+
 def test_pcgrad_projects_only_conflicting_task_components() -> None:
     import torch
 
@@ -203,6 +251,25 @@ def test_pcgrad_projects_only_conflicting_task_components() -> None:
     )
     assert aligned_metrics["conflict"] is False
     assert torch.equal(aligned[0], torch.tensor([3.0, 0.0]))
+
+
+def test_parameter_anchor_regularizer_uses_control69_distance() -> None:
+    import torch
+
+    parameters = [torch.tensor([2.0, -1.0], requires_grad=True)]
+    anchors = [torch.tensor([1.0, 1.0])]
+
+    loss, metrics = post.parameter_anchor_regularizer(
+        parameters, anchors, torch=torch, coefficient=2.0
+    )
+    loss.backward()
+
+    assert float(loss.detach()) == 5.0
+    assert metrics == {
+        "parameter_anchor_loss": 5.0,
+        "parameter_anchor_squared_distance": 5.0,
+    }
+    assert torch.equal(parameters[0].grad, torch.tensor([2.0, -4.0]))
 
 
 def test_jsut_smoke_exercises_hard_and_diverse_easy_roots() -> None:

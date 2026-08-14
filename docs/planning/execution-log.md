@@ -4105,3 +4105,56 @@ job queue.
   candidate. Do not tune PCGrad. Before training another method, re-screen the
   recent EXP-171 data-method checkpoint under v4 because its identical Hadou
   stop may also have been a beam-search false rejection.
+
+## 2026-08-14T03:19:00Z - EXP-171--175 false rejection retracted
+
+- Agent: `primary-integrator`.
+- Task: timebox the existing JSUT-retention checkpoint under the corrected v4
+  content/corruption screen, then complete only its already-frozen stress60 and
+  JSUT24 comparison surfaces.
+- Dependencies: unchanged EXP-171 adapter; frozen external7, fresh48, Hadou31,
+  stress60, and JSUT24 manifests; no ratio or category sweep.
+- Result: the old Hadou repeated-number claim was the same beam-5 search
+  hallucination. Candidate-added consensus gross rows were zero on every set.
+  Common stable source-relative means moved external `0.256 -> 0.253`, fresh
+  `0.198 -> 0.187`, Hadou `0.133 -> 0.108`, stress `0.218 -> 0.212`, and JSUT
+  `0.115 -> 0.134`. Stress showed noise/silence gains and a tempo regression;
+  JSUT known-text improved `0.553 -> 0.544`. EXP-174/175 added 420 WAVs, taking
+  the unchanged method to 850 comparison WAVs on 8878.
+- Problems: JSUT is one speaker and auxiliary ASR remains too unstable to score
+  naturalness or identity. The mixed category/condition signs do not select a
+  winner.
+- Rework: retain EXP-171 as an unheard mixed technical survivor. Stop its data
+  mix; do not add another ASR decoder or re-screen all historical experiments.
+
+## 2026-08-14T03:20:25Z - Grok progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux `liveconv-grok-auditor`.
+- Task: independent 30-minute direction, evidence-cost, and idle-resource audit.
+- Result: `REDIRECT`. It accepted the v4 correction and diverse PCGrad audio,
+  but warned that further ASR work or historical re-screening would turn the
+  decoder into the product. It required one new training hypothesis that
+  explains the observed noise/Hadou gain versus tempo/ordinary-content loss.
+- Problems: GPU was idle at the audit snapshot and no concrete next method had
+  yet been committed.
+- Rework: verdict adopted. End screen development at v4, stop historical
+  re-screening, retain both completed candidates unselected, and prepare one
+  parameter-retention method on the exact EXP-163 baseline.
+
+## 2026-08-14T03:25:00Z - EXP-181 parameter-anchor lane prepared
+
+- Agent: `primary-integrator`.
+- Task: retain EXP-163's hard repair/adversarial signal while reducing its
+  tempo and ordinary-content forgetting without changing data or step geometry.
+- Dependencies: exact EXP-163 curriculum, real-reference adversarial objective,
+  control69 initialization, 170 sequential updates, LoRA69 scope, and upstream
+  EMA schedule.
+- Result: add one coefficient-1 L2-SP term around the immutable control69
+  trainable parameters. At EXP-163's unregularized online endpoint the same
+  penalty would be about `4.19`, roughly 4% of its final total objective; this
+  is a light retention pressure, not a coefficient sweep. Focused runtime tests
+  cover policy isolation, smoke coverage, exact penalty value, and gradients.
+- Problems: machine content metrics cannot establish the expected naturalness
+  effect, and the coefficient remains one bounded method point.
+- Rework: commit runner and plan before CUDA, smoke two rows so the second sees
+  nonzero displacement, then run one 170-update lane and external7 render.

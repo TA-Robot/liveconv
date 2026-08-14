@@ -10,7 +10,7 @@ import os
 import shutil
 import sys
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -352,6 +352,9 @@ def _adversarial_update(
     *,
     torch: Any,
     real_audios: Any | None = None,
+    generator_regularizer: (
+        Callable[[], tuple[Any, Mapping[str, float]]] | None
+    ) = None,
 ) -> dict[str, float]:
     base._set_adapter_training_only(trained)
     discriminator.train()
@@ -398,7 +401,16 @@ def _adversarial_update(
             torch=torch,
             label="X-VC adversarial loss",
         )
-        total_loss = generator_loss + adversarial_loss
+        regularizer_loss = generator_loss.new_zeros(())
+        regularizer_metrics: Mapping[str, float] = {}
+        if generator_regularizer is not None:
+            regularizer_loss, regularizer_metrics = generator_regularizer()
+            regularizer_loss = _finite_loss(
+                regularizer_loss,
+                torch=torch,
+                label="X-VC generator regularizer",
+            )
+        total_loss = generator_loss + adversarial_loss + regularizer_loss
     total_loss.backward()
     generator_norm = torch.nn.utils.clip_grad_norm_(
         trainable, base.GRADIENT_CLIP_NORM
@@ -409,13 +421,17 @@ def _adversarial_update(
     for parameter in discriminator.parameters():
         parameter.requires_grad_(True)
 
-    return {
+    metrics = {
         "total": float(total_loss.detach().cpu()),
         "generative": float(generator_loss.detach().cpu()),
         "discriminator": float(discriminator_loss.detach().cpu()),
         "adversarial_generator": float(adversarial_losses["adv_gen_loss"]),
         "adversarial_feature": float(adversarial_losses["adv_feat_loss"]),
     }
+    metrics.update(
+        {str(key): float(value) for key, value in regularizer_metrics.items()}
+    )
+    return metrics
 
 
 def run(
