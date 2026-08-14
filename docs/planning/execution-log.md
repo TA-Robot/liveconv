@@ -4741,3 +4741,47 @@ job queue.
   unchanged run is recorded under `v2`.
 - Rework: admit exactly one 170-update run. Do not tune weight, feature layer,
   frontend, pairing, data, scope, LR, horizon, or EMA from the smoke values.
+
+## 2026-08-14T07:20:25Z - Grok progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux `liveconv-grok-auditor`.
+- Task: independent 30-minute direction, rigor-cost, and GPU-idle audit.
+- Result: `CONTINUE`. It accepted the five prebound surfaces, the single change
+  from internal semantic MSE to final-WAV content cycling, and commits
+  `9e23e62` / `712d55f`; it instructed immediate one-lane training and rejected
+  further admission ceremony or any weight/frontend/data neighbor before the
+  complete result.
+- Problems: its 07:20 snapshot sampled the GPU during model loading at 0% and
+  could not see the just-launched process or later EXP-208 audio. Operator
+  localStorage also remains unobservable by design.
+- Rework: verdict adopted. The exact committed lane subsequently completed 170
+  updates and all five surfaces. No second training lane or promote work was
+  started while it ran.
+
+## 2026-08-14T07:32:00Z - EXP-208--212 output-cycle bundle completed
+
+- Agent: `primary-integrator`.
+- Task: train the final-WAV content cycle once and publish/screen its unchanged
+  EMA checkpoint on all five prebound evaluation surfaces.
+- Dependencies: commits `9e23e62` and `712d55f`; 225 focused tests;
+  `make control-check`; successful two-row real-model backward admission.
+- Result: training completed 170 updates in 152.17 seconds at 5,875,919,872
+  peak allocated bytes. The EMA adapter SHA-256 is
+  `c8b1e28ac138bf0d63d86ad2745a584eb4f2c71e3f4beea046d9413334f57092`.
+  Published 35 external7, 240 fresh48, 155 Hadou31, 300 stress60, and 120
+  JSUT24 WAVs to 8878: 850 total. Common-stable source distance moved
+  external7 `0.256 -> 0.272` (`0/4/1`), fresh48 `0.202 -> 0.219`
+  (`8/19/9`), Hadou31 `0.149 -> 0.124` (`9/15/2`), stress60
+  `0.215 -> 0.180` (`11/26/6`), and JSUT24 `0.115 -> 0.114`
+  (`6/13/3`). Clean/noise/silence improved, while tempo1.2 remained worse at
+  `0.262 -> 0.267` (`1/5/2`).
+- Problems: fresh48 added a consensus gross failure on low-information
+  `cv44571685f`, whose source transcript was empty. The candidate repeated a
+  short phrase through 334 normalized characters while control69 was
+  non-gross. Final-waveform cycling therefore did not supply a collapse safety
+  mechanism. Auxiliary ASR cannot judge naturalness, identity, or quality.
+- Rework: the predeclared corruption stop rejects and closes the exact
+  pointwise output-cycle method. Do not tune weight, frontend, data, pairing,
+  scope, LR, horizon, or EMA. Preserve the broad stress/Hadou signal as method
+  evidence; the next lane must be a distinct data/generalization or
+  anti-collapse architecture, not another coefficient point.

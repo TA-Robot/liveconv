@@ -225,6 +225,8 @@ claims from that artifact are superseded. The active join is now:
         -> exact unpaired-factorization objective closed; no weight/pair/window/scope neighbor
         -> EXP-208 final-WAV frozen-Whisper content cycle on the exact unpaired curriculum
         -> EXP-209--212 prebound fresh48 / Hadou31 / stress60 / JSUT24
+        -> 850 WAVs; stress/Hadou signal but a new low-information fresh48 loop and tempo residual
+        -> exact pointwise output-cycle objective closed; no weight/frontend/scope neighbor
         -> operator hearing when available
 ```
 
