@@ -1,6 +1,6 @@
 # EXP-266: X-VC latent source-speaker leakage margin
 
-Status: committed listen-now training pilot; unheard and unselected
+Status: stopped at real CUDA smoke; no full training and no listening audio
 
 ## Goal
 
@@ -47,6 +47,20 @@ or broad content regression. Machine ASR and speaker embeddings cannot select
 naturalness, audible identity, a keeper, or a winner. If external7 admits
 broader rendering, reuse the already frozen fresh48, Hadou31, stress60,
 JSUT24, and expanded144 surfaces; do not design another evaluation set.
+
+## Result
+
+Commit `2fa5abd` passed 56 focused runner tests and exact 170-row no-CUDA
+admission. The two-row real CUDA smoke completed at 4,636,186,112 peak
+allocated bytes, but both rows had `active_fraction = 0.0` and margin loss
+`0.0`. Target-over-source advantage was already `+0.752988` and `+0.965543`;
+target cosine was `0.942703` and `0.938061`.
+
+The stop condition fired, so no 170-update lane or listening audio was
+produced. Close this exact latent-margin hypothesis and its margin/weight
+neighbors. The evidence says the post-converter speaker predictor is already
+strongly aligned with its generated target; it does not prove the final WAV is
+aligned with the real target speaker.
 
 ## Command
 

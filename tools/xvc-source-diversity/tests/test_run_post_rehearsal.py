@@ -287,6 +287,23 @@ def test_latent_speaker_margin_policy_changes_only_source_leakage_loss() -> None
     assert "margin 0.1" in policy["independent_variable"]
 
 
+def test_real_speaker_condition_policy_separates_voice_and_audio_targets() -> None:
+    policy = post.listening_policy(
+        post.PSEUDOPARALLEL_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp267"
+    assert policy["candidate_id"] == (
+        "cross-corpus170-pseudoparallel-real-speaker-condition-ema170"
+    )
+    assert "global speaker condition" in policy["independent_variable"]
+    assert "authorized real Amitaro" in policy["independent_variable"]
+    assert "semantic and mel reconstruction target" in policy["independent_variable"]
+
+
 def test_condition_calibrator_policy_freezes_exp238_and_moves_only_condition() -> None:
     policy = post.listening_policy(
         post.PSEUDOPARALLEL_OUTPUT_KIND,

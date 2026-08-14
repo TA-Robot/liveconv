@@ -69,3 +69,16 @@ def test_adversarial_policy_changes_only_objective_and_candidate_identity() -> N
 def test_unknown_training_objective_is_rejected() -> None:
     with pytest.raises(BREADTH.BreadthError, match="objective"):
         BREADTH.training_policy("sweep")
+
+
+def test_generator_model_inputs_override_only_speaker_target() -> None:
+    pseudo_target = object()
+    real_speaker_target = object()
+    batch = {"source_wav": object(), "target_wav": pseudo_target}
+
+    model_inputs = BREADTH._generator_model_inputs(batch, real_speaker_target)
+
+    assert model_inputs is not batch
+    assert model_inputs["source_wav"] is batch["source_wav"]
+    assert model_inputs["target_wav"] is real_speaker_target
+    assert batch["target_wav"] is pseudo_target

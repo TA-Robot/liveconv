@@ -285,7 +285,10 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-266 return to the EXP-238 method and fixed data/evaluation surfaces
         -> add one converter-latent target-over-source speaker margin loss
         -> exact LoRA69/LR/170/EMA controls; no final-WAV loss or frozen sidecar
-        -> two-row active-gradient smoke, then one gpu0 lane if admitted
+        -> two-row smoke: margin inactive on both; no full training; close family
+        -> EXP-267 retain same-content teacher for semantic/mel reconstruction
+        -> use assigned real Amitaro only for global speaker condition and sim MSE
+        -> one target-contract change; exact data/scope/loss weights/LR/170/EMA
         -> operator hearing when available
 ```
 

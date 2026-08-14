@@ -342,6 +342,16 @@ def _finite_loss(value: Any, *, torch: Any, label: str) -> Any:
     return value
 
 
+def _generator_model_inputs(
+    batch: Mapping[str, Any], speaker_target_wav: Any | None
+) -> dict[str, Any]:
+    """Override only X-VC's speaker target while retaining generator targets."""
+    model_inputs = dict(batch)
+    if speaker_target_wav is not None:
+        model_inputs["target_wav"] = speaker_target_wav
+    return model_inputs
+
+
 def _adversarial_update(
     trained: Any,
     discriminator: Any,
@@ -352,6 +362,7 @@ def _adversarial_update(
     *,
     torch: Any,
     real_audios: Any | None = None,
+    speaker_target_wav: Any | None = None,
     generator_regularizer: (
         Callable[[], tuple[Any, Mapping[str, float]]] | None
     ) = None,
@@ -370,7 +381,7 @@ def _adversarial_update(
     discriminator_optimizer.zero_grad(set_to_none=True)
 
     with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
-        outputs = trained(dict(batch))
+        outputs = trained(_generator_model_inputs(batch, speaker_target_wav))
         reconstruction = outputs.get("recons") if isinstance(outputs, dict) else None
         if reconstruction is None or not bool(torch.isfinite(reconstruction).all()):
             raise BreadthError("X-VC adversarial reconstruction is malformed")

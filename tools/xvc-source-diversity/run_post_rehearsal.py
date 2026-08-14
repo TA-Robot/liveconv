@@ -129,6 +129,9 @@ PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE = (
 PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE = (
     "pseudoparallel-generative-real-adversarial-latent-speaker-margin"
 )
+PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE = (
+    "pseudoparallel-generative-real-adversarial-real-speaker-condition"
+)
 OUTPUT_CYCLE_CONTENT_WEIGHT = 1000.0
 CONTRASTIVE_CONTENT_TEMPERATURE = 0.1
 SEQUENTIAL_OPTIMIZER = "sequential"
@@ -245,6 +248,7 @@ def listening_policy(
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
+            PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
         }
     ):
         if (
@@ -255,6 +259,7 @@ def listening_policy(
                 PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
                 PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
                 PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
+                PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
             }
             or not use_adapter_ema
             or optimizer_mode != SEQUENTIAL_OPTIMIZER
@@ -270,6 +275,7 @@ def listening_policy(
             in {
                 PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
                 PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
+                PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
             }
         ):
             raise PostRehearsalError(
@@ -356,6 +362,36 @@ def listening_policy(
                     "MSE, control69 LoRA69 initialization and scope, LR, sequential "
                     "170 updates, clip, zero frame condition, discriminator, and EMA "
                     "remain fixed"
+                ),
+            }
+        if training_objective == PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE:
+            return {
+                "slug": "exp267",
+                "candidate_id": (
+                    "cross-corpus170-pseudoparallel-real-speaker-condition-ema170"
+                ),
+                "candidate_name": (
+                    "EXP-267 / real target-speaker condition / EMA"
+                ),
+                "run_kind": "EXP-267 X-VC real speaker-condition evaluation",
+                "result_kind": (
+                    "liveconv-exp267-xvc-real-speaker-condition-ema/v1"
+                ),
+                "question": (
+                    "Does conditioning X-VC on the real target speaker while "
+                    "retaining source-aligned teacher audio improve robust voice "
+                    "conversion?"
+                ),
+                "independent_variable": (
+                    "relative to EXP-238, only the waveform used for X-VC's global "
+                    "speaker condition and existing speaker-predictor MSE changes "
+                    "from the source-aligned control69 teacher output to that row's "
+                    "assigned authorized real Amitaro window; the teacher output "
+                    "remains the exact semantic and mel reconstruction target, and "
+                    "the exact CV48/JSUT85/JVS3/Hadou34 curriculum, real adversarial "
+                    "target, complete loss and weights, control69 LoRA69 "
+                    "initialization and scope, LR, sequential 170 updates, clip, "
+                    "zero frame condition, discriminator, and EMA remain fixed"
                 ),
             }
         return {
@@ -2712,6 +2748,7 @@ def run(
         PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
         PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
         PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
+        PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
     }:
         discriminator, discriminator_optimizer = breadth._load_pretrained_discriminator(
             arguments, config, torch=torch, device=device
@@ -2722,6 +2759,7 @@ def run(
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
             PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
+            PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
         }:
             target_by_id = {
                 target_id: _pair(target_id, path, digest)
@@ -2736,6 +2774,7 @@ def run(
                         PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
                         PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
                         PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
+                        PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
                     }
                 ):
                     real_target = arguments.source_work / str(item["real_target_file"])
@@ -2917,7 +2956,16 @@ def run(
                             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
                             PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
                             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
+                            PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
                         }
+                        else None
+                    ),
+                    speaker_target_wav=(
+                        realism_targets[str(item["target_id"])].to(
+                            device=device, dtype=torch.float32
+                        )
+                        if arguments.training_objective
+                        == PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE
                         else None
                     ),
                     generator_regularizer=(
@@ -3360,6 +3408,12 @@ def run(
             == PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE
             else None
         ),
+        "speaker_condition_target": (
+            "assigned-authorized-real-Amitaro-window"
+            if arguments.training_objective
+            == PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE
+            else "generator-reconstruction-target"
+        ),
         "adapter_ema": adapter_ema.receipt() if adapter_ema is not None else None,
         "candidate_checkpoint": checkpoint_metadata,
         "optimizer_steps": optimizer_steps,
@@ -3408,6 +3462,8 @@ def run(
                     == PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE
                     or arguments.training_objective
                     == PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE
+                    or arguments.training_objective
+                    == PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE
                     else "selective-repair-or-retention-target"
                 ),
             }
@@ -3494,6 +3550,7 @@ def parser() -> argparse.ArgumentParser:
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
             PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
+            PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
         ),
         default=GENERATIVE_OBJECTIVE,
     )

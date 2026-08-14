@@ -5585,3 +5585,21 @@ job queue.
   the hinge or that LoRA69 receives a useful finite gradient.
 - Rework: run exact CPU admission, then a two-row CUDA smoke. Stop before the
   full lane if no real row activates the margin.
+
+## 2026-08-14T14:36:35Z - EXP-266 stopped at real smoke
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T14:32:00Z.
+- End: 2026-08-14T14:36:35Z.
+- Dependencies: commit `2fa5abd`; exact EXP-238 curriculum; gpu0.
+- Result: exact CPU admission passed 170 training rows and seven evaluation
+  rows. The two-row CUDA smoke completed at 4,636,186,112 peak allocated bytes,
+  but margin active fraction and loss were zero on both. Target-over-source
+  speaker advantage was already `+0.752988` and `+0.965543`.
+- Problems: the post-converter speaker predictor is already dominated by its
+  generated target condition, so it cannot diagnose whether the final WAV
+  matches the real target speaker.
+- Rework: stop without full training or listening audio; close margin/weight
+  neighbors. EXP-267 changes the target contract instead: retain generated
+  same-content semantic/mel targets but use the assigned real target only for
+  X-VC's existing speaker condition and speaker MSE.
