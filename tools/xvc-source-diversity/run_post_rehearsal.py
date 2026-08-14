@@ -1861,7 +1861,12 @@ def run(
                     "contrastive negative content shape drifted"
                 )
             tensors["negative_ssl_feat"] = negative["ssl_feat"]
-        return base._gpu_batch(tensors, torch=torch, device=device)
+        gpu_batch = base._gpu_batch(tensors, torch=torch, device=device)
+        if "negative_ssl_feat" in tensors:
+            gpu_batch["negative_ssl_feat"] = tensors["negative_ssl_feat"].to(
+                device=device, dtype=torch.float32
+            )
+        return gpu_batch
 
     if arguments.optimizer_mode == PCGRAD_PAIRED_OPTIMIZER:
         for hard_item, easy_item in paired_hard_easy_rows(rows):
