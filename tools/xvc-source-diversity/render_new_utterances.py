@@ -1118,6 +1118,23 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "same frozen independent content and condition gate?"
             ),
         }
+    if kind == "source36-retention-ema-stress":
+        return {
+            "experiment_id": "EXP-195",
+            "variant_id": (
+                "cv12-commonvoice48-source36-real-adversarial-ema170"
+            ),
+            "display_name": (
+                "EXP-194 / source36 retention + real-adversarial + EMA"
+            ),
+            "result_kind": (
+                "liveconv-exp-195-xvc-source36-retention-ema-stress60/v1"
+            ),
+            "question": (
+                "Does source-path-only retention preserve frozen clean, noise, "
+                "pitch, silence, and tempo behavior?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1754,6 +1771,7 @@ def _parser() -> argparse.ArgumentParser:
             "commonvoice48-retention-ema-jsut",
             "conditioned-retention-ema-fresh48",
             "conditioned-retention-ema-stress",
+            "source36-retention-ema-stress",
         ),
         default="speaker7",
     )

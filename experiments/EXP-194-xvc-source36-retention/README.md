@@ -29,9 +29,10 @@ data and objective fixed.
 ## Definition of done and stop
 
 Commit the contained-scope implementation and focused tests before CUDA. Run a
-hard/easy smoke, then exactly one 170-update lane and publish external7 to port
-8878. Stop on candidate-added consensus gross corruption or broad common-stable
-regression. Only survival admits one frozen fresh48 render. Do not run adjacent
-scope, rank, LR, epoch, ratio, or condition points. Machine ASR remains a coarse
-content/corruption diagnostic and cannot select naturalness, identity, a keeper,
-or promotion.
+hard/easy smoke, then exactly one 170-update lane. Before seeing its result,
+freeze two evaluation surfaces: external7 plus the existing stress60 clean/
+noise20/pitch+3/silence300/tempo1.2 matrix. Publish both to port 8878 and close
+the family. Do not add fresh48, Hadou, JSUT, an adjacent scope, rank, LR, epoch,
+ratio, or condition point. Candidate-added consensus gross corruption or broad
+common-stable regression rejects the method; neither gate can select
+naturalness, identity, a keeper, or promotion.

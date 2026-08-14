@@ -4468,3 +4468,17 @@ job queue.
 - Rework: commit after focused tests, then run one hard/easy smoke and one
   170-update external7 lane. Stop on candidate-added gross corruption or broad
   common-stable regression; do not open adjacent scope points.
+
+## 2026-08-14T05:20:25Z - Grok progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux `liveconv-grok-auditor`.
+- Task: independent 30-minute direction, evidence-cost, and idle-resource audit.
+- Result: `REDIRECT`. It accepted closing EXP-191--193 and accepted source36 as
+  one distinct placement variable, but rejected returning to an external7-first
+  sequential evaluation gate after the motivating residual appeared on stress.
+- Problems: the snapshot predated commit `7d6523a` and did not see EXP-192/193
+  files on its recent-WAV listing, but its evaluation-contract criticism does
+  not depend on either gap.
+- Rework: verdict adopted. Prebind external7 and stress60 before CUDA, publish
+  both from the unchanged checkpoint, and close the family afterward. Do not
+  reserve fresh48/Hadou/JSUT or adjacent source/condition/target scope points.

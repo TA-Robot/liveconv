@@ -212,7 +212,7 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-192 frozen fresh48 gate (mixed; no candidate-added gross row)
         -> EXP-193 stress60 gate (mixed; tempo residual remains; family closed)
         -> EXP-194 source36 placement on exact EXP-186 method (Ready)
-        -> external7 technical gate; fresh48 only on survival
+        -> EXP-195 prebound stress60 gate; close family after both surfaces
         -> operator hearing when available
 ```
 
