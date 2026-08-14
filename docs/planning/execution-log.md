@@ -5794,3 +5794,45 @@ job queue.
   render the unchanged adapter on the five frozen broad surfaces. Do not tune
   dropout share/pattern or infer audible quality from the positive external7
   machine screen.
+
+## 2026-08-14T16:26:00Z - EXP-279 broad gate closed
+
+- Agent: `primary-integrator`, with two read-only explorer tasks for fixture
+  binding and exact-join design.
+- Start: 2026-08-14T16:06:00Z.
+- End: 2026-08-14T16:26:00Z.
+- Dependencies: commits `485380d` and `9e0f052`; unchanged EXP-279 adapter;
+  frozen fresh48, Hadou31, stress60, JSUT24, and expanded144 surfaces; gpu0;
+  listener 8878.
+- Result: all five CPU admissions passed at 48 / 31 / 60 / 24 / 144 rows.
+  Sequential renders published 1,535 WAVs. All 307 candidate outputs changed,
+  no gross row was added (`2 -> 2`), and instability moved `59 -> 61`.
+  Exact jointly stable/non-gross EXP-238-to-EXP-279 content regressed `0.257143
+  -> 0.286194`, W/T/L `28/189/21`. Hadou31 and JSUT24 improved, but stress60
+  and expanded144 regressed, so the broad stop fired.
+- Problems: two launch attempts failed before model execution because the first
+  omitted `HF_DATASETS_OFFLINE=1` and the second used the test venv without
+  Torch/PEFT. Only an empty 1 KiB staging directory was removed; no adapter or
+  prior audio changed. The project X-VC runtime then completed every lane.
+- Rework: reject whole-branch acoustic-code dropout and its share/pattern
+  neighbors. Analyze the distributed stress/expanded losses before committing
+  one genuinely different source-representation or robustness variable.
+
+## 2026-08-14T16:22:21Z - Grok project-progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux
+  `liveconv-grok-auditor` (read-only, no delegation).
+- Task: assess whether the last 30 minutes remained the shortest path to better
+  voice quality and whether resource use or process rigor was wasteful.
+- Result: `CONTINUE`. The auditor accepted EXP-279 as one committed variable,
+  confirmed that new external7 audio satisfied the interval, and directed the
+  unchanged adapter through the five fixed broad surfaces before any new method
+  or dropout tuning.
+- Adopted: yes. By audit completion the five renders were already complete and
+  the sequential machine screens were running. The apparent idle GPU in the
+  audit snapshot was stale relative to the active renderer/screener; no safe job
+  was stopped. The resulting broad regression now closes the dropout family.
+- Problems: operator keep/continue/rejected remains unavailable; machine
+  diagnostics are limited to corruption/content and did not select quality.
+- Rework: no identity cleanup, new evaluation design, dropout sweep, or audible
+  winner claim. Commit the closure and replan from exact losing rows.

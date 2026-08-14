@@ -305,6 +305,9 @@ claims from that artifact are superseded. The active join is now:
         -> inference stays unmasked; CPU admission + two-row CUDA smoke gates one lane
         -> 170 updates complete; external7 is 2W/4T/0L with unchanged instability
         -> EXP-280--284 bind the unchanged adapter to the five frozen broad surfaces
+        -> 307/307 changed; zero added gross; instability 59 -> 61
+        -> common-stable all-surface content 28W/189T/21L, 0.257143 -> 0.286194
+        -> Hadou/JSUT improve but stress/expanded regress; close dropout neighbors
         -> operator hearing when available
 ```
 

@@ -1,6 +1,6 @@
 # EXP-279: pseudoparallel acoustic-code dropout
 
-Status: committed listen-now pilot; unheard and unselected
+Status: broad-content stop fired; technically rejected, unheard, and unselected
 
 ## Goal
 
@@ -70,3 +70,25 @@ and non-gross, source-relative distance moved `0.338675 -> 0.298077`, W/T/L
 `2/4/0`; decoder instability stayed `1 -> 1`. This admits EXP-280--284 on the
 unchanged adapter for fresh48, Hadou31, stress60, JSUT24, and expanded144. It
 does not establish audible quality or a winner.
+
+## Broad result
+
+Commit `9e0f052` rendered the unchanged adapter on all five frozen broad
+surfaces and published 1,535 WAVs on port 8878. Exact source-ID/SHA joins against
+EXP-238 changed all 307 candidate WAVs and added no gross row (`2 -> 2`). Decoder
+instability moved `59 -> 61`. On 238 rows where both candidates were stable and
+non-gross, source-relative distance regressed `0.257143 -> 0.286194`, W/T/L
+`28/189/21`.
+
+The result was mixed by surface: Hadou31 improved `0.127328 -> 0.111925`
+(`4/21/1`) and JSUT24 improved `0.123253 -> 0.104194` (`3/19/0`), while
+fresh48 moved `0.219160 -> 0.237139` (`4/30/4`), stress60 regressed `0.214202 ->
+0.271894` (`4/34/8`), and expanded144 regressed `0.349024 -> 0.390505`
+(`13/85/8`). One expanded long/noise10 row contributed a `0 -> 10` outlier,
+but stress regressions also appeared across clean, noise, silence, and pitch;
+the stop is therefore not based on a single phrase or condition.
+
+The broad common-stable content stop fired. Close this exact whole-acoustic-code
+dropout method and its dropout-share/pattern neighbors. Retain its unheard audio
+only for later operator diagnosis; it is not a keeper, winner, or product
+decision.
