@@ -5478,3 +5478,45 @@ job queue.
 - Rework: close exact EXP-252 and its weight neighbors. Admit EXP-259 as one
   conditioning-contract change: freeze EXP-238 completely and train only a
   zero-initialized 192-value delta at the converter speaker-condition input.
+
+## 2026-08-14T13:52:10Z - Grok audit continues EXP-259 broadly
+
+- Agent: `grok-4.6-project-progress-auditor` in tmux
+  `liveconv-grok-auditor`; independent, read-only, and no delegation.
+- Task: decide whether the conditioning-only EXP-259 lane is the shortest route
+  to better X-VC audio after EXP-252 improved speaker direction but traded away
+  broad content.
+- Result: `CONTINUE`. The auditor accepted EXP-259 as a distinct one-variable
+  conditioning-contract change rather than a PCGrad, speaker7, loss-weight,
+  data, scope, LR, or horizon neighbor. It required the existing broad fixed
+  surfaces after external7 and prohibited treating cosine or ASR as a winner.
+- Adopted: yes. Finish EXP-259, publish new WAVs, then render fresh48, Hadou31,
+  stress60, JSUT24, and expanded144 serially before another training method.
+- Problems: its snapshot could not identify the active audio process and saw
+  gpu0 at 0%; the committed EXP-259 run subsequently completed. Operator
+  hearing and localStorage decisions remain unavailable.
+- Rework: skip dirty-tree cleanup, promotion ceremony, adjacent calibrator
+  points, tongue-twister work, and automatic naturalness claims.
+
+## 2026-08-14T13:51:54Z - EXP-259 speaker-condition calibration trained
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T13:44:00Z.
+- End: 2026-08-14T13:51:54Z.
+- Dependencies: commits `45df14d` and `09c2e88`; exact frozen EXP-238 EMA
+  adapter; exact EXP-252 data/objective/LR/horizon/EMA; gpu0; listener 8878.
+- Result: 53 focused runner tests, combined 57 checks, the real 170-row CPU
+  admission, and a real two-row CUDA backward smoke passed. The full run
+  completed 170 updates in 131.43 seconds at 6,152,130,048 peak allocated
+  bytes. Exactly 192 values trained; the EMA delta L2 norm is `0.03662478` and
+  sidecar SHA-256 is
+  `a06a58adb205d4fdccb4e22986e0be2f3f0a1933a57f299b4ca9270744e138b9`.
+  Training-row frozen ERes2Net target cosine moved `0.285343 -> 0.409610`.
+  External7 published seven changed WAVs with no candidate-added gross row;
+  six exact jointly stable/non-gross rows tied EXP-238 at `0.338675`.
+- Problems: the first successful smoke lacked an explicit delta-movement
+  receipt, so commit `09c2e88` added and tested the first/last norm gate before
+  the full run. Machine metrics cannot select audible quality.
+- Rework: commit renderer support for the immutable EXP-238 adapter plus
+  calibrator sidecar, then render/screen only EXP-260--264. Do not start a
+  neighboring training point before broad technical closure.

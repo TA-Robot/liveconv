@@ -1471,6 +1471,58 @@ def candidate_policy(kind: str) -> dict[str, str]:
             ),
         }
     if kind in {
+        "speaker-condition-calibrator-fresh48",
+        "speaker-condition-calibrator-hadou",
+        "speaker-condition-calibrator-stress",
+        "speaker-condition-calibrator-jsut",
+        "speaker-condition-calibrator-expanded-stress",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress") and not kind.endswith(
+            "-expanded-stress"
+        )
+        jsut = kind.endswith("-jsut")
+        expanded = kind.endswith("-expanded-stress")
+        experiment_id = (
+            "EXP-264"
+            if expanded
+            else "EXP-263"
+            if jsut
+            else "EXP-262"
+            if stress
+            else "EXP-261"
+            if hadou
+            else "EXP-260"
+        )
+        suffix = (
+            "expanded-stress144"
+            if expanded
+            else "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "exp238-speaker-condition-delta-output-speaker-ema170",
+            "display_name": (
+                "EXP-259 / frozen EXP-238 + speaker-condition delta / EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-speaker-condition-"
+                f"calibrator-{suffix}/v1"
+            ),
+            "question": (
+                "Does the frozen EXP-238 adapter plus a 192-value target-speaker "
+                "condition delta improve target identity without losing content "
+                "on the established broad surfaces?"
+            ),
+            "candidate_format": "frozen-exp238-plus-speaker-condition-calibrator",
+        }
+    if kind in {
         "output-speaker-ema-fresh48",
         "output-speaker-ema-hadou",
         "output-speaker-ema-stress",
@@ -2009,6 +2061,7 @@ def validate_inputs(
             arguments.candidate_adapter is not None
             or arguments.candidate_converter is None
             or arguments.candidate_acoustic_encoder is not None
+            or arguments.candidate_calibrator is not None
         ):
             raise NewUtteranceError("full converter candidate arguments drifted")
         metadata_path = arguments.candidate_converter / "converter.json"
@@ -2033,6 +2086,7 @@ def validate_inputs(
             arguments.candidate_adapter is not None
             or arguments.candidate_converter is not None
             or arguments.candidate_acoustic_encoder is None
+            or arguments.candidate_calibrator is not None
         ):
             raise NewUtteranceError("acoustic encoder candidate arguments drifted")
         metadata_path = (
@@ -2059,8 +2113,49 @@ def validate_inputs(
         ):
             raise NewUtteranceError("acoustic encoder candidate identity drifted")
     elif (
+        policy.get("candidate_format")
+        == "frozen-exp238-plus-speaker-condition-calibrator"
+    ):
+        if (
+            arguments.candidate_adapter is None
+            or arguments.candidate_converter is not None
+            or arguments.candidate_acoustic_encoder is not None
+            or arguments.candidate_calibrator is None
+        ):
+            raise NewUtteranceError(
+                "speaker-condition calibrator candidate arguments drifted"
+            )
+        adapter_weights = arguments.candidate_adapter / "adapter_model.safetensors"
+        metadata_path = arguments.candidate_calibrator / "calibrator.json"
+        weights = arguments.candidate_calibrator / "calibrator.safetensors"
+        if (
+            arguments.candidate_adapter.is_symlink()
+            or adapter_weights.is_symlink()
+            or not adapter_weights.is_file()
+            or base.sha256_file(adapter_weights) != post.EXP238_ADAPTER_SHA256
+            or arguments.candidate_calibrator.is_symlink()
+            or metadata_path.is_symlink()
+            or weights.is_symlink()
+            or not metadata_path.is_file()
+            or not weights.is_file()
+        ):
+            raise NewUtteranceError(
+                "speaker-condition calibrator candidate is unavailable"
+            )
+        metadata = post.load_json(metadata_path)
+        if (
+            metadata.get("kind") != post.SPEAKER_CONDITION_CALIBRATOR_KIND
+            or metadata.get("parameter_count")
+            != post.SPEAKER_CONDITION_DIMENSION
+            or metadata.get("weights_sha256") != base.sha256_file(weights)
+        ):
+            raise NewUtteranceError(
+                "speaker-condition calibrator candidate identity drifted"
+            )
+    elif (
         arguments.candidate_converter is not None
         or arguments.candidate_acoustic_encoder is not None
+        or arguments.candidate_calibrator is not None
         or arguments.candidate_adapter is None
     ):
         raise NewUtteranceError("adapter candidate arguments drifted")
@@ -2310,6 +2405,21 @@ def run(
             str(arguments.candidate_adapter),
             is_trainable=False,
         )
+    elif (
+        policy.get("candidate_format")
+        == "frozen-exp238-plus-speaker-condition-calibrator"
+    ):
+        candidate = PeftModel.from_pretrained(
+            candidate_base,
+            str(arguments.candidate_adapter),
+            is_trainable=False,
+        )
+        post.load_speaker_condition_calibrator(
+            candidate,
+            arguments.candidate_calibrator,
+            torch=torch,
+            device=device,
+        )
     else:
         candidate = PeftModel.from_pretrained(
             candidate_base, str(arguments.candidate_adapter), is_trainable=False
@@ -2545,6 +2655,11 @@ def _parser() -> argparse.ArgumentParser:
             "output-speaker-ema-stress",
             "output-speaker-ema-jsut",
             "output-speaker-ema-expanded-stress",
+            "speaker-condition-calibrator-fresh48",
+            "speaker-condition-calibrator-hadou",
+            "speaker-condition-calibrator-stress",
+            "speaker-condition-calibrator-jsut",
+            "speaker-condition-calibrator-expanded-stress",
             "src4vc-pseudoparallel-ema-fresh48",
             "src4vc-pseudoparallel-ema-hadou",
             "src4vc-pseudoparallel-ema-stress",
@@ -2561,6 +2676,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--candidate-adapter", type=Path)
     parser.add_argument("--candidate-converter", type=Path)
     parser.add_argument("--candidate-acoustic-encoder", type=Path)
+    parser.add_argument("--candidate-calibrator", type=Path)
     parser.add_argument("--xvc-source-root", type=Path, required=True)
     parser.add_argument("--xvc-config", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, required=True)

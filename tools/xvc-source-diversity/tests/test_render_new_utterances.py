@@ -1052,6 +1052,37 @@ def test_output_speaker_prebinds_complete_five_surface_contract() -> None:
     assert all(kind in choices for kind in kinds)
 
 
+def test_speaker_condition_calibrator_prebinds_broad_contract() -> None:
+    kinds = [
+        "speaker-condition-calibrator-fresh48",
+        "speaker-condition-calibrator-hadou",
+        "speaker-condition-calibrator-stress",
+        "speaker-condition-calibrator-jsut",
+        "speaker-condition-calibrator-expanded-stress",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-260",
+        "EXP-261",
+        "EXP-262",
+        "EXP-263",
+        "EXP-264",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "exp238-speaker-condition-delta-output-speaker-ema170"
+    }
+    assert {policy["candidate_format"] for policy in policies} == {
+        "frozen-exp238-plus-speaker-condition-calibrator"
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert all(kind in choices for kind in kinds)
+
+
 def test_src4vc_pseudoparallel_prebinds_broad_evaluation_contract() -> None:
     kinds = [
         "src4vc-pseudoparallel-ema-fresh48",

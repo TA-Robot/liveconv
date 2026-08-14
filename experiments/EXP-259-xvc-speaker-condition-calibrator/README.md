@@ -1,6 +1,6 @@
 # EXP-259: X-VC target-speaker condition calibration
 
-Status: admitted one-point retraining lane; unheard and unselected
+Status: trained; broad fixed evaluation admitted; unheard and unselected
 
 ## Goal
 
@@ -38,6 +38,24 @@ Stop on nonfinite condition delta, wrong trainable count, initial EXP-238
 identity drift, zero delta gradient, OOM, malformed sidecar reload, gross
 corruption, or broad content regression. Do not vary delta dimension,
 initialization, weight, LR, horizon, data, objective, or EMA.
+
+## Run result
+
+The real two-row CUDA smoke proved exactly 192 trainable values and moved the
+delta L2 norm from `0.00138564` to `0.00227872`. The full 170-update run from
+commit `09c2e88` completed in 131.43 seconds with 6,152,130,048 peak allocated
+bytes. Training-row frozen ERes2Net target cosine moved
+`0.285343 -> 0.409610`; that is a speaker-direction diagnostic, not audible
+quality evidence. The EMA delta L2 norm is `0.03662478`, and its sidecar
+SHA-256 is
+`a06a58adb205d4fdccb4e22986e0be2f3f0a1933a57f299b4ca9270744e138b9`.
+
+External7 produced seven changed WAVs with no candidate-added gross row. On
+the six exact jointly stable/non-gross EXP-238-to-EXP-259 rows, auxiliary
+source distance was an exact tie (`0.338675 -> 0.338675`). Per the 13:50 Grok
+audit, this admits only the already frozen fresh48, Hadou31, stress60, JSUT24,
+and expanded144 renders. It does not admit a delta/LR/weight/scope neighbor or
+any keep/winner claim.
 
 ## Command
 

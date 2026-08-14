@@ -276,6 +276,9 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-258 independent ECAPA: target cosine +0.007629 on 314 rows, 232W/82L
         -> speaker direction generalizes; close weight/scope neighbors and avoid PCGrad retry
         -> EXP-259 freeze EXP-238; train only a zero-init 192-value speaker-condition delta
+        -> 170 updates complete in 131.43s; 192-value EMA delta L2 0.036625
+        -> external7 changed 7/7 WAVs, zero added gross, exact stable content tie
+        -> EXP-260--264 render frozen fresh48 / Hadou31 / stress60 / JSUT24 / expanded144
         -> operator hearing when available
 ```
 
