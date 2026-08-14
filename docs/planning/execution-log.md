@@ -5520,3 +5520,31 @@ job queue.
 - Rework: commit renderer support for the immutable EXP-238 adapter plus
   calibrator sidecar, then render/screen only EXP-260--264. Do not start a
   neighboring training point before broad technical closure.
+
+## 2026-08-14T14:14:45Z - EXP-259--265 broad closure
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T13:52:10Z.
+- End: 2026-08-14T14:14:45Z.
+- Dependencies: commit `535d723`; EXP-238/259 immutable checkpoints; frozen
+  external7/fresh48/Hadou31/stress60/JSUT24/expanded144 surfaces; v4
+  faster-whisper; commit `f97f956`; pinned auxiliary ECAPA runtime; gpu0;
+  listener 8878.
+- Result: EXP-260--264 published 307 new candidate WAVs, making 314/314 changed
+  WAVs across the full six-surface comparison. No candidate-added gross row
+  appeared. Exact jointly stable/non-gross EXP-238-to-calibrator source
+  distance was external7 tie (6), fresh48 `0.244284 -> 0.240444` (2/37/0),
+  Hadou31 tie (26), stress60 `0.214202 -> 0.217547` (0/45/1), JSUT24 tie
+  (22), and expanded144 `0.370777 -> 0.372631` (0/107/2). Decoder
+  instability increased by four rows.
+- Result: EXP-265 embedded 943 unique WAVs in one ECAPA load. Aggregate target
+  cosine moved `0.492870 -> 0.492741`, delta `-0.000129`, with 151 increases
+  and 163 decreases; target-over-source advantage moved `-0.000168`. Report
+  SHA-256 is
+  `450edcf9681f006167142d8957c46e9dc8974e8d6fff36bab54a6c21de2b43c4`.
+- Problems: machine speaker and ASR diagnostics cannot assess naturalness or
+  audible identity. The calibrator changed every WAV but produced neither a
+  consistent speaker direction nor a content/stability improvement.
+- Rework: close exact EXP-259 and its adjacent dimension, initialization,
+  weight, LR, horizon, data, and scope points. Return to a method-level X-VC
+  retraining hypothesis; do not treat the unheard audio as selected.

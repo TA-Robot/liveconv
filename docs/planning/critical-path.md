@@ -279,6 +279,9 @@ claims from that artifact are superseded. The active join is now:
         -> 170 updates complete in 131.43s; 192-value EMA delta L2 0.036625
         -> external7 changed 7/7 WAVs, zero added gross, exact stable content tie
         -> EXP-260--264 render frozen fresh48 / Hadou31 / stress60 / JSUT24 / expanded144
+        -> 314/314 WAVs changed; zero added gross; mostly ASR ties but decoder instability +4
+        -> EXP-265 independent ECAPA is flat/mixed: -0.000129, 151W/163L
+        -> close calibrator and all adjacent dimension/weight/LR/scope points
         -> operator hearing when available
 ```
 

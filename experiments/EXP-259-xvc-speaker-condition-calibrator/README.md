@@ -1,6 +1,6 @@
 # EXP-259: X-VC target-speaker condition calibration
 
-Status: trained; broad fixed evaluation admitted; unheard and unselected
+Status: completed and technically closed; unheard and unselected
 
 ## Goal
 
@@ -56,6 +56,21 @@ source distance was an exact tie (`0.338675 -> 0.338675`). Per the 13:50 Grok
 audit, this admits only the already frozen fresh48, Hadou31, stress60, JSUT24,
 and expanded144 renders. It does not admit a delta/LR/weight/scope neighbor or
 any keep/winner claim.
+
+All five broad surfaces completed. Across exact EXP-238-to-calibrator rows
+that were jointly decoder-stable and non-gross, source-relative content moved:
+external7 exact tie (6 rows), fresh48 `0.244284 -> 0.240444` (2/37/0),
+Hadou31 exact tie (26), stress60 `0.214202 -> 0.217547` (0/45/1), JSUT24
+exact tie (22), and expanded144 `0.370777 -> 0.372631` (0/107/2). All 314
+candidate WAVs changed, no candidate-added gross row appeared, and decoder
+instability increased by four rows in total.
+
+EXP-265's independent ECAPA batch was flat/mixed: aggregate target cosine
+moved `0.492870 -> 0.492741` (`-0.000129`), with 151 wins and 163 losses;
+target-over-source advantage moved `-0.000168`. Close the exact 192-value
+calibrator because it did not reproduce EXP-252's independent speaker
+direction and has a small stability/content cost. Do not tune its dimension,
+initialization, loss weight, LR, horizon, data, or mutable scope.
 
 ## Command
 

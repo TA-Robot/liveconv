@@ -1,6 +1,6 @@
 # EXP-265: speaker-condition calibrator direction screen
 
-Status: admitted auxiliary batch screen; no perceptual selection
+Status: completed auxiliary batch screen; exact calibrator closed
 
 ## Question
 
@@ -25,6 +25,22 @@ by four rows in total. This one batch diagnostic chooses only between:
 Do not infer naturalness, identity, prosody, emotion, or a perceptual winner.
 Do not admit a delta, weight, LR, horizon, data, objective, or scope neighbor
 from this metric.
+
+## Result
+
+Commit `f97f956` embedded 943 unique WAV identities across 314 paired rows.
+Aggregate target-to-output cosine moved `0.492870 -> 0.492741`, delta
+`-0.000129`, with 151 increases and 163 decreases. Target-over-source
+advantage moved `-0.000168`. External7, Hadou31, and expanded144 had tiny
+positive mean target deltas; fresh48, stress60, and JSUT24 had tiny negative
+deltas. This is flat and broadly mixed rather than a held-out speaker
+direction.
+
+Report SHA-256 is
+`450edcf9681f006167142d8957c46e9dc8974e8d6fff36bab54a6c21de2b43c4`.
+Combined with four additional decoder-unstable rows and three content losses
+on the strict broad join, this closes the exact EXP-259 calibrator. It does not
+select an audible winner or authorize an adjacent calibrator point.
 
 ## Command
 
