@@ -366,7 +366,11 @@ claims from that artifact are superseded. The active join is now:
         -> all seven external WAVs change; EXP325 comparison 0W/7T/0L
         -> gross 0 -> 0; instability 1 -> 1; no new unstable row
         -> Ready: fixed fresh48/Hadou31/stress60/JSUT24/expanded144/SRC4VC30 only
-        -> no GRL weight/head/data/horizon/loss/scope sweep; replan after broad
+        -> all six matched surfaces complete; 337/337 candidate hashes change
+        -> source-relative 15W/303T/19L, mean 0.609039 -> 0.628134
+        -> instability 70 -> 67 but 7 new/10 recovered; gross 2 -> 2, no added row
+        -> expanded144 4W/126T/14L rejects generic broad-content improvement
+        -> close GRL weight/head/data/horizon/loss/scope neighbors; replan method
         -> operator hearing when available
 ```
 

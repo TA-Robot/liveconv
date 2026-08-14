@@ -1,7 +1,7 @@
 # EXP-325/326: two-utterance SRC4VC source-speaker adversary
 
-Status: EXP-325/326 matched external7 complete; EXP-326 passed the coarse gate
-and the six frozen broad surfaces are admitted
+Status: EXP-325/326 matched external7 and six broad surfaces complete;
+generic GRL content-improvement claim rejected, audio remains unheard
 
 ## Milestone
 
@@ -149,3 +149,27 @@ neither a perceptual improvement nor a winner. It does satisfy the predefined
 external gate, so only the frozen fresh48, Hadou31, stress60, balanced JSUT24,
 expanded144, and SRC4VC-heldout30 surfaces are admitted next. Do not sweep GRL
 weight, classifier shape, data, horizon, loss, or scope.
+
+## Phase-2 broad result
+
+Both matched arms completed all six frozen surfaces: fresh48, Hadou31,
+stress60, balanced JSUT24, expanded144, and SRC4VC-heldout30. They published
+3,370 broad comparison WAVs on port 8878. All 337 candidate hashes differ
+between EXP-325 and EXP-326.
+
+The exact aggregate source-relative ASR join is `15W/303T/19L`, mean
+`0.609039 -> 0.628134`. Auxiliary known-text distance is `17W/305T/15L`, mean
+`0.691933 -> 0.688295`. Decoder instability improves in aggregate `70 -> 67`,
+but with seven newly unstable rows and ten recovered rows. Gross repetition
+stays `2 -> 2`, with no added gross row.
+
+The surface pattern is mixed. Hadou31 is `3W/28T/0L`; fresh48 is
+`4W/43T/1L`; stress60 is `3W/55T/2L`; JSUT24 is `0W/23T/1L`;
+SRC4VC-heldout30 is `1W/28T/1L`. The largest expanded144 surface is
+`4W/126T/14L` and drives the aggregate content regression despite a small
+aggregate decoder-stability gain.
+
+Therefore the fixed source-speaker GRL is not a generic broad-content
+improvement over EXP-325, and weight/head/loss/scope/LR/horizon neighbors stay
+closed. Its changed audio remains available for later human naturalness and
+target-voice comparison; ASR does not select or reject it perceptually.

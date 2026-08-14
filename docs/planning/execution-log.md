@@ -6539,3 +6539,26 @@ job queue.
 - Rework: run only the final predefined fully heldout SRC4VC30 surface, then
   close this characterization and replan at method level. Do not tune GRL on
   the expanded losses.
+
+## 2026-08-14T21:50:00Z - EXP-332 heldout30 and EXP-326 broad closure
+
+- Agent: `primary-integrator`.
+- Task: finish the matched 15-speaker/30-utterance SRC4VC heldout surface, then
+  aggregate all six frozen broad surfaces before choosing another method.
+- Dependencies: commits `7163fc6` and `4e92025`; one sequential gpu0 lease;
+  listener 8878; fixed heldout identity disjoint from all 85 training speakers.
+- Result: both heldout arms completed all 30 rows and published 300 WAVs. The
+  exact join is `1W/28T/1L`, mean `0.233751 -> 0.238147`; instability stays
+  `4 -> 4` with one new and one recovered row; gross stays `0 -> 0`.
+- Result: all six broad surfaces completed 337 rows per arm and published
+  3,370 WAVs. All 337 candidate hashes differ. Aggregate source-relative ASR
+  is `15W/303T/19L`, mean `0.609039 -> 0.628134`; auxiliary known text is
+  `17W/305T/15L`, mean `0.691933 -> 0.688295`.
+- Result: aggregate decoder instability improves `70 -> 67`, comprising seven
+  new and ten recovered rows. Gross repetition stays `2 -> 2` with no added
+  gross row. No machine result is a naturalness, identity, keep, or winner.
+- Problems: expanded144 contributes `4W/126T/14L` and rejects a generic broad-
+  content improvement claim despite Hadou and some fresh/stress gains.
+- Rework: close GRL weight/head/data/horizon/loss/scope neighbors. Preserve all
+  audio unheard and unselected, and replan the next method-level X-VC training
+  hypothesis rather than optimizing any individual evaluation row.
