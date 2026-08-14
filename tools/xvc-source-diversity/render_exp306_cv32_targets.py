@@ -260,6 +260,13 @@ def _build_curriculum(
     }
 
 
+def _create_output_root(path: Path) -> Path:
+    path.mkdir(parents=True)
+    control_outputs = path / "control-outputs"
+    control_outputs.mkdir()
+    return control_outputs
+
+
 def run(
     arguments: argparse.Namespace,
     pool: Mapping[str, Any],
@@ -295,7 +302,7 @@ def run(
         plain, str(arguments.control_adapter), is_trainable=False
     )
     target_cache: dict[str, dict[str, Any]] = {}
-    arguments.output_diverse_work.mkdir(parents=True)
+    output_root = _create_output_root(arguments.output_diverse_work)
     output_rows: list[dict[str, Any]] = []
     for position, item in enumerate(pool["items"]):
         source_path = arguments.source_work / str(item["source_file"])
@@ -330,10 +337,7 @@ def run(
             .detach()
             .cpu()
         )
-        output_path = (
-            arguments.output_diverse_work
-            / f"control-outputs/cv32-{position:02d}-{item['id']}-16k.wav"
-        )
+        output_path = output_root / f"cv32-{position:02d}-{item['id']}-16k.wav"
         output_rows.append(
             {
                 "position": position,

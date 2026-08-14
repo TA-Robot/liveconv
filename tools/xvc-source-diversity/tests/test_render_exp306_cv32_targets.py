@@ -17,6 +17,12 @@ def _digest(number: int) -> str:
     return f"{number:064x}"
 
 
+def test_render_creates_control_output_directory(tmp_path: Path) -> None:
+    output_root = tmp_path / "render"
+    assert render._create_output_root(output_root) == output_root / "control-outputs"
+    assert (output_root / "control-outputs").is_dir()
+
+
 def _pool() -> dict[str, object]:
     rows = []
     for index in range(32):
