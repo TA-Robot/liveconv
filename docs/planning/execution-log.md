@@ -4412,3 +4412,19 @@ job queue.
 - Rework: bind one frozen fresh48 identity and render the unchanged checkpoint.
   Stop before stress60 on candidate-added gross corruption or broad common
   stable regression.
+
+## 2026-08-14T05:06:00Z - EXP-192 fresh48 completed
+
+- Agent: `primary-integrator`.
+- Task: test the unchanged EXP-191 adapter on 48 disjoint speakers and texts.
+- Dependencies: commit `794cd06`; byte-identical re-materialization of the
+  frozen EXP-112 manifest and its 48 revision-pinned source MP3s.
+- Result: published 240 WAVs in 103.6 seconds. Candidate and control69 share the
+  same two gross rows, so the candidate adds none. Across 37 common stable rows,
+  source distance is `1.074 -> 1.076` with W/T/L `5/24/8`; known-text distance
+  is `0.811 -> 0.807` with `8/23/6`.
+- Problems: the raw means are dominated by two shared gross rows. The stable
+  signal is mixed and cannot establish perceptual quality.
+- Rework: admit the unchanged checkpoint to the one final stress60 gate because
+  cross-severity condition retention is the experiment question. Do not add
+  Hadou, JSUT, a condition sweep, or retraining afterward.

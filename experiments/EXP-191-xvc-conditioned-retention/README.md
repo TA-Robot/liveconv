@@ -1,6 +1,6 @@
 # EXP-191: condition-balanced control69 retention replay
 
-Status: external7 technical gate passed; fresh48 gate next
+Status: fresh48 technical gate passed; stress60 final gate next
 
 ## Goal
 
@@ -66,3 +66,15 @@ both control69 and EXP-191 decoders, source-relative distance moved
 `0.256 -> 0.191` and known-text distance `0.371 -> 0.254`; both comparisons had
 W/T/L `3/1/1`. This admits the unchanged checkpoint to frozen fresh48. It does
 not establish naturalness, identity, a keeper, or promotion.
+
+## Fresh48 result
+
+EXP-192 reused the unchanged checkpoint on 48 disjoint speakers and texts and
+published 240 WAVs. Control69 and EXP-191 share the same two gross rows, so the
+candidate adds none. On 37 cross-arm common stable rows, source-relative
+distance is effectively flat at `1.074 -> 1.076` with W/T/L `5/24/8`; known-text
+distance moves `0.811 -> 0.807` with `8/23/6`.
+
+This is a mixed technical survivor rather than a broad regression. It admits
+the final stress60 transfer test because condition retention is the stated
+question. No Hadou or JSUT cascade is reserved for this family.
