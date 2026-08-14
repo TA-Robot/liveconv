@@ -3922,3 +3922,37 @@ job queue.
   aggregate means would falsely retain this checkpoint.
 - Rework: reject EXP-171, do not run stress60 or JSUT24, and do not sweep JSUT
   share/category counts. Keep all comparison WAVs on 8878 for later hearing.
+
+## 2026-08-14T02:20:25Z - Grok progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux `liveconv-grok-auditor`.
+- Task: independent 30-minute direction, evidence, and idle-resource audit.
+- Result: `CONTINUE`. It confirmed that the JSUT-retention lane was a valid
+  method test and was correctly rejected at its first candidate-only gross
+  Hadou loop. It required the next lane to leave the JSUT-mixture neighborhood
+  and either explain that failure or test a still-open method axis.
+- Problems: GPU was idle after the completed rejection; aggregate auxiliary
+  improvements could tempt an invalid continuation despite the catastrophic
+  row.
+- Rework: verdict adopted. Drop JSUT share/category sweeps and remaining
+  EXP-171 gates. Test one paired gradient-conflict method on the frozen
+  EXP-150 hard/easy objectives, with no naturalness or winner claim.
+
+## 2026-08-14T02:25:00Z - EXP-174 paired PCGrad prepared
+
+- Agent: `primary-integrator`.
+- Task: test a causal alternative to another data-mixture or hyperparameter
+  point after EXP-171's ordinary-row gains and isolated number-loop failure.
+- Dependencies: frozen EXP-150 alternating hard85/easy85 manifest; control69;
+  standard upstream generative objective; Grok `CONTINUE` with redirect away
+  from JSUT-neighbor methods.
+- Result: add a deterministic two-task PCGrad mode. Each adjacent hard/easy
+  pair is evaluated at one shared parameter state; only negative-dot-product
+  components are symmetrically projected, then summed. All 170 examples remain,
+  producing 85 explicit pair optimizer steps. Unit tests cover policy isolation,
+  role order, conflicting projection, and the unchanged non-conflict path.
+- Problems: paired PCGrad necessarily changes optimizer-step geometry and count,
+  so this is a method pilot rather than a drop-in one-coordinate comparison.
+- Rework: commit before CUDA, smoke one hard/easy pair, then run one full lane.
+  Stop at the first candidate-added gross corruption; do not tune projection or
+  reopen EXP-150/171 ratios.

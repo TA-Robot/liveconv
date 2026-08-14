@@ -54,9 +54,7 @@ def test_full_converter_retention_changes_only_trainable_target_identity() -> No
     )
 
     assert policy["slug"] == "exp154"
-    assert policy["candidate_id"] == (
-        "cv12-selective-retention-full-converter170"
-    )
+    assert policy["candidate_id"] == ("cv12-selective-retention-full-converter170")
     assert "42" not in policy["independent_variable"]
 
 
@@ -77,9 +75,7 @@ def test_real_reference_adversarial_keeps_selective_lora_identity() -> None:
     )
 
     assert policy["slug"] == "exp158"
-    assert policy["candidate_id"] == (
-        "cv12-selective-retention-real-adversarial170"
-    )
+    assert policy["candidate_id"] == ("cv12-selective-retention-real-adversarial170")
     assert "authorized original Amitaro" in policy["independent_variable"]
 
 
@@ -118,10 +114,80 @@ def test_jsut_retention_changes_only_easy_data_identity() -> None:
     )
 
     assert policy["slug"] == "exp171"
-    assert policy["candidate_id"] == (
-        "cv12-jsut-retention-real-adversarial-ema170"
-    )
+    assert policy["candidate_id"] == ("cv12-jsut-retention-real-adversarial-ema170")
     assert "easy85" in policy["independent_variable"]
+
+
+def test_paired_pcgrad_has_distinct_listener_identity() -> None:
+    policy = post.listening_policy(
+        post.SELECTIVE_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.GENERATIVE_OBJECTIVE,
+        False,
+        post.PCGRAD_PAIRED_OPTIMIZER,
+    )
+
+    assert policy["slug"] == "exp174"
+    assert policy["candidate_id"] == "cv12-selective-pcgrad85"
+    assert "all 170 sources and targets" in policy["independent_variable"]
+
+
+def test_paired_pcgrad_rejects_ema_or_other_curriculum() -> None:
+    for manifest_kind, use_ema in (
+        (post.SELECTIVE_OUTPUT_KIND, True),
+        (post.JSUT_RETENTION_OUTPUT_KIND, False),
+    ):
+        try:
+            post.listening_policy(
+                manifest_kind,
+                post.LORA69_TARGET,
+                post.GENERATIVE_OBJECTIVE,
+                use_ema,
+                post.PCGRAD_PAIRED_OPTIMIZER,
+            )
+        except post.PostRehearsalError as error:
+            assert "paired PCGrad" in str(error)
+        else:
+            raise AssertionError("unsupported paired PCGrad policy admitted")
+
+
+def test_paired_rows_require_frozen_hard_easy_order() -> None:
+    hard = {
+        "curriculum_role": "hard",
+        "learning_target": post.REPAIR_TARGET,
+    }
+    easy = {
+        "curriculum_role": "easy",
+        "learning_target": post.RETENTION_TARGET,
+    }
+
+    assert post.paired_hard_easy_rows([hard, easy]) == [(hard, easy)]
+    try:
+        post.paired_hard_easy_rows([easy, hard])
+    except post.PostRehearsalError as error:
+        assert "role order" in str(error)
+    else:
+        raise AssertionError("reversed PCGrad pair unexpectedly admitted")
+
+
+def test_pcgrad_projects_only_conflicting_task_components() -> None:
+    import torch
+
+    hard = [torch.tensor([1.0, 0.0])]
+    easy = [torch.tensor([-1.0, 1.0])]
+
+    merged, metrics = post.project_conflicting_pair(hard, easy, torch=torch)
+
+    assert metrics["conflict"] is True
+    assert torch.allclose(merged[0], torch.tensor([0.5, 1.5]))
+
+    aligned, aligned_metrics = post.project_conflicting_pair(
+        [torch.tensor([1.0, 0.0])],
+        [torch.tensor([2.0, 0.0])],
+        torch=torch,
+    )
+    assert aligned_metrics["conflict"] is False
+    assert torch.equal(aligned[0], torch.tensor([3.0, 0.0]))
 
 
 def test_jsut_smoke_exercises_hard_and_diverse_easy_roots() -> None:

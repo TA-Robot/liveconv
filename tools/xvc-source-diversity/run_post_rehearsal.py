@@ -64,6 +64,8 @@ EXPECTED_CONVERTER_PARAMETERS = 42_357_760
 CONVERTER_CHECKPOINT_KIND = "liveconv-xvc-merged-control69-converter/v1"
 GENERATIVE_OBJECTIVE = "generative-only"
 REAL_REFERENCE_ADVERSARIAL_OBJECTIVE = "real-reference-adversarial"
+SEQUENTIAL_OPTIMIZER = "sequential"
+PCGRAD_PAIRED_OPTIMIZER = "pcgrad-hard-easy-paired"
 EMA_IMPLEMENTATION = "ema-pytorch-0.7.7-defaults-adapter-equivalent"
 EMA_BETA = 0.9999
 EMA_UPDATE_AFTER_STEP = 100
@@ -82,13 +84,45 @@ def listening_policy(
     trainable_target: str = LORA69_TARGET,
     training_objective: str = GENERATIVE_OBJECTIVE,
     use_adapter_ema: bool = False,
+    optimizer_mode: str = SEQUENTIAL_OPTIMIZER,
 ) -> dict[str, str]:
     """Return the complete shared-listener identity for the admitted method."""
 
+    if optimizer_mode == PCGRAD_PAIRED_OPTIMIZER:
+        if (
+            manifest_kind != SELECTIVE_OUTPUT_KIND
+            or trainable_target != LORA69_TARGET
+            or training_objective != GENERATIVE_OBJECTIVE
+            or use_adapter_ema
+        ):
+            raise PostRehearsalError(
+                "paired PCGrad is admitted only for selective generative LoRA69"
+            )
+        return {
+            "slug": "exp174",
+            "candidate_id": "cv12-selective-pcgrad85",
+            "candidate_name": "EXP-174 / paired hard-retention PCGrad",
+            "run_kind": "EXP-174 X-VC paired PCGrad external evaluation",
+            "result_kind": "liveconv-exp174-xvc-paired-pcgrad/v1",
+            "question": (
+                "Can gradient-conflict surgery preserve normal behavior while "
+                "repairing the frozen control69 hard failures?"
+            ),
+            "independent_variable": (
+                "only optimizer gradient composition changes from EXP-150: each "
+                "unchanged adjacent hard/easy pair is evaluated at one shared "
+                "parameter state, conflicting task-gradient components are "
+                "projected away, and the resulting gradients are summed into 85 "
+                "pair steps; all 170 sources and targets, initialization, loss, "
+                "LR, clip, LoRA69 scope, target references, and zero frame "
+                "condition stay fixed"
+            ),
+        }
+    if optimizer_mode != SEQUENTIAL_OPTIMIZER:
+        raise PostRehearsalError("unknown optimizer mode")
     if use_adapter_ema:
         if (
-            manifest_kind
-            not in {SELECTIVE_OUTPUT_KIND, JSUT_RETENTION_OUTPUT_KIND}
+            manifest_kind not in {SELECTIVE_OUTPUT_KIND, JSUT_RETENTION_OUTPUT_KIND}
             or trainable_target != LORA69_TARGET
             or training_objective != REAL_REFERENCE_ADVERSARIAL_OBJECTIVE
         ):
@@ -99,9 +133,7 @@ def listening_policy(
             return {
                 "slug": "exp171",
                 "candidate_id": "cv12-jsut-retention-real-adversarial-ema170",
-                "candidate_name": (
-                    "EXP-171 / JSUT retention + real-adversarial + EMA"
-                ),
+                "candidate_name": ("EXP-171 / JSUT retention + real-adversarial + EMA"),
                 "run_kind": "EXP-171 X-VC JSUT retention external evaluation",
                 "result_kind": "liveconv-exp171-xvc-jsut-retention-ema/v1",
                 "question": (
@@ -119,9 +151,7 @@ def listening_policy(
         return {
             "slug": "exp163",
             "candidate_id": "cv12-selective-real-adversarial-ema170",
-            "candidate_name": (
-                "EXP-163 / selective real-adversarial / upstream EMA"
-            ),
+            "candidate_name": ("EXP-163 / selective real-adversarial / upstream EMA"),
             "run_kind": "EXP-163 X-VC upstream-EMA external evaluation",
             "result_kind": "liveconv-exp163-xvc-real-adversarial-ema/v1",
             "question": (
@@ -137,10 +167,7 @@ def listening_policy(
             ),
         }
     if training_objective == REAL_REFERENCE_ADVERSARIAL_OBJECTIVE:
-        if (
-            manifest_kind != SELECTIVE_OUTPUT_KIND
-            or trainable_target != LORA69_TARGET
-        ):
+        if manifest_kind != SELECTIVE_OUTPUT_KIND or trainable_target != LORA69_TARGET:
             raise PostRehearsalError(
                 "real-reference adversarial is admitted only for selective LoRA69"
             )
@@ -324,9 +351,7 @@ def load_manifest(
         ):
             raise PostRehearsalError("hard curriculum identity drifted")
         source_root = (
-            diverse_work
-            if item.get("source_root") == "diverse-work"
-            else source_work
+            diverse_work if item.get("source_root") == "diverse-work" else source_work
         )
         if source_root is None:
             raise PostRehearsalError("diverse retention work is required")
@@ -361,22 +386,17 @@ def load_manifest(
                     or Path(base_target_file).is_absolute()
                     or ".." in Path(base_target_file).parts
                 ):
-                    raise PostRehearsalError(
-                        "selective base-target identity drifted"
-                    )
+                    raise PostRehearsalError("selective base-target identity drifted")
                 base_target = source_work / base_target_file
                 if (
                     base_target.is_symlink()
                     or not base_target.is_file()
-                    or sha256_file(base_target)
-                    != item["base_teacher_target_sha256"]
+                    or sha256_file(base_target) != item["base_teacher_target_sha256"]
                 ):
                     raise PostRehearsalError("base repair target drifted")
             if learning_target == RETENTION_TARGET:
                 target_root = (
-                    diverse_work
-                    if kind == JSUT_RETENTION_OUTPUT_KIND
-                    else control_work
+                    diverse_work if kind == JSUT_RETENTION_OUTPUT_KIND else control_work
                 )
                 if target_root is None:
                     raise PostRehearsalError("retention work is required")
@@ -412,6 +432,7 @@ def validate_inputs(
         arguments.trainable_target,
         arguments.training_objective,
         arguments.adapter_ema,
+        arguments.optimizer_mode,
     )
     evaluation = breadth._load_manifest(
         arguments.evaluation_set,
@@ -427,9 +448,10 @@ def validate_inputs(
         ):
             raise PostRehearsalError(f"external source drifted: {item['id']}")
     targets = method.target_inventory(arguments.pair_root)
-    if arguments.control_adapter.is_symlink() or not (
-        arguments.control_adapter / "adapter_model.safetensors"
-    ).is_file():
+    if (
+        arguments.control_adapter.is_symlink()
+        or not (arguments.control_adapter / "adapter_model.safetensors").is_file()
+    ):
         raise PostRehearsalError("control69 adapter is unavailable")
     method._validate_xvc(arguments)
     base._require_new_output(
@@ -598,9 +620,11 @@ def load_converter_checkpoint(
         for name, parameter in model.named_parameters()
         if name.startswith(CONVERTER_PREFIX + ".")
     }
-    if set(stored) != set(destinations) or sum(
-        value.numel() for value in stored.values()
-    ) != EXPECTED_CONVERTER_PARAMETERS:
+    if (
+        set(stored) != set(destinations)
+        or sum(value.numel() for value in stored.values())
+        != EXPECTED_CONVERTER_PARAMETERS
+    ):
         raise PostRehearsalError("full converter tensor set drifted")
     with torch.no_grad():
         for name, value in stored.items():
@@ -695,6 +719,77 @@ def smoke_rows(manifest: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     return [hard, easy]
 
 
+def paired_hard_easy_rows(
+    rows: Sequence[Mapping[str, Any]],
+) -> list[tuple[Mapping[str, Any], Mapping[str, Any]]]:
+    """Validate and return the frozen selective curriculum as hard/easy pairs."""
+
+    if len(rows) % 2:
+        raise PostRehearsalError("paired PCGrad requires an even row count")
+    pairs = []
+    for offset in range(0, len(rows), 2):
+        hard, easy = rows[offset : offset + 2]
+        if (
+            hard.get("curriculum_role") != "hard"
+            or hard.get("learning_target") != REPAIR_TARGET
+            or easy.get("curriculum_role") != "easy"
+            or easy.get("learning_target") != RETENTION_TARGET
+        ):
+            raise PostRehearsalError(
+                f"paired PCGrad role order drifted at rows {offset}/{offset + 1}"
+            )
+        pairs.append((hard, easy))
+    return pairs
+
+
+def project_conflicting_pair(
+    hard_gradients: Sequence[Any],
+    easy_gradients: Sequence[Any],
+    *,
+    torch: Any,
+) -> tuple[list[Any], dict[str, float | bool]]:
+    """Apply symmetric two-task PCGrad and return the summed update gradient."""
+
+    if not hard_gradients or len(hard_gradients) != len(easy_gradients):
+        raise PostRehearsalError("paired PCGrad gradient sets drifted")
+    dot = sum(
+        (hard * easy).sum()
+        for hard, easy in zip(hard_gradients, easy_gradients, strict=True)
+    )
+    hard_norm_sq = sum(gradient.square().sum() for gradient in hard_gradients)
+    easy_norm_sq = sum(gradient.square().sum() for gradient in easy_gradients)
+    scalars = (dot, hard_norm_sq, easy_norm_sq)
+    if any(not bool(torch.isfinite(value)) for value in scalars):
+        raise PostRehearsalError("paired PCGrad geometry is non-finite")
+    dot_value = float(dot.detach().cpu())
+    hard_norm_value = float(hard_norm_sq.detach().cpu())
+    easy_norm_value = float(easy_norm_sq.detach().cpu())
+    denominator = math.sqrt(hard_norm_value * easy_norm_value)
+    cosine = dot_value / denominator if denominator > 0.0 else 0.0
+    conflict = dot_value < 0.0
+    if conflict:
+        if hard_norm_value == 0.0 or easy_norm_value == 0.0:
+            raise PostRehearsalError("conflicting PCGrad task has zero norm")
+        hard_scale = dot / easy_norm_sq
+        easy_scale = dot / hard_norm_sq
+        merged = [
+            hard - hard_scale * easy + easy - easy_scale * hard
+            for hard, easy in zip(hard_gradients, easy_gradients, strict=True)
+        ]
+    else:
+        merged = [
+            hard + easy
+            for hard, easy in zip(hard_gradients, easy_gradients, strict=True)
+        ]
+    return merged, {
+        "conflict": conflict,
+        "dot": dot_value,
+        "cosine": cosine,
+        "hard_norm": math.sqrt(hard_norm_value),
+        "easy_norm": math.sqrt(easy_norm_value),
+    }
+
+
 def run(
     arguments: argparse.Namespace,
     manifest: Mapping[str, Any],
@@ -713,6 +808,7 @@ def run(
         arguments.trainable_target,
         arguments.training_objective,
         arguments.adapter_ema,
+        arguments.optimizer_mode,
     )
 
     import torch
@@ -763,6 +859,8 @@ def run(
     adapter_ema = AdapterEMA(trained, torch) if arguments.adapter_ema else None
     losses: list[float] = []
     adversarial_metrics: list[dict[str, float]] = []
+    pcgrad_metrics: list[dict[str, float | bool]] = []
+    optimizer_steps = 0
     rows = smoke_rows(manifest) if arguments.smoke else manifest["items"]
     discriminator = None
     discriminator_optimizer = None
@@ -789,7 +887,8 @@ def run(
                 torch=torch,
                 device=device,
             )["target_wav"]
-    for item in rows:
+
+    def batch_for(item: Mapping[str, Any]) -> Any:
         if arguments.trainable_target == FULL_CONVERTER_TARGET:
             _set_converter_training_only(trained)
         else:
@@ -805,51 +904,106 @@ def run(
             torch=torch,
             device=device,
         )
-        batch = base._gpu_batch(tensors, torch=torch, device=device)
-        if discriminator is not None and discriminator_optimizer is not None:
-            metrics = breadth._adversarial_update(
-                trained,
-                discriminator,
-                optimizer,
-                discriminator_optimizer,
-                trainable,
-                batch,
-                torch=torch,
-                real_audios=realism_targets[str(item["target_id"])].to(
-                    device=device, dtype=torch.float32
-                ),
-            )
-            losses.append(metrics["total"])
-            adversarial_metrics.append(metrics)
-        else:
-            optimizer.zero_grad(set_to_none=True)
-            with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
-                loss, numeric = role_mix.training_loss(
-                    trained,
-                    batch,
-                    "real-donor-teacher-output",
-                    torch=torch,
-                    teacher_loss="standard",
+        return base._gpu_batch(tensors, torch=torch, device=device)
+
+    if arguments.optimizer_mode == PCGRAD_PAIRED_OPTIMIZER:
+        for hard_item, easy_item in paired_hard_easy_rows(rows):
+            task_gradients: list[list[Any]] = []
+            for item in (hard_item, easy_item):
+                optimizer.zero_grad(set_to_none=True)
+                batch = batch_for(item)
+                with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+                    loss, numeric = role_mix.training_loss(
+                        trained,
+                        batch,
+                        "real-donor-teacher-output",
+                        torch=torch,
+                        teacher_loss="standard",
+                    )
+                gradients = torch.autograd.grad(
+                    loss,
+                    trainable,
+                    allow_unused=True,
                 )
-            loss.backward()
+                task_gradients.append(
+                    [
+                        gradient.detach()
+                        if gradient is not None
+                        else torch.zeros_like(parameter)
+                        for parameter, gradient in zip(
+                            trainable, gradients, strict=True
+                        )
+                    ]
+                )
+                losses.append(numeric)
+            merged_gradients, metrics = project_conflicting_pair(
+                task_gradients[0], task_gradients[1], torch=torch
+            )
+            pcgrad_metrics.append(metrics)
+            optimizer.zero_grad(set_to_none=True)
+            for parameter, gradient in zip(trainable, merged_gradients, strict=True):
+                parameter.grad = gradient
             gradient_norm = torch.nn.utils.clip_grad_norm_(
                 trainable, base.GRADIENT_CLIP_NORM
             )
             if not math.isfinite(float(gradient_norm.detach().cpu())):
-                raise PostRehearsalError(
-                    "post-rehearsal gradient norm is non-finite"
-                )
+                raise PostRehearsalError("paired PCGrad merged norm is non-finite")
             if not arguments.smoke:
                 optimizer.step()
-            losses.append(numeric)
-        if adapter_ema is not None:
-            adapter_ema.update()
+                optimizer_steps += 1
+    else:
+        for item in rows:
+            batch = batch_for(item)
+            if discriminator is not None and discriminator_optimizer is not None:
+                metrics = breadth._adversarial_update(
+                    trained,
+                    discriminator,
+                    optimizer,
+                    discriminator_optimizer,
+                    trainable,
+                    batch,
+                    torch=torch,
+                    real_audios=realism_targets[str(item["target_id"])].to(
+                        device=device, dtype=torch.float32
+                    ),
+                )
+                losses.append(metrics["total"])
+                adversarial_metrics.append(metrics)
+            else:
+                optimizer.zero_grad(set_to_none=True)
+                with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+                    loss, numeric = role_mix.training_loss(
+                        trained,
+                        batch,
+                        "real-donor-teacher-output",
+                        torch=torch,
+                        teacher_loss="standard",
+                    )
+                loss.backward()
+                gradient_norm = torch.nn.utils.clip_grad_norm_(
+                    trainable, base.GRADIENT_CLIP_NORM
+                )
+                if not math.isfinite(float(gradient_norm.detach().cpu())):
+                    raise PostRehearsalError(
+                        "post-rehearsal gradient norm is non-finite"
+                    )
+                if not arguments.smoke:
+                    optimizer.step()
+                losses.append(numeric)
+            if not arguments.smoke:
+                optimizer_steps += 1
+            if adapter_ema is not None:
+                adapter_ema.update()
     if arguments.smoke:
         smoke = {
             "status": "smoked-control69-clean-post-rehearsal",
             "loss": losses[0],
             "trainable_parameters": expected_trainable,
             "training_objective": arguments.training_objective,
+            "optimizer_mode": arguments.optimizer_mode,
+            "prospective_optimizer_steps": (
+                1 if arguments.optimizer_mode == PCGRAD_PAIRED_OPTIMIZER else len(rows)
+            ),
             "peak_gpu_bytes": int(torch.cuda.max_memory_allocated(device)),
         }
         if adversarial_metrics:
@@ -858,9 +1012,9 @@ def run(
             smoke["gradient_norm"] = float(gradient_norm.detach().cpu())
         if adapter_ema is not None:
             smoke["adapter_ema"] = adapter_ema.receipt()
-        print(
-            json.dumps(smoke, sort_keys=True)
-        )
+        if pcgrad_metrics:
+            smoke["pcgrad"] = pcgrad_metrics[0]
+        print(json.dumps(smoke, sort_keys=True))
         return 0
     if len(losses) != EXPECTED_ROWS:
         raise PostRehearsalError("post-rehearsal update count drifted")
@@ -869,7 +1023,12 @@ def run(
             trained, arguments.work_dir / f"converter-{EXPECTED_ROWS}", torch
         )
     else:
-        adapter_dir = arguments.work_dir / f"adapter-{EXPECTED_ROWS}"
+        checkpoint_steps = (
+            optimizer_steps
+            if arguments.optimizer_mode == PCGRAD_PAIRED_OPTIMIZER
+            else EXPECTED_ROWS
+        )
+        adapter_dir = arguments.work_dir / f"adapter-{checkpoint_steps}"
         if adapter_ema is not None:
             online_dir = arguments.work_dir / f"online-adapter-{EXPECTED_ROWS}"
             trained.save_pretrained(online_dir, safe_serialization=True)
@@ -988,9 +1147,12 @@ def run(
         "control_adapter": str(arguments.control_adapter),
         "trainable_target": arguments.trainable_target,
         "training_objective": arguments.training_objective,
+        "optimizer_mode": arguments.optimizer_mode,
         "adapter_ema": adapter_ema.receipt() if adapter_ema is not None else None,
         "candidate_checkpoint": checkpoint_metadata,
-        "updates": len(losses),
+        "optimizer_steps": optimizer_steps,
+        "training_examples": len(losses),
+        "updates": optimizer_steps,
         "role_counts": {"real-donor-teacher-output": len(losses)},
         "learning_target_counts": manifest.get(
             "learning_target_counts", {"base-teacher": len(losses)}
@@ -1012,6 +1174,18 @@ def run(
             if adversarial_metrics
             else None
         ),
+        "pcgrad_metrics": (
+            {
+                "pairs": len(pcgrad_metrics),
+                "conflicts": sum(bool(item["conflict"]) for item in pcgrad_metrics),
+                "cosine_min": min(float(item["cosine"]) for item in pcgrad_metrics),
+                "cosine_mean": sum(float(item["cosine"]) for item in pcgrad_metrics)
+                / len(pcgrad_metrics),
+                "cosine_max": max(float(item["cosine"]) for item in pcgrad_metrics),
+            }
+            if pcgrad_metrics
+            else None
+        ),
         "elapsed_seconds": time.monotonic() - started,
         "peak_gpu_bytes": int(torch.cuda.max_memory_allocated(device)),
         "evaluation_set_sha256": sha256_file(arguments.evaluation_set),
@@ -1031,7 +1205,8 @@ def run(
         json.dumps(
             {
                 "status": result["status"],
-                "updates": len(losses),
+                "optimizer_steps": optimizer_steps,
+                "training_examples": len(losses),
                 "listener_dir": str(arguments.listener_dir),
             },
             sort_keys=True,
@@ -1061,6 +1236,11 @@ def parser() -> argparse.ArgumentParser:
         "--training-objective",
         choices=(GENERATIVE_OBJECTIVE, REAL_REFERENCE_ADVERSARIAL_OBJECTIVE),
         default=GENERATIVE_OBJECTIVE,
+    )
+    value.add_argument(
+        "--optimizer-mode",
+        choices=(SEQUENTIAL_OPTIMIZER, PCGRAD_PAIRED_OPTIMIZER),
+        default=SEQUENTIAL_OPTIMIZER,
     )
     value.add_argument("--adapter-ema", action="store_true")
     value.add_argument("--xvc-source-root", type=Path, required=True)
