@@ -6368,3 +6368,22 @@ job queue.
   source-speaker-signal, finite-gradient, disjoint-optimizer, and unchanged-
   inference smoke; if green, run its sole-change GRL arm on the identical
   manifest before any broad surface. EXP-325 remains unheard and unselected.
+
+## 2026-08-14T20:54:49Z - Grok project-progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux
+  `liveconv-grok-auditor` (read-only, no tools or delegation).
+- Task: judge whether completing EXP-325 and moving to the matched EXP-326 GRL
+  arm is the shortest route toward broadly better X-VC audio.
+- Result: `CONTINUE`. The auditor counted EXP-325's 20:43 external7 audio,
+  accepted that the data-only arm closed without an improvement claim, and
+  judged EXP-326 to be a valid sole-change method hypothesis on identical
+  bytes and training contract.
+- Adopted: yes. Run only the bounded source-speaker signal/gradient/inference
+  admission, then one GRL 170-update lane and external7 if green. Do not render
+  broad surfaces, open a second data lane, or redesign evaluation first.
+- Problems: the smoke active during the audit subsequently exposed runner
+  integration mismatches before any optimizer update. The auditor correctly
+  identified contract drift in the GRL binding as the critical-path risk.
+- Rework: fix and test only those matched-contract bindings, then retry the
+  bounded smoke. Keep the safe job sequence and the no-winner boundary.
