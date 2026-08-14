@@ -1,6 +1,7 @@
 # EXP-325/326: two-utterance SRC4VC source-speaker adversary
 
-Status: planned; no private data acquisition or CUDA authorized yet
+Status: phase-1 control data acquired; teacher and control CUDA pending;
+EXP-326 GRL CUDA deferred until the control external7 result
 
 ## Milestone
 
@@ -43,8 +44,11 @@ EXP-325 versus EXP-326 isolates the adversary.
   optimizers, and unchanged inference output shape.
 - Commit the exact fetcher, materializer, trainer, renderer, focused tests, and
   this plan before teacher CUDA or either training lane.
-- Run teacher render, EXP-325, and EXP-326 sequentially on gpu0. Publish both
-  external7 comparisons on port 8878 and apply content/corruption screening.
+- Phase 1 runs the teacher render and ordinary EXP-325 control only, then
+  publishes its external7 comparison on port 8878. Replan from that
+  content/corruption screen before authorizing EXP-326 CUDA. Phase 2 may run
+  EXP-326 only on the identical committed manifest, teachers, target order,
+  initialization, and optimizer contract, so the adversary is its sole change.
 
 ### Not in this milestone
 
@@ -61,11 +65,26 @@ order drift, or weak cross-utterance source-speaker signal. Stop before full
 training on nonfinite or zero GRL-to-LoRA gradient, classifier parameters in
 the LoRA optimizer, inference-hook leakage, or memory-envelope failure.
 
-Run both matched arms through external7 even if the new substrate differs from
-EXP-238; otherwise the adversary cannot be isolated. Stop before broad render
-unless EXP-326 adds no gross corruption, adds no decoder instability, and does
-not regress common-stable source-relative content versus EXP-325. A broad
-render is additionally ineligible if both arms are materially less stable than
-EXP-238. Passing only authorizes the fixed fresh48, Hadou31, stress60, JSUT24,
+Phase 1 stops before EXP-326 if the new control substrate is invalid, nonfinite,
+adds gross corruption, or is materially less stable than EXP-238 on external7.
+If admitted, Phase 2 must run the matched GRL arm through external7 before any
+broad render. Broad work requires EXP-326 to add no gross corruption, add no
+decoder instability, and avoid common-stable source-relative regression versus
+EXP-325. Passing only authorizes the fixed fresh48, Hadou31, stress60, JSUT24,
 expanded144, and SRC4VC-heldout30 surfaces. Machine ASR remains a corruption
 and content diagnostic, not perceptual selection.
+
+## Phase-1 data admission
+
+Commit `9b36ab2` added deterministic train-utterance selection without
+weakening the frozen ten-RECITATION-entries-per-speaker archive check. The
+private index-1 subset then materialized 85 train rows and the unchanged 30-row
+heldout set. Its manifest SHA-256 is
+`ab356bb10cf620ba13243c9da1152a2b775ef620d147cb684991c6a75f8a6e83`.
+
+The 85 train speakers exactly match EXP-244, every selected WAV hash, text, and
+ID differs from that speaker's index-0 row, and the two train sets share zero
+WAV hashes. The new rows contain 444.15 seconds of mono PCM16 speech at the
+published 24, 44.1, or 48 kHz rates. The heldout 15 speakers remain disjoint
+and their exact 30 identities, hashes, and texts are unchanged. No CUDA has
+run from this data yet.

@@ -355,6 +355,11 @@ claims from that artifact are superseded. The active join is now:
         -> fresh48 adds two unstable rows; expanded144 adds one gross row
         -> all-surface common-stable content regresses 0.377108 -> 0.462015
         -> close window/preprocessing neighbors; next method must change a real learning signal
+        -> Grok REDIRECT: separate new SRC4VC data admission from speaker adversary CUDA
+        -> EXP325 materializes exact same 85 SRC4VC train speakers at utterances 0 and 1
+        -> 170 unique rows, 85 classes x2, zero cross-utterance WAV-hash overlap
+        -> phase 1: ordinary pseudoparallel teacher/train/external7 only
+        -> phase 2 EXP326 GRL remains CUDA-deferred until the control substrate passes
         -> operator hearing when available
 ```
 

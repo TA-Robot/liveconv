@@ -21,15 +21,15 @@ committed, single-variable job at a time, publish its comparison on 8878, apply
 only coarse machine rejection for corruption/content failure, and replan after
 each result. Accumulated candidates remain unselected until human hearing.
 
-Current GPU lane (2026-08-14 18:49 UTC): EXP-305 and EXP-306 completed 202
-updates and published 35 external7 WAVs each. The repeat32 control increased
-decoder instability `1 -> 3`; the genuinely new CV32 arm increased it only
-`1 -> 2`, but both meet the predefined external stop. Neither added a gross
-row. On the four rows stable in all three arms, source-relative distance tied;
-the CV32 arm improved the secondary known-text distance `2W/2T/0L` while the
-repeat control tied `0W/4T/0L`. Stop EXP-307--316 broad rendering. The result
-supports keeping the new data while removing the 202-update horizon confound;
-it does not establish naturalness or a winner. All hearing claims remain open.
+Current GPU lane (2026-08-14 20:25 UTC): EXP-320--324 completed all 307 broad
+inputs and closed the EXP-319 window family after one new expanded144 gross
+loop and aggregate instability `59 -> 61`. Grok returned `REDIRECT`: do not
+admit new data and a speaker adversary in one CUDA decision. Phase 1 of
+EXP-325 therefore uses the newly materialized 85-speaker x 2-real-utterance
+SRC4VC substrate with the ordinary source-aligned pseudoparallel method only.
+Render its frozen-control69 teachers, train the committed 170-row control, and
+screen external7. EXP-326 GRL CUDA is deferred until that result. The operator
+still cannot listen, and neither phase may produce a keep or winner claim.
 
 EXP-317 then removed the horizon confound by replacing 32 Common Voice tuples
 inside the original 170-row schedule. It produced 35 more external7 WAVs with

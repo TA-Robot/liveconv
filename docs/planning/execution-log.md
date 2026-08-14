@@ -6300,3 +6300,43 @@ job queue.
   audio unheard. A proposed control69-hidden teacher follow-up was also stopped
   at CPU inspection because EXP-238's `ssl_feat` already comes from that exact
   same-content control69 target WAV, so the purported change was a no-op.
+
+## 2026-08-14T20:24:40Z - Grok project-progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux
+  `liveconv-grok-auditor` (read-only, no tools or delegation).
+- Task: judge the completed EXP-319 broad stop and the proposed two-utterance
+  SRC4VC source-speaker adversary path.
+- Result: `REDIRECT`. The auditor accepted the 1,535 new WAVs and broad stop,
+  but judged the new SRC4VC substrate plus adversary as two changes in one CUDA
+  admission while gpu0 was idle. It required one data-only 170-update pilot
+  first and deferred the adversary to the following job.
+- Adopted: yes. Phase 1 now renders and trains only the ordinary EXP-325
+  source-aligned pseudoparallel control. EXP-326 implementation may continue on
+  CPU, but its smoke and training CUDA are ineligible until EXP-325 external7
+  proves the new substrate is not grossly broken or materially less stable.
+- Problems: the audit snapshot could not inspect the committed plan or corpus
+  terms and reported the board's old 18:49 Current GPU lane. The plan explicitly
+  limits the eventual causal claim to EXP-325 versus EXP-326; this remains true,
+  but it does not override the staged CUDA redirect. The board is corrected.
+- Rework: none to acquired private audio. Split the resource decision, commit
+  the phase-1 binder/teacher/ordinary runner, and launch gpu0 without waiting
+  for GRL integration.
+
+## 2026-08-14T20:22:00Z - SRC4VC second-utterance acquisition
+
+- Agent: `primary-integrator`; one read-only inventory owner and one bounded
+  fetcher implementation owner.
+- Task: prove the same 85 EXP-244 training speakers have a genuinely distinct
+  second RECITATION utterance without moving the 15-speaker heldout boundary.
+- Dependencies: commits `9cc917a` and `9b36ab2`; pinned EXP-244 byte-range
+  acquisition contract; ignored research-only artifact root.
+- Result: all 85 index-1 train WAV hashes, texts, and IDs differ from index 0;
+  the two sets share zero WAV hashes and exactly the same speaker set. The new
+  rows contain 444.15 seconds of valid mono PCM16 speech. The exact 30 heldout
+  identities/hashes/texts are unchanged and speaker-disjoint.
+- Problems: parent integration found that the first fetcher patch weakened the
+  original exact ten-entry inventory check to a minimum-count check. It was
+  restored before commit; focused tests pass 12/12.
+- Rework: materialize one 170-row two-utterance pool and fresh teachers, but run
+  only the ordinary EXP-325 control through external7 before GRL CUDA.
