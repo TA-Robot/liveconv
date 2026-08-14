@@ -3938,7 +3938,7 @@ job queue.
   EXP-171 gates. Test one paired gradient-conflict method on the frozen
   EXP-150 hard/easy objectives, with no naturalness or winner claim.
 
-## 2026-08-14T02:25:00Z - EXP-174 paired PCGrad prepared
+## 2026-08-14T02:25:00Z - EXP-176 paired PCGrad prepared
 
 - Agent: `primary-integrator`.
 - Task: test a causal alternative to another data-mixture or hyperparameter
@@ -3957,7 +3957,7 @@ job queue.
   Stop at the first candidate-added gross corruption; do not tune projection or
   reopen EXP-150/171 ratios.
 
-## 2026-08-14T02:32:00Z - EXP-174 first smoke result was not observable
+## 2026-08-14T02:32:00Z - EXP-176 first smoke result was not observable
 
 - Agent: `primary-integrator`.
 - Task: run the committed hard/easy PCGrad smoke before full training.
@@ -3971,7 +3971,7 @@ job queue.
 - Rework: persist the same smoke payload as `smoke.json`, commit that operational
   fix, and rerun once. Do not change projection, data, loss, or GPU admission.
 
-## 2026-08-14T02:36:00Z - EXP-174 paired smoke stopped before training
+## 2026-08-14T02:36:00Z - EXP-176 paired smoke stopped before training
 
 - Agent: `primary-integrator`.
 - Task: rerun PCGrad smoke with a persistent result and attached PTY.
@@ -3983,3 +3983,21 @@ job queue.
 - Rework: make only the PCGrad smoke reducer retain the first two frozen rows,
   add a regression test for their roles, commit, and rerun. Full training stays
   blocked until this two-row smoke persists finite geometry.
+
+## 2026-08-14T02:41:00Z - PCGrad result identity collision caught
+
+- Agent: `primary-integrator`.
+- Task: screen the completed paired-PCGrad external7 comparison before opening
+  the fresh48 gate.
+- Dependencies: commit `3554cae`; finite hard/easy smoke; 85-pair training run.
+- Result: training completed all 170 examples in 85 optimizer steps, with 74/85
+  pairs conflicting and cosine mean `-0.207`. External7 published 35 WAVs and
+  added no gross repetition. During follow-up policy binding, the provisional
+  `EXP-174` ID was found to collide with the already-reserved EXP-171 stress
+  gate (`EXP-174`, with JSUT at `EXP-175`).
+- Problems: the model checkpoint is technically valid, but its result and
+  listener index carry an ambiguous experiment identity and cannot be kept as
+  the canonical run.
+- Rework: assign PCGrad to the next free ID `EXP-176` and frozen gates to
+  `EXP-177--180`; quarantine the wrong-ID ignored outputs and deterministically
+  rerun from control69. Do not posthoc relabel a committed run receipt.

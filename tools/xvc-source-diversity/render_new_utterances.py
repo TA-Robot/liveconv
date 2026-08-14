@@ -926,6 +926,46 @@ def candidate_policy(kind: str) -> dict[str, str]:
             ),
         }
     if kind in {
+        "paired-pcgrad-fresh48",
+        "paired-pcgrad-hadou",
+        "paired-pcgrad-stress",
+        "paired-pcgrad-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        experiment_id = (
+            "EXP-180"
+            if jsut
+            else "EXP-179"
+            if stress
+            else "EXP-178"
+            if hadou
+            else "EXP-177"
+        )
+        suffix = (
+            "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "cv12-selective-pcgrad85",
+            "display_name": "EXP-176 / paired hard-retention PCGrad",
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-paired-pcgrad-"
+                f"{suffix}/v1"
+            ),
+            "question": (
+                "Does paired gradient-conflict surgery survive the same frozen "
+                "content and corruption gate?"
+            ),
+        }
+    if kind in {
         "jsut-retention-ema-fresh48",
         "jsut-retention-ema-hadou",
         "jsut-retention-ema-stress",
@@ -1584,6 +1624,10 @@ def _parser() -> argparse.ArgumentParser:
             "real-adversarial-ema-stress",
             "real-adversarial-ema-jsut",
             "real-adversarial-ema-expanded",
+            "paired-pcgrad-fresh48",
+            "paired-pcgrad-hadou",
+            "paired-pcgrad-stress",
+            "paired-pcgrad-jsut",
             "jsut-retention-ema-fresh48",
             "jsut-retention-ema-hadou",
             "jsut-retention-ema-stress",

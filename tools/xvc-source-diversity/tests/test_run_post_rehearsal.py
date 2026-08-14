@@ -127,7 +127,7 @@ def test_paired_pcgrad_has_distinct_listener_identity() -> None:
         post.PCGRAD_PAIRED_OPTIMIZER,
     )
 
-    assert policy["slug"] == "exp174"
+    assert policy["slug"] == "exp176"
     assert policy["candidate_id"] == "cv12-selective-pcgrad85"
     assert "all 170 sources and targets" in policy["independent_variable"]
 

@@ -1,4 +1,4 @@
-# EXP-174: paired hard-repair and retention PCGrad
+# EXP-176: paired hard-repair and retention PCGrad
 
 Status: admitted for one bounded gpu0 listen-now lane
 
@@ -41,4 +41,3 @@ on the first candidate-added gross failure or broad common-non-gross content
 regression. Auxiliary ASR screens content/corruption only; it cannot select
 naturalness, target identity, a keeper, or promotion. Do not tune projection,
 pairing, task weights, LR, scope, data ratio, or horizon from this result.
-

@@ -616,6 +616,32 @@ def test_real_adversarial_ema_expanded_policy_is_posthoc_exp168() -> None:
     assert "33 additional" in policy["question"]
 
 
+def test_paired_pcgrad_policies_follow_reserved_jsut_ids() -> None:
+    kinds = [
+        "paired-pcgrad-fresh48",
+        "paired-pcgrad-hadou",
+        "paired-pcgrad-stress",
+        "paired-pcgrad-jsut",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-177",
+        "EXP-178",
+        "EXP-179",
+        "EXP-180",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "cv12-selective-pcgrad85"
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert "paired-pcgrad-stress" in choices
+
+
 def test_jsut_retention_ema_policy_has_distinct_gate_identity() -> None:
     kinds = [
         "jsut-retention-ema-fresh48",

@@ -99,11 +99,11 @@ def listening_policy(
                 "paired PCGrad is admitted only for selective generative LoRA69"
             )
         return {
-            "slug": "exp174",
+            "slug": "exp176",
             "candidate_id": "cv12-selective-pcgrad85",
-            "candidate_name": "EXP-174 / paired hard-retention PCGrad",
-            "run_kind": "EXP-174 X-VC paired PCGrad external evaluation",
-            "result_kind": "liveconv-exp174-xvc-paired-pcgrad/v1",
+            "candidate_name": "EXP-176 / paired hard-retention PCGrad",
+            "run_kind": "EXP-176 X-VC paired PCGrad external evaluation",
+            "result_kind": "liveconv-exp176-xvc-paired-pcgrad/v1",
             "question": (
                 "Can gradient-conflict surgery preserve normal behavior while "
                 "repairing the frozen control69 hard failures?"
