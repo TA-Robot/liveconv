@@ -3836,7 +3836,7 @@ job queue.
 - Dependencies: commit `e29cb86`; X-VC runtime with matching PEFT 0.20.0.
 - Result: the first launch used the wrong lightweight Python and exited before
   CUDA load. After restoring the pinned X-VC runtime dependency, the committed
-  runner loaded the checkpoint but stopped with zero outputs because
+  runner loaded the checkpoint and produced 65 partial outputs before
   `LOANWORD128_078.wav` is 2.3 seconds, shorter than the exact 2.4-second model
   window.
 - Problems: the source freezer preserved official variable-length JSUT audio,
@@ -3845,3 +3845,20 @@ job queue.
 - Rework: preserve all 85 selected rows and add deterministic PCM windowing in
   the renderer: right-zero-pad short rows and use the leading 2.4 seconds of
   long rows. Do not replace the failing utterance or alter the selection.
+
+## 2026-08-14T01:58:00Z - EXP-170 JSUT teachers passed gross screen
+
+- Agent: `primary-integrator`.
+- Task: rerun all 85 frozen sources after deterministic window normalization,
+  then apply the existing source-relative ASR and gross-repetition diagnostic.
+- Dependencies: commit `5c0cf72`; exact control69 adapter; frozen source rows.
+- Result: 85/85 targets rendered in 88.97 seconds at 2.63 GiB peak CUDA.
+  Gross repetition was 0/85; source-relative distance mean 0.132, median 0.071,
+  with 5 rows at or above 0.5. The coarse ASR result is not naturalness or a
+  quality decision.
+- Problems: distance outliers include script-equivalent counters and possible
+  ASR/content changes. Dropping only those rows would be output-dependent
+  cherry-picking, so all precommitted non-gross rows stay together as one
+  method-level pilot.
+- Rework: bind EXP-150 hard85 unchanged and replace easy85 position-for-position;
+  run one smoke before the full EXP-171 training lane.

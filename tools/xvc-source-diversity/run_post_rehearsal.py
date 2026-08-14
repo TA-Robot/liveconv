@@ -40,6 +40,12 @@ from prepare_hard_negative_curriculum import (  # noqa: E402
 from prepare_hard_negative_curriculum import (  # noqa: E402
     OUTPUT_KIND as HARD_OUTPUT_KIND,
 )
+from prepare_jsut_retention_curriculum import (  # noqa: E402
+    EXPECTED_COMPOSITION as JSUT_EXPECTED_DOMAINS,
+)
+from prepare_jsut_retention_curriculum import (  # noqa: E402
+    OUTPUT_KIND as JSUT_RETENTION_OUTPUT_KIND,
+)
 from prepare_selective_retention_curriculum import (  # noqa: E402
     OUTPUT_KIND as SELECTIVE_OUTPUT_KIND,
 )
@@ -81,13 +87,35 @@ def listening_policy(
 
     if use_adapter_ema:
         if (
-            manifest_kind != SELECTIVE_OUTPUT_KIND
+            manifest_kind
+            not in {SELECTIVE_OUTPUT_KIND, JSUT_RETENTION_OUTPUT_KIND}
             or trainable_target != LORA69_TARGET
             or training_objective != REAL_REFERENCE_ADVERSARIAL_OBJECTIVE
         ):
             raise PostRehearsalError(
                 "adapter EMA is admitted only for selective real-adversarial LoRA69"
             )
+        if manifest_kind == JSUT_RETENTION_OUTPUT_KIND:
+            return {
+                "slug": "exp171",
+                "candidate_id": "cv12-jsut-retention-real-adversarial-ema170",
+                "candidate_name": (
+                    "EXP-171 / JSUT retention + real-adversarial + EMA"
+                ),
+                "run_kind": "EXP-171 X-VC JSUT retention external evaluation",
+                "result_kind": "liveconv-exp171-xvc-jsut-retention-ema/v1",
+                "question": (
+                    "Does category-balanced Japanese retention data improve the "
+                    "surviving EXP-163 method across independent frozen gates?"
+                ),
+                "independent_variable": (
+                    "only the easy85 retention source and frozen control69 target "
+                    "domain changes from EXP-163 Common Voice/Hadou/JVS rows to "
+                    "precommitted category-balanced JSUT; hard85, target IDs, "
+                    "updates, scope, objective, optimizer, clip, condition, and "
+                    "upstream EMA remain fixed"
+                ),
+            }
         return {
             "slug": "exp163",
             "candidate_id": "cv12-selective-real-adversarial-ema170",
@@ -229,18 +257,28 @@ def listening_policy(
 
 
 def load_manifest(
-    path: Path, source_work: Path, control_work: Path | None = None
+    path: Path,
+    source_work: Path,
+    control_work: Path | None = None,
+    diverse_work: Path | None = None,
 ) -> dict[str, Any]:
     value = load_json(path)
     items = value.get("items")
     kind = value.get("kind")
-    expected_domains = (
-        HARD_EXPECTED_DOMAINS
-        if kind in {HARD_OUTPUT_KIND, SELECTIVE_OUTPUT_KIND}
-        else EXPECTED_DOMAINS
-    )
+    if kind == JSUT_RETENTION_OUTPUT_KIND:
+        expected_domains = JSUT_EXPECTED_DOMAINS
+    elif kind in {HARD_OUTPUT_KIND, SELECTIVE_OUTPUT_KIND}:
+        expected_domains = HARD_EXPECTED_DOMAINS
+    else:
+        expected_domains = EXPECTED_DOMAINS
     if (
-        kind not in {OUTPUT_KIND, HARD_OUTPUT_KIND, SELECTIVE_OUTPUT_KIND}
+        kind
+        not in {
+            OUTPUT_KIND,
+            HARD_OUTPUT_KIND,
+            SELECTIVE_OUTPUT_KIND,
+            JSUT_RETENTION_OUTPUT_KIND,
+        }
         or value.get("composition") != expected_domains
         or not isinstance(items, list)
         or len(items) != EXPECTED_ROWS
@@ -270,16 +308,30 @@ def load_manifest(
             or not base._is_sha256(item.get("source_sha256"))
             or not base._is_sha256(item.get("target_sha256"))
             or not isinstance(item.get("source_relative_distance"), (int, float))
-            or float(item["source_relative_distance"]) >= 0.5
+            or (
+                kind != JSUT_RETENTION_OUTPUT_KIND
+                and float(item["source_relative_distance"]) >= 0.5
+            )
         ):
             raise PostRehearsalError("clean rehearsal identity drifted")
-        if kind in {HARD_OUTPUT_KIND, SELECTIVE_OUTPUT_KIND} and (
+        if kind in {
+            HARD_OUTPUT_KIND,
+            SELECTIVE_OUTPUT_KIND,
+            JSUT_RETENTION_OUTPUT_KIND,
+        } and (
             item.get("curriculum_role") not in {"hard", "easy"}
             or not isinstance(item.get("source_manifest_id"), str)
         ):
             raise PostRehearsalError("hard curriculum identity drifted")
+        source_root = (
+            diverse_work
+            if item.get("source_root") == "diverse-work"
+            else source_work
+        )
+        if source_root is None:
+            raise PostRehearsalError("diverse retention work is required")
         target_root = source_work
-        if kind == SELECTIVE_OUTPUT_KIND:
+        if kind in {SELECTIVE_OUTPUT_KIND, JSUT_RETENTION_OUTPUT_KIND}:
             learning_target = item.get("learning_target")
             base_target_file = item.get("base_teacher_target_file")
             expected_target = (
@@ -287,31 +339,49 @@ def load_manifest(
                 if item.get("curriculum_role") == "hard"
                 else RETENTION_TARGET
             )
-            expected_root = (
-                "source-work" if learning_target == REPAIR_TARGET else "control-work"
+            expected_root = "source-work"
+            if learning_target == RETENTION_TARGET:
+                expected_root = (
+                    "diverse-work"
+                    if kind == JSUT_RETENTION_OUTPUT_KIND
+                    else "control-work"
+                )
+            requires_base_target = (
+                kind == SELECTIVE_OUTPUT_KIND or learning_target == REPAIR_TARGET
             )
             if (
                 learning_target != expected_target
                 or item.get("target_root") != expected_root
-                or not base._is_sha256(item.get("base_teacher_target_sha256"))
-                or not isinstance(base_target_file, str)
-                or Path(base_target_file).is_absolute()
-                or ".." in Path(base_target_file).parts
             ):
                 raise PostRehearsalError("selective learning-target identity drifted")
-            base_target = source_work / base_target_file
-            if (
-                base_target.is_symlink()
-                or not base_target.is_file()
-                or sha256_file(base_target) != item["base_teacher_target_sha256"]
-            ):
-                raise PostRehearsalError("base repair target drifted")
+            if requires_base_target:
+                if (
+                    not base._is_sha256(item.get("base_teacher_target_sha256"))
+                    or not isinstance(base_target_file, str)
+                    or Path(base_target_file).is_absolute()
+                    or ".." in Path(base_target_file).parts
+                ):
+                    raise PostRehearsalError(
+                        "selective base-target identity drifted"
+                    )
+                base_target = source_work / base_target_file
+                if (
+                    base_target.is_symlink()
+                    or not base_target.is_file()
+                    or sha256_file(base_target)
+                    != item["base_teacher_target_sha256"]
+                ):
+                    raise PostRehearsalError("base repair target drifted")
             if learning_target == RETENTION_TARGET:
-                if control_work is None:
-                    raise PostRehearsalError("control retention work is required")
-                target_root = control_work
+                target_root = (
+                    diverse_work
+                    if kind == JSUT_RETENTION_OUTPUT_KIND
+                    else control_work
+                )
+                if target_root is None:
+                    raise PostRehearsalError("retention work is required")
         for audio, digest in (
-            (source_work / source_file, item["source_sha256"]),
+            (source_root / source_file, item["source_sha256"]),
             (target_root / target_file, item["target_sha256"]),
         ):
             if (
@@ -332,7 +402,10 @@ def validate_inputs(
     arguments: argparse.Namespace,
 ) -> tuple[dict[str, Any], dict[str, Any], list[tuple[str, Path, str]]]:
     manifest = load_manifest(
-        arguments.training_manifest, arguments.source_work, arguments.control_work
+        arguments.training_manifest,
+        arguments.source_work,
+        arguments.control_work,
+        arguments.diverse_work,
     )
     listening_policy(
         str(manifest["kind"]),
@@ -383,15 +456,23 @@ def _batch_from_item(
     *,
     source_work: Path,
     control_work: Path | None,
+    diverse_work: Path | None,
     process_audio: Any,
     config: Mapping[str, Any],
     torch: Any,
     device: Any,
 ) -> dict[str, Any]:
-    source_path = source_work / str(item["source_file"])
-    target_root = (
-        control_work if item.get("target_root") == "control-work" else source_work
+    source_root = (
+        diverse_work if item.get("source_root") == "diverse-work" else source_work
     )
+    if source_root is None:
+        raise PostRehearsalError("diverse retention work is required")
+    source_path = source_root / str(item["source_file"])
+    target_root = source_work
+    if item.get("target_root") == "control-work":
+        target_root = control_work
+    elif item.get("target_root") == "diverse-work":
+        target_root = diverse_work
     if target_root is None:
         raise PostRehearsalError("control retention work is required")
     target_path = target_root / str(item["target_file"])
@@ -709,6 +790,7 @@ def run(
             item,
             source_work=arguments.source_work,
             control_work=arguments.control_work,
+            diverse_work=arguments.diverse_work,
             process_audio=process_audio,
             config=config,
             torch=torch,
@@ -956,6 +1038,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--training-manifest", type=Path, required=True)
     value.add_argument("--source-work", type=Path, required=True)
     value.add_argument("--control-work", type=Path)
+    value.add_argument("--diverse-work", type=Path)
     value.add_argument("--evaluation-set", type=Path, required=True)
     value.add_argument("--source-root", type=Path, required=True)
     value.add_argument("--pair-root", type=Path, required=True)

@@ -109,6 +109,21 @@ def test_upstream_ema_policy_changes_reported_adapter_state() -> None:
     assert "EMA" in policy["independent_variable"]
 
 
+def test_jsut_retention_changes_only_easy_data_identity() -> None:
+    policy = post.listening_policy(
+        post.JSUT_RETENTION_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp171"
+    assert policy["candidate_id"] == (
+        "cv12-jsut-retention-real-adversarial-ema170"
+    )
+    assert "easy85" in policy["independent_variable"]
+
+
 def test_adapter_ema_matches_pinned_default_update_schedule() -> None:
     import torch
 

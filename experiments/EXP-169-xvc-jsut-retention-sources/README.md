@@ -27,3 +27,9 @@ source-relative ASR/gross-repetition screen before a curriculum is admitted.
 Sources shorter than X-VC's 2.4-second model window are right-zero-padded, and
 longer sources use the leading 2.4 seconds, matching the existing runner's
 window. The frozen source row is not replaced after preprocessing.
+
+The admitted EXP-171 curriculum keeps all EXP-150 hard positions byte-identical
+and replaces each easy position with the preassigned JSUT source and its frozen
+control69 target. Real-reference adversarial training and upstream EMA remain
+unchanged from EXP-163. Independent gates, rather than JSUT24 alone, decide
+whether the branch is technically retained.
