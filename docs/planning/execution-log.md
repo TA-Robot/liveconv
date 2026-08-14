@@ -4811,3 +4811,43 @@ job queue.
 - Rework: commit this one fixed composition, run a two-row real backward smoke,
   then one 170-update GPU lane and all five screens. Do not sweep corpus ratios,
   counts, order, target pairing, weight, frontend, scope, LR, horizon, or EMA.
+
+## 2026-08-14T07:50:25Z - Grok progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux `liveconv-grok-auditor`.
+- Task: independent 30-minute direction, evaluation-cost, and GPU-idle audit.
+- Result: `CONTINUE`. It accepted the correction that the tongue-twister is not
+  ChatGPT input, the five fixed broad surfaces, and the single fixed
+  CV48/JSUT85/JVS3/Hadou34 data hypothesis. It rejected corpus-ratio/count/order
+  sweeps, old output-cycle neighbors, review ceremony, and human-wait GPU idle.
+- Problems: the snapshot was assembled from state just before the two-row smoke
+  and 170-update launch, so it reported GPU 0% and instructed the already
+  executing action. It could not observe operator localStorage by design.
+- Rework: verdict adopted. The smoke, 170 updates, five renders, and five coarse
+  screens completed from commit `2830fc3`; no extra admission work or parallel
+  training lane was inserted.
+
+## 2026-08-14T08:00:00Z - EXP-213--217 cross-corpus bundle completed
+
+- Agent: `primary-integrator`.
+- Task: train the fixed cross-corpus source method once and publish/screen its
+  unchanged EMA checkpoint on all five prebound evaluation surfaces.
+- Dependencies: commit `2830fc3`; 231 focused tests; `make control-check`;
+  curriculum SHA-256
+  `44d2ba9c03d44437711c7b7d359f519672dca32696ba73b3fcd178b07024b931`.
+- Result: the real two-row smoke was finite and matched the detached Whisper
+  path within `0.00014424`. Training completed 170 updates in 152.44 seconds at
+  5,875,919,872 peak allocated bytes. The EMA adapter SHA-256 is
+  `006e369c270fc00eab4f15115935332c90bb138e231799547e97685f6b9597f5`.
+  Published 850 WAVs to 8878. On exact cross-arm common-stable rows, source
+  distance moved external7 `0.256 -> 0.254`, fresh48 `0.208 -> 0.214`, Hadou31
+  `0.133 -> 0.091`, stress60 `0.221 -> 0.185`, and JSUT24 `0.115 -> 0.134`.
+  Noise20 improved `0.271 -> 0.163`; tempo1.2 regressed `0.262 -> 0.280`.
+- Problems: ordinary JSUT basic rows regressed and pointwise cycle content still
+  fails to retain tempo. Auxiliary ASR cannot establish naturalness or target
+  identity. Fresh48 retains the two gross loops already present in control69,
+  but adds none; EXP-208's new low-information loop did not recur.
+- Rework: retain the checkpoint as an unheard technical survivor, not a winner.
+  Close corpus ratio/count/schedule neighbors. A next independent lane may test
+  an explicit anti-collapse content architecture while holding this exact data,
+  targets, updates, and evaluation contract fixed.

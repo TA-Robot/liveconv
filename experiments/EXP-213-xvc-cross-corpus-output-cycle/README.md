@@ -1,6 +1,6 @@
 # EXP-213: X-VC cross-corpus unpaired output cycle
 
-Status: Admitted listen-now training pilot; not selected
+Status: Completed listen-now training pilot; technical survivor, not selected
 
 ## Goal
 
@@ -70,3 +70,32 @@ It contains 48 Common Voice, 85 JSUT, three JVS, and 34 Hadou source windows,
 paired with the unchanged 170-target Amitaro multiset. Focused policy,
 materializer, runner, and render tests passed `97/97`; exact CPU admission
 reported 170 training rows and seven external evaluation rows.
+
+The real two-row backward smoke matched the detached Whisper path with maximum
+hidden-state difference `0.00014424` under the fixed `0.001` tolerance. Both
+updates were finite, with 835,584 trainable parameters and 5,366,944,768 peak
+allocated GPU bytes.
+
+## Result
+
+Commit `2830fc3` completed 170 updates in 152.44 seconds at 5,875,919,872
+peak allocated bytes. The EMA adapter SHA-256 is
+`006e369c270fc00eab4f15115935332c90bb138e231799547e97685f6b9597f5`.
+The unchanged checkpoint produced 35 external7, 240 fresh48, 155 Hadou31, 300
+stress60, and 120 balanced-JSUT24 WAVs on port 8878: 850 total.
+
+On rows stable and non-gross in both control69 and the candidate,
+source-relative distance moved external7 `0.256 -> 0.254` (`1/2/2`), fresh48
+`0.208 -> 0.214` (`5/25/6`), Hadou31 `0.133 -> 0.091` (`7/16/2`), stress60
+`0.221 -> 0.185` (`11/27/7`), and JSUT24 `0.115 -> 0.134` (`2/18/2`).
+Noise20 improved `0.271 -> 0.163`; tempo1.2 remained worse at
+`0.262 -> 0.280`, and ordinary JSUT basic rows regressed.
+
+Fresh48's two consensus gross rows are the same control69 failures
+`cv30615849f` and `cv39087839f`; this candidate added none and removed none.
+No other fixed surface contained a consensus gross row. The source-diversity
+hypothesis therefore removes EXP-208's candidate-added low-information loop and
+retains substantial Hadou/noise signal, but does not solve tempo or broad JSUT
+retention. Keep this checkpoint as an unheard technical survivor. It is not a
+machine-selected winner and no naturalness, voice-identity, or emotion claim is
+made.

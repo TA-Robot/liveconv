@@ -230,6 +230,8 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-213 fixed CV48 + JSUT85 + JVS3 + Hadou34 source curriculum
         -> EXP-214--217 prebound fresh48 / Hadou31 / stress60 / JSUT24
         -> one unchanged output-cycle checkpoint; no corpus-ratio/count sweep
+        -> 850 WAVs; no candidate-added gross row, Hadou/noise improve, tempo/JSUT remain mixed
+        -> cross-corpus checkpoint retained as an unheard technical survivor
         -> operator hearing when available
 ```
 
