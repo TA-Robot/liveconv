@@ -356,6 +356,9 @@ def _adversarial_update(
         Callable[[], tuple[Any, Mapping[str, float]]] | None
     ) = None,
     generator_training_setter: Callable[[Any], Sequence[Any]] | None = None,
+    output_regularizer: (
+        Callable[[Any, Mapping[str, Any]], tuple[Any, Mapping[str, float]]] | None
+    ) = None,
 ) -> dict[str, float]:
     setter = generator_training_setter or base._set_adapter_training_only
     setter(trained)
@@ -412,7 +415,23 @@ def _adversarial_update(
                 torch=torch,
                 label="X-VC generator regularizer",
             )
-        total_loss = generator_loss + adversarial_loss + regularizer_loss
+        output_regularizer_loss = generator_loss.new_zeros(())
+        output_regularizer_metrics: Mapping[str, float] = {}
+        if output_regularizer is not None:
+            output_regularizer_loss, output_regularizer_metrics = output_regularizer(
+                reconstruction, batch
+            )
+            output_regularizer_loss = _finite_loss(
+                output_regularizer_loss,
+                torch=torch,
+                label="X-VC output regularizer",
+            )
+        total_loss = (
+            generator_loss
+            + adversarial_loss
+            + regularizer_loss
+            + output_regularizer_loss
+        )
     total_loss.backward()
     generator_norm = torch.nn.utils.clip_grad_norm_(
         trainable, base.GRADIENT_CLIP_NORM
@@ -432,6 +451,9 @@ def _adversarial_update(
     }
     metrics.update(
         {str(key): float(value) for key, value in regularizer_metrics.items()}
+    )
+    metrics.update(
+        {str(key): float(value) for key, value in output_regularizer_metrics.items()}
     )
     return metrics
 

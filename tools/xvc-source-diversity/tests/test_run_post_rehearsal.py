@@ -259,6 +259,24 @@ def test_parameter_anchor_requires_exact_exp163_baseline() -> None:
             raise AssertionError("unsupported parameter anchor policy admitted")
 
 
+def test_source_activity_envelope_changes_only_exp186_objective_identity() -> None:
+    policy = post.listening_policy(
+        post.COMMONVOICE_RETENTION_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
+        True,
+        post.SEQUENTIAL_OPTIMIZER,
+        False,
+        True,
+    )
+
+    assert policy["slug"] == "exp196"
+    assert policy["candidate_id"] == (
+        "cv12-commonvoice48-source-envelope-real-adversarial-ema170"
+    )
+    assert "20 ms/10 ms" in policy["independent_variable"]
+
+
 def test_paired_pcgrad_rejects_ema_or_other_curriculum() -> None:
     for manifest_kind, use_ema in (
         (post.SELECTIVE_OUTPUT_KIND, True),
@@ -360,6 +378,27 @@ def test_parameter_anchor_regularizer_uses_control69_distance() -> None:
         "parameter_anchor_squared_distance": 5.0,
     }
     assert torch.equal(parameters[0].grad, torch.tensor([2.0, -4.0]))
+
+
+def test_source_activity_envelope_ignores_gain_but_penalizes_timing() -> None:
+    import torch
+
+    source = torch.zeros(1, 1, 38400)
+    source[..., 8000:24000] = 0.5
+    same_timing = source * 0.2
+    shifted = torch.zeros_like(source)
+    shifted[..., 12000:28000] = 0.1
+
+    same_loss, _ = post.source_activity_envelope_regularizer(
+        same_timing, {"source_wav": source}, torch=torch
+    )
+    shifted_loss, shifted_metrics = post.source_activity_envelope_regularizer(
+        shifted, {"source_wav": source}, torch=torch
+    )
+
+    assert float(same_loss) < 1e-5
+    assert float(shifted_loss) > 1.0
+    assert shifted_metrics["source_activity_envelope_distance"] > 0.1
 
 
 def test_jsut_smoke_exercises_hard_and_diverse_easy_roots() -> None:

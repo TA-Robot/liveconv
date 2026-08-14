@@ -88,6 +88,10 @@ EMA_POWER = 2.0 / 3.0
 EMA_MIN_VALUE = 0.0
 PARAMETER_ANCHOR_COEFFICIENT = 1.0
 PARAMETER_ANCHOR_IMPLEMENTATION = "l2-sp-control69-trainable-parameters/v1"
+SOURCE_ACTIVITY_ENVELOPE_WEIGHT = 10.0
+SOURCE_ACTIVITY_ENVELOPE_IMPLEMENTATION = (
+    "normalized-abs-envelope-20ms-window-10ms-hop/v1"
+)
 DIVERSE_RETENTION_KINDS = {
     JSUT_RETENTION_OUTPUT_KIND,
     COMMONVOICE_RETENTION_OUTPUT_KIND,
@@ -106,9 +110,45 @@ def listening_policy(
     use_adapter_ema: bool = False,
     optimizer_mode: str = SEQUENTIAL_OPTIMIZER,
     parameter_anchor: bool = False,
+    source_activity_envelope: bool = False,
 ) -> dict[str, str]:
     """Return the complete shared-listener identity for the admitted method."""
 
+    if source_activity_envelope:
+        if (
+            manifest_kind != COMMONVOICE_RETENTION_OUTPUT_KIND
+            or trainable_target != LORA69_TARGET
+            or training_objective != REAL_REFERENCE_ADVERSARIAL_OBJECTIVE
+            or not use_adapter_ema
+            or optimizer_mode != SEQUENTIAL_OPTIMIZER
+            or parameter_anchor
+        ):
+            raise PostRehearsalError(
+                "source activity envelope is admitted only for EXP-186"
+            )
+        return {
+            "slug": "exp196",
+            "candidate_id": (
+                "cv12-commonvoice48-source-envelope-real-adversarial-ema170"
+            ),
+            "candidate_name": (
+                "EXP-196 / Common Voice 48-speaker retention / source activity "
+                "envelope / real-adversarial / EMA"
+            ),
+            "run_kind": "EXP-196 X-VC source-envelope retention evaluation",
+            "result_kind": "liveconv-exp196-xvc-source-envelope-retention-ema/v1",
+            "question": (
+                "Can an explicit source speech-activity timing objective reduce "
+                "tempo and leading-silence forgetting?"
+            ),
+            "independent_variable": (
+                "only a fixed weight-10 L1 penalty between per-utterance-normalized "
+                "20 ms/10 ms source and converted absolute-amplitude envelopes is "
+                "added; EXP-186 data, targets, control69 LoRA69 initialization, "
+                "real-reference adversarial objective, 170 updates, LR, optimizer, "
+                "clip, zero condition, and upstream EMA remain fixed"
+            ),
+        }
     if parameter_anchor:
         if (
             manifest_kind != SELECTIVE_OUTPUT_KIND
@@ -592,6 +632,7 @@ def validate_inputs(
         arguments.adapter_ema,
         arguments.optimizer_mode,
         arguments.parameter_anchor,
+        arguments.source_activity_envelope,
     )
     evaluation = breadth._load_manifest(
         arguments.evaluation_set,
@@ -1019,6 +1060,50 @@ def parameter_anchor_regularizer(
     }
 
 
+def source_activity_envelope_regularizer(
+    reconstruction: Any,
+    batch: Mapping[str, Any],
+    *,
+    torch: Any,
+    weight: float = SOURCE_ACTIVITY_ENVELOPE_WEIGHT,
+) -> tuple[Any, dict[str, float]]:
+    """Preserve source speech-activity timing without matching source timbre."""
+
+    source = batch.get("source_wav")
+    if (
+        source is None
+        or reconstruction.ndim != 3
+        or source.ndim != 3
+        or reconstruction.shape[:2] != source.shape[:2]
+        or reconstruction.shape[-1] > source.shape[-1]
+        or weight <= 0.0
+    ):
+        raise PostRehearsalError("source activity envelope identity drifted")
+    source = source[..., : reconstruction.shape[-1]].float()
+    converted = reconstruction.float()
+    source_envelope = torch.nn.functional.avg_pool1d(
+        source.abs(), kernel_size=320, stride=160
+    )
+    converted_envelope = torch.nn.functional.avg_pool1d(
+        converted.abs(), kernel_size=320, stride=160
+    )
+    epsilon = 1e-4
+    source_envelope = source_envelope / source_envelope.mean(
+        dim=-1, keepdim=True
+    ).clamp_min(epsilon)
+    converted_envelope = converted_envelope / converted_envelope.mean(
+        dim=-1, keepdim=True
+    ).clamp_min(epsilon)
+    distance = torch.nn.functional.l1_loss(converted_envelope, source_envelope)
+    loss = distance * weight
+    if not bool(torch.isfinite(loss)):
+        raise PostRehearsalError("source activity envelope loss is non-finite")
+    return loss, {
+        "source_activity_envelope_distance": float(distance.detach().cpu()),
+        "source_activity_envelope_loss": float(loss.detach().cpu()),
+    }
+
+
 def run(
     arguments: argparse.Namespace,
     manifest: Mapping[str, Any],
@@ -1039,6 +1124,7 @@ def run(
         arguments.adapter_ema,
         arguments.optimizer_mode,
         arguments.parameter_anchor,
+        arguments.source_activity_envelope,
     )
 
     import torch
@@ -1236,6 +1322,19 @@ def run(
                             )
                         )
                         if arguments.trainable_target == SOURCE36_TARGET
+                        else None
+                    ),
+                    output_regularizer=(
+                        (
+                            lambda reconstruction, current_batch: (
+                                source_activity_envelope_regularizer(
+                                    reconstruction,
+                                    current_batch,
+                                    torch=torch,
+                                )
+                            )
+                        )
+                        if arguments.source_activity_envelope
                         else None
                     ),
                 )
@@ -1439,6 +1538,20 @@ def run(
             if arguments.parameter_anchor
             else None
         ),
+        "source_activity_envelope": (
+            {
+                "implementation": SOURCE_ACTIVITY_ENVELOPE_IMPLEMENTATION,
+                "weight": SOURCE_ACTIVITY_ENVELOPE_WEIGHT,
+                "first_distance": adversarial_metrics[0][
+                    "source_activity_envelope_distance"
+                ],
+                "last_distance": adversarial_metrics[-1][
+                    "source_activity_envelope_distance"
+                ],
+            }
+            if arguments.source_activity_envelope
+            else None
+        ),
         "adapter_ema": adapter_ema.receipt() if adapter_ema is not None else None,
         "candidate_checkpoint": checkpoint_metadata,
         "optimizer_steps": optimizer_steps,
@@ -1535,6 +1648,7 @@ def parser() -> argparse.ArgumentParser:
     )
     value.add_argument("--adapter-ema", action="store_true")
     value.add_argument("--parameter-anchor", action="store_true")
+    value.add_argument("--source-activity-envelope", action="store_true")
     value.add_argument("--xvc-source-root", type=Path, required=True)
     value.add_argument("--xvc-config", type=Path, required=True)
     value.add_argument("--checkpoint", type=Path, required=True)

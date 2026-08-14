@@ -4501,3 +4501,22 @@ job queue.
 - Rework: close source36 after the fixed 335 WAVs. Do not try adjacent placement
   scopes. Select a different mechanism that directly expresses the product's
   source-timing preservation rule rather than another data or scope variant.
+
+## 2026-08-14T05:37:00Z - EXP-196--197 source timing objective prepared
+
+- Agent: `primary-integrator`.
+- Task: turn the open source-timing product rule into one bounded retraining
+  mechanism and freeze its evaluation contract before using CUDA.
+- Dependencies: closed EXP-186 data family and EXP-194 placement family; the
+  recurring stress60 tempo/silence residual; no human hearing availability.
+- Result: selected one fixed weight-10 L1 penalty between normalized 20 ms/10 ms
+  source and converted activity envelopes. EXP-186 data, LoRA69 scope,
+  adversarial/EMA method, updates, LR, optimizer, clip, and zero condition remain
+  fixed. External7 and stress60 are both prebound before training.
+- Problems: this waveform envelope is a coarse timing prior, not a phonetic,
+  naturalness, identity, or quality objective. It may trade timbre detail for
+  activity alignment, and machine screens cannot judge that trade.
+- Rework: commit and run one finite smoke plus one 170-update lane, then publish
+  both fixed evaluation surfaces and close. Do not sweep loss weight/window/hop,
+  add evaluation sets after seeing results, or return to the obsolete 8.17-second
+  tongue-twister target.

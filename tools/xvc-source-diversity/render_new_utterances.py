@@ -1135,6 +1135,24 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "pitch, silence, and tempo behavior?"
             ),
         }
+    if kind == "source-envelope-retention-ema-stress":
+        return {
+            "experiment_id": "EXP-197",
+            "variant_id": (
+                "cv12-commonvoice48-source-envelope-real-adversarial-ema170"
+            ),
+            "display_name": (
+                "EXP-196 / source activity envelope retention + "
+                "real-adversarial + EMA"
+            ),
+            "result_kind": (
+                "liveconv-exp-197-xvc-source-envelope-retention-ema-stress60/v1"
+            ),
+            "question": (
+                "Does explicit source activity-envelope retention preserve "
+                "frozen clean, noise, pitch, silence, and tempo behavior?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1772,6 +1790,7 @@ def _parser() -> argparse.ArgumentParser:
             "conditioned-retention-ema-fresh48",
             "conditioned-retention-ema-stress",
             "source36-retention-ema-stress",
+            "source-envelope-retention-ema-stress",
         ),
         default="speaker7",
     )
