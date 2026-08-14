@@ -5836,3 +5836,32 @@ job queue.
   diagnostics are limited to corruption/content and did not select quality.
 - Rework: no identity cleanup, new evaluation design, dropout sweep, or audible
   winner claim. Commit the closure and replan from exact losing rows.
+
+## 2026-08-14T16:39:00Z - EXP-285 continuous acoustic pilot prepared
+
+- Agent: `primary-integrator`; two bounded implementation agents owned the
+  runner and broad renderer separately, with read-only failure, architecture,
+  and primary-source research in parallel.
+- Task: test whether the frozen 16,384-way acoustic nearest-code boundary, not
+  the presence of the acoustic branch itself, limits unseen-condition robustness.
+- Dependencies: EXP-238 technical survivor; EXP-279 broad closure commit
+  `8e2d19a`; unchanged CV48/JSUT85/JVS3/Hadou34 pseudoparallel curriculum and
+  six fixed evaluation surfaces.
+- Result: EXP-285 changes only `zq_a`: at training and candidate inference the
+  quantizer's first output becomes
+  `out_project(in_project(acoustic_encoder_out))`; its indices, VQ bookkeeping,
+  all frozen weights, control69 LoRA69 initialization/scope, losses, LR, 170
+  updates, discriminator, and EMA remain fixed. EXP-286--290 renderer identities
+  are prebound but not admitted before external7.
+- Result: read-only GPU probes across clean, noise, silence, tempo, pitch, and
+  the EXP-279 expanded outlier showed matching `(1, 1024, 120)` shapes, finite
+  nonzero values, continuous/quantized RMS ratio `1.131306--1.225896`, and
+  cosine `0.932890--0.948859`; peak allocation was 2,544,361,984 bytes.
+- Validation: 134 combined runner/renderer tests pass with the X-VC runtime
+  packages on `PYTHONPATH`; Ruff and diff checks pass.
+- Problems: the plain test venv lacks Torch, while system Python lacks
+  `safetensors`; this is an environment split, not a code failure. The combined
+  invocation used the pinned X-VC site-packages with system pytest.
+- Rework: commit before CUDA. Run exact CPU admission and one train-forward plus
+  one inference-forward smoke. Stop before the full lane on shape, finite,
+  nonzero, gradient, loss, call-count, or RMS-ratio failure.

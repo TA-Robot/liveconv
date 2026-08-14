@@ -126,6 +126,9 @@ PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE = (
 PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE = (
     "pseudoparallel-generative-real-adversarial-acoustic-code-dropout"
 )
+PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE = (
+    "pseudoparallel-generative-real-adversarial-continuous-acoustic"
+)
 PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE = (
     "pseudoparallel-generative-real-adversarial-output-speaker"
 )
@@ -167,6 +170,9 @@ LATENT_SOURCE_SPEAKER_MARGIN_IMPLEMENTATION = (
 )
 ACOUSTIC_CODE_DROPOUT_IMPLEMENTATION = (
     "alternating-odd-row-zero-quantized-source-acoustic-code/v1"
+)
+CONTINUOUS_ACOUSTIC_IMPLEMENTATION = (
+    "projected-pre-vq-continuous-source-acoustic/v1"
 )
 SPEAKER_CONDITION_DIMENSION = 192
 SPEAKER_CONDITION_CALIBRATOR_KIND = (
@@ -257,6 +263,7 @@ def listening_policy(
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
             PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
+            PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
             PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
@@ -270,6 +277,7 @@ def listening_policy(
                 PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
                 PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
                 PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
+                PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
                 PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
                 PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
                 PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
@@ -284,12 +292,20 @@ def listening_policy(
             )
         if (
             manifest_kind == SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND
+            and training_objective == PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE
+        ):
+            raise PostRehearsalError(
+                "continuous acoustic latent requires the retained EXP-238 curriculum"
+            )
+        if (
+            manifest_kind == SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND
             and training_objective
             in {
                 PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
                 PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
                 PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
                 PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
+                PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
             }
         ):
             raise PostRehearsalError(
@@ -319,6 +335,42 @@ def listening_policy(
                     "control69 LoRA69 initialization, complete generative and real "
                     "adversarial losses, LR, sequential optimizer, 170 updates, "
                     "gradient clip, zero condition, and EMA remain fixed"
+                ),
+            }
+        if training_objective == PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE:
+            return {
+                "slug": "exp285",
+                "candidate_id": (
+                    "cross-corpus170-pseudoparallel-continuous-acoustic-"
+                    "real-adv-ema170"
+                ),
+                "candidate_name": (
+                    "EXP-285 / source-aligned targets / continuous pre-VQ "
+                    "acoustic latent / EMA"
+                ),
+                "run_kind": (
+                    "EXP-285 X-VC pseudoparallel continuous-acoustic evaluation"
+                ),
+                "result_kind": (
+                    "liveconv-exp285-xvc-pseudoparallel-continuous-acoustic-ema/v1"
+                ),
+                "question": (
+                    "Does replacing quantized source acoustics with the frozen "
+                    "quantizer's projected continuous pre-VQ latent improve "
+                    "robust X-VC conversion?"
+                ),
+                "independent_variable": (
+                    "relative to EXP-238, only the source representation changes: "
+                    "at both training and inference the quantized source acoustic "
+                    "output is replaced by the frozen quantizer's projected "
+                    "continuous pre-VQ representation out_project(in_project("
+                    "acoustic_encoder_out)); quantizer outputs and bookkeeping "
+                    "remain intact; the exact CV48/JSUT85/JVS3/Hadou34 curriculum, "
+                    "source-aligned control69 teacher targets, assigned real "
+                    "Amitaro adversarial targets, control69 LoRA69 initialization "
+                    "and scope, complete losses, LR, sequential 170 updates, "
+                    "clip, zero frame condition, discriminator, and EMA remain "
+                    "fixed"
                 ),
             }
         if training_objective == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE:
@@ -1885,6 +1937,114 @@ def attach_acoustic_code_dropout(model: Any, *, torch: Any) -> Any:
     return wrapped
 
 
+def attach_continuous_acoustic_latent(model: Any, *, torch: Any) -> Any:
+    """Use the frozen quantizer's projected pre-VQ latent at every forward.
+
+    The wrapped quantizer still runs normally, so indices, commitment/codebook
+    losses, perplexity, and cluster bookkeeping remain the X-VC checkpoint's
+    own values.  Only the first returned tensor (``zq_a``) is replaced by
+    ``out_project(in_project(acoustic_encoder_out))``.  The wrapper is left
+    installed after training so the candidate's evaluation inference uses the
+    exact same source representation.
+    """
+
+    xvc = _base_xvc(model)
+    quantizer = getattr(xvc, "acoustic_quantizer", None)
+    if quantizer is None or hasattr(quantizer, "continuous_acoustic_latent"):
+        raise PostRehearsalError("acoustic quantizer topology drifted")
+    in_project = getattr(quantizer, "in_project", None)
+    out_project = getattr(quantizer, "out_project", None)
+    if not callable(in_project) or not callable(out_project):
+        raise PostRehearsalError("continuous acoustic projections are unavailable")
+
+    class ContinuousAcousticLatent(torch.nn.Module):
+        def __init__(self, base_quantizer: Any) -> None:
+            super().__init__()
+            self.base_quantizer = base_quantizer
+            self.continuous_acoustic_latent = CONTINUOUS_ACOUSTIC_IMPLEMENTATION
+            self.call_count = 0
+            self.last_quantized_nonzero = 0
+            self.last_continuous_nonzero = 0
+            self.last_quantized_rms = 0.0
+            self.last_continuous_rms = 0.0
+            self.last_rms_ratio = 0.0
+
+        def diagnostics(self) -> dict[str, float | int | str]:
+            return {
+                "implementation": CONTINUOUS_ACOUSTIC_IMPLEMENTATION,
+                "call_count": self.call_count,
+                "quantized_nonzero": self.last_quantized_nonzero,
+                "continuous_nonzero": self.last_continuous_nonzero,
+                "quantized_rms": self.last_quantized_rms,
+                "continuous_rms": self.last_continuous_rms,
+                "rms_ratio": self.last_rms_ratio,
+            }
+
+        def forward(self, *args: Any, **kwargs: Any) -> Any:
+            if args:
+                acoustic_encoder_out = args[0]
+            else:
+                acoustic_encoder_out = kwargs.get("z")
+            if acoustic_encoder_out is None or not hasattr(
+                acoustic_encoder_out, "shape"
+            ):
+                raise PostRehearsalError("continuous acoustic input is malformed")
+            output = self.base_quantizer(*args, **kwargs)
+            if not isinstance(output, (tuple, list)) or not output:
+                raise PostRehearsalError("acoustic quantizer output drifted")
+            quantized = output[0]
+            if not hasattr(quantized, "shape"):
+                raise PostRehearsalError("quantized acoustic code is malformed")
+            try:
+                continuous = self.base_quantizer.out_project(
+                    self.base_quantizer.in_project(acoustic_encoder_out)
+                )
+            except Exception as error:
+                raise PostRehearsalError(
+                    "continuous acoustic projection failed"
+                ) from error
+            if continuous.shape != quantized.shape:
+                raise PostRehearsalError("continuous acoustic shape drifted")
+            if (
+                not bool(torch.isfinite(quantized).all())
+                or not bool(torch.isfinite(continuous).all())
+            ):
+                raise PostRehearsalError(
+                    "continuous acoustic representation is non-finite"
+                )
+            quantized_nonzero = int(torch.count_nonzero(quantized).detach().cpu())
+            continuous_nonzero = int(torch.count_nonzero(continuous).detach().cpu())
+            if quantized_nonzero <= 0:
+                raise PostRehearsalError("quantized acoustic representation is zero")
+            if continuous_nonzero <= 0:
+                raise PostRehearsalError("continuous acoustic representation is zero")
+            quantized_rms = torch.sqrt(torch.mean(torch.square(quantized)))
+            continuous_rms = torch.sqrt(torch.mean(torch.square(continuous)))
+            if (
+                not bool(torch.isfinite(quantized_rms))
+                or not bool(torch.isfinite(continuous_rms))
+                or not bool(quantized_rms > 0)
+                or not bool(continuous_rms > 0)
+            ):
+                raise PostRehearsalError("continuous acoustic RMS is invalid")
+            rms_ratio = continuous_rms / quantized_rms
+            if not bool(torch.isfinite(rms_ratio)) or not bool(rms_ratio > 0):
+                raise PostRehearsalError("continuous acoustic RMS ratio is invalid")
+            self.call_count += 1
+            self.last_quantized_nonzero = quantized_nonzero
+            self.last_continuous_nonzero = continuous_nonzero
+            self.last_quantized_rms = float(quantized_rms.detach().cpu())
+            self.last_continuous_rms = float(continuous_rms.detach().cpu())
+            self.last_rms_ratio = float(rms_ratio.detach().cpu())
+            values = list(output)
+            values[0] = continuous
+            return tuple(values) if isinstance(output, tuple) else values
+
+    wrapped = ContinuousAcousticLatent(quantizer)
+    xvc.acoustic_quantizer = wrapped
+    return wrapped
+
+
 def attach_speaker_condition_calibrator(model: Any, *, torch: Any) -> Any:
     """Insert one zero-delta speaker calibration before the frozen converter."""
 
@@ -2884,10 +3044,25 @@ def run(
         if arguments.smoke
         else manifest["items"]
     )
+    if (
+        arguments.smoke
+        and arguments.training_objective
+        == PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE
+    ):
+        # The smoke contract is exactly one train forward plus one inference
+        # forward, making wrapper coverage auditable without changing the 170-row
+        # admitted run.
+        rows = list(manifest["items"][:1])
     acoustic_code_dropout = (
         attach_acoustic_code_dropout(trained, torch=torch)
         if arguments.training_objective
         == PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE
+        else None
+    )
+    continuous_acoustic = (
+        attach_continuous_acoustic_latent(trained, torch=torch)
+        if arguments.training_objective
+        == PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE
         else None
     )
     acoustic_code_dropout_modes = (
@@ -2908,6 +3083,7 @@ def run(
         PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
         PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
         PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
+        PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
         PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
         PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
         PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
@@ -2921,6 +3097,7 @@ def run(
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
             PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
+            PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
             PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
@@ -2938,6 +3115,7 @@ def run(
                         PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
                         PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
                         PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
+                        PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
                         PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
                         PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
                         PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
@@ -3300,6 +3478,26 @@ def run(
                     metrics["acoustic_code_output_nonzero"] = float(
                         acoustic_code_dropout.last_output_nonzero
                     )
+                if continuous_acoustic is not None:
+                    continuous_metrics = continuous_acoustic.diagnostics()
+                    metrics["continuous_acoustic_call_count"] = float(
+                        continuous_metrics["call_count"]
+                    )
+                    metrics["continuous_acoustic_quantized_nonzero"] = float(
+                        continuous_metrics["quantized_nonzero"]
+                    )
+                    metrics["continuous_acoustic_nonzero"] = float(
+                        continuous_metrics["continuous_nonzero"]
+                    )
+                    metrics["continuous_acoustic_quantized_rms"] = float(
+                        continuous_metrics["quantized_rms"]
+                    )
+                    metrics["continuous_acoustic_rms"] = float(
+                        continuous_metrics["continuous_rms"]
+                    )
+                    metrics["continuous_acoustic_rms_ratio"] = float(
+                        continuous_metrics["rms_ratio"]
+                    )
                 if calibrator is not None:
                     delta_norm = float(
                         torch.linalg.vector_norm(
@@ -3346,6 +3544,27 @@ def run(
         ):
             raise PostRehearsalError("acoustic-code dropout call count drifted")
         acoustic_code_dropout.set_enabled(False)
+    if continuous_acoustic is not None and arguments.smoke:
+        # The second and final smoke call must enter XVC.inference while the
+        # wrapper remains installed, matching the external7 candidate path.
+        base._inference(
+            trained,
+            {
+                "source_wav": batch["source_wav"],
+                "semantic_tokens": batch["semantic_tokens"],
+            },
+            {
+                "target_wav": batch["target_wav"],
+                "ssl_feat": batch["ssl_feat"],
+            },
+            seed=base.SEED,
+            torch=torch,
+            device=device,
+        )
+        if continuous_acoustic.call_count != 2:
+            raise PostRehearsalError(
+                "continuous acoustic smoke requires one train and one inference call"
+            )
     if arguments.smoke:
         smoke = {
             "status": (
@@ -3355,6 +3574,9 @@ def run(
                 else "smoked-acoustic-code-dropout-pseudoparallel"
                 if arguments.training_objective
                 == PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE
+                else "smoked-continuous-acoustic-pseudoparallel"
+                if arguments.training_objective
+                == PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE
                 else "smoked-control69-clean-post-rehearsal"
             ),
             "loss": losses[0],
@@ -3377,6 +3599,11 @@ def run(
                     "inference": "unmasked",
                 }
                 if acoustic_code_dropout is not None
+                else None
+            ),
+            "continuous_acoustic": (
+                continuous_acoustic.diagnostics()
+                if continuous_acoustic is not None
                 else None
             ),
             "prospective_optimizer_steps": (
@@ -3615,6 +3842,11 @@ def run(
             if acoustic_code_dropout is not None
             else None
         ),
+        "continuous_acoustic": (
+            continuous_acoustic.diagnostics()
+            if continuous_acoustic is not None
+            else None
+        ),
         "output_speaker_identity": (
             {
                 "implementation": OUTPUT_SPEAKER_IDENTITY_IMPLEMENTATION,
@@ -3711,6 +3943,8 @@ def run(
                     or arguments.training_objective
                     == PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE
                     or arguments.training_objective
+                    == PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE
+                    or arguments.training_objective
                     == PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE
                     or arguments.training_objective
                     == PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE
@@ -3803,6 +4037,7 @@ def parser() -> argparse.ArgumentParser:
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
             PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
+            PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
             PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
@@ -3868,6 +4103,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                             }
                             if arguments.training_objective
                             == PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE
+                            else None
+                        ),
+                        "continuous_acoustic": (
+                            {
+                                "implementation": CONTINUOUS_ACOUSTIC_IMPLEMENTATION,
+                                "calls": "one-training-plus-one-inference-smoke",
+                                "inference": "active",
+                            }
+                            if arguments.training_objective
+                            == PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE
                             else None
                         ),
                     },

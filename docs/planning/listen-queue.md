@@ -21,14 +21,14 @@ committed, single-variable job at a time, publish its comparison on 8878, apply
 only coarse machine rejection for corruption/content failure, and replan after
 each result. Accumulated candidates remain unselected until human hearing.
 
-Current GPU lane (2026-08-14 16:26 UTC): EXP-279 and EXP-280--284 completed.
-The unchanged adapter produced all 307 broad candidates and 1,535 listener WAVs.
-No gross row was added, but exact common-stable content regressed `0.257143 ->
-0.286194` with 28W/189T/21L and instability moved `59 -> 61`; stress60 and
-expanded144 fired the broad stop. Whole-acoustic-code dropout and its
-share/pattern neighbors are closed. The next lane must be a different committed
-single-variable method chosen from this failure pattern. All hearing claims
-remain open.
+Current GPU lane (2026-08-14 16:39 UTC): EXP-279 and EXP-280--284 are closed
+after the broad content stop. EXP-285 is the next single-variable lane: retain
+the complete source-acoustic branch but replace only the 16,384-way nearest-code
+VQ output with the frozen projected continuous pre-VQ latent at both training
+and inference. EXP-238 data, targets, control69 LoRA69 initialization/scope,
+losses, LR, 170 updates, and EMA stay exact. CPU admission and a one-train /
+one-inference CUDA smoke precede the only full lane. All hearing claims remain
+open.
 
 Provenance correction (2026-08-13): the retained 8.17-second recording saying
 `隣の客はよく柿食う客だ` is a local tongue-twister diagnostic, **not** audio

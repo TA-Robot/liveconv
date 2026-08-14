@@ -1167,6 +1167,83 @@ def test_acoustic_dropout_pseudoparallel_prebinds_five_surface_contract() -> Non
     assert all(kind in choices for kind in kinds)
 
 
+def test_continuous_acoustic_pseudoparallel_prebinds_five_surface_contract() -> None:
+    kinds = [
+        "continuous-acoustic-pseudoparallel-ema-fresh48",
+        "continuous-acoustic-pseudoparallel-ema-hadou",
+        "continuous-acoustic-pseudoparallel-ema-stress",
+        "continuous-acoustic-pseudoparallel-ema-jsut",
+        "continuous-acoustic-pseudoparallel-ema-expanded-stress",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-286",
+        "EXP-287",
+        "EXP-288",
+        "EXP-289",
+        "EXP-290",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "cross-corpus170-pseudoparallel-continuous-acoustic-real-adv-ema170"
+    }
+    assert {
+        policy["display_name"] for policy in policies
+    } == {"EXP-285 / source-aligned targets / continuous pre-VQ acoustic / EMA"}
+    assert {policy["candidate_attachment"] for policy in policies} == {
+        "continuous-acoustic-latent"
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert all(kind in choices for kind in kinds)
+
+
+def test_continuous_acoustic_attachment_is_candidate_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[object, object]] = []
+
+    def attach(candidate: object, *, torch: object) -> object:
+        calls.append((candidate, torch))
+        return object()
+
+    monkeypatch.setattr(
+        NEW.post, "attach_continuous_acoustic_latent", attach, raising=False
+    )
+    candidate = object()
+    torch = object()
+    policy = NEW.candidate_policy(
+        "continuous-acoustic-pseudoparallel-ema-fresh48"
+    )
+
+    assert (
+        NEW._attach_candidate_representation(candidate, policy, torch=torch)
+        is candidate
+    )
+    assert calls == [(candidate, torch)]
+
+
+def test_noncontinuous_candidate_does_not_attach_wrapper(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail(*args: object, **kwargs: object) -> None:
+        raise AssertionError("candidate wrapper attached to non-continuous policy")
+
+    monkeypatch.setattr(
+        NEW.post, "attach_continuous_acoustic_latent", fail, raising=False
+    )
+    candidate = object()
+    policy = NEW.candidate_policy("acoustic-dropout-pseudoparallel-ema-fresh48")
+
+    assert (
+        NEW._attach_candidate_representation(candidate, policy, torch=object())
+        is candidate
+    )
+
+
 def test_src4vc_pseudoparallel_prebinds_broad_evaluation_contract() -> None:
     kinds = [
         "src4vc-pseudoparallel-ema-fresh48",

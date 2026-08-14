@@ -1630,6 +1630,60 @@ def candidate_policy(kind: str) -> dict[str, str]:
             ),
         }
     if kind in {
+        "continuous-acoustic-pseudoparallel-ema-fresh48",
+        "continuous-acoustic-pseudoparallel-ema-hadou",
+        "continuous-acoustic-pseudoparallel-ema-stress",
+        "continuous-acoustic-pseudoparallel-ema-jsut",
+        "continuous-acoustic-pseudoparallel-ema-expanded-stress",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress") and not kind.endswith(
+            "-expanded-stress"
+        )
+        jsut = kind.endswith("-jsut")
+        expanded = kind.endswith("-expanded-stress")
+        experiment_id = (
+            "EXP-290"
+            if expanded
+            else "EXP-289"
+            if jsut
+            else "EXP-288"
+            if stress
+            else "EXP-287"
+            if hadou
+            else "EXP-286"
+        )
+        suffix = (
+            "expanded-stress144"
+            if expanded
+            else "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": (
+                "cross-corpus170-pseudoparallel-continuous-acoustic-"
+                "real-adv-ema170"
+            ),
+            "display_name": (
+                "EXP-285 / source-aligned targets / continuous pre-VQ acoustic / EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-continuous-acoustic-"
+                f"pseudoparallel-ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does a continuous pre-VQ acoustic representation improve robust "
+                "content across the established broad surfaces?"
+            ),
+            "candidate_attachment": "continuous-acoustic-latent",
+        }
+    if kind in {
         "speaker-condition-calibrator-fresh48",
         "speaker-condition-calibrator-hadou",
         "speaker-condition-calibrator-stress",
@@ -2408,6 +2462,22 @@ def listening_index(
     }
 
 
+def _attach_candidate_representation(
+    candidate: Any, policy: Mapping[str, str], *, torch: Any
+) -> Any:
+    """Attach candidate-only inference wrappers selected by the policy.
+
+    The attachment API mutates the X-VC module in place (like the existing
+    acoustic-code-dropout attachment) and may return its wrapper for receipt
+    bookkeeping.  Rendering must continue to use the candidate model itself;
+    base and control models are intentionally loaded and rendered unchanged.
+    """
+
+    if policy.get("candidate_attachment") == "continuous-acoustic-latent":
+        post.attach_continuous_acoustic_latent(candidate, torch=torch)
+    return candidate
+
+
 def run(
     arguments: argparse.Namespace,
     evaluation: Mapping[str, Any],
@@ -2583,6 +2653,7 @@ def run(
         candidate = PeftModel.from_pretrained(
             candidate_base, str(arguments.candidate_adapter), is_trainable=False
         )
+    candidate = _attach_candidate_representation(candidate, policy, torch=torch)
     outputs[policy["variant_id"]] = (
         [
             role_mix.conditioned_inference(
@@ -2829,6 +2900,11 @@ def _parser() -> argparse.ArgumentParser:
             "acoustic-dropout-pseudoparallel-ema-stress",
             "acoustic-dropout-pseudoparallel-ema-jsut",
             "acoustic-dropout-pseudoparallel-ema-expanded-stress",
+            "continuous-acoustic-pseudoparallel-ema-fresh48",
+            "continuous-acoustic-pseudoparallel-ema-hadou",
+            "continuous-acoustic-pseudoparallel-ema-stress",
+            "continuous-acoustic-pseudoparallel-ema-jsut",
+            "continuous-acoustic-pseudoparallel-ema-expanded-stress",
             "speaker-condition-calibrator-fresh48",
             "speaker-condition-calibrator-hadou",
             "speaker-condition-calibrator-stress",

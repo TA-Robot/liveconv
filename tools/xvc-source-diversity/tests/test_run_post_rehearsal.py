@@ -280,6 +280,26 @@ def test_pseudoparallel_acoustic_code_dropout_changes_only_representation() -> N
     )
 
 
+def test_pseudoparallel_continuous_acoustic_policy_changes_only_source_latent() -> None:
+    policy = post.listening_policy(
+        post.PSEUDOPARALLEL_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp285"
+    assert policy["candidate_id"] == (
+        "cross-corpus170-pseudoparallel-continuous-acoustic-real-adv-ema170"
+    )
+    assert "projected continuous pre-VQ" in policy["independent_variable"]
+    assert "both training and inference" in policy["independent_variable"]
+    assert (
+        post.PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE
+        in post.parser()._option_string_actions["--training-objective"].choices
+    )
+
+
 def test_acoustic_code_dropout_schedule_is_exactly_balanced() -> None:
     schedule = post.acoustic_code_dropout_schedule(post.EXPECTED_ROWS)
 
@@ -319,6 +339,76 @@ def test_acoustic_code_dropout_masks_only_quantized_acoustic_tensor() -> None:
     assert dropout.masked_calls == 1
     assert dropout.last_input_nonzero == 2
     assert dropout.last_output_nonzero == 2
+
+
+def test_continuous_acoustic_wrapper_replaces_zq_and_reports_gradient_diagnostics(
+) -> None:
+    import torch
+
+    class FakeQuantizer(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.in_project = torch.nn.Conv1d(1, 2, 1, bias=False)
+            self.out_project = torch.nn.Conv1d(2, 1, 1, bias=False)
+            with torch.no_grad():
+                self.in_project.weight.copy_(torch.tensor([[[2.0]], [[-1.0]]]))
+                self.out_project.weight.copy_(torch.tensor([[[0.5], [0.25]]]))
+
+        def forward(self, value):
+            return value * 3.0, value.new_tensor([7]), value.new_tensor(3.0)
+
+    class FakeXVC(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.acoustic_quantizer = FakeQuantizer()
+
+    model = FakeXVC()
+    continuous = post.attach_continuous_acoustic_latent(model, torch=torch)
+    source = torch.tensor([[[1.0, -2.0]]], requires_grad=True)
+
+    outputs = model.acoustic_quantizer(source)
+    expected = continuous.base_quantizer.out_project(
+        continuous.base_quantizer.in_project(source)
+    )
+    assert torch.allclose(outputs[0], expected)
+    assert torch.equal(outputs[1], source.new_tensor([7]))
+    assert torch.equal(outputs[2], source.new_tensor(3.0))
+    outputs[0].sum().backward()
+
+    diagnostics = continuous.diagnostics()
+    assert diagnostics["call_count"] == 1
+    assert diagnostics["quantized_nonzero"] == 2
+    assert diagnostics["continuous_nonzero"] == 2
+    assert diagnostics["quantized_rms"] > 0.0
+    assert diagnostics["continuous_rms"] > 0.0
+    assert diagnostics["rms_ratio"] > 0.0
+    assert source.grad is not None
+    assert bool(torch.isfinite(source.grad).all())
+
+
+def test_continuous_acoustic_wrapper_rejects_zero_continuous_latent() -> None:
+    import torch
+
+    class FakeQuantizer(torch.nn.Module):
+        in_project = torch.nn.Identity()
+        out_project = torch.nn.Identity()
+
+        def forward(self, value):
+            return torch.ones_like(value), value.new_tensor([7])
+
+    class FakeXVC(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.acoustic_quantizer = FakeQuantizer()
+
+    model = FakeXVC()
+    post.attach_continuous_acoustic_latent(model, torch=torch)
+    try:
+        model.acoustic_quantizer(torch.zeros(1, 1, 2))
+    except post.PostRehearsalError as error:
+        assert "continuous acoustic" in str(error)
+    else:
+        raise AssertionError("zero continuous acoustic latent unexpectedly accepted")
 
 
 def test_src4vc_pseudoparallel_policy_changes_only_source_corpus_block() -> None:

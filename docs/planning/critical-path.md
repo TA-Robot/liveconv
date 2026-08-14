@@ -308,6 +308,10 @@ claims from that artifact are superseded. The active join is now:
         -> 307/307 changed; zero added gross; instability 59 -> 61
         -> common-stable all-surface content 28W/189T/21L, 0.257143 -> 0.286194
         -> Hadou/JSUT improve but stress/expanded regress; close dropout neighbors
+        -> EXP-285 return to EXP-238 and remove only the acoustic nearest-code boundary
+        -> projected continuous pre-VQ latent stays active at train and inference
+        -> exact data/targets/init/scope/loss/LR/170/EMA; CPU + two-call CUDA smoke
+        -> external7 first; EXP-286--290 broad surfaces only after corruption/content pass
         -> operator hearing when available
 ```
 
