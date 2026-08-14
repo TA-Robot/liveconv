@@ -1,6 +1,6 @@
 # EXP-334: X-VC real-reference adversarial feature statistics
 
-Status: admitted listen-now method pilot; implementation in progress; unheard
+Status: completed external7 and stopped by the predefined machine gate; unheard
 and unselected
 
 ## Question
@@ -73,3 +73,22 @@ The output is an unheard listen-now library. Auxiliary ASR may locate gross
 repetition, empty output, decoder disagreement, or content drift. Speaker
 embeddings may diagnose direction only. Neither establishes naturalness,
 target identity, a keeper, a winner, promotion, or a product decision.
+
+## Result and decision
+
+Commit `47ab30a` passed exact 170-row CPU admission and a two-row CUDA smoke.
+The single `gpu0` run completed all 170 updates in 173.97 seconds, used
+6,163,570,688 peak allocated bytes, and published 35 external7 WAVs at
+`artifacts/ms3/listening/exp334-xvc-feature-statistics-external7-v1` for the
+listener on port 8878. All seven candidate WAV hashes changed versus EXP-238
+and no candidate-added consensus gross row appeared.
+
+The external gate nevertheless fails. Decoder instability increased from one
+EXP-238 row to three EXP-334 rows. `cv38912041` and `cv45141533` are newly
+unstable. Across the four rows stable in both candidates, source-relative
+distance is `1W/2T/1L` and regresses from `0.195513` to `0.233974`.
+
+Do not render EXP-335--339. Close feature-statistic epsilon, reduction axes,
+weight, blend, and nearby discriminator-feature matching variants. The
+auxiliary screen rejects broad execution; it does not establish that the
+unheard audio is perceptually bad.

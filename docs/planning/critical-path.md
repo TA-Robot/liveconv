@@ -377,6 +377,9 @@ claims from that artifact are superseded. The active join is now:
         -> Grok REDIRECT: stop mechanism autopsy and commit one new training signal
         -> EXP334 keeps exact EXP238 but replaces pointwise unrelated-text feature matching
         -> per-channel mean/std reduces every discriminator axis after batch/channel
+        -> 170 updates complete; external7 instability 1 -> 3 with two new unstable rows
+        -> common-stable source distance 0.195513 -> 0.233974; stop EXP335--339
+        -> EXP340 keeps EXP238 objective/data but adds LoRA only at prenet.linear_pre
         -> commit -> two-row CUDA smoke -> 170 updates -> external7 -> fixed broad only if green
         -> operator hearing when available
 ```

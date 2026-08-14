@@ -6651,3 +6651,27 @@ job queue.
   so the single rule reduces every axis after batch and channel.
 - Rework: discard the provisional prenet-scope draft before commit. Finish only
   the EXP-334 runner, tests, plan, and render bindings; commit before CUDA.
+
+## 2026-08-14T22:42:00Z - EXP-334 trained and stopped at external7
+
+- Agent: `primary-integrator`; bounded runner and renderer owners supplied the
+  implementation and focused tests.
+- Task: replace only EXP-238's pointwise generator-side matching to unrelated-
+  text real discriminator features with per-channel global mean/std matching.
+- Dependencies: commit `47ab30a`; exact EXP-238 170-row curriculum, control69
+  initialization, real Amitaro lineage, EMA, external7, and one `gpu0` lease.
+- Result: the two-row CUDA smoke passed, then training completed 170 updates in
+  173.97 seconds at 6,163,570,688 peak allocated bytes. Feature-statistic loss
+  moved `21.911829 -> 5.553918`; the job published 35 external7 WAVs on port
+  8878 and all seven candidate hashes changed versus EXP-238.
+- Result: no candidate-added gross row appeared, but decoder instability rose
+  `1 -> 3`. `cv38912041` and `cv45141533` became newly unstable. Across four
+  exact jointly stable rows, source-relative distance regressed
+  `0.195513 -> 0.233974`, `1W/2T/1L`.
+- Problems: the first screen command used system Python without
+  `faster_whisper`; rerunning the identical command with the project `.venv`
+  completed in 7.7 seconds. No audio or model rerun was needed.
+- Rework: stop EXP-334 before broad rendering and skip EXP-335--339. Close
+  feature-statistic reduction/epsilon/weight/blend neighbors. The next pilot
+  changes adapter topology instead: rank-8 LoRA only at
+  `prenet.linear_pre`, with EXP-238 data and objectives fixed.
