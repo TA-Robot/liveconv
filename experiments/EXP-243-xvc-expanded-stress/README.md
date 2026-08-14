@@ -1,6 +1,6 @@
 # EXP-243: length-balanced symmetric stress evaluation
 
-Status: prepared; listen-now render pending
+Status: completed; technically stable and unheard
 
 ## Goal
 
@@ -44,3 +44,20 @@ Stop on source identity drift, fewer than four eligible speakers in any length
 band, transform drift, nonfinite or empty conversion, malformed adapter, or a
 candidate-added gross corruption. A technically stable matrix remains unheard
 and unselected until the operator returns.
+
+## Result
+
+Commit `19abe49` froze 144 inputs and the GPU lane published 720 WAVs at
+`artifacts/ms3/listening/exp243-xvc-pseudoparallel-expanded-stress144-v1`.
+Rendering took 109.64 seconds and peaked at 5,126,684,160 allocated bytes. The
+v4 auxiliary screen found no control or candidate gross row.
+
+Across the 104 rows where source, control, and candidate transcripts were all
+stable, source-relative distance moved `0.401210 -> 0.311316` with W/T/L
+`17/74/13`. Long rows improved most (`0.922435 -> 0.423835`); medium, short,
+and very-long rows were near mixed. The thirteen losses were spread over eight
+speakers and no condition dominated them. Clean, noise30, pitch+3, and a few
+other strata remain mixed, so this is not evidence for a single condition
+augmentation or an automatic quality winner. The next training intervention
+changes one source-corpus block to genuinely multi-speaker smartphone
+recordings while keeping targets, objective, scope, LR, updates, and EMA fixed.

@@ -260,7 +260,11 @@ claims from that artifact are superseded. The active join is now:
         -> retain EXP-238 as an unheard technical survivor; no automatic winner
         -> EXP-243 freeze 16 disjoint speakers x four text lengths x nine symmetric conditions
         -> render source/target/base/control69/EXP-238 once; no new training variable
-        -> use length/speed/F0/silence/noise failure strata to choose the next retraining method
+        -> 720 WAVs; zero gross; 13 losses span eight speakers with no dominant condition
+        -> condition augmentation is not selected; change one recording-domain source block
+        -> EXP-244 replace JSUT85 training rows with 85 distinct SRC4VC smartphone speakers
+        -> retain CV48/JVS3/Hadou34, ordered Amitaro targets, loss/scope/LR/170 updates/EMA
+        -> reserve 15 disjoint SRC4VC speakers x two rows for evaluation
         -> operator hearing when available
 ```
 

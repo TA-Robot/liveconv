@@ -5197,3 +5197,51 @@ job queue.
   bands crossed with nine symmetric conditions. Commit before CUDA, then
   render base/control69/EXP-238 and publish 720 WAVs on 8878. Do not register a
   human speaker model or widen promotion evidence for this listen-now slice.
+
+## 2026-08-14T11:38:00Z - EXP-243 expanded stress matrix completed
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T11:22:34Z.
+- End: 2026-08-14T11:38:00Z.
+- Dependencies: commit `19abe49`; sixteen disjoint fresh48 speakers; four
+  normalized-text-length bands; nine symmetric transforms; base, control69,
+  and exact EXP-238 EMA; gpu0; listener 8878.
+- Result: froze 144 rows and published 720 WAVs. Rendering completed in 109.64
+  seconds at 5,126,684,160 peak allocated bytes. The v4 screen found zero
+  gross rows for control and candidate. On 104 exact common-stable rows,
+  source-relative distance moved `0.401210 -> 0.311316`, W/T/L `17/74/13`.
+  Long rows moved `0.922435 -> 0.423835`; short and very-long rows improved
+  slightly, while medium rows were near flat.
+- Problems: the thirteen losses span eight speakers and no single condition
+  dominates. Clean, noise30, pitch+3, and some other strata remain mixed.
+  Known-text distance is intentionally not interpreted for long rows because
+  the fixed 2.4-second window truncates their transcripts. Automatic metrics
+  still cannot judge naturalness, identity, emotion, or audible preference.
+- Rework: retain EXP-238 and EXP-243 as unheard technical evidence, not a
+  winner. Do not reopen source/target condition augmentation: EXP-043,
+  EXP-044, and EXP-191 already closed nearby source, target, and
+  condition-balanced variants. Change one genuinely different source-data
+  block while keeping the pseudoparallel contract and optimizer fixed.
+
+## 2026-08-14T11:47:00Z - EXP-244 SRC4VC source substitution selected
+
+- Agent: `primary-integrator`.
+- Task: choose a one-variable retraining intervention after the expanded matrix
+  showed distributed rather than condition-local failures.
+- Dependencies: SRC4VC version 1 official corpus page and terms; pinned
+  3,417,630,585-byte archive; exact central-directory range and SHA-256;
+  existing EXP-213/238 170-row curriculum.
+- Result: select 85 distinct SRC4VC smartphone-recorded train speakers and
+  reserve fifteen evenly spread, disjoint speakers with two rows each for
+  evaluation. Replace only JSUT85 in the curriculum, retaining CV48, JVS3,
+  Hadou34, the exact ordered Amitaro target assignment, frozen-control69
+  pseudoparallel target construction, loss, LoRA scope, LR, 170 updates, and
+  EMA. A byte-range fetch avoids downloading the full 3.4 GB archive.
+- Problems: SRC4VC permits research use and prohibits redistribution. Raw audio
+  and derived private manifests therefore remain ignored under `artifacts/`;
+  no corpus audio will be committed or redistributed. Human naturalness and
+  identity assessment remains unavailable.
+- Rework: commit the bounded fetcher, split, tests, and plan before
+  materialization. Stop on archive identity drift, invalid WAV, metadata drift,
+  or train/evaluation speaker overlap. Do not vary corpus ratio, horizon, loss,
+  scope, LR, or EMA in this lane.
