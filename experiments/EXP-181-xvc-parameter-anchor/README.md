@@ -1,6 +1,6 @@
 # EXP-181: control69 parameter anchor on the surviving X-VC method
 
-Status: external7, fresh48, and Hadou31 complete; stress60 pending
+Status: external7 through stress60 complete; JSUT24 decision pending
 
 ## Goal
 
@@ -75,3 +75,12 @@ with W/T/L `2/20/2`, and known-text improved `0.354 -> 0.343` with W/T/L
 `3/20/1`. The hard-repair signal therefore survived, but it is small and does
 not erase the fresh48 weakness. Continue the unchanged checkpoint to stress60,
 the direct test of the method's intended retention behavior.
+
+EXP-184 published 300 stress60 WAVs with zero gross row. Across 44 common
+stable rows the macro was slightly worse: source-relative `0.215 -> 0.217`
+with W/T/L `7/27/10`, and known-text `0.588 -> 0.596` with W/T/L `5/31/8`.
+The aggregate hides a useful condition map: clean and noise20 improved, while
+pitch+3, leading silence, and tempo1.2 regressed. The parameter anchor therefore
+did not generically prevent condition forgetting. It remains an unheard mixed
+candidate; wait for the concurrent progress audit before spending the final
+JSUT24 render.

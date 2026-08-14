@@ -4209,3 +4209,20 @@ job queue.
   worse. Content diagnostics still cannot establish naturalness or identity.
 - Rework: continue once to the prebound stress60 condition map, which directly
   tests whether the anchor preserved noise, tempo, pitch, and silence behavior.
+
+## 2026-08-14T03:51:00Z - EXP-184 stress60 completed
+
+- Agent: `primary-integrator`.
+- Task: test the anchored checkpoint across six speakers crossed with clean,
+  noise20, pitch+3, leading silence, and tempo1.2 conditions.
+- Dependencies: unchanged EXP-181 adapter; frozen 60-row matrix; no retraining.
+- Result: published 300 WAVs with zero gross row. Across 44 common stable rows,
+  source mean was `0.215 -> 0.217` with W/T/L `7/27/10`; known-text was
+  `0.588 -> 0.596` with W/T/L `5/31/8`. Clean and noise20 improved, while pitch,
+  leading silence, and tempo1.2 regressed.
+- Problems: the precommitted parameter-retention hypothesis did not generalize
+  across conditions. Macro changes are small, but the direction is not a broad
+  retention improvement.
+- Rework: keep the 730 WAVs unselected and do not tune the coefficient. Wait for
+  the active 03:50 Grok audit before deciding whether equalizing the final
+  JSUT24 surface is worth one more render or should be deferred.
