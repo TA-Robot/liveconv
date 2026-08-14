@@ -4578,3 +4578,47 @@ job queue.
 - Rework: implement exact save/reload and focused tests, commit, then run one
   smoke and one full lane. Stop this target family afterward; no encoder-depth,
   LR, or adjacent-module sweep.
+
+## 2026-08-14T06:19:00Z - EXP-198--202 acoustic representation completed
+
+- Agent: `primary-integrator`.
+- Task: train the source acoustic encoder once, then publish the unchanged
+  checkpoint on all five evaluation surfaces fixed before CUDA.
+- Dependencies: commits `147e15a` and `a9a86f4`; 212 focused tests plus 30
+  post-fix role-coverage tests; `make control-check`; EXP-163's frozen
+  hard85/easy85 curriculum and training method.
+- Result: the hard/easy smoke was finite with 21,521,536 trainable parameters.
+  Full training completed 170 updates in 132.0 seconds at 6,206,943,744 peak
+  allocated bytes, and total loss moved `298.554 -> 117.298`. The exact
+  119-tensor checkpoint SHA-256 is
+  `642a8f85450d08a078001da68ff6661fbbba7c31889315540ac9cb95f85b1db2`.
+  Published 35 external7, 240 fresh48, 155 Hadou31, 300 stress60, and 120
+  JSUT24 WAVs to port 8878: 850 total. No surface adds a consensus gross row.
+  Cross-arm common-stable source distance moved external7 `0.256 -> 0.238`
+  (`1/3/1`), fresh48 `0.205 -> 0.323` (`3/14/14`), Hadou31
+  `0.149 -> 0.114` (`8/17/1`), stress60 `0.206 -> 0.237`
+  (`11/18/14`), and JSUT24 `0.115 -> 0.145` (`3/14/5`). Within stress60,
+  tempo1.2 regressed `0.156 -> 0.268` (`1/3/3`).
+- Problems: Hadou improves, but the disjoint-speaker, tempo, and balanced JSUT
+  surfaces contradict a general improvement. Auxiliary ASR cannot assess
+  naturalness, target identity, timing quality, or an audible winner.
+- Rework: close the acoustic-encoder target family. Do not try adjacent depth,
+  learning rate, freeze scope, or modules. Keep all audio unheard and
+  unselected for later operator listening, and select a genuinely different
+  system/data mechanism only after the active Grok direction audit.
+
+## 2026-08-14T06:20:25Z - Grok progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux `liveconv-grok-auditor`.
+- Task: independent 30-minute direction, evidence-cost, and idle-resource audit.
+- Result: `CONTINUE`. It accepted the one-variable acoustic-encoder target and
+  the five-surface contract, rejected encoder/LR/module neighbors, and required
+  finishing fresh48, Hadou31, stress60, and JSUT24 before selecting another
+  method.
+- Problems: its snapshot saw only the 06:09 external7 WAVs and not the four
+  surfaces that completed before the audit ended. It therefore described the
+  fixed evaluation cascade as pending even though all 850 WAVs and v4 screens
+  were already complete.
+- Rework: verdict adopted and already satisfied. Close EXP-198--202 using the
+  complete five-surface result. Do not continue the encoder family. Commit the
+  closure before admitting one genuinely different system/data mechanism.
