@@ -146,6 +146,36 @@ def test_unpaired_output_cycle_policy_moves_content_loss_to_final_wav() -> None:
     assert "final converted WAV" in policy["independent_variable"]
 
 
+def test_cross_corpus_policy_changes_only_source_distribution() -> None:
+    policy = post.listening_policy(
+        post.CROSS_CORPUS_UNPAIRED_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp213"
+    assert policy["candidate_id"] == (
+        "cross-corpus170-unpaired-output-cycle-ema170"
+    )
+    assert "Common Voice 48" in policy["independent_variable"]
+    assert "exact 170 unrelated Amitaro" in policy["independent_variable"]
+
+
+def test_cross_corpus_policy_rejects_internal_semantic_objective() -> None:
+    try:
+        post.listening_policy(
+            post.CROSS_CORPUS_UNPAIRED_OUTPUT_KIND,
+            post.LORA69_TARGET,
+            post.FACTORIZED_UNPAIRED_OBJECTIVE,
+            True,
+        )
+    except post.PostRehearsalError as error:
+        assert "fixed output-cycle objective" in str(error)
+    else:
+        raise AssertionError("cross-corpus internal semantic objective admitted")
+
+
 def test_factorized_loss_uses_source_semantics_and_target_speaker() -> None:
     import torch
 

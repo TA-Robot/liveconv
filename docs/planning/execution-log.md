@@ -4785,3 +4785,29 @@ job queue.
   scope, LR, horizon, or EMA. Preserve the broad stress/Hadou signal as method
   evidence; the next lane must be a distinct data/generalization or
   anti-collapse architecture, not another coefficient point.
+
+## 2026-08-14T07:44:00Z - EXP-213--217 cross-corpus data method prepared
+
+- Agent: `primary-integrator`.
+- Task: act on the user's broader-data correction and test whether EXP-208's
+  unknown-speaker collapse comes from Hadou-only source training rather than
+  opening another loss-weight or frontend point.
+- Dependencies: EXP-208--212's complete five-surface stop; the correction that
+  the local tongue-twister is not actual ChatGPT input; frozen training-only
+  Common Voice48, JSUT85 excluding JSUT24, JVS3, Hadou170, and the unchanged
+  authorized Amitaro target windows.
+- Result: materialized one fixed 170-row source curriculum containing all CV48,
+  all disjoint JSUT85, all JVS3, and 34 Hadou rows spread over the predecessor.
+  Rows are deterministically mixed by `sha256(domain:teacher_id)`; the exact
+  ordered 170-target Amitaro multiset is unchanged. Curriculum SHA-256 is
+  `44d2ba9c03d44437711c7b7d359f519672dca32696ba73b3fcd178b07024b931`.
+  Focused tests passed `97/97`; exact CPU admission confirmed 170 training rows
+  and seven external rows. External7/fresh48/Hadou31/stress60/JSUT24 remain the
+  fixed comparison surfaces.
+- Problems: changing corpus distribution and sequential order is a data-method
+  point, not an isolated loss change. It cannot prove which corpus is causal,
+  and the one-pass schedule may still forget tempo or collapse on
+  low-information speech. Auxiliary ASR still cannot judge voice quality.
+- Rework: commit this one fixed composition, run a two-row real backward smoke,
+  then one 170-update GPU lane and all five screens. Do not sweep corpus ratios,
+  counts, order, target pairing, weight, frontend, scope, LR, horizon, or EMA.

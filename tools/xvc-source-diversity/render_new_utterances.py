@@ -1280,6 +1280,49 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "and preserve tempo across the complete fixed evaluation contract?"
             ),
         }
+    if kind in {
+        "cross-corpus-output-cycle-ema-fresh48",
+        "cross-corpus-output-cycle-ema-hadou",
+        "cross-corpus-output-cycle-ema-stress",
+        "cross-corpus-output-cycle-ema-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        experiment_id = (
+            "EXP-217"
+            if jsut
+            else "EXP-216"
+            if stress
+            else "EXP-215"
+            if hadou
+            else "EXP-214"
+        )
+        suffix = (
+            "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "cross-corpus170-unpaired-output-cycle-ema170",
+            "display_name": (
+                "EXP-213 / cross-corpus unpaired output-cycle / EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-cross-corpus-"
+                f"output-cycle-ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does training-only CV/JSUT/JVS/Hadou source diversity reduce "
+                "unknown-speaker collapse while preserving fixed cross-condition "
+                "content behavior?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1973,6 +2016,10 @@ def _parser() -> argparse.ArgumentParser:
             "unpaired-output-cycle-ema-hadou",
             "unpaired-output-cycle-ema-stress",
             "unpaired-output-cycle-ema-jsut",
+            "cross-corpus-output-cycle-ema-fresh48",
+            "cross-corpus-output-cycle-ema-hadou",
+            "cross-corpus-output-cycle-ema-stress",
+            "cross-corpus-output-cycle-ema-jsut",
         ),
         default="speaker7",
     )

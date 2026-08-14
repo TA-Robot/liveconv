@@ -64,6 +64,12 @@ from prepare_unpaired_human_curriculum import (  # noqa: E402
 from prepare_unpaired_human_curriculum import (  # noqa: E402
     OUTPUT_KIND as UNPAIRED_HUMAN_OUTPUT_KIND,
 )
+from prepare_cross_corpus_unpaired_curriculum import (  # noqa: E402
+    EXPECTED_COMPOSITION as CROSS_CORPUS_UNPAIRED_EXPECTED_DOMAINS,
+)
+from prepare_cross_corpus_unpaired_curriculum import (  # noqa: E402
+    OUTPUT_KIND as CROSS_CORPUS_UNPAIRED_OUTPUT_KIND,
+)
 from prepare_selective_retention_curriculum import (  # noqa: E402
     OUTPUT_KIND as SELECTIVE_OUTPUT_KIND,
 )
@@ -113,6 +119,10 @@ DIVERSE_RETENTION_KINDS = {
     JSUT_RETENTION_OUTPUT_KIND,
     COMMONVOICE_RETENTION_OUTPUT_KIND,
     CONDITIONED_RETENTION_OUTPUT_KIND,
+}
+UNPAIRED_HUMAN_KINDS = {
+    UNPAIRED_HUMAN_OUTPUT_KIND,
+    CROSS_CORPUS_UNPAIRED_OUTPUT_KIND,
 }
 
 
@@ -230,7 +240,7 @@ def listening_policy(
     if optimizer_mode != SEQUENTIAL_OPTIMIZER:
         raise PostRehearsalError("unknown optimizer mode")
     if use_adapter_ema:
-        if manifest_kind == UNPAIRED_HUMAN_OUTPUT_KIND:
+        if manifest_kind in UNPAIRED_HUMAN_KINDS:
             if (
                 trainable_target != LORA69_TARGET
                 or training_objective
@@ -245,6 +255,47 @@ def listening_policy(
                 raise PostRehearsalError(
                     "unpaired human EMA requires the exact factorized LoRA69 pilot"
                 )
+            if (
+                manifest_kind == CROSS_CORPUS_UNPAIRED_OUTPUT_KIND
+                and training_objective != OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+            ):
+                raise PostRehearsalError(
+                    "cross-corpus unpaired data requires the fixed output-cycle objective"
+                )
+            if (
+                manifest_kind == CROSS_CORPUS_UNPAIRED_OUTPUT_KIND
+                and training_objective == OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+            ):
+                return {
+                    "slug": "exp213",
+                    "candidate_id": (
+                        "cross-corpus170-unpaired-output-cycle-ema170"
+                    ),
+                    "candidate_name": (
+                        "EXP-213 / cross-corpus unpaired output-cycle / EMA"
+                    ),
+                    "run_kind": (
+                        "EXP-213 X-VC cross-corpus output-cycle evaluation"
+                    ),
+                    "result_kind": (
+                        "liveconv-exp213-xvc-cross-corpus-output-cycle-ema/v1"
+                    ),
+                    "question": (
+                        "Does replacing the Hadou-only source curriculum with a "
+                        "fixed training-only CV/JSUT/JVS/Hadou mixture reduce "
+                        "unknown-speaker collapse without losing broad stability?"
+                    ),
+                    "independent_variable": (
+                        "only the 170-row source-side data distribution changes "
+                        "from Hadou-only to all frozen training-only Common Voice "
+                        "48, all disjoint JSUT85, all JVS3, and 34 spread Hadou "
+                        "rows; the exact 170 unrelated Amitaro target-window "
+                        "multiset, final-WAV weight-1000 frozen-Whisper content "
+                        "cycle, target speaker loss, real-wave adversarial "
+                        "objective, control69 LoRA69 initialization, updates, LR, "
+                        "optimizer, clip, zero condition, and EMA stay fixed"
+                    ),
+                }
             if training_objective == OUTPUT_CYCLE_UNPAIRED_OBJECTIVE:
                 return {
                     "slug": "exp208",
@@ -598,6 +649,8 @@ def load_manifest(
         expected_domains = JSUT_EXPECTED_DOMAINS
     elif kind == UNPAIRED_HUMAN_OUTPUT_KIND:
         expected_domains = UNPAIRED_HUMAN_EXPECTED_DOMAINS
+    elif kind == CROSS_CORPUS_UNPAIRED_OUTPUT_KIND:
+        expected_domains = CROSS_CORPUS_UNPAIRED_EXPECTED_DOMAINS
     elif kind == COMMONVOICE_RETENTION_OUTPUT_KIND:
         expected_domains = COMMONVOICE_RETENTION_EXPECTED_DOMAINS
     elif kind == CONDITIONED_RETENTION_OUTPUT_KIND:
@@ -616,6 +669,7 @@ def load_manifest(
             COMMONVOICE_RETENTION_OUTPUT_KIND,
             CONDITIONED_RETENTION_OUTPUT_KIND,
             UNPAIRED_HUMAN_OUTPUT_KIND,
+            CROSS_CORPUS_UNPAIRED_OUTPUT_KIND,
         }
         or value.get("composition") != expected_domains
         or not isinstance(items, list)
@@ -669,7 +723,7 @@ def load_manifest(
         if source_root is None:
             raise PostRehearsalError("diverse retention work is required")
         target_root = source_work
-        if kind == UNPAIRED_HUMAN_OUTPUT_KIND:
+        if kind in UNPAIRED_HUMAN_KINDS:
             if (
                 item.get("source_root") != "diverse-work"
                 or item.get("target_root") != "diverse-work"
@@ -999,7 +1053,7 @@ def source_receipt_identities(
     manifest_kind: str, source_work: Path, training_manifest: Path
 ) -> dict[str, str | None]:
     """Bind either a predecessor result or the standalone human curriculum."""
-    if manifest_kind == UNPAIRED_HUMAN_OUTPUT_KIND:
+    if manifest_kind in UNPAIRED_HUMAN_KINDS:
         return {
             "source_result_sha256": None,
             "unpaired_human_curriculum_sha256": sha256_file(training_manifest),
@@ -1360,7 +1414,7 @@ def smoke_rows(
         return items[:2]
     if parameter_anchor:
         return items[:2]
-    if manifest.get("kind") == UNPAIRED_HUMAN_OUTPUT_KIND:
+    if manifest.get("kind") in UNPAIRED_HUMAN_KINDS:
         return items[:2]
     if (
         manifest.get("kind") not in DIVERSE_RETENTION_KINDS
@@ -1672,7 +1726,7 @@ def run(
             torch=torch,
             device=device,
             factorized_unpaired=(
-                manifest.get("kind") == UNPAIRED_HUMAN_OUTPUT_KIND
+                manifest.get("kind") in UNPAIRED_HUMAN_KINDS
             ),
         )
         return base._gpu_batch(tensors, torch=torch, device=device)

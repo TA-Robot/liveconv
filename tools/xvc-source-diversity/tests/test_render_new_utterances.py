@@ -848,6 +848,32 @@ def test_unpaired_output_cycle_policy_prebinds_complete_five_surface_contract() 
     assert all(kind in choices for kind in kinds)
 
 
+def test_cross_corpus_output_cycle_prebinds_complete_five_surface_contract() -> None:
+    kinds = [
+        "cross-corpus-output-cycle-ema-fresh48",
+        "cross-corpus-output-cycle-ema-hadou",
+        "cross-corpus-output-cycle-ema-stress",
+        "cross-corpus-output-cycle-ema-jsut",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-214",
+        "EXP-215",
+        "EXP-216",
+        "EXP-217",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "cross-corpus170-unpaired-output-cycle-ema170"
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert all(kind in choices for kind in kinds)
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"

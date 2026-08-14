@@ -227,6 +227,9 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-209--212 prebound fresh48 / Hadou31 / stress60 / JSUT24
         -> 850 WAVs; stress/Hadou signal but a new low-information fresh48 loop and tempo residual
         -> exact pointwise output-cycle objective closed; no weight/frontend/scope neighbor
+        -> EXP-213 fixed CV48 + JSUT85 + JVS3 + Hadou34 source curriculum
+        -> EXP-214--217 prebound fresh48 / Hadou31 / stress60 / JSUT24
+        -> one unchanged output-cycle checkpoint; no corpus-ratio/count sweep
         -> operator hearing when available
 ```
 
