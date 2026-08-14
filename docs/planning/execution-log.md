@@ -3572,3 +3572,28 @@ job queue.
 - Rework: commit, then run one lane and the external7/fresh48/Hadou31 stop
   sequence. Do not add blend, ratio, exposure, threshold, or scope neighbors.
   Open JSUT24 only if all earlier screens survive.
+
+## 2026-08-14T00:36:41Z - EXP-150--153 selective retention rejected
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T00:30:12Z.
+- End: 2026-08-14T00:36:41Z.
+- Dependencies: commit `eb82428`; selective manifest SHA-256 `6322a9c5`;
+  frozen control69 and its 85 easy-row outputs; 85 base-teacher hard targets;
+  external7/fresh48/Hadou31; gpu0; listener 8878.
+- Result: training completed 170 updates in 115.62 seconds at 5.10 GiB peak,
+  loss `227.88 -> 45.00`, and published 35 external, 240 fresh48, and 155
+  Hadou31 WAVs. External source-relative distance was `0.378` versus control
+  `0.360`, a large recovery from EXP-146's `0.455`. On 46 common non-gross
+  fresh rows the candidate improved mean `0.341 -> 0.310` with `12/22/12`;
+  known-text mean improved `0.618 -> 0.610`. On 30 non-gross Hadou rows it
+  improved mean `0.185 -> 0.170` with `5/23/2`.
+- Problems: the candidate retained fresh48's control `32.4` family collapse
+  and added the mandatory-stop `RECITATION324_138` numeric failure, repeating
+  `9` for a 66-character run. Retention fixed broad drift but did not make hard
+  repair generalize across the frozen Hadou split.
+- Rework: reject the exact candidate, keep its unheard audio, and do not open
+  JSUT24 or tune blend/ratio/exposure/threshold. Since the learning-target
+  policy helped normal rows while the 69-module LoRA still failed on the same
+  heldout mechanism, the next one-variable lane should keep the selective
+  targets and change the trainable target to the full acoustic converter.

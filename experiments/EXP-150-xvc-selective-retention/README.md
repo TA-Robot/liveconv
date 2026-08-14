@@ -1,6 +1,6 @@
 # EXP-150: selective repair and retention distillation
 
-Status: prepared; one bounded gpu0 lane
+Status: rejected after one bounded gpu0 lane
 
 ## Goal
 
@@ -35,3 +35,22 @@ Only a surviving unchanged checkpoint may consume frozen JSUT24. Do not vary
 repair/retention blend, hard/easy ratio, exposure, threshold, LR, loss, or
 scope. Auxiliary ASR is only a content/corruption screen, never a naturalness,
 target-voice, keeper, or promotion decision.
+
+## Result
+
+Commit `eb82428` completed 170 updates in 115.62 seconds at 5.10 GiB peak,
+moving composite loss `227.88 -> 45.00`. It published external7, fresh48, and
+Hadou31 comparison audio on port 8878.
+
+Retention targets removed EXP-146's broad Common Voice drift. On 46 common
+non-gross fresh rows, source-relative mean improved `0.341 -> 0.310` with
+`12/22/12`, while known-text mean improved `0.618 -> 0.610` with `13/24/9`.
+The candidate added no fresh gross row but retained control69's `32.4` family
+collapse. On 30 non-gross Hadou rows it improved mean `0.185 -> 0.170` with
+`5/23/2`.
+
+The mandatory-stop `RECITATION324_138` still gross-looped, repeating `9`
+through a 66-character run. Reject this exact method and do not tune its blend,
+ratio, exposure, or threshold. The contrast with EXP-146 supports retention as
+a useful anti-drift mechanism, but the control69 LoRA target scope did not make
+failure repair generalize. Do not run EXP-153.
