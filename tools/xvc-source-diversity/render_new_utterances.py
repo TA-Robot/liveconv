@@ -2227,6 +2227,69 @@ def candidate_policy(kind: str) -> dict[str, str]:
             "candidate_format": "frozen-exp238-plus-speaker-condition-calibrator",
         }
     if kind in {
+        "prenet-linear-pre-lora8-pseudoparallel-ema-external7",
+        "prenet-linear-pre-lora8-pseudoparallel-ema-fresh48",
+        "prenet-linear-pre-lora8-pseudoparallel-ema-hadou",
+        "prenet-linear-pre-lora8-pseudoparallel-ema-stress",
+        "prenet-linear-pre-lora8-pseudoparallel-ema-jsut",
+        "prenet-linear-pre-lora8-pseudoparallel-ema-expanded144",
+    }:
+        external = kind.endswith("-external7")
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        expanded = kind.endswith("-expanded144")
+        experiment_id = (
+            "EXP-340"
+            if external
+            else "EXP-345"
+            if expanded
+            else "EXP-344"
+            if jsut
+            else "EXP-343"
+            if stress
+            else "EXP-342"
+            if hadou
+            else "EXP-341"
+        )
+        suffix = (
+            "external7"
+            if external
+            else "expanded144"
+            if expanded
+            else "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": (
+                "cross-corpus170-pseudoparallel-prenet-linear-pre-lora8-"
+                "real-adv-ema170"
+            ),
+            "display_name": (
+                "EXP-340 / xvc-prenet-linear-pre-lora8 / source-aligned targets / "
+                "real-adversarial / EMA"
+            ),
+            "result_kind": (
+                "liveconv-exp340-xvc-prenet-linear-pre-lora8-real-adv-ema/v1"
+                if external
+                else (
+                    f"liveconv-{experiment_id.lower()}-xvc-prenet-linear-pre-"
+                    f"lora8-real-adv-ema-{suffix}/v1"
+                )
+            ),
+            "question": (
+                "Does rank-8 LoRA at prenet.linear_pre improve fusion-boundary "
+                "conversion across the fixed external and broad evaluation "
+                "surfaces?"
+            ),
+        }
+    if kind in {
         "feature-statistics-pseudoparallel-ema-fresh48",
         "feature-statistics-pseudoparallel-ema-hadou",
         "feature-statistics-pseudoparallel-ema-stress",
@@ -3494,6 +3557,12 @@ def _parser() -> argparse.ArgumentParser:
             "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-jsut",
             "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-expanded144",
             "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-heldout30",
+            "prenet-linear-pre-lora8-pseudoparallel-ema-external7",
+            "prenet-linear-pre-lora8-pseudoparallel-ema-fresh48",
+            "prenet-linear-pre-lora8-pseudoparallel-ema-hadou",
+            "prenet-linear-pre-lora8-pseudoparallel-ema-stress",
+            "prenet-linear-pre-lora8-pseudoparallel-ema-jsut",
+            "prenet-linear-pre-lora8-pseudoparallel-ema-expanded144",
             "feature-statistics-pseudoparallel-ema-fresh48",
             "feature-statistics-pseudoparallel-ema-hadou",
             "feature-statistics-pseudoparallel-ema-stress",

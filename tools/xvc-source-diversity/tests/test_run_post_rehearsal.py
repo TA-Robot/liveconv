@@ -2087,3 +2087,96 @@ def test_exp334_policy_and_parser_bind_exact_exp238_contract() -> None:
         arguments.update(kwargs)
         with pytest.raises(post.PostRehearsalError):
             post.listening_policy(**arguments)
+
+
+def test_exp340_policy_and_scope_add_only_prenet_linear_pre() -> None:
+    targets = [f"acoustic_converter.layer{index}.to_q" for index in range(69)]
+    scope = post.composed_prenet_lora_scope(
+        {
+            "target_modules": targets,
+            "trainable_parameter_count": post.CONTROL69_LORA_TRAINABLE_PARAMETERS,
+        }
+    )
+    policy = post.listening_policy(
+        post.PSEUDOPARALLEL_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE,
+        True,
+    )
+
+    assert scope["target_modules"] == [*targets, "prenet.linear_pre"]
+    assert scope["trainable_parameter_count"] == 858_112
+    assert policy["slug"] == "exp340"
+    assert policy["candidate_id"] == (
+        "cross-corpus170-pseudoparallel-prenet-linear-pre-lora8-"
+        "real-adv-ema170"
+    )
+    assert policy["result_kind"] == (
+        "liveconv-exp340-xvc-prenet-linear-pre-lora8-real-adv-ema/v1"
+    )
+    choices = post.parser()._option_string_actions["--training-objective"].choices
+    assert post.PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE in choices
+
+
+def test_exp340_state_receipt_requires_exact_control_and_zero_prenet_b() -> None:
+    import torch
+
+    control = {
+        "base_model.model.acoustic_converter.x.lora_A.weight": torch.ones(2, 3),
+        "base_model.model.acoustic_converter.x.lora_B.weight": torch.ones(3, 2),
+    }
+    candidate = {
+        **{key: value.clone() for key, value in control.items()},
+        "base_model.model.prenet.linear_pre.lora_A.weight": torch.ones(2, 4),
+        "base_model.model.prenet.linear_pre.lora_B.weight": torch.zeros(4, 2),
+    }
+
+    receipt = post.composed_prenet_lora_state_receipt(
+        control, candidate, torch=torch
+    )
+
+    assert receipt["control_values_exact"] is True
+    assert receipt["added_lora_b_zero"] is True
+    assert receipt["step0_output_equivalent_by_zero_delta"] is True
+    candidate["base_model.model.prenet.linear_pre.lora_B.weight"][0, 0] = 1
+    with pytest.raises(post.PostRehearsalError, match="not zero initialized"):
+        post.composed_prenet_lora_state_receipt(control, candidate, torch=torch)
+
+
+def test_exp340_smoke_gradient_diagnostics_cover_both_adapter_regions() -> None:
+    import torch
+
+    named = []
+    for index in range(138):
+        parameter = torch.nn.Parameter(torch.ones(1))
+        parameter.grad = torch.ones_like(parameter)
+        named.append(
+            (
+                "base_model.model.acoustic_converter."
+                f"layer{index}.lora_A.default.weight",
+                parameter,
+            )
+        )
+    for side in ("A", "B"):
+        parameter = torch.nn.Parameter(torch.ones(1))
+        parameter.grad = torch.ones_like(parameter)
+        named.append(
+            (
+                "base_model.model.prenet.linear_pre."
+                f"lora_{side}.default.weight",
+                parameter,
+            )
+        )
+
+    class FakeModel:
+        def named_parameters(self):
+            yield from named
+
+    diagnostics = post.composed_prenet_lora_gradient_diagnostics(
+        FakeModel(), torch=torch
+    )
+
+    assert diagnostics["converter_lora69"]["tensor_count"] == 138
+    assert diagnostics["prenet_linear_pre"]["tensor_count"] == 2
+    assert diagnostics["converter_lora69"]["finite"] is True
+    assert diagnostics["prenet_linear_pre"]["finite"] is True

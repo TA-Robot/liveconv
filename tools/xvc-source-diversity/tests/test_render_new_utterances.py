@@ -1766,6 +1766,93 @@ def test_feature_statistics_broad_policies_prebind_exp335_to_exp339() -> None:
     assert all(kind in choices for kind in kinds)
 
 
+def test_prenet_linear_pre_policies_prebind_exp340_to_exp345() -> None:
+    kinds = [
+        "prenet-linear-pre-lora8-pseudoparallel-ema-external7",
+        "prenet-linear-pre-lora8-pseudoparallel-ema-fresh48",
+        "prenet-linear-pre-lora8-pseudoparallel-ema-hadou",
+        "prenet-linear-pre-lora8-pseudoparallel-ema-stress",
+        "prenet-linear-pre-lora8-pseudoparallel-ema-jsut",
+        "prenet-linear-pre-lora8-pseudoparallel-ema-expanded144",
+    ]
+    expected_experiment_ids = [
+        "EXP-340",
+        "EXP-341",
+        "EXP-342",
+        "EXP-343",
+        "EXP-344",
+        "EXP-345",
+    ]
+    expected_result_kinds = [
+        "liveconv-exp340-xvc-prenet-linear-pre-lora8-real-adv-ema/v1",
+        "liveconv-exp-341-xvc-prenet-linear-pre-lora8-real-adv-ema-fresh48/v1",
+        "liveconv-exp-342-xvc-prenet-linear-pre-lora8-real-adv-ema-hadou31/v1",
+        "liveconv-exp-343-xvc-prenet-linear-pre-lora8-real-adv-ema-stress60/v1",
+        "liveconv-exp-344-xvc-prenet-linear-pre-lora8-real-adv-ema-jsut24/v1",
+        "liveconv-exp-345-xvc-prenet-linear-pre-lora8-real-adv-ema-expanded144/v1",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == (
+        expected_experiment_ids
+    )
+    assert {
+        policy["variant_id"] for policy in policies
+    } == {
+        "cross-corpus170-pseudoparallel-prenet-linear-pre-lora8-"
+        "real-adv-ema170"
+    }
+    assert [policy["result_kind"] for policy in policies] == expected_result_kinds
+    assert {
+        policy["display_name"] for policy in policies
+    } == {
+        "EXP-340 / xvc-prenet-linear-pre-lora8 / source-aligned targets / "
+        "real-adversarial / EMA"
+    }
+    assert {
+        policy["question"] for policy in policies
+    } == {
+        "Does rank-8 LoRA at prenet.linear_pre improve fusion-boundary "
+        "conversion across the fixed external and broad evaluation surfaces?"
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert all(kind in choices for kind in kinds)
+
+
+def test_prenet_linear_pre_candidates_use_ordinary_peft_without_attachment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail(*args: object, **kwargs: object) -> None:
+        raise AssertionError("prenet candidate unexpectedly wrapped")
+
+    monkeypatch.setattr(
+        NEW.post, "attach_continuous_acoustic_latent", fail, raising=False
+    )
+    monkeypatch.setattr(
+        NEW.post, "attach_acoustic_temporal_jitter", fail, raising=False
+    )
+    for kind in (
+        "prenet-linear-pre-lora8-pseudoparallel-ema-external7",
+        "prenet-linear-pre-lora8-pseudoparallel-ema-fresh48",
+        "prenet-linear-pre-lora8-pseudoparallel-ema-hadou",
+        "prenet-linear-pre-lora8-pseudoparallel-ema-stress",
+        "prenet-linear-pre-lora8-pseudoparallel-ema-jsut",
+        "prenet-linear-pre-lora8-pseudoparallel-ema-expanded144",
+    ):
+        policy = NEW.candidate_policy(kind)
+        assert policy.get("candidate_format") is None
+        assert policy.get("candidate_attachment") is None
+        candidate = object()
+        assert (
+            NEW._attach_candidate_representation(candidate, policy, torch=object())
+            is candidate
+        )
+
+
 def test_feature_statistics_candidates_are_normal_peft_without_wrapper_or_attachment(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

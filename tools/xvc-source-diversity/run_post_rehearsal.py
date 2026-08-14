@@ -122,6 +122,17 @@ SPEAKER_CONDITION_CALIBRATOR_TARGET = "speaker-condition-calibrator"
 CONVERTER_PREFIX = "acoustic_converter"
 EXPECTED_CONVERTER_PARAMETERS = 42_357_760
 CONVERTER_CHECKPOINT_KIND = "liveconv-xvc-merged-control69-converter/v1"
+PRENET_LORA_TARGET = "prenet.linear_pre"
+PRENET_LORA_RANK = 8
+PRENET_LORA_ALPHA = 8
+PRENET_LORA_DROPOUT = 0.0
+# The frozen X-VC config fixes prenet.linear_pre at 2048 -> 768.  PEFT adds
+# rank * (in + out) tensors, with no bias adapter.
+PRENET_LORA_ADDED_PARAMETERS = (2048 + 768) * PRENET_LORA_RANK
+CONTROL69_LORA_TRAINABLE_PARAMETERS = 835_584
+COMPOSED_LORA_TRAINABLE_PARAMETERS = (
+    CONTROL69_LORA_TRAINABLE_PARAMETERS + PRENET_LORA_ADDED_PARAMETERS
+)
 ACOUSTIC_ENCODER_PREFIX = "acoustic_encoder"
 EXPECTED_ACOUSTIC_ENCODER_PARAMETERS = 21_521_536
 ACOUSTIC_ENCODER_CHECKPOINT_KIND = "liveconv-xvc-merged-control69-acoustic-encoder/v1"
@@ -139,6 +150,9 @@ SPEAKER_PATH_UNPAIRED_OBJECTIVE = "factorized-unpaired-human-speaker-path-advers
 PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE = "pseudoparallel-generative-real-adversarial"
 PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE = (
     "pseudoparallel-generative-real-adversarial-feature-statistics"
+)
+PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE = (
+    "pseudoparallel-generative-real-adversarial-prenet-lora"
 )
 PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE = (
     "pseudoparallel-generative-real-adversarial-robust-semantic"
@@ -209,6 +223,7 @@ SOURCE_SPEAKER_PROBE_MIN_TOP5_MULTIPLE = 2.0
 PSEUDOPARALLEL_REAL_TARGET_OBJECTIVES = {
     PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
     PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE,
+    PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE,
     PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
     PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
     PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
@@ -1450,6 +1465,7 @@ def listening_policy(
         in {
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE,
+            PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE,
             PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
             PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
@@ -1467,6 +1483,7 @@ def listening_policy(
             not in {
                 PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
                 PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE,
+                PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE,
                 PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
                 PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
                 PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
@@ -1519,6 +1536,55 @@ def listening_policy(
                     "170 sequential updates, clip, zero frame condition, EMA, and "
                     "ordinary inference remain fixed"
                 ),
+            }
+
+        if training_objective == PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE:
+            if manifest_kind != PSEUDOPARALLEL_OUTPUT_KIND:
+                raise PostRehearsalError(
+                    "prenet LoRA requires exact EXP-238 curriculum"
+                )
+            return {
+                "slug": "exp340",
+                "candidate_id": (
+                    "cross-corpus170-pseudoparallel-prenet-linear-pre-lora8-"
+                    "real-adv-ema170"
+                ),
+                "candidate_name": (
+                    "EXP-340 / prenet.linear_pre rank-8 LoRA fusion / "
+                    "real-adversarial / EMA"
+                ),
+                "run_kind": "EXP-340 X-VC prenet fusion external7 evaluation",
+                "result_kind": (
+                    "liveconv-exp340-xvc-prenet-linear-pre-lora8-"
+                    "real-adv-ema/v1"
+                ),
+                "question": (
+                    "Can a narrow rank-8 LoRA at X-VC's prenet input fusion "
+                    "improve conversion while retaining the closed EXP-238 "
+                    "objective and converter adaptation?"
+                ),
+                "independent_variable": (
+                    "relative to exact EXP-238, only trainable adapter topology "
+                    "changes: retain the existing control69 converter LoRA69 "
+                    "and add rank-8, alpha-8, dropout-0, B-zero LoRA at the "
+                    "exact model.prenet.linear_pre (2048->768) module; the "
+                    "CV48/JSUT85/JVS3/Hadou34 rows, source-aligned control69 "
+                    "teacher targets, authorized real Amitaro references, "
+                    "complete generative plus real-adversarial objectives, LR, "
+                    "sequential 170 updates, clip, zero frame condition, "
+                    "discriminator, EMA, and ordinary no-sidecar inference "
+                    "remain fixed"
+                ),
+                "prenet_lora": {
+                    "target": PRENET_LORA_TARGET,
+                    "rank": PRENET_LORA_RANK,
+                    "alpha": PRENET_LORA_ALPHA,
+                    "dropout": PRENET_LORA_DROPOUT,
+                    "b_zero": True,
+                    "added_parameters": PRENET_LORA_ADDED_PARAMETERS,
+                    "trainable_parameters": COMPOSED_LORA_TRAINABLE_PARAMETERS,
+                    "inference_attachment": None,
+                },
             }
 
         if (
@@ -3171,6 +3237,93 @@ def _set_existing_adapter_scope_training_only(
     return trainable
 
 
+def composed_prenet_lora_scope(
+    control_scope: Mapping[str, object],
+) -> dict[str, object]:
+    """Extend exact control69 with only the prenet input projection."""
+
+    targets = [str(item) for item in control_scope.get("target_modules", [])]
+    if (
+        len(targets) != 69
+        or int(control_scope.get("trainable_parameter_count", 0))
+        != CONTROL69_LORA_TRAINABLE_PARAMETERS
+        or PRENET_LORA_TARGET in targets
+        or any(target.endswith("linear_pre") for target in targets)
+    ):
+        raise PostRehearsalError("EXP-340 control69 topology drifted")
+    return {
+        "target_modules": [*targets, PRENET_LORA_TARGET],
+        "trainable_parameter_count": COMPOSED_LORA_TRAINABLE_PARAMETERS,
+    }
+
+
+def composed_prenet_lora_state_receipt(
+    control_state: Mapping[str, Any],
+    candidate_state: Mapping[str, Any],
+    *,
+    torch: Any,
+) -> dict[str, object]:
+    """Prove exact control69 initialization plus one zero-output LoRA branch."""
+
+    control_keys = set(control_state)
+    candidate_keys = set(candidate_state)
+    if not control_keys or not control_keys.issubset(candidate_keys):
+        raise PostRehearsalError("EXP-340 control69 adapter keys did not load")
+    for key in sorted(control_keys):
+        if not bool(
+            torch.equal(
+                candidate_state[key].detach().cpu(),
+                control_state[key].detach().cpu(),
+            )
+        ):
+            raise PostRehearsalError("EXP-340 control69 adapter value drifted")
+    added = sorted(candidate_keys - control_keys)
+    if (
+        len(added) != 2
+        or not all("prenet.linear_pre" in key for key in added)
+        or sum("lora_A" in key for key in added) != 1
+        or sum("lora_B" in key for key in added) != 1
+    ):
+        raise PostRehearsalError("EXP-340 added adapter topology drifted")
+    added_a = next(candidate_state[key] for key in added if "lora_A" in key)
+    added_b = next(candidate_state[key] for key in added if "lora_B" in key)
+    if not bool(torch.isfinite(added_a).all()) or not bool(
+        torch.isfinite(added_b).all()
+    ):
+        raise PostRehearsalError("EXP-340 prenet adapter initialization is non-finite")
+    if int(torch.count_nonzero(added_b).detach().cpu()) != 0:
+        raise PostRehearsalError("EXP-340 prenet LoRA-B is not zero initialized")
+    return {
+        "implementation": "single-peft-adapter-control69-plus-prenet-linear-pre/v1",
+        "target": PRENET_LORA_TARGET,
+        "rank": PRENET_LORA_RANK,
+        "alpha": PRENET_LORA_ALPHA,
+        "dropout": PRENET_LORA_DROPOUT,
+        "control_tensor_count": len(control_keys),
+        "added_tensor_count": len(added),
+        "control_values_exact": True,
+        "added_lora_b_zero": True,
+        "step0_output_equivalent_by_zero_delta": True,
+        "trainable_parameters": COMPOSED_LORA_TRAINABLE_PARAMETERS,
+        "inference_attachment": None,
+    }
+
+
+def exact_adapter_state_match(
+    expected: Mapping[str, Any], observed: Mapping[str, Any], *, torch: Any
+) -> bool:
+    """Return whether a serialized adapter round-trips byte-for-value."""
+
+    return set(expected) == set(observed) and all(
+        bool(
+            torch.equal(
+                expected[key].detach().cpu(), observed[key].detach().cpu()
+            )
+        )
+        for key in expected
+    )
+
+
 def _base_xvc(model: Any) -> Any:
     return model.get_base_model() if hasattr(model, "get_base_model") else model
 
@@ -3420,29 +3573,55 @@ def finite_nonzero_gradient_diagnostics(
         parameter.grad for parameter in parameters if parameter.grad is not None
     ]
     if not gradients:
-        raise PostRehearsalError("acoustic temporal jitter produced no gradients")
+        raise PostRehearsalError("trainable path produced no gradients")
     if not all(bool(torch.isfinite(gradient).all()) for gradient in gradients):
-        raise PostRehearsalError(
-            "acoustic temporal jitter produced non-finite gradients"
-        )
+        raise PostRehearsalError("trainable path produced non-finite gradients")
     nonzero_elements = sum(
         int(torch.count_nonzero(gradient).detach().cpu()) for gradient in gradients
     )
     if nonzero_elements <= 0:
-        raise PostRehearsalError(
-            "acoustic temporal jitter produced zero trainable gradients"
-        )
+        raise PostRehearsalError("trainable path produced zero gradients")
     squared_norm = sum(
         float(torch.sum(torch.square(gradient.detach().float())).cpu())
         for gradient in gradients
     )
     norm = math.sqrt(squared_norm)
     if not math.isfinite(norm) or norm <= 0.0:
-        raise PostRehearsalError("acoustic temporal jitter gradient norm is invalid")
+        raise PostRehearsalError("trainable path gradient norm is invalid")
     return {
         "finite": True,
         "nonzero_elements": nonzero_elements,
         "l2_norm": norm,
+    }
+
+
+def composed_prenet_lora_gradient_diagnostics(
+    model: Any, *, torch: Any
+) -> dict[str, object]:
+    """Require gradient flow through both EXP-340 adapter regions."""
+
+    named = [
+        (name, parameter)
+        for name, parameter in model.named_parameters()
+        if parameter.requires_grad and (".lora_A." in name or ".lora_B." in name)
+    ]
+    prenet = [
+        parameter for name, parameter in named if ".prenet.linear_pre." in name
+    ]
+    converter = [
+        parameter for name, parameter in named if ".acoustic_converter." in name
+    ]
+    if len(prenet) != 2 or len(converter) != 138 or len(named) != 140:
+        raise PostRehearsalError("EXP-340 trainable gradient topology drifted")
+    return {
+        "converter_lora69": {
+            "tensor_count": len(converter),
+            **finite_nonzero_gradient_diagnostics(converter, torch=torch),
+        },
+        "prenet_linear_pre": {
+            "tensor_count": len(prenet),
+            **finite_nonzero_gradient_diagnostics(prenet, torch=torch),
+        },
     }
 
 
@@ -5039,7 +5218,14 @@ def run(
     expected_rows = expected_training_rows(str(manifest["kind"]))
 
     import torch
-    from peft import LoraConfig, PeftModel, get_peft_model
+    from peft import (
+        LoraConfig,
+        PeftModel,
+        get_peft_model,
+        get_peft_model_state_dict,
+        set_peft_model_state_dict,
+    )
+    from peft.utils.save_and_load import load_peft_weights
 
     if not torch.cuda.is_available():
         raise PostRehearsalError("CUDA is unavailable")
@@ -5072,6 +5258,9 @@ def run(
         else "control69"
     )
     scope = role_mix.training_scope(arguments.inventory, scope_name)
+    active_scope = scope
+    prenet_lora_receipt: dict[str, object] | None = None
+    prenet_gradient_diagnostics: dict[str, object] | None = None
     calibrator = None
     if arguments.trainable_target == SPEAKER_CONDITION_CALIBRATOR_TARGET:
         trained = PeftModel.from_pretrained(
@@ -5115,6 +5304,30 @@ def run(
         expected_trainable = role_mix.expected_trainable_parameter_count(
             scope, "standard"
         )
+    elif arguments.training_objective == PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE:
+        active_scope = composed_prenet_lora_scope(scope)
+        trained = get_peft_model(
+            model,
+            LoraConfig(
+                r=PRENET_LORA_RANK,
+                lora_alpha=PRENET_LORA_ALPHA,
+                lora_dropout=PRENET_LORA_DROPOUT,
+                bias="none",
+                use_dora=False,
+                use_rslora=False,
+                target_modules=list(active_scope["target_modules"]),
+            ),
+        )
+        control_state = load_peft_weights(
+            str(arguments.control_adapter), device=str(device)
+        )
+        set_peft_model_state_dict(trained, control_state, adapter_name="default")
+        candidate_state = get_peft_model_state_dict(trained)
+        prenet_lora_receipt = composed_prenet_lora_state_receipt(
+            control_state, candidate_state, torch=torch
+        )
+        trainable = role_mix._set_scope_training_only(trained, active_scope)
+        expected_trainable = COMPOSED_LORA_TRAINABLE_PARAMETERS
     elif arguments.training_objective == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE:
         trained = get_peft_model(
             model,
@@ -5231,6 +5444,7 @@ def run(
         SPEAKER_PATH_UNPAIRED_OBJECTIVE,
         PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
         PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE,
+        PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE,
         PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
         PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
         PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
@@ -5249,6 +5463,7 @@ def run(
             REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE,
+            PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE,
             PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
             PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
@@ -5304,7 +5519,7 @@ def run(
         elif arguments.trainable_target == SOURCE36_TARGET:
             _set_existing_adapter_scope_training_only(trained, scope)
         else:
-            role_mix._set_scope_training_only(trained, scope)
+            role_mix._set_scope_training_only(trained, active_scope)
         tensors = _batch_from_item(
             trained,
             item,
@@ -5532,6 +5747,7 @@ def run(
                             REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
                             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
                             PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE,
+                            PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE,
                             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
                             PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
                             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
@@ -5786,6 +6002,16 @@ def run(
                     robust_semantic_gradient_diagnostics = (
                         finite_nonzero_gradient_diagnostics(trainable, torch=torch)
                     )
+                if (
+                    arguments.training_objective
+                    == PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE
+                    and prenet_gradient_diagnostics is None
+                ):
+                    prenet_gradient_diagnostics = (
+                        composed_prenet_lora_gradient_diagnostics(
+                            trained, torch=torch
+                        )
+                    )
                 if calibrator is not None:
                     delta_norm = float(
                         torch.linalg.vector_norm(
@@ -5915,6 +6141,37 @@ def run(
                 "source-speaker GRL inference output shape changed"
             )
         source_speaker_inference_shape = list(rendered.shape)
+    prenet_inference_shape: list[int] | None = None
+    prenet_serialized_state_exact: bool | None = None
+    if (
+        arguments.training_objective == PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE
+        and arguments.smoke
+    ):
+        rendered = base._inference(
+            trained,
+            {
+                "source_wav": batch["source_wav"],
+                "semantic_tokens": batch["semantic_tokens"],
+            },
+            {
+                "target_wav": batch["target_wav"],
+                "ssl_feat": batch["ssl_feat"],
+            },
+            seed=base.SEED,
+            torch=torch,
+            device=device,
+        )
+        if rendered.ndim != 3 or tuple(rendered.shape) != (1, 1, base.MODEL_SAMPLES):
+            raise PostRehearsalError("EXP-340 inference output shape changed")
+        prenet_inference_shape = list(rendered.shape)
+        smoke_adapter = arguments.work_dir / "smoke-adapter"
+        trained.save_pretrained(smoke_adapter, safe_serialization=True)
+        saved_state = load_peft_weights(smoke_adapter, device="cpu")
+        prenet_serialized_state_exact = exact_adapter_state_match(
+            get_peft_model_state_dict(trained), saved_state, torch=torch
+        )
+        if not prenet_serialized_state_exact:
+            raise PostRehearsalError("EXP-340 ordinary adapter reload drifted")
     if arguments.smoke:
         smoke = {
             "status": (
@@ -5924,6 +6181,9 @@ def run(
                 else "smoked-feature-statistics-pseudoparallel"
                 if arguments.training_objective
                 == PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE
+                else "smoked-prenet-linear-pre-lora-pseudoparallel"
+                if arguments.training_objective
+                == PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE
                 else "smoked-robust-semantic-pseudoparallel"
                 if arguments.training_objective
                 == PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE
@@ -5947,6 +6207,9 @@ def run(
                 "fresh-zero-initialized-rank8-lora69-on-base-xvc"
                 if arguments.training_objective
                 == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE
+                else "exp035-control69-plus-zero-prenet-linear-pre-lora8"
+                if arguments.training_objective
+                == PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE
                 else "exp035-control69-adapter"
             ),
             "training_objective": arguments.training_objective,
@@ -5954,6 +6217,19 @@ def run(
                 feature_statistics_receipt()
                 if arguments.training_objective
                 == PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE
+                else None
+            ),
+            "prenet_lora": (
+                {
+                    **(prenet_lora_receipt or {}),
+                    "gradient_diagnostics": prenet_gradient_diagnostics,
+                    "inference_output_shape": prenet_inference_shape,
+                    "ordinary_adapter_reload_exact": (
+                        prenet_serialized_state_exact
+                    ),
+                }
+                if arguments.training_objective
+                == PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE
                 else None
             ),
             "optimizer_mode": arguments.optimizer_mode,
@@ -6219,6 +6495,9 @@ def run(
             "fresh-zero-initialized-rank8-lora69-on-base-xvc"
             if arguments.training_objective
             == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE
+            else "exp035-control69-plus-zero-prenet-linear-pre-lora8"
+            if arguments.training_objective
+            == PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE
             else "exp035-control69-adapter"
         ),
         "initial_adapter": (
@@ -6232,6 +6511,16 @@ def run(
             feature_statistics_receipt()
             if arguments.training_objective
             == PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE
+            else None
+        ),
+        "prenet_lora": (
+            {
+                **(prenet_lora_receipt or {}),
+                "first_update_gradient_diagnostics": prenet_gradient_diagnostics,
+                "ordinary_peft_export": True,
+            }
+            if arguments.training_objective
+            == PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE
             else None
         ),
         "source_speaker": (
@@ -6446,6 +6735,10 @@ def run(
                     or arguments.training_objective
                     == PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE
                     or arguments.training_objective
+                    == PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE
+                    or arguments.training_objective
+                    == PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE
+                    or arguments.training_objective
                     == PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE
                     or arguments.training_objective
                     == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE
@@ -6549,6 +6842,7 @@ def parser() -> argparse.ArgumentParser:
             SPEAKER_PATH_UNPAIRED_OBJECTIVE,
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_FEATURE_STATISTICS_OBJECTIVE,
+            PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE,
             PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
             PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
@@ -6609,7 +6903,28 @@ def main(argv: Sequence[str] | None = None) -> int:
                             else "fresh-zero-initialized-rank8-LoRA69-on-base-XVC"
                             if arguments.training_objective
                             == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE
+                            else "EXP-035-control69-plus-zero-prenet-linear-pre-LoRA8"
+                            if arguments.training_objective
+                            == PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE
                             else "EXP-035-control69"
+                        ),
+                        "prenet_lora": (
+                            {
+                                "target": PRENET_LORA_TARGET,
+                                "rank": PRENET_LORA_RANK,
+                                "alpha": PRENET_LORA_ALPHA,
+                                "dropout": PRENET_LORA_DROPOUT,
+                                **composed_prenet_lora_scope(
+                                    role_mix.training_scope(
+                                        arguments.inventory, "control69"
+                                    )
+                                ),
+                                "ordinary_peft_adapter": True,
+                                "inference_attachment": None,
+                            }
+                            if arguments.training_objective
+                            == PSEUDOPARALLEL_PRENET_LORA_OBJECTIVE
+                            else None
                         ),
                         "acoustic_code_dropout": (
                             {

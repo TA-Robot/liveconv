@@ -6675,3 +6675,24 @@ job queue.
   feature-statistic reduction/epsilon/weight/blend neighbors. The next pilot
   changes adapter topology instead: rank-8 LoRA only at
   `prenet.linear_pre`, with EXP-238 data and objectives fixed.
+
+## 2026-08-14T22:54:39Z - Grok accepts EXP-340 direct execution
+
+- Agent: `grok-project-progress-auditor` in tmux
+  `liveconv-grok-auditor` (read-only, no tools or delegation).
+- Task: judge whether stopping EXP-334 and moving to the prenet fusion target
+  remains the shortest route toward better X-VC audio and the realtime system.
+- Result: `CONTINUE`. The auditor counted EXP-334's 35 new external7 WAVs,
+  accepted the instability/content stop, and judged EXP-340 a genuinely
+  different single-variable trainable-target method rather than another
+  feature-stat, GRL, window, or single-phrase neighbor.
+- Adopted: yes. Finish only the runnable EXP-340 slice, commit it, then execute
+  two-row CUDA smoke, one 170-update lane, and external7. Do not expand the
+  method note, evaluation set, review, or identity ceremony.
+- Problems: `gpu0` remained idle during implementation; the first delegated
+  runner owner produced no visible edit/status for five minutes and was
+  interrupted. Parent integration retained its late partial policy but fixed
+  a 42M full-converter parameter-count error to the exact `835,584 + 22,528 =
+  858,112` composed LoRA contract.
+- Rework: no EXP-334 broad render and no LoRA-location walk if EXP-340 fails.
+  Run the predeclared external gate and replan at method level.
