@@ -5065,7 +5065,7 @@ job queue.
   not tune weights or projection. Move to a function-path, target-data, or
   conditioning intervention while retaining one committed GPU lane at a time.
 
-## 2026-08-14T10:34:00Z - EXP-233--237 speaker-path overlay prepared
+## 2026-08-14T10:31:00Z - EXP-233--237 speaker-path overlay prepared
 
 - Agent: `primary-integrator`.
 - Task: convert EXP-228's frequent content/voice conflict into a distinct
@@ -5084,3 +5084,29 @@ job queue.
 - Rework: focused tests, exact no-CUDA admission, commit, then one two-row smoke
   and one 170-step lane. Stop on added corruption or broad content regression;
   do not tune rank, scope, loss weights, data, LR, condition, or EMA.
+
+## 2026-08-14T10:45:08Z - EXP-233--237 speaker-path overlay rejected
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T10:32:00Z.
+- End: 2026-08-14T10:45:08Z.
+- Dependencies: commit `135e6ed`; merged EXP-035 control69; exact
+  cross-corpus170 schedule; fixed five surfaces; gpu0; listener 8878.
+- Result: smoke proved 14 trainable tensors / 166,400 parameters at
+  4,603,096,064 peak bytes. Training completed 170 updates in 110.13 seconds at
+  5,859,044,352 peak bytes. Voice plus adversarial loss moved
+  `70.1457 -> 50.0250`; speaker MSE moved `0.17721 -> 0.11189`. EMA overlay
+  SHA-256 is
+  `d58b604cbec07d1d21c64740c7409d74524ae4818957b9c455ab1acc52db4fe9`.
+  Published and screened 850 WAVs with no candidate-added consensus gross row.
+  Exact common-stable source distance moved external7 `0.256410 -> 0.238462`,
+  fresh48 `0.209620 -> 0.248118`, Hadou31 `0.148912 -> 0.133097`, stress60
+  `0.190836 -> 0.206823`, and JSUT24 `0.115028 -> 0.130505`.
+- Problems: voice-only speaker modulation still disturbed broad content despite
+  the frozen converter. Fresh unknown speakers, clean/silence/tempo/pitch, and
+  ordinary JSUT reproduce the recurring cross-domain tradeoff. Machine metrics
+  do not decide whether the overlay changed naturalness or target identity.
+- Rework: reject this exact function-path intervention and close adjacent
+  rank/scope/weight/schedule points. The repeated failure now implicates the
+  unrelated source/target training contract. Next restore source-aligned
+  pseudo-parallel targets while retaining the broad cross-corpus source set.

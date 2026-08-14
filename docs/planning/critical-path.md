@@ -249,7 +249,8 @@ claims from that artifact are superseded. The active join is now:
         -> optimizer surgery closed; next change mutable function path, data target, or condition
         -> EXP-233 merge control69; train only speaker7 AdaLN on real voice/adversarial loss
         -> EXP-234--237 prebound fresh48 / Hadou31 / stress60 / JSUT24
-        -> one fixed voice overlay; no rank/scope/weight/data/LR sweep
+        -> 850 WAVs; no added gross, but fresh/stress/ordinary JSUT regress
+        -> function-path overlay closed; change the unpaired data target contract
         -> operator hearing when available
 ```
 
