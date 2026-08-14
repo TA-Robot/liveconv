@@ -4195,3 +4195,17 @@ job queue.
 - Rework: do not tune the coefficient. Run the already-bound Hadou31 gate once
   to test the hypothesized hard-repair retention; reject the method if that
   signal is absent or a candidate-only gross row appears.
+
+## 2026-08-14T03:47:00Z - EXP-183 Hadou31 completed
+
+- Agent: `primary-integrator`.
+- Task: determine whether the anchored adapter retained hard-sentence repair
+  after its fresh48 source-relative weakness.
+- Dependencies: unchanged EXP-181 adapter; frozen Hadou31; no retraining.
+- Result: published 155 WAVs with zero gross row. Across 24 common stable rows,
+  source-relative mean improved `0.118 -> 0.110` with W/T/L `2/20/2`; known-text
+  improved `0.354 -> 0.343` with W/T/L `3/20/1`.
+- Problems: the gain is sparse and small, while fresh48 remains directionally
+  worse. Content diagnostics still cannot establish naturalness or identity.
+- Rework: continue once to the prebound stress60 condition map, which directly
+  tests whether the anchor preserved noise, tempo, pitch, and silence behavior.

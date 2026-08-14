@@ -1,6 +1,6 @@
 # EXP-181: control69 parameter anchor on the surviving X-VC method
 
-Status: external7 and fresh48 complete; Hadou31 pending
+Status: external7, fresh48, and Hadou31 complete; stress60 pending
 
 ## Goal
 
@@ -68,3 +68,10 @@ row: its two gross rows were the same two already present in control69. Across
 direction but not an across-metric broad collapse. Continue once to Hadou31 to
 test whether the constrained update retained the method's intended hard-repair
 signal; do not tune the anchor.
+
+EXP-183 published another 155 Hadou31 WAVs with zero gross row in either arm.
+Across 24 common stable rows, source-relative mean improved `0.118 -> 0.110`
+with W/T/L `2/20/2`, and known-text improved `0.354 -> 0.343` with W/T/L
+`3/20/1`. The hard-repair signal therefore survived, but it is small and does
+not erase the fresh48 weakness. Continue the unchanged checkpoint to stress60,
+the direct test of the method's intended retention behavior.
