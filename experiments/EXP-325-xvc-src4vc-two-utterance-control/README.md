@@ -1,7 +1,7 @@
 # EXP-325/326: two-utterance SRC4VC source-speaker adversary
 
-Status: phase-1 control completed and passed the coarse corruption/stability
-gate; EXP-326 GRL admission and matched training are next
+Status: EXP-325/326 matched external7 complete; EXP-326 passed the coarse gate
+and the six frozen broad surfaces are admitted
 
 ## Milestone
 
@@ -117,3 +117,35 @@ initialization, LoRA69 scope, LR, 170-update horizon, EMA, and inference path.
 Run the bounded signal/gradient/inference admission before the full EXP-326
 lane. Human hearing remains unavailable, so EXP-325 stays unheard and
 unselected.
+
+## Phase-2 external7 result
+
+The first two bounded GRL smokes exposed integration defects before any
+optimizer update. The first incorrectly resolved SRC4VC target IDs through an
+unrelated target inventory; commit `342f287` binds pseudoparallel realism to
+each row's ordered real Amitaro file and hash. The second found stale one-arg
+generator calls and, during that repair, a deeper matched-contract error: the
+GRL helper used the control69 teacher rather than real Amitaro for the waveform
+discriminator. Commit `32c8ba1` keeps the teacher as the X-VC generator target,
+passes no speaker-target override, and supplies row-specific real Amitaro only
+to the discriminator/adversarial path, exactly matching EXP-325.
+
+The corrected two-row smoke produced finite nonzero classifier gradients on
+174,165 elements and GRL-to-LoRA gradients on 827,376 elements. It proved
+disjoint optimizers, removed the training hook before inference, and retained
+output shape `[1, 1, 38400]` at 5,222,119,424 peak allocated GPU bytes.
+
+Before full training, frozen-control69 acoustic-converter latents identified
+utterance one from utterance-zero centroids at top-1 `0.152941` and top-5
+`0.352941`, respectively 13x and 6x chance. EXP-326 then completed 170 updates
+in 226.87 seconds at 6,163,124,736 peak allocated GPU bytes. The 2,048-to-85
+head was not exported, the hook recorded zero inference calls and was removed,
+and ordinary adapter inference published 35 external7 WAVs on port 8878.
+
+All seven EXP-326 candidate hashes differ from EXP-325. The exact coarse screen
+was `0W/7T/0L` on source-relative distance; gross remained `0 -> 0`, decoder
+instability remained `1 -> 1`, and no new unstable row appeared. This supports
+neither a perceptual improvement nor a winner. It does satisfy the predefined
+external gate, so only the frozen fresh48, Hadou31, stress60, balanced JSUT24,
+expanded144, and SRC4VC-heldout30 surfaces are admitted next. Do not sweep GRL
+weight, classifier shape, data, horizon, loss, or scope.

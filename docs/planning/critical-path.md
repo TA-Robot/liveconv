@@ -361,9 +361,12 @@ claims from that artifact are superseded. The active join is now:
         -> phase 1 ordinary control completes 170 teachers/updates and 35 external7 WAVs
         -> EXP238 comparison 0W/6T/1L; gross 0 -> 0; instability 1 -> 1
         -> substrate safety gate passes without supporting a data-improvement claim
-        -> Ready: EXP326 signal/gradient/inference admission on the identical manifest
-        -> if green, change only training-only source-speaker GRL for 170 updates
-        -> external7 gate before any fixed broad surface; no weight/head/data sweep
+        -> EXP326 signal/gradient/inference admission passes on the identical manifest
+        -> top1 source-speaker probe 13x chance; top5 6x; 170 GRL updates complete
+        -> all seven external WAVs change; EXP325 comparison 0W/7T/0L
+        -> gross 0 -> 0; instability 1 -> 1; no new unstable row
+        -> Ready: fixed fresh48/Hadou31/stress60/JSUT24/expanded144/SRC4VC30 only
+        -> no GRL weight/head/data/horizon/loss/scope sweep; replan after broad
         -> operator hearing when available
 ```
 

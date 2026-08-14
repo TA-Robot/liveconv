@@ -6387,3 +6387,35 @@ job queue.
   identified contract drift in the GRL binding as the critical-path risk.
 - Rework: fix and test only those matched-contract bindings, then retry the
   bounded smoke. Keep the safe job sequence and the no-winner boundary.
+
+## 2026-08-14T21:04:00Z - EXP-326 matched source-speaker GRL external7
+
+- Agent: `primary-integrator`; the original runner and its two integration
+  repairs were handled by one bounded implementation owner and parent review.
+- Task: change only a training-time post-converter source-speaker GRL relative
+  to EXP-325 on the exact same 170 rows, teachers, targets, initialization,
+  LoRA69 scope, losses, LR, horizon, EMA, and ordinary inference.
+- Dependencies: commits `7f94dec`, `342f287`, and `32c8ba1`; EXP-325's exact
+  curriculum and teacher bytes; one gpu0 lease; listener 8878.
+- Result: corrected two-row smoke produced finite nonzero classifier gradients
+  on 174,165 elements and GRL-to-LoRA gradients on 827,376 elements, with
+  disjoint optimizers, hook removal, unchanged `[1,1,38400]` inference shape,
+  and 5,222,119,424 peak allocated GPU bytes.
+- Result: frozen-control69 cross-utterance source-speaker identification was
+  top-1 `0.152941` (13x chance) and top-5 `0.352941` (6x chance). Full training
+  completed 170 updates in 226.87 seconds at 6,163,124,736 peak bytes; the head
+  was not exported and the hook had zero inference calls. Thirty-five
+  external7 WAVs were published.
+- Result: all seven candidate hashes changed versus EXP-325. Coarse exact join
+  was `0W/7T/0L`; gross remained zero, instability remained one, and no new
+  unstable row appeared. This is a broad-screen admission, not a naturalness,
+  identity, keep, or winner claim.
+- Problems: smoke v1 resolved SRC4VC target IDs through the wrong inventory.
+  Smoke v2 exposed stale generator call signatures; review of that fix also
+  found the GRL waveform discriminator was using the control69 teacher instead
+  of ordered real Amitaro. Both failed before a valid training result and left
+  only named empty ignored work directories. Focused regression tests now bind
+  generator-teacher and discriminator-real-audio roles separately.
+- Rework: render only the six frozen broad surfaces and apply coarse
+  corruption/content gates. Do not add another data arm or sweep GRL weight,
+  classifier shape, loss, scope, LR, or horizon.
