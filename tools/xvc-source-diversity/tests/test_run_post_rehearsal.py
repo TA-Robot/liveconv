@@ -226,6 +226,69 @@ def test_contrastive_output_cycle_prefers_source_over_negative(monkeypatch) -> N
     assert torch.count_nonzero(reconstruction.grad).item() > 0
 
 
+def test_discrete_output_cycle_policy_uses_frozen_source_tokens() -> None:
+    policy = post.listening_policy(
+        post.CROSS_CORPUS_UNPAIRED_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp223"
+    assert policy["candidate_id"] == (
+        "cross-corpus170-discrete-output-cycle-ema170"
+    )
+    assert "16,384-entry WhisperVQ codebook" in policy["independent_variable"]
+    assert "source semantic-token IDs" in policy["independent_variable"]
+
+
+def test_discrete_output_cycle_classifies_source_tokens_from_final_wav(
+    monkeypatch,
+) -> None:
+    from types import SimpleNamespace
+
+    import torch
+
+    codebook = torch.nn.Embedding(16_384, 2)
+    with torch.no_grad():
+        codebook.weight.fill_(10.0)
+        codebook.weight[5] = torch.tensor([1.0, 0.0])
+        codebook.weight[9] = torch.tensor([0.0, 1.0])
+    semantic_encoder = SimpleNamespace(
+        encoder=SimpleNamespace(
+            pooling_layer=torch.nn.AvgPool1d(kernel_size=1),
+            codebook=codebook,
+        )
+    )
+    reconstruction = torch.tensor(
+        [[[1.0, 0.0], [0.0, 1.0]]], requires_grad=True
+    )
+    outputs = {
+        "recons": reconstruction,
+        "pred_sim_feat": torch.tensor([[2.0, 4.0]]),
+        "sim_feat": torch.tensor([[1.0, 1.0]]),
+    }
+    batch = {"semantic_tokens": torch.tensor([[5, 9]], dtype=torch.long)}
+    monkeypatch.setattr(
+        post,
+        "differentiable_whisper_hidden_states",
+        lambda current_encoder, waveform, *, torch: waveform,
+    )
+
+    losses = post.discrete_output_cycle_unpaired_generator_loss(
+        outputs,
+        batch,
+        semantic_encoder=semantic_encoder,
+        torch=torch,
+    )
+    losses["loss"].backward()
+
+    assert losses["output_cycle_token_accuracy"].item() == 1.0
+    assert losses["output_cycle_discrete_content"].item() < 0.1
+    assert reconstruction.grad is not None
+    assert torch.count_nonzero(reconstruction.grad).item() > 0
+
+
 def test_factorized_loss_uses_source_semantics_and_target_speaker() -> None:
     import torch
 

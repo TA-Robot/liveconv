@@ -102,6 +102,9 @@ OUTPUT_CYCLE_UNPAIRED_OBJECTIVE = (
 CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE = (
     "factorized-unpaired-human-contrastive-output-cycle-adversarial"
 )
+DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE = (
+    "factorized-unpaired-human-discrete-output-cycle-adversarial"
+)
 OUTPUT_CYCLE_CONTENT_WEIGHT = 1000.0
 CONTRASTIVE_CONTENT_TEMPERATURE = 0.1
 SEQUENTIAL_OPTIMIZER = "sequential"
@@ -252,6 +255,7 @@ def listening_policy(
                     FACTORIZED_UNPAIRED_OBJECTIVE,
                     OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
                     CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+                    DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
                 }
                 or optimizer_mode != SEQUENTIAL_OPTIMIZER
                 or parameter_anchor
@@ -263,7 +267,10 @@ def listening_policy(
             if (
                 manifest_kind == UNPAIRED_HUMAN_OUTPUT_KIND
                 and training_objective
-                == CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+                in {
+                    CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+                    DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+                }
             ):
                 raise PostRehearsalError(
                     "contrastive output cycle requires the fixed cross-corpus data"
@@ -274,6 +281,7 @@ def listening_policy(
                 not in {
                     OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
                     CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+                    DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
                 }
             ):
                 raise PostRehearsalError(
@@ -311,6 +319,41 @@ def listening_policy(
                         "real-wave adversarial objective, control69 LoRA69 "
                         "initialization, 170 updates, LR, optimizer, clip, zero "
                         "condition, and EMA stay fixed"
+                    ),
+                }
+            if (
+                manifest_kind == CROSS_CORPUS_UNPAIRED_OUTPUT_KIND
+                and training_objective
+                == DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+            ):
+                return {
+                    "slug": "exp223",
+                    "candidate_id": (
+                        "cross-corpus170-discrete-output-cycle-ema170"
+                    ),
+                    "candidate_name": (
+                        "EXP-223 / cross-corpus discrete output-cycle / EMA"
+                    ),
+                    "run_kind": (
+                        "EXP-223 X-VC discrete output-cycle evaluation"
+                    ),
+                    "result_kind": (
+                        "liveconv-exp223-xvc-discrete-output-cycle-ema/v1"
+                    ),
+                    "question": (
+                        "Can direct frozen WhisperVQ token classification on the "
+                        "final WAV preserve categorical content without MSE "
+                        "averaging or arbitrary negatives?"
+                    ),
+                    "independent_variable": (
+                        "only final-WAV content supervision changes from "
+                        "source-versus-negative InfoNCE to normalized cross-entropy "
+                        "over the frozen 16,384-entry WhisperVQ codebook using the "
+                        "row's existing source semantic-token IDs; the exact "
+                        "CV48/JSUT85/JVS3/Hadou34 rows, ordered Amitaro target "
+                        "multiset, target speaker loss, real-wave adversarial "
+                        "objective, control69 LoRA69 initialization, 170 updates, "
+                        "LR, optimizer, clip, zero condition, and EMA stay fixed"
                     ),
                 }
             if (
@@ -1124,6 +1167,92 @@ def contrastive_output_cycle_unpaired_generator_loss(
     }
 
 
+def differentiable_whisper_token_logits(
+    semantic_encoder: Any, hidden_states_50hz: Any, *, torch: Any
+) -> Any:
+    """Map differentiable 50 Hz Whisper states to the frozen VQ vocabulary."""
+    encoder = getattr(semantic_encoder, "encoder", None)
+    pooling = getattr(encoder, "pooling_layer", None)
+    codebook = getattr(encoder, "codebook", None)
+    codebook_weight = getattr(codebook, "weight", None)
+    if (
+        encoder is None
+        or pooling is None
+        or codebook_weight is None
+        or hidden_states_50hz.ndim != 3
+        or codebook_weight.ndim != 2
+        or codebook_weight.shape[0] != 16_384
+        or codebook_weight.shape[1] != hidden_states_50hz.shape[-1]
+    ):
+        raise PostRehearsalError("discrete output-cycle codebook drifted")
+    pooled = pooling(hidden_states_50hz.transpose(1, 2)).transpose(1, 2)
+    flat = pooled.float().reshape(-1, pooled.shape[-1])
+    frozen_codebook = codebook_weight.detach().float()
+    distances = (
+        flat.square().sum(dim=1, keepdim=True)
+        + frozen_codebook.square().sum(dim=1).unsqueeze(0)
+        - 2.0 * flat @ frozen_codebook.transpose(0, 1)
+    )
+    logits = -distances.reshape(
+        pooled.shape[0], pooled.shape[1], frozen_codebook.shape[0]
+    )
+    if not bool(torch.isfinite(logits).all()):
+        raise PostRehearsalError("discrete output-cycle logits are non-finite")
+    return logits
+
+
+def discrete_output_cycle_unpaired_generator_loss(
+    outputs: Mapping[str, Any],
+    batch: Mapping[str, Any],
+    *,
+    semantic_encoder: Any,
+    torch: Any,
+) -> dict[str, Any]:
+    """Classify source WhisperVQ tokens directly from the final converted WAV."""
+    reconstruction = outputs.get("recons")
+    predicted_speaker = outputs.get("pred_sim_feat")
+    target_speaker = outputs.get("sim_feat")
+    target_tokens = batch.get("semantic_tokens")
+    if (
+        reconstruction is None
+        or predicted_speaker is None
+        or target_speaker is None
+        or target_tokens is None
+        or target_tokens.ndim != 2
+        or target_tokens.dtype != torch.long
+    ):
+        raise PostRehearsalError("discrete output-cycle shape drifted")
+    hidden_states = differentiable_whisper_hidden_states(
+        semantic_encoder, reconstruction, torch=torch
+    )
+    logits = differentiable_whisper_token_logits(
+        semantic_encoder, hidden_states, torch=torch
+    )
+    if logits.shape[:2] != target_tokens.shape:
+        raise PostRehearsalError("discrete output-cycle token shape drifted")
+    vocabulary_size = logits.shape[-1]
+    cross_entropy = torch.nn.functional.cross_entropy(
+        logits.reshape(-1, vocabulary_size), target_tokens.reshape(-1)
+    )
+    content = cross_entropy / math.log(float(vocabulary_size))
+    speaker = torch.nn.functional.mse_loss(predicted_speaker, target_speaker)
+    loss = (
+        OUTPUT_CYCLE_CONTENT_WEIGHT * content
+        + role_mix.STANDARD_LOSS_WEIGHTS["sim_mse_loss"] * speaker
+    )
+    if not bool(torch.isfinite(loss)):
+        raise PostRehearsalError("discrete output-cycle loss is non-finite")
+    with torch.no_grad():
+        accuracy = (logits.argmax(dim=-1) == target_tokens).float().mean()
+    return {
+        "loss": loss,
+        "output_cycle_discrete_content": content,
+        "output_cycle_token_cross_entropy": cross_entropy,
+        "output_cycle_token_accuracy": accuracy,
+        "speaker": speaker,
+    }
+
+
 def validate_output_cycle_frontend(
     semantic_encoder: Any,
     source_waveform: Any,
@@ -1787,6 +1916,7 @@ def run(
         FACTORIZED_UNPAIRED_OBJECTIVE,
         OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
         CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+        DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
     }:
         discriminator, discriminator_optimizer = breadth._load_pretrained_discriminator(
             arguments, config, torch=torch, device=device
@@ -1927,6 +2057,7 @@ def run(
                 in {
                     OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
                     CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+                    DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
                 }
                 and output_cycle_frontend_metrics is None
             ):
@@ -2029,6 +2160,18 @@ def run(
                         )
                         if arguments.training_objective
                         == CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+                        else (
+                            lambda outputs, current_batch: (
+                                discrete_output_cycle_unpaired_generator_loss(
+                                    outputs,
+                                    current_batch,
+                                    semantic_encoder=trained.semantic_encoder,
+                                    torch=torch,
+                                )
+                            )
+                        )
+                        if arguments.training_objective
+                        == DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
                         else None
                     ),
                 )
@@ -2288,6 +2431,12 @@ def run(
                     )
                     if arguments.training_objective
                     == CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+                    else (
+                        "final-waveform-discrete-source-token-cycle-plus-"
+                        "target-speaker"
+                    )
+                    if arguments.training_objective
+                    == DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
                     else "source-semantic-plus-target-speaker-factorization"
                     if arguments.training_objective
                     == FACTORIZED_UNPAIRED_OBJECTIVE
@@ -2369,6 +2518,7 @@ def parser() -> argparse.ArgumentParser:
             FACTORIZED_UNPAIRED_OBJECTIVE,
             OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
             CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+            DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
         ),
         default=GENERATIVE_OBJECTIVE,
     )

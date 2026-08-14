@@ -237,6 +237,9 @@ claims from that artifact are superseded. The active join is now:
         -> one fixed temperature/negative point; no mining or coefficient sweep
         -> 850 WAVs; tempo improves but fresh48 / JSUT regress; contrastive family closed
         -> inspect discrete final-WAV semantic-token supervision as a different representation
+        -> EXP-223 frozen 16,384-way WhisperVQ token classification on final WAV
+        -> EXP-224--227 prebound fresh48 / Hadou31 / stress60 / JSUT24
+        -> one normalized categorical objective; no token/codebook/pooling sweep
         -> operator hearing when available
 ```
 

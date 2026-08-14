@@ -1365,6 +1365,49 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "reduce collapse without losing the cross-corpus stability signal?"
             ),
         }
+    if kind in {
+        "discrete-output-cycle-ema-fresh48",
+        "discrete-output-cycle-ema-hadou",
+        "discrete-output-cycle-ema-stress",
+        "discrete-output-cycle-ema-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        experiment_id = (
+            "EXP-227"
+            if jsut
+            else "EXP-226"
+            if stress
+            else "EXP-225"
+            if hadou
+            else "EXP-224"
+        )
+        suffix = (
+            "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "cross-corpus170-discrete-output-cycle-ema170",
+            "display_name": (
+                "EXP-223 / cross-corpus discrete output-cycle / EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-discrete-"
+                f"output-cycle-ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does direct final-WAV classification into frozen source semantic "
+                "tokens preserve categorical Japanese content across the fixed "
+                "speaker and condition contract?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -2066,6 +2109,10 @@ def _parser() -> argparse.ArgumentParser:
             "contrastive-output-cycle-ema-hadou",
             "contrastive-output-cycle-ema-stress",
             "contrastive-output-cycle-ema-jsut",
+            "discrete-output-cycle-ema-fresh48",
+            "discrete-output-cycle-ema-hadou",
+            "discrete-output-cycle-ema-stress",
+            "discrete-output-cycle-ema-jsut",
         ),
         default="speaker7",
     )

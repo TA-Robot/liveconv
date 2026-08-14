@@ -4915,3 +4915,27 @@ job queue.
   blend temperature, negative identity/count, mining, or weight. Inspect a
   different final-WAV semantic representation, preferably direct frozen
   WhisperVQ token classification, before admitting another GPU lane.
+
+## 2026-08-14T08:37:00Z - EXP-223--227 discrete semantic cycle prepared
+
+- Agent: `primary-integrator`.
+- Task: choose a different final-WAV content representation after the
+  source-versus-negative objective traded tempo gains for fresh48/JSUT loss.
+- Dependencies: completed EXP-218--222 stop; exact cross-corpus170 data and
+  target multiset; X-VC's frozen GLM-4-Voice tokenizer, source semantic tokens,
+  four-frame pooling boundary, and 16,384-entry codebook.
+- Result: replaced only contrastive final-WAV content loss with direct
+  vocabulary-size-normalized cross-entropy against the existing source token
+  IDs. Differentiable 50 Hz final-WAV hidden states are pooled exactly four
+  frames and scored using squared Euclidean distance to the frozen codebook.
+  Data, target speaker/adversarial objectives, control69 LoRA69, updates, LR,
+  optimizer, clip, zero condition, EMA, and five surfaces remain fixed. Focused
+  tests passed `100/100`; CPU admission passed 170 rows and external7.
+- Problems: the 16,384-way logits are larger than prior hidden MSE and actual
+  runtime shape/memory remains unproved. Frame-position token classification may
+  still penalize tempo shifts. Machine token accuracy is an optimization
+  diagnostic, not naturalness or perceived quality.
+- Rework: commit, run one two-row real backward smoke, then one 170-update GPU
+  lane only if codebook shape, finite loss, waveform gradient, and memory pass.
+  Do not sweep token weight, distance scale, codebook, pooling, layer, data,
+  pairing, scope, LR, horizon, or EMA.
