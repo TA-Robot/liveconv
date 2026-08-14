@@ -79,6 +79,96 @@ def test_exp317_manifest_gate_replaces_only_first_32_cv_positions() -> None:
     assert receipt["position_specific_real_targets"] is True
 
 
+def test_cv26_policies_bind_ordinary_170_update_contract() -> None:
+    expected = {
+        post.CV26_CURRENT_WINDOW_OUTPUT_KIND: (
+            "exp318",
+            "cross-corpus170-pseudoparallel-cv26-current-window-real-adv-ema170",
+            "liveconv-exp318-xvc-pseudoparallel-cv26-current-window-real-adv-ema/v1",
+        ),
+        post.CV26_ACTIVE_WINDOW_OUTPUT_KIND: (
+            "exp319",
+            "cross-corpus170-pseudoparallel-cv26-active-window-real-adv-ema170",
+            "liveconv-exp319-xvc-pseudoparallel-cv26-active-window-real-adv-ema/v1",
+        ),
+    }
+    choices = post.parser()._option_string_actions["--training-objective"].choices
+    assert post.PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE in choices
+    for kind, (slug, candidate_id, result_kind) in expected.items():
+        policy = post.listening_policy(
+            kind,
+            post.LORA69_TARGET,
+            post.PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+            True,
+        )
+        assert post.expected_training_rows(kind) == 170
+        assert policy["slug"] == slug
+        assert policy["candidate_id"] == candidate_id
+        assert policy["result_kind"] == result_kind
+        assert "external7" in policy["run_kind"]
+
+
+def test_cv26_manifest_gate_replaces_fixed_rows_and_requires_active_metadata() -> None:
+    reference = json.loads(
+        (
+            post.REPO_ROOT
+            / "artifacts/xvc-source-diversity/exp238-cross-corpus-control69-targets-v1"
+            / "curriculum.json"
+        ).read_text(encoding="utf-8")
+    )
+    base = reference["items"]
+
+    def build(kind: str, *, active: bool) -> dict[str, object]:
+        items = [dict(item) for item in base]
+        for index, position in enumerate(post.CV26_REPLACEMENT_POSITIONS):
+            source_id = f"cv26-source-{index:02d}"
+            source_text = f"CV26 replacement sentence {index}"
+            items[position] = {
+                **items[position],
+                "id": f"cv26-row-{index:02d}",
+                "teacher_id": f"commonvoice-cv26-{index:02d}",
+                "source_manifest_id": f"EXP055:{source_id}",
+                "source_file": (
+                    f"active-sources/{index:02d}.wav"
+                    if active
+                    else f"current-sources/{index:02d}.wav"
+                ),
+                "source_sha256": hashlib.sha256(
+                    (f"active-{source_id}" if active else source_id).encode()
+                ).hexdigest(),
+                "source_text": source_text,
+                "target_text": source_text,
+                "source_client_id_sha256": hashlib.sha256(
+                    f"client-{source_id}".encode()
+                ).hexdigest(),
+            }
+            if active:
+                items[position]["source_window"] = {
+                    "active_sample_fraction": 0.25,
+                    "window_start_sample": 1_600,
+                }
+                items[position]["source_window_policy"] = "speech-active"
+        return {
+            "kind": kind,
+            "composition": post.CV26_COMPOSITION,
+            "items": items,
+        }
+
+    current = build(post.CV26_CURRENT_WINDOW_OUTPUT_KIND, active=False)
+    active = build(post.CV26_ACTIVE_WINDOW_OUTPUT_KIND, active=True)
+    current_receipt = post.validate_cv26_manifest(
+        current, reference_manifest=reference
+    )
+    active_receipt = post.validate_cv26_manifest(
+        active, reference_manifest=reference, current_manifest=current
+    )
+    assert current_receipt["replacement_row_count"] == 26
+    assert current_receipt["unchanged_row_count"] == 144
+    assert current_receipt["remaining_commonvoice_rows"] == 16
+    assert active_receipt["active_window_metadata"] is True
+    assert active_receipt["source_identity_distinct_from_current_window"] is True
+
+
 def test_cv32_policies_bind_202_update_external7_candidates() -> None:
     choices = post.parser()._option_string_actions["--training-objective"].choices
     assert post.PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE in choices

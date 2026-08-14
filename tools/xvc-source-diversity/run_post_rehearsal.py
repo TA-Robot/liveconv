@@ -228,6 +228,8 @@ PSEUDOPARALLEL_KINDS = {
     CV32_REPEAT_OUTPUT_KIND,
     CV32_BREADTH_OUTPUT_KIND,
     CV32_REPLACEMENT_OUTPUT_KIND,
+    "liveconv-exp318-xvc-pseudoparallel-cv26-current-window-control-inputs/v1",
+    "liveconv-exp319-xvc-pseudoparallel-cv26-active-window-inputs/v1",
 }
 CV32_PSEUDOPARALLEL_KINDS = {
     CV32_REPEAT_OUTPUT_KIND,
@@ -269,6 +271,45 @@ CV32_REPLACEMENT_POSITIONS = (
 )
 CV32_REPLACEMENT_KINDS = {CV32_REPLACEMENT_OUTPUT_KIND}
 CV32_REPLACEMENT_COMPOSITION = dict(PSEUDOPARALLEL_EXPECTED_DOMAINS)
+CV26_CURRENT_WINDOW_OUTPUT_KIND = (
+    "liveconv-exp318-xvc-pseudoparallel-cv26-current-window-control-inputs/v1"
+)
+CV26_ACTIVE_WINDOW_OUTPUT_KIND = (
+    "liveconv-exp319-xvc-pseudoparallel-cv26-active-window-inputs/v1"
+)
+CV26_KINDS = {
+    CV26_CURRENT_WINDOW_OUTPUT_KIND,
+    CV26_ACTIVE_WINDOW_OUTPUT_KIND,
+}
+CV26_REPLACEMENT_POSITIONS = (
+    4,
+    5,
+    6,
+    11,
+    13,
+    16,
+    19,
+    25,
+    27,
+    30,
+    35,
+    36,
+    39,
+    43,
+    48,
+    54,
+    55,
+    57,
+    58,
+    59,
+    63,
+    71,
+    75,
+    86,
+    101,
+    103,
+)
+CV26_COMPOSITION = dict(PSEUDOPARALLEL_EXPECTED_DOMAINS)
 
 
 class PostRehearsalError(RuntimeError):
@@ -573,10 +614,254 @@ def validate_cv32_replacement_manifest(
     }
 
 
+_CV26_FORBIDDEN_ATTACHMENTS = {
+    "source_representation",
+    "representation_attachment",
+    "inference_attachment",
+    "inference_representation",
+}
+
+
+def _cv26_active_fraction(row: Mapping[str, Any]) -> float | None:
+    """Read the materializer's active-window fraction without accepting a guess."""
+
+    metadata = row.get("source_window")
+    candidates: list[Any] = []
+    if isinstance(metadata, Mapping):
+        candidates.extend(
+            metadata.get(key)
+            for key in ("active_sample_fraction", "active_fraction")
+        )
+    candidates.extend(
+        row.get(key)
+        for key in ("active_sample_fraction", "active_fraction")
+    )
+    for value in candidates:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            fraction = float(value)
+            if math.isfinite(fraction):
+                return fraction
+    return None
+
+
+def _cv26_source_variant(row: Mapping[str, Any]) -> tuple[Any, ...]:
+    """Return fields that identify the actual source bytes, not the CV speaker."""
+
+    return (
+        row.get("source_file"),
+        row.get("source_sha256"),
+        row.get("source_original_sha256"),
+    )
+
+
+def validate_cv26_manifest(
+    manifest: Mapping[str, Any],
+    *,
+    reference_manifest: Mapping[str, Any] | None = None,
+    current_manifest: Mapping[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """Admit EXP-318/319's fixed-position, 170-row CV26 pair."""
+
+    kind = manifest.get("kind")
+    if kind not in CV26_KINDS:
+        return None
+    items = manifest.get("items")
+    if (
+        not isinstance(items, list)
+        or len(items) != EXPECTED_ROWS
+        or manifest.get("composition") != CV26_COMPOSITION
+    ):
+        raise PostRehearsalError(
+            "CV26 manifest drifted from the 170-row EXP-238 composition"
+        )
+    reference = reference_manifest or _load_exp238_manifest()
+    reference_items = reference.get("items") if reference else None
+    if not isinstance(reference_items, list) or len(reference_items) != EXPECTED_ROWS:
+        raise PostRehearsalError("CV26 EXP-238 reference is unavailable")
+    commonvoice_positions = tuple(
+        index
+        for index, row in enumerate(reference_items)
+        if isinstance(row, Mapping) and row.get("domain") == "commonvoice-unpaired"
+    )
+    if (
+        len(commonvoice_positions) != 48
+        or any(
+            position not in commonvoice_positions
+            for position in CV26_REPLACEMENT_POSITIONS
+        )
+    ):
+        raise PostRehearsalError("CV26 EXP-238 Common Voice positions drifted")
+    if any(
+        key in manifest and manifest.get(key) is not None
+        for key in _CV26_FORBIDDEN_ATTACHMENTS
+    ) or any(
+        key in row and row.get(key) is not None
+        for row in items
+        if isinstance(row, Mapping)
+        for key in _CV26_FORBIDDEN_ATTACHMENTS
+    ):
+        raise PostRehearsalError("CV26 policy must not attach representation/inference")
+
+    replaced: list[Mapping[str, Any]] = []
+    for position, (candidate, expected) in enumerate(
+        zip(items, reference_items, strict=True)
+    ):
+        if not isinstance(candidate, Mapping) or not isinstance(expected, Mapping):
+            raise PostRehearsalError(f"CV26 row is malformed at position {position}")
+        if position not in CV26_REPLACEMENT_POSITIONS:
+            if candidate != expected:
+                raise PostRehearsalError(
+                    f"CV26 unchanged EXP-238 row drifted at position {position}"
+                )
+            continue
+        replaced.append(candidate)
+        if (
+            candidate.get("domain") != "commonvoice-unpaired"
+            or expected.get("domain") != "commonvoice-unpaired"
+            or not str(candidate.get("source_manifest_id", "")).startswith("EXP055:")
+            or candidate.get("source_root") != "source-work"
+            or candidate.get("target_root") != "diverse-work"
+            or candidate.get("learning_target") != PSEUDOPARALLEL_LEARNING_TARGET
+            or candidate.get("target_text") != candidate.get("source_text")
+            or candidate.get("source_relative_distance") != 0.0
+        ):
+            raise PostRehearsalError(
+                f"CV26 replacement source boundary drifted at position {position}"
+            )
+        for key in (
+            "target_id",
+            "real_target_text",
+            "real_target_root",
+            "real_target_file",
+            "real_target_sha256",
+        ):
+            if candidate.get(key) != expected.get(key):
+                raise PostRehearsalError(
+                    f"CV26 position-specific real target drifted at {position}"
+                )
+        if kind == CV26_ACTIVE_WINDOW_OUTPUT_KIND:
+            active_fraction = _cv26_active_fraction(candidate)
+            if active_fraction is None or active_fraction <= 0.0:
+                raise PostRehearsalError(
+                    f"CV26 active-window fraction is not positive at {position}"
+                )
+
+    base_sources = [row for row in reference_items if isinstance(row, Mapping)]
+    base_ids = {_source_identity(row) for row in base_sources}
+    base_shas = {row.get("source_sha256") for row in base_sources}
+    base_texts = {row.get("source_text") for row in base_sources}
+    base_teachers = {row.get("teacher_id") for row in base_sources}
+    replacement_ids = {_source_identity(row) for row in replaced}
+    replacement_shas = {row.get("source_sha256") for row in replaced}
+    replacement_texts = {row.get("source_text") for row in replaced}
+    replacement_teachers = {row.get("teacher_id") for row in replaced}
+    replacement_clients = {_client_identity(row) for row in replaced}
+    if (
+        len(replaced) != len(CV26_REPLACEMENT_POSITIONS)
+        or None in replacement_ids
+        or len(replacement_ids) != len(replaced)
+        or len(replacement_shas) != len(replaced)
+        or len(replacement_texts) != len(replaced)
+        or None in replacement_clients
+        or len(replacement_clients) != len(replaced)
+        or len(replacement_teachers) != len(replaced)
+        or replacement_ids & base_ids
+        or replacement_shas & base_shas
+        or replacement_texts & base_texts
+        or replacement_teachers & base_teachers
+    ):
+        raise PostRehearsalError(
+            "CV26 replacement source/teacher/client identity is not new and unique"
+        )
+
+    current_source_exact: bool | None = None
+    if kind == CV26_CURRENT_WINDOW_OUTPUT_KIND and reference_manifest is None:
+        current_reference = _load_exp317_manifest()
+        current_items = current_reference.get("items") if current_reference else None
+        if isinstance(current_items, list) and len(current_items) == EXPECTED_ROWS:
+            current_source_exact = True
+            for position in CV26_REPLACEMENT_POSITIONS:
+                current = current_items[position]
+                candidate = items[position]
+                if not isinstance(current, Mapping) or not isinstance(
+                    candidate, Mapping
+                ):
+                    raise PostRehearsalError(
+                        "CV26 current-source comparison row is malformed"
+                    )
+                for key in (
+                    "source_manifest_id",
+                    "source_file",
+                    "source_sha256",
+                    "source_text",
+                    "teacher_id",
+                    "source_client_id_sha256",
+                ):
+                    if candidate.get(key) != current.get(key):
+                        raise PostRehearsalError(
+                            "EXP-318 current source drifted at "
+                            f"position {position}: {key}"
+                        )
+
+    source_identity_distinct: bool | None = None
+    if kind == CV26_ACTIVE_WINDOW_OUTPUT_KIND:
+        comparison = current_manifest
+        if comparison is None and reference_manifest is None:
+            comparison = _load_exp317_manifest()
+        current_items = comparison.get("items") if comparison else None
+        if isinstance(current_items, list) and len(current_items) == EXPECTED_ROWS:
+            source_identity_distinct = True
+            for position in CV26_REPLACEMENT_POSITIONS:
+                current = current_items[position]
+                candidate = items[position]
+                if not isinstance(current, Mapping) or not isinstance(
+                    candidate, Mapping
+                ):
+                    raise PostRehearsalError(
+                        "CV26 current-window comparison row is malformed"
+                    )
+                if _cv26_source_variant(candidate) == _cv26_source_variant(
+                    current
+                ):
+                    raise PostRehearsalError(
+                        "EXP-319 active source is identical to EXP-318 at "
+                        f"position {position}"
+                    )
+
+    return {
+        "manifest_kind": kind,
+        "manifest_row_count": EXPECTED_ROWS,
+        "replacement_row_count": len(replaced),
+        "replacement_positions": list(CV26_REPLACEMENT_POSITIONS),
+        "unchanged_row_count": EXPECTED_ROWS - len(replaced),
+        "remaining_commonvoice_rows": 16,
+        "position_specific_real_targets": True,
+        "source_teacher_client_unique": True,
+        "current_source_identity_exact": current_source_exact,
+        "active_window_metadata": kind == CV26_ACTIVE_WINDOW_OUTPUT_KIND,
+        "source_identity_distinct_from_current_window": source_identity_distinct,
+        "source_identity_differs_from_exp318": source_identity_distinct,
+        "representation": None,
+        "inference_attachment": None,
+    }
+
+
 def _load_exp238_manifest() -> Mapping[str, Any] | None:
     path = (
         REPO_ROOT
         / "artifacts/xvc-source-diversity/exp238-cross-corpus-control69-targets-v1"
+        / "curriculum.json"
+    )
+    if not path.is_file() or path.is_symlink():
+        return None
+    value = load_json(path)
+    return value if isinstance(value, Mapping) else None
+
+
+def _load_exp317_manifest() -> Mapping[str, Any] | None:
+    path = (
+        REPO_ROOT
+        / "artifacts/xvc-source-diversity/exp317-cv32-replacement170-v1"
         / "curriculum.json"
     )
     if not path.is_file() or path.is_symlink():
@@ -595,6 +880,87 @@ def listening_policy(
     source_activity_envelope: bool = False,
 ) -> dict[str, str]:
     """Return the complete shared-listener identity for the admitted method."""
+
+    if manifest_kind in CV26_KINDS:
+        if (
+            trainable_target != LORA69_TARGET
+            or training_objective != PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE
+            or not use_adapter_ema
+            or optimizer_mode != SEQUENTIAL_OPTIMIZER
+            or parameter_anchor
+            or source_activity_envelope
+        ):
+            raise PostRehearsalError(
+                "EXP-318/319 requires the exact EXP-238 model and loss contract"
+            )
+        if manifest_kind == CV26_CURRENT_WINDOW_OUTPUT_KIND:
+            return {
+                "slug": "exp318",
+                "candidate_id": (
+                    "cross-corpus170-pseudoparallel-cv26-current-window-"
+                    "real-adv-ema170"
+                ),
+                "candidate_name": (
+                    "EXP-318 / CV26 current-window control / source-aligned "
+                    "targets / real-adversarial / EMA"
+                ),
+                "run_kind": (
+                    "EXP-318 X-VC pseudoparallel CV26 current-window control "
+                    "external7 evaluation"
+                ),
+                "result_kind": (
+                    "liveconv-exp318-xvc-pseudoparallel-cv26-current-window-"
+                    "real-adv-ema/v1"
+                ),
+                "question": (
+                    "Does the evaluation-style CV26 current-window construction "
+                    "preserve content and avoid corruption on external7?"
+                ),
+                "independent_variable": (
+                    "relative to exact EXP-238, only 26 fixed Common Voice "
+                    "positions use the retained current-window sources and new "
+                    "source-aligned control69 teacher tuples; the other 144 "
+                    "rows, position-specific real Amitaro targets and text, "
+                    "generator plus real-adversarial loss, control69 LoRA69 "
+                    "initialization/scope, LR, sequential 170 updates, norm-5 "
+                    "clip, zero frame condition, discriminator, EMA, normal "
+                    "quantized source acoustics, and ordinary inference remain "
+                    "fixed"
+                ),
+            }
+        return {
+            "slug": "exp319",
+            "candidate_id": (
+                "cross-corpus170-pseudoparallel-cv26-active-window-"
+                "real-adv-ema170"
+            ),
+            "candidate_name": (
+                "EXP-319 / CV26 active-window treatment / source-aligned "
+                "targets / real-adversarial / EMA"
+            ),
+            "run_kind": (
+                "EXP-319 X-VC pseudoparallel CV26 active-window external7 "
+                "evaluation"
+            ),
+            "result_kind": (
+                "liveconv-exp319-xvc-pseudoparallel-cv26-active-window-"
+                "real-adv-ema/v1"
+            ),
+            "question": (
+                "Does speech-active CV26 window construction preserve content "
+                "and avoid corruption on external7?"
+            ),
+            "independent_variable": (
+                "relative to exact EXP-318 and EXP-238, only the same 26 fixed "
+                "Common Voice positions use distinct speech-active source "
+                "windows with positive active fraction; the other 144 rows, "
+                "position-specific real Amitaro targets and text, generator "
+                "plus real-adversarial loss, control69 LoRA69 initialization/"
+                "scope, LR, sequential 170 updates, norm-5 clip, zero frame "
+                "condition, discriminator, EMA, normal quantized source "
+                "acoustics, and ordinary inference remain fixed"
+            ),
+        }
 
     if manifest_kind in CV32_REPLACEMENT_KINDS:
         if (
@@ -1785,6 +2151,8 @@ def load_manifest(
         expected_domains = CV32_EXPECTED_COMPOSITION
     elif kind in CV32_REPLACEMENT_KINDS:
         expected_domains = CV32_REPLACEMENT_COMPOSITION
+    elif kind in CV26_KINDS:
+        expected_domains = CV26_COMPOSITION
     elif kind == COMMONVOICE_RETENTION_OUTPUT_KIND:
         expected_domains = COMMONVOICE_RETENTION_EXPECTED_DOMAINS
     elif kind == CONDITIONED_RETENTION_OUTPUT_KIND:
@@ -1810,6 +2178,7 @@ def load_manifest(
             CV32_REPEAT_OUTPUT_KIND,
             CV32_BREADTH_OUTPUT_KIND,
             CV32_REPLACEMENT_OUTPUT_KIND,
+            *CV26_KINDS,
         }
         or value.get("composition") != expected_domains
         or not isinstance(items, list)
@@ -1966,6 +2335,7 @@ def load_manifest(
         raise PostRehearsalError("clean rehearsal composition drifted")
     validate_cv32_manifest(value)
     validate_cv32_replacement_manifest(value)
+    validate_cv26_manifest(value)
     return value
 
 
@@ -3363,6 +3733,8 @@ def smoke_rows(
         return items[:2]
     if parameter_anchor:
         return items[:2]
+    if manifest.get("kind") in CV26_KINDS:
+        return items[:1]
     if manifest.get("kind") in UNPAIRED_HUMAN_KINDS | PSEUDOPARALLEL_KINDS:
         return items[:2]
     if manifest.get("kind") not in DIVERSE_RETENTION_KINDS and not require_hard_easy:
@@ -4876,6 +5248,7 @@ def run(
         "training_manifest_sha256": sha256_file(arguments.training_manifest),
         "cv32": validate_cv32_manifest(manifest),
         "cv32_replacement": validate_cv32_replacement_manifest(manifest),
+        "cv26": validate_cv26_manifest(manifest),
         **source_receipt_identities(
             str(manifest.get("kind")),
             arguments.source_work,
@@ -5288,6 +5661,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "cv32_replacement": validate_cv32_replacement_manifest(
                             manifest
                         ),
+                        "cv26": validate_cv26_manifest(manifest),
                     },
                     sort_keys=True,
                 )
