@@ -96,3 +96,36 @@ def test_selection_freezes_85_train_and_30_disjoint_evaluation_rows() -> None:
     assert len(train_speakers) == 85
     assert len(evaluation_speakers) == 15
     assert not train_speakers & evaluation_speakers
+
+
+def test_metadata_parser_accepts_only_published_flat_multiline_shape() -> None:
+    value = b"""device_raw_name: 'iPhone XS
+
+  iOS 16.6.1'
+device_normalized_name: iPhone XS
+gender: female
+age: 45.0
+locale: Aichi
+dialect: standard
+acting_experience: none
+"""
+
+    parsed = FETCH.parse_metadata(value)
+
+    assert parsed["device_raw_name"] == "iPhone XS iOS 16.6.1"
+    assert parsed["age"] == 45.0
+
+
+def test_metadata_parser_rejects_unknown_yaml_shape() -> None:
+    value = b"""device_raw_name: !unsafe value
+device_normalized_name: value
+gender: value
+age: 45.0
+locale: value
+dialect: value
+acting_experience: value
+unknown: value
+"""
+
+    with pytest.raises(FETCH.Src4vcFetchError, match="shape"):
+        FETCH.parse_metadata(value)

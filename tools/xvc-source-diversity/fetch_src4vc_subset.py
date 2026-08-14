@@ -177,23 +177,6 @@ def extract_local_payload(blob: bytes, entry: Mapping[str, int | str]) -> bytes:
 def parse_metadata(value: bytes) -> dict[str, str | float]:
     """Read SRC4VC's flat YAML subset without accepting executable YAML tags."""
 
-    result: dict[str, str | float] = {}
-    try:
-        lines = value.decode("utf-8").splitlines()
-    except UnicodeDecodeError as error:
-        raise Src4vcFetchError("speaker metadata is not UTF-8") from error
-    for line in lines:
-        key, separator, raw = line.partition(":")
-        if not separator or not key or key in result:
-            raise Src4vcFetchError("speaker metadata shape drifted")
-        text = raw.strip().strip("'").strip('"')
-        if key == "age":
-            try:
-                result[key] = float(text)
-            except ValueError as error:
-                raise Src4vcFetchError("speaker age is malformed") from error
-        else:
-            result[key] = text
     required = {
         "device_raw_name",
         "device_normalized_name",
@@ -203,8 +186,40 @@ def parse_metadata(value: bytes) -> dict[str, str | float]:
         "dialect",
         "acting_experience",
     }
-    if set(result) != required:
+    try:
+        lines = value.decode("utf-8").splitlines()
+    except UnicodeDecodeError as error:
+        raise Src4vcFetchError("speaker metadata is not UTF-8") from error
+    raw_values: dict[str, list[str]] = {}
+    current_key: str | None = None
+    for line in lines:
+        if not line.strip():
+            continue
+        key, separator, raw = line.partition(":")
+        if separator and key in required:
+            if key in raw_values:
+                raise Src4vcFetchError("speaker metadata shape drifted")
+            current_key = key
+            raw_values[key] = [raw.strip()]
+        elif current_key is not None and line[:1].isspace():
+            # Three published rows contain quoted YAML scalars continued on an
+            # indented line. Join only that known flat shape; reject tags and
+            # arbitrary nested YAML rather than invoking a general loader.
+            raw_values[current_key].append(line.strip())
+        else:
+            raise Src4vcFetchError("speaker metadata shape drifted")
+    if set(raw_values) != required:
         raise Src4vcFetchError("speaker metadata fields drifted")
+    result: dict[str, str | float] = {}
+    for key, parts in raw_values.items():
+        text = " ".join(parts).strip().strip("'").strip('"')
+        if key == "age":
+            try:
+                result[key] = float(text)
+            except ValueError as error:
+                raise Src4vcFetchError("speaker age is malformed") from error
+        else:
+            result[key] = text
     return result
 
 
