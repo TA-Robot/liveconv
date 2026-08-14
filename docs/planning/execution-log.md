@@ -6519,3 +6519,23 @@ job queue.
   this surface is near-tied with one source-relative regression.
 - Rework: finish expanded144 and fully heldout SRC4VC30, then aggregate. Do not
   optimize around the loanword row or infer perceptual degradation from ASR.
+
+## 2026-08-14T21:43:00Z - EXP-331 matched expanded144 broad surface
+
+- Agent: `primary-integrator`.
+- Task: compare EXP-325 and EXP-326 across the fixed expanded length and
+  clean/noise/pitch/silence/tempo stress surface.
+- Dependencies: commits `7163fc6` and `4e92025`; one sequential gpu0 lease;
+  listener 8878; fixed expanded144 input identity.
+- Result: both arms completed all 144 rows and published 1,440 WAVs. All 144
+  candidate hashes differ. Source-relative ASR is `4W/126T/14L`, mean
+  `0.755292 -> 0.818408`; auxiliary known-text is `5W/129T/10L`, mean
+  `0.745480 -> 0.751025`.
+- Result: gross repetition stays `0 -> 0`. Decoder instability improves in
+  aggregate `36 -> 34`, but the composition is mixed: four new unstable rows
+  and six recovered rows.
+- Problems: the largest broad surface rejects a generic content-retention
+  improvement claim even though aggregate decoder agreement improves slightly.
+- Rework: run only the final predefined fully heldout SRC4VC30 surface, then
+  close this characterization and replan at method level. Do not tune GRL on
+  the expanded losses.
