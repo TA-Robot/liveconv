@@ -4482,3 +4482,22 @@ job queue.
 - Rework: verdict adopted. Prebind external7 and stress60 before CUDA, publish
   both from the unchanged checkpoint, and close the family afterward. Do not
   reserve fresh48/Hadou/JSUT or adjacent source/condition/target scope points.
+
+## 2026-08-14T05:34:00Z - EXP-194--195 source36 placement completed
+
+- Agent: `primary-integrator`.
+- Task: train one source-path-only adapter and publish both prebound evaluation
+  surfaces.
+- Dependencies: commits `7d6523a` and `4136d11`; exact EXP-186 curriculum and
+  objective; Grok's fixed external7+stress60 evaluation redirect.
+- Result: smoke exposed 442,368 mutable parameters and was finite. Training
+  completed 170 updates in 140.4 seconds at 5.73 GiB peak, with total loss
+  `298.40 -> 136.76`. Published 35 external7 and 300 stress60 WAVs with zero
+  candidate-added gross row.
+- Problems: external7 is mixed. Across 45 stress common stable rows, source
+  distance is `0.212 -> 0.214` with W/T/L `7/27/11`, and known text is
+  `0.591 -> 0.592` with `7/31/7`. Noise20 improves, but tempo1.2 is `0/5/2`
+  on both diagnostics and silence300 regresses.
+- Rework: close source36 after the fixed 335 WAVs. Do not try adjacent placement
+  scopes. Select a different mechanism that directly expresses the product's
+  source-timing preservation rule rather than another data or scope variant.

@@ -1,6 +1,6 @@
 # EXP-194: source-path-only X-VC retention
 
-Status: prepared; one bounded gpu0 lane
+Status: completed mixed; method family closed
 
 ## Goal
 
@@ -36,3 +36,19 @@ the family. Do not add fresh48, Hadou, JSUT, an adjacent scope, rank, LR, epoch,
 ratio, or condition point. Candidate-added consensus gross corruption or broad
 common-stable regression rejects the method; neither gate can select
 naturalness, identity, a keeper, or promotion.
+
+## Result and decision
+
+The hard/easy smoke exposed exactly 442,368 mutable parameters across 72 LoRA
+tensors and was finite. The one 170-update lane completed in 140.4 seconds at
+5.73 GiB peak; total loss moved `298.40 -> 136.76` and 35 external7 WAVs were
+published. EXP-195 then published the prebound 300 stress60 WAVs from the same
+checkpoint. Neither surface contains a candidate-added gross row.
+
+On five external7 common stable rows, source-relative distance moved
+`0.256 -> 0.268` and known-text distance `0.371 -> 0.283`; both W/T/L were
+`2/1/2`. On 45 stress60 common stable rows, source distance moved
+`0.212 -> 0.214` with `7/27/11`, and known-text moved `0.591 -> 0.592` with
+`7/31/7`. Noise20 improved, but tempo1.2 was `0/5/2` on both diagnostics and
+silence300 regressed. Source36 placement did not repair the motivating residual
+and is closed without adjacent scope points.
