@@ -803,6 +803,62 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 )
             ),
         }
+    if kind in {
+        "real-reference-adversarial-fresh48",
+        "real-reference-adversarial-hadou",
+        "real-reference-adversarial-stress",
+        "real-reference-adversarial-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        experiment_id = (
+            "EXP-162"
+            if jsut
+            else "EXP-161"
+            if stress
+            else "EXP-160"
+            if hadou
+            else "EXP-159"
+        )
+        suffix = (
+            "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        question = (
+            "Does real-reference adversarial retention survive untouched JSUT "
+            "categories?"
+            if jsut
+            else (
+                "Does real-reference adversarial retention survive frozen rate, "
+                "pitch, silence, and noise conditions?"
+                if stress
+                else (
+                    "Does real-reference adversarial retention avoid heldout "
+                    "Hadou collapse?"
+                    if hadou
+                    else "Does real-reference adversarial retention preserve "
+                    "broad fresh48 behavior?"
+                )
+            )
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "cv12-selective-retention-real-adversarial170",
+            "display_name": (
+                "EXP-158 / selective retention + real-reference adversarial"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-real-reference-adversarial-"
+                f"{suffix}/v1"
+            ),
+            "question": question,
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1412,6 +1468,10 @@ def _parser() -> argparse.ArgumentParser:
             "full-converter-retention-fresh48",
             "full-converter-retention-hadou",
             "full-converter-retention-jsut",
+            "real-reference-adversarial-fresh48",
+            "real-reference-adversarial-hadou",
+            "real-reference-adversarial-stress",
+            "real-reference-adversarial-jsut",
         ),
         default="speaker7",
     )

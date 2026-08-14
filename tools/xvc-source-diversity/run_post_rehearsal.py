@@ -56,6 +56,8 @@ LORA69_TARGET = "lora69"
 CONVERTER_PREFIX = "acoustic_converter"
 EXPECTED_CONVERTER_PARAMETERS = 42_357_760
 CONVERTER_CHECKPOINT_KIND = "liveconv-xvc-merged-control69-converter/v1"
+GENERATIVE_OBJECTIVE = "generative-only"
+REAL_REFERENCE_ADVERSARIAL_OBJECTIVE = "real-reference-adversarial"
 
 
 class PostRehearsalError(RuntimeError):
@@ -63,10 +65,42 @@ class PostRehearsalError(RuntimeError):
 
 
 def listening_policy(
-    manifest_kind: str = OUTPUT_KIND, trainable_target: str = LORA69_TARGET
+    manifest_kind: str = OUTPUT_KIND,
+    trainable_target: str = LORA69_TARGET,
+    training_objective: str = GENERATIVE_OBJECTIVE,
 ) -> dict[str, str]:
     """Return the complete shared-listener identity for the admitted method."""
 
+    if training_objective == REAL_REFERENCE_ADVERSARIAL_OBJECTIVE:
+        if (
+            manifest_kind != SELECTIVE_OUTPUT_KIND
+            or trainable_target != LORA69_TARGET
+        ):
+            raise PostRehearsalError(
+                "real-reference adversarial is admitted only for selective LoRA69"
+            )
+        return {
+            "slug": "exp158",
+            "candidate_id": "cv12-selective-retention-real-adversarial170",
+            "candidate_name": (
+                "EXP-158 / selective retention + real-reference adversarial"
+            ),
+            "run_kind": "EXP-158 X-VC real-reference adversarial evaluation",
+            "result_kind": "liveconv-exp158-xvc-real-reference-adversarial/v1",
+            "question": (
+                "Can real-reference waveform adversarial and feature matching "
+                "suppress collapse while selective targets retain normal behavior?"
+            ),
+            "independent_variable": (
+                "objective adds the pretrained X-VC waveform discriminator and "
+                "feature matching, whose real side uses the authorized original "
+                "Amitaro target waveform; the exact EXP-150 curriculum, synthetic "
+                "repair/retention generative targets, initialization, LR, clip, "
+                "LoRA69 scope, update count, and zero frame condition stay fixed"
+            ),
+        }
+    if training_objective != GENERATIVE_OBJECTIVE:
+        raise PostRehearsalError("unknown training objective")
     if trainable_target == FULL_CONVERTER_TARGET:
         if manifest_kind != SELECTIVE_OUTPUT_KIND:
             raise PostRehearsalError(
@@ -469,7 +503,11 @@ def run(
         raise PostRehearsalError("EXP-141 requires the explicit gpu0 lease")
     started = time.monotonic()
     arguments.work_dir.mkdir()
-    policy = listening_policy(str(manifest["kind"]), arguments.trainable_target)
+    policy = listening_policy(
+        str(manifest["kind"]),
+        arguments.trainable_target,
+        arguments.training_objective,
+    )
 
     import torch
     from peft import PeftModel
@@ -517,7 +555,33 @@ def run(
         raise PostRehearsalError("control69 trainable parameter count drifted")
     optimizer = torch.optim.AdamW(trainable, lr=LEARNING_RATE)
     losses: list[float] = []
+    adversarial_metrics: list[dict[str, float]] = []
     rows = manifest["items"][:1] if arguments.smoke else manifest["items"]
+    discriminator = None
+    discriminator_optimizer = None
+    realism_targets: dict[str, Any] = {}
+    if arguments.training_objective == REAL_REFERENCE_ADVERSARIAL_OBJECTIVE:
+        discriminator, discriminator_optimizer = breadth._load_pretrained_discriminator(
+            arguments, config, torch=torch, device=device
+        )
+        target_by_id = {
+            target_id: _pair(target_id, path, digest)
+            for target_id, path, digest in target_rows
+        }
+        for target_id in {str(item["target_id"]) for item in rows}:
+            pair = target_by_id.get(target_id)
+            if pair is None:
+                raise PostRehearsalError(
+                    f"real adversarial target is unavailable: {target_id}"
+                )
+            realism_targets[target_id] = base._extract_pair_tensors(
+                trained,
+                pair,
+                process_audio=process_audio,
+                config=config,
+                torch=torch,
+                device=device,
+            )["target_wav"]
     for item in rows:
         if arguments.trainable_target == FULL_CONVERTER_TARGET:
             _set_converter_training_only(trained)
@@ -533,37 +597,57 @@ def run(
             torch=torch,
             device=device,
         )
-        optimizer.zero_grad(set_to_none=True)
         batch = base._gpu_batch(tensors, torch=torch, device=device)
-        with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
-            loss, numeric = role_mix.training_loss(
+        if discriminator is not None and discriminator_optimizer is not None:
+            metrics = breadth._adversarial_update(
                 trained,
+                discriminator,
+                optimizer,
+                discriminator_optimizer,
+                trainable,
                 batch,
-                "real-donor-teacher-output",
                 torch=torch,
-                teacher_loss="standard",
+                real_audios=realism_targets[str(item["target_id"])].to(
+                    device=device, dtype=torch.float32
+                ),
             )
-        loss.backward()
-        gradient_norm = torch.nn.utils.clip_grad_norm_(
-            trainable, base.GRADIENT_CLIP_NORM
-        )
-        if not math.isfinite(float(gradient_norm.detach().cpu())):
-            raise PostRehearsalError("post-rehearsal gradient norm is non-finite")
-        if not arguments.smoke:
-            optimizer.step()
-        losses.append(numeric)
+            losses.append(metrics["total"])
+            adversarial_metrics.append(metrics)
+        else:
+            optimizer.zero_grad(set_to_none=True)
+            with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+                loss, numeric = role_mix.training_loss(
+                    trained,
+                    batch,
+                    "real-donor-teacher-output",
+                    torch=torch,
+                    teacher_loss="standard",
+                )
+            loss.backward()
+            gradient_norm = torch.nn.utils.clip_grad_norm_(
+                trainable, base.GRADIENT_CLIP_NORM
+            )
+            if not math.isfinite(float(gradient_norm.detach().cpu())):
+                raise PostRehearsalError(
+                    "post-rehearsal gradient norm is non-finite"
+                )
+            if not arguments.smoke:
+                optimizer.step()
+            losses.append(numeric)
     if arguments.smoke:
+        smoke = {
+            "status": "smoked-control69-clean-post-rehearsal",
+            "loss": losses[0],
+            "trainable_parameters": expected_trainable,
+            "training_objective": arguments.training_objective,
+            "peak_gpu_bytes": int(torch.cuda.max_memory_allocated(device)),
+        }
+        if adversarial_metrics:
+            smoke["adversarial_metrics"] = adversarial_metrics[0]
+        else:
+            smoke["gradient_norm"] = float(gradient_norm.detach().cpu())
         print(
-            json.dumps(
-                {
-                    "status": "smoked-control69-clean-post-rehearsal",
-                    "loss": losses[0],
-                    "gradient_norm": float(gradient_norm.detach().cpu()),
-                    "trainable_parameters": expected_trainable,
-                    "peak_gpu_bytes": int(torch.cuda.max_memory_allocated(device)),
-                },
-                sort_keys=True,
-            )
+            json.dumps(smoke, sort_keys=True)
         )
         return 0
     if len(losses) != EXPECTED_ROWS:
@@ -684,6 +768,7 @@ def run(
         ),
         "control_adapter": str(arguments.control_adapter),
         "trainable_target": arguments.trainable_target,
+        "training_objective": arguments.training_objective,
         "candidate_checkpoint": checkpoint_metadata,
         "updates": len(losses),
         "role_counts": {"real-donor-teacher-output": len(losses)},
@@ -696,6 +781,17 @@ def run(
         "trainable_parameters": expected_trainable,
         "loss_first": losses[0],
         "loss_last": losses[-1],
+        "adversarial_metrics": (
+            {
+                "updates": len(adversarial_metrics),
+                "first": adversarial_metrics[0],
+                "last": adversarial_metrics[-1],
+                "real_audio": "authorized-original-Amitaro-target",
+                "generative_audio": "selective-repair-or-retention-target",
+            }
+            if adversarial_metrics
+            else None
+        ),
         "elapsed_seconds": time.monotonic() - started,
         "peak_gpu_bytes": int(torch.cuda.max_memory_allocated(device)),
         "evaluation_set_sha256": sha256_file(arguments.evaluation_set),
@@ -739,6 +835,11 @@ def parser() -> argparse.ArgumentParser:
         "--trainable-target",
         choices=(LORA69_TARGET, FULL_CONVERTER_TARGET),
         default=LORA69_TARGET,
+    )
+    value.add_argument(
+        "--training-objective",
+        choices=(GENERATIVE_OBJECTIVE, REAL_REFERENCE_ADVERSARIAL_OBJECTIVE),
+        default=GENERATIVE_OBJECTIVE,
     )
     value.add_argument("--xvc-source-root", type=Path, required=True)
     value.add_argument("--xvc-config", type=Path, required=True)

@@ -3654,3 +3654,24 @@ job queue.
   neighbors. The next lane changes objective, data construction, or
   conditioning, and a surviving checkpoint must also pass stress60 before
   JSUT24. Keep the local tongue-twister excluded.
+
+## 2026-08-14T01:00:00Z - EXP-158--162 real-reference adversarial prepared
+
+- Agent: `primary-integrator`.
+- Task: move off the closed trainable-scope branch and test one naturalness- and
+  collapse-motivated objective while retaining EXP-150's useful anti-drift
+  learning targets.
+- Dependencies: EXP-150 broad-retention signal; EXP-154 fresh48 rejection;
+  EXP-064's pretrained discriminator path and no-new-loop stress60 result;
+  authorized original Amitaro target references; external7, frozen fresh48,
+  Hadou31, stress60, and unopened JSUT24; gpu0; listener 8878.
+- Result: separate target roles. The composite generator loss receives the
+  exact committed repair/retention output targets, while discriminator real and
+  feature matching receive the corresponding original Amitaro recordings.
+  Generated teacher audio is never labeled real. Training rows, order,
+  initialization, LoRA69 scope, LR, clip, condition, and 170 updates stay fixed.
+- Problems: adversarial naturalness cannot be selected without hearing. Coarse
+  screens may only reject repetition/content corruption.
+- Rework: focused tests and a real one-update smoke, then commit before one GPU
+  lane. Gate external7 -> fresh48 -> Hadou31 -> stress60; only all-survival may
+  consume JSUT24. Do not tune adversarial weights or neighboring schedules.

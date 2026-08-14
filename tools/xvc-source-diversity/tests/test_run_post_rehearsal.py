@@ -67,3 +67,30 @@ def test_full_converter_is_not_admitted_for_other_curricula() -> None:
         assert "selective retention" in str(error)
     else:
         raise AssertionError("full converter unexpectedly admitted")
+
+
+def test_real_reference_adversarial_keeps_selective_lora_identity() -> None:
+    policy = post.listening_policy(
+        post.SELECTIVE_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
+    )
+
+    assert policy["slug"] == "exp158"
+    assert policy["candidate_id"] == (
+        "cv12-selective-retention-real-adversarial170"
+    )
+    assert "authorized original Amitaro" in policy["independent_variable"]
+
+
+def test_real_reference_adversarial_rejects_full_converter() -> None:
+    try:
+        post.listening_policy(
+            post.SELECTIVE_OUTPUT_KIND,
+            post.FULL_CONVERTER_TARGET,
+            post.REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
+        )
+    except post.PostRehearsalError as error:
+        assert "selective LoRA69" in str(error)
+    else:
+        raise AssertionError("adversarial full converter unexpectedly admitted")

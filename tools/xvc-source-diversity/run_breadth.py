@@ -351,6 +351,7 @@ def _adversarial_update(
     batch: Mapping[str, Any],
     *,
     torch: Any,
+    real_audios: Any | None = None,
 ) -> dict[str, float]:
     base._set_adapter_training_only(trained)
     discriminator.train()
@@ -362,7 +363,10 @@ def _adversarial_update(
         reconstruction = outputs.get("recons") if isinstance(outputs, dict) else None
         if reconstruction is None or not bool(torch.isfinite(reconstruction).all()):
             raise BreadthError("X-VC adversarial reconstruction is malformed")
-        outputs["audios"] = batch["target_wav"][..., : reconstruction.shape[-1]]
+        discriminator_real = (
+            batch["target_wav"] if real_audios is None else real_audios
+        )
+        outputs["audios"] = discriminator_real[..., : reconstruction.shape[-1]]
         discriminator_losses = discriminator.discriminative_loss(outputs)
         discriminator_loss = _finite_loss(
             discriminator_losses.get("loss"),
@@ -380,7 +384,9 @@ def _adversarial_update(
     for parameter in discriminator.parameters():
         parameter.requires_grad_(False)
     with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+        outputs["audios"] = batch["target_wav"][..., : reconstruction.shape[-1]]
         generator_losses = trained.generative_loss(outputs)
+        outputs["audios"] = discriminator_real[..., : reconstruction.shape[-1]]
         adversarial_losses = discriminator.adversarial_loss(outputs)
         generator_loss = _finite_loss(
             generator_losses.get("loss"),

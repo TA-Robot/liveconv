@@ -560,6 +560,30 @@ def test_full_converter_retention_policies_cover_three_frozen_sets() -> None:
     assert "full-converter-retention-jsut" in choices
 
 
+def test_real_reference_adversarial_policies_include_stress_gate() -> None:
+    kinds = [
+        "real-reference-adversarial-fresh48",
+        "real-reference-adversarial-hadou",
+        "real-reference-adversarial-stress",
+        "real-reference-adversarial-jsut",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-159",
+        "EXP-160",
+        "EXP-161",
+        "EXP-162",
+    ]
+    assert len({policy["variant_id"] for policy in policies}) == 1
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert "real-reference-adversarial-stress" in choices
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"
