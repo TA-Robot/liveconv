@@ -318,7 +318,13 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-291 return to normal EXP-238 quantized inference
         -> shift zq_a right one frame on only 85 alternating training rows
         -> exact data/targets/init/scope/loss/LR/170/EMA; CPU + three-mode CUDA smoke
-        -> external7 first; EXP-292--296 broad surfaces only after corruption/content pass
+        -> external7 7/7 changed; gross 0 -> 0; common-stable 0W/5T/0L
+        -> instability 1 -> 2; skip EXP-292--296 and close acoustic representation edits
+        -> EXP-297 retain the full normal EXP-238 representation and inference
+        -> replace only semantic MSE with scale-matched 2 * SmoothL1(beta=1)
+        -> preserve local MSE curvature; linearize only large residual tails
+        -> exact data/targets/init/scope/other losses/LR/170/EMA; CPU + CUDA smoke
+        -> external7 first; EXP-298--302 broad surfaces only after corruption/content pass
         -> operator hearing when available
 ```
 

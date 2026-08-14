@@ -240,6 +240,107 @@ def test_pseudoparallel_policy_restores_complete_same_content_targets() -> None:
     assert "real side" in policy["independent_variable"]
 
 
+def test_robust_semantic_policy_is_exp297_and_exact_exp238_lane() -> None:
+    policy = post.listening_policy(
+        post.PSEUDOPARALLEL_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp297"
+    assert policy["candidate_id"] == (
+        "cross-corpus170-pseudoparallel-robust-semantic-real-adv-ema170"
+    )
+    assert post.ROBUST_SEMANTIC_IMPLEMENTATION in policy["independent_variable"]
+    assert "1000*(2.0*smooth_l1 - mse)" in policy["independent_variable"]
+    assert "normal quantized" in policy["independent_variable"]
+    assert "inference has no attachment" in policy["independent_variable"]
+    choices = post.parser()._option_string_actions["--training-objective"].choices
+    assert post.PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE in choices
+
+
+def test_robust_semantic_requires_exact_exp238_contract() -> None:
+    for kwargs in (
+        {
+            "manifest_kind": post.SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND,
+        },
+        {"use_adapter_ema": False},
+        {"optimizer_mode": post.PCGRAD_CONTENT_VOICE_OPTIMIZER},
+        {"parameter_anchor": True},
+        {"source_activity_envelope": True},
+    ):
+        try:
+            arguments = {
+                "manifest_kind": post.PSEUDOPARALLEL_OUTPUT_KIND,
+                "trainable_target": post.LORA69_TARGET,
+                "training_objective": (
+                    post.PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE
+                ),
+                "use_adapter_ema": True,
+            }
+            arguments.update(kwargs)
+            post.listening_policy(**arguments)
+        except post.PostRehearsalError as error:
+            assert "exact EXP-238" in str(error)
+        else:
+            raise AssertionError("robust semantic contract drifted")
+
+
+def test_robust_semantic_receipt_binds_beta_weight_and_exp238() -> None:
+    receipt = post.robust_semantic_receipt()
+
+    assert receipt["implementation"] == (
+        "scale-matched-smooth-l1-semantic-decoder-beta1/v1"
+    )
+    assert receipt["beta"] == 1.0
+    assert receipt["scale_factor"] == 2.0
+    assert receipt["weight"] == 1000.0
+    assert receipt["reference"] == "exact-EXP-238-pseudoparallel-contract"
+    assert receipt["exp238_adapter_sha256"] == post.EXP238_ADAPTER_SHA256
+    assert receipt["inference_attachment"] is None
+
+
+def test_robust_semantic_substitutes_only_scaled_smooth_l1_term() -> None:
+    import torch
+
+    class FakeModel:
+        @staticmethod
+        def generative_loss(_outputs):
+            return {
+                "loss": torch.tensor(100.0),
+                "mse_loss": torch.tensor(0.25),
+                "vq_loss": torch.tensor(3.0),
+                "mel_loss": torch.tensor(4.0),
+                "sim_mse_loss": torch.tensor(5.0),
+            }
+
+    prediction = torch.tensor([[0.0, 2.0, -3.0]], requires_grad=True)
+    target = torch.zeros_like(prediction)
+    losses = post.robust_semantic_generator_loss(
+        FakeModel(),
+        {"pred": prediction, "ssl_feat": target},
+        torch=torch,
+    )
+    mse = torch.nn.functional.mse_loss(prediction, target)
+    smooth = torch.nn.functional.smooth_l1_loss(prediction, target, beta=1.0)
+
+    assert losses["semantic_mse"].item() == mse.item()
+    assert losses["semantic_smooth_l1"].item() == smooth.item()
+    assert losses["semantic_smooth_l1_scaled"].item() == (2.0 * smooth).item()
+    assert losses["loss"].item() == (
+        100.0 + 1000.0 * (2.0 * smooth - mse)
+    ).item()
+    assert losses["mse_loss"].item() == 0.25
+    assert losses["vq_loss"].item() == 3.0
+    assert losses["mel_loss"].item() == 4.0
+    assert losses["sim_mse_loss"].item() == 5.0
+    losses["loss"].backward()
+    assert prediction.grad is not None
+    assert bool(torch.isfinite(prediction.grad).all())
+    assert torch.count_nonzero(prediction.grad).item() > 0
+
+
 def test_pseudoparallel_fresh_lora_changes_only_initialization() -> None:
     policy = post.listening_policy(
         post.PSEUDOPARALLEL_OUTPUT_KIND,

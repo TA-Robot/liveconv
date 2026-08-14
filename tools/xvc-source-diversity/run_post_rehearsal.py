@@ -121,6 +121,9 @@ DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE = (
 )
 SPEAKER_PATH_UNPAIRED_OBJECTIVE = "factorized-unpaired-human-speaker-path-adversarial"
 PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE = "pseudoparallel-generative-real-adversarial"
+PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE = (
+    "pseudoparallel-generative-real-adversarial-robust-semantic"
+)
 PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE = (
     "pseudoparallel-generative-real-adversarial-fresh-lora"
 )
@@ -181,6 +184,12 @@ CONTINUOUS_ACOUSTIC_IMPLEMENTATION = (
 ACOUSTIC_TEMPORAL_JITTER_IMPLEMENTATION = (
     "one-frame-right-shifted-quantized-source-acoustic/v1"
 )
+ROBUST_SEMANTIC_IMPLEMENTATION = (
+    "scale-matched-smooth-l1-semantic-decoder-beta1/v1"
+)
+ROBUST_SEMANTIC_BETA = 1.0
+ROBUST_SEMANTIC_SCALE = 2.0
+ROBUST_SEMANTIC_WEIGHT = 1000.0
 SPEAKER_CONDITION_DIMENSION = 192
 SPEAKER_CONDITION_CALIBRATOR_KIND = (
     "liveconv-xvc-speaker-condition-calibrator/v1"
@@ -217,6 +226,53 @@ def listening_policy(
     source_activity_envelope: bool = False,
 ) -> dict[str, str]:
     """Return the complete shared-listener identity for the admitted method."""
+
+    if training_objective == PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE:
+        if (
+            manifest_kind != PSEUDOPARALLEL_OUTPUT_KIND
+            or trainable_target != LORA69_TARGET
+            or not use_adapter_ema
+            or optimizer_mode != SEQUENTIAL_OPTIMIZER
+            or parameter_anchor
+            or source_activity_envelope
+        ):
+            raise PostRehearsalError(
+                "robust semantic decoder requires the exact EXP-238 contract"
+            )
+        return {
+            "slug": "exp297",
+            "candidate_id": (
+                "cross-corpus170-pseudoparallel-robust-semantic-real-adv-ema170"
+            ),
+            "candidate_name": (
+                "EXP-297 / source-aligned targets / scale-matched robust semantic "
+                "decoder / real-adversarial / EMA"
+            ),
+            "run_kind": (
+                "EXP-297 X-VC pseudoparallel robust-semantic evaluation"
+            ),
+            "result_kind": (
+                "liveconv-exp297-xvc-pseudoparallel-robust-semantic-real-adv-ema/v1"
+            ),
+            "question": (
+                "Does scale-matched SmoothL1 semantic-decoder supervision improve "
+                "robust X-VC conversion while preserving the exact EXP-238 lane?"
+            ),
+            "independent_variable": (
+                "relative to the exact EXP-238 contract, only the standard "
+                "weight-1000 semantic decoder MSE between outputs['pred'] and "
+                "outputs['ssl_feat'] changes to 2.0 * SmoothL1(beta=1.0); the "
+                f"implementation is {ROBUST_SEMANTIC_IMPLEMENTATION}; the "
+                "outer semantic weight remains 1000, so the differentiable total "
+                "substitution is 1000*(2.0*smooth_l1 - mse); normal quantized "
+                "source representation, speaker MSE, mel, VQ, real-wave "
+                "adversarial/feature losses, CV48/JSUT85/JVS3/Hadou34 data, "
+                "source-aligned control69 teacher targets, exact ordered real "
+                "Amitaro targets, control69 LoRA69 initialization and scope, LR, "
+                "sequential 170 updates, clip, zero frame condition, discriminator, "
+                "and EMA remain fixed; inference has no attachment"
+            ),
+        }
 
     if training_objective == PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE:
         if (
@@ -313,6 +369,7 @@ def listening_policy(
         or training_objective
         in {
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+            PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
             PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
             PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
@@ -328,6 +385,7 @@ def listening_policy(
             or training_objective
             not in {
                 PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+                PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
                 PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
                 PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
                 PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
@@ -1857,6 +1915,31 @@ def source_receipt_identities(
     }
 
 
+def robust_semantic_receipt(
+    manifest_kind: str = PSEUDOPARALLEL_OUTPUT_KIND,
+) -> dict[str, Any]:
+    """Bind the loss-only EXP-297 change to the exact EXP-238 lane."""
+
+    if manifest_kind != PSEUDOPARALLEL_OUTPUT_KIND:
+        raise PostRehearsalError(
+            "robust semantic decoder requires exact EXP-238 manifest"
+        )
+    if ROBUST_SEMANTIC_WEIGHT != role_mix.STANDARD_LOSS_WEIGHTS["mse_loss"]:
+        raise PostRehearsalError("robust semantic weight drifted from standard MSE")
+    return {
+        "implementation": ROBUST_SEMANTIC_IMPLEMENTATION,
+        "beta": ROBUST_SEMANTIC_BETA,
+        "scale_factor": ROBUST_SEMANTIC_SCALE,
+        "weight": ROBUST_SEMANTIC_WEIGHT,
+        "replacement": "1000*(2.0*smooth_l1_loss(beta=1.0)-mse_loss)",
+        "reference": "exact-EXP-238-pseudoparallel-contract",
+        "manifest_kind": manifest_kind,
+        "exp238_adapter_sha256": EXP238_ADAPTER_SHA256,
+        "normal_quantized_representation": True,
+        "inference_attachment": None,
+    }
+
+
 def _set_converter_training_only(model: Any) -> list[Any]:
     model.eval()
     converter = getattr(model, CONVERTER_PREFIX, None)
@@ -3170,6 +3253,64 @@ def latent_source_speaker_margin_generator_loss(
     return losses
 
 
+def robust_semantic_generator_loss(
+    model: Any,
+    outputs: Mapping[str, Any],
+    _batch: Mapping[str, Any] | None = None,
+    *,
+    torch: Any,
+    beta: float = ROBUST_SEMANTIC_BETA,
+    scale_factor: float = ROBUST_SEMANTIC_SCALE,
+    weight: float = ROBUST_SEMANTIC_WEIGHT,
+) -> dict[str, Any]:
+    """Substitute only the standard semantic-decoder term.
+
+    model.generative_loss remains the source of every standard component and
+    diagnostic. The returned total differentiably removes its standard
+    weight-1000 MSE contribution and inserts the scale-matched SmoothL1 term.
+    """
+
+    del _batch
+    if (
+        not math.isfinite(beta)
+        or beta <= 0.0
+        or not math.isfinite(scale_factor)
+        or scale_factor <= 0.0
+        or not math.isfinite(weight)
+        or weight <= 0.0
+    ):
+        raise PostRehearsalError("robust semantic loss parameters are invalid")
+    if weight != role_mix.STANDARD_LOSS_WEIGHTS["mse_loss"]:
+        raise PostRehearsalError("robust semantic weight is not standard MSE weight")
+    standard = dict(model.generative_loss(outputs))
+    base_loss = standard.get("loss")
+    prediction = outputs.get("pred")
+    target = outputs.get("ssl_feat")
+    if (
+        base_loss is None
+        or prediction is None
+        or target is None
+        or prediction.shape != target.shape
+    ):
+        raise PostRehearsalError("robust semantic decoder output shape drifted")
+    semantic_mse = torch.nn.functional.mse_loss(prediction, target)
+    semantic_smooth_l1 = torch.nn.functional.smooth_l1_loss(
+        prediction, target, beta=beta
+    )
+    replacement = scale_factor * semantic_smooth_l1
+    total = base_loss + weight * (replacement - semantic_mse)
+    if not all(
+        bool(torch.isfinite(value))
+        for value in (base_loss, semantic_mse, semantic_smooth_l1, total)
+    ):
+        raise PostRehearsalError("robust semantic loss is non-finite")
+    standard["loss"] = total
+    standard["semantic_mse"] = semantic_mse
+    standard["semantic_smooth_l1"] = semantic_smooth_l1
+    standard["semantic_smooth_l1_scaled"] = replacement
+    return standard
+
+
 def output_speaker_identity_regularizer(
     reconstruction: Any,
     target_waveform: Any,
@@ -3398,6 +3539,9 @@ def run(
         else [False] * len(rows)
     )
     jitter_gradient_diagnostics: dict[str, float | int | bool] | None = None
+    robust_semantic_gradient_diagnostics: (
+        dict[str, float | int | bool] | None
+    ) = None
     discriminator = None
     discriminator_optimizer = None
     realism_targets: dict[str, Any] = {}
@@ -3409,6 +3553,7 @@ def run(
         DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
         SPEAKER_PATH_UNPAIRED_OBJECTIVE,
         PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+        PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
         PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
         PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
         PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
@@ -3424,6 +3569,7 @@ def run(
         if arguments.training_objective in {
             REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+            PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
             PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
             PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
@@ -3443,6 +3589,7 @@ def run(
                     arguments.training_objective
                     in {
                         PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+                        PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
                         PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
                         PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
                         PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
@@ -3779,6 +3926,18 @@ def run(
                         == DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
                         else (
                             lambda outputs, current_batch: (
+                                robust_semantic_generator_loss(
+                                    trained,
+                                    outputs,
+                                    current_batch,
+                                    torch=torch,
+                                )
+                            )
+                        )
+                        if arguments.training_objective
+                        == PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE
+                        else (
+                            lambda outputs, current_batch: (
                                 latent_source_speaker_margin_generator_loss(
                                     trained,
                                     outputs,
@@ -3861,6 +4020,23 @@ def run(
                         jitter_metrics["output_rms"]
                     )
                     jitter_gradient_diagnostics = (
+                        finite_nonzero_gradient_diagnostics(trainable, torch=torch)
+                    )
+                if (
+                    arguments.training_objective
+                    == PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE
+                ):
+                    for metric_name in (
+                        "generator_semantic_mse",
+                        "generator_semantic_smooth_l1",
+                        "total",
+                    ):
+                        metric_value = metrics.get(metric_name)
+                        if metric_value is None or not math.isfinite(metric_value):
+                            raise PostRehearsalError(
+                                f"robust semantic {metric_name} is non-finite"
+                            )
+                    robust_semantic_gradient_diagnostics = (
                         finite_nonzero_gradient_diagnostics(trainable, torch=torch)
                     )
                 if calibrator is not None:
@@ -3968,6 +4144,9 @@ def run(
                 "smoked-fresh-lora-pseudoparallel"
                 if arguments.training_objective
                 == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE
+                else "smoked-robust-semantic-pseudoparallel"
+                if arguments.training_objective
+                == PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE
                 else "smoked-acoustic-code-dropout-pseudoparallel"
                 if arguments.training_objective
                 == PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE
@@ -4017,6 +4196,22 @@ def run(
                     ),
                 }
                 if acoustic_temporal_jitter is not None
+                else None
+            ),
+            "robust_semantic": (
+                {
+                    **robust_semantic_receipt(str(manifest["kind"])),
+                    "semantic_mse": adversarial_metrics[0][
+                        "generator_semantic_mse"
+                    ],
+                    "semantic_smooth_l1": adversarial_metrics[0][
+                        "generator_semantic_smooth_l1"
+                    ],
+                    "total": adversarial_metrics[0]["total"],
+                    "gradient_diagnostics": robust_semantic_gradient_diagnostics,
+                }
+                if arguments.training_objective
+                == PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE
                 else None
             ),
             "gradient_diagnostics": jitter_gradient_diagnostics,
@@ -4273,6 +4468,29 @@ def run(
             if acoustic_temporal_jitter is not None
             else None
         ),
+        "robust_semantic": (
+            {
+                **robust_semantic_receipt(str(manifest["kind"])),
+                "first_semantic_mse": adversarial_metrics[0][
+                    "generator_semantic_mse"
+                ],
+                "last_semantic_mse": adversarial_metrics[-1][
+                    "generator_semantic_mse"
+                ],
+                "first_semantic_smooth_l1": adversarial_metrics[0][
+                    "generator_semantic_smooth_l1"
+                ],
+                "last_semantic_smooth_l1": adversarial_metrics[-1][
+                    "generator_semantic_smooth_l1"
+                ],
+                "first_total": adversarial_metrics[0]["total"],
+                "last_total": adversarial_metrics[-1]["total"],
+                "gradient_diagnostics": robust_semantic_gradient_diagnostics,
+            }
+            if arguments.training_objective
+            == PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE
+            else None
+        ),
         "gradient_diagnostics": jitter_gradient_diagnostics,
         "output_speaker_identity": (
             {
@@ -4365,6 +4583,8 @@ def run(
                     else "source-aligned-control69-complete-generative-target"
                     if arguments.training_objective
                     == PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE
+                    or arguments.training_objective
+                    == PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE
                     or arguments.training_objective
                     == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE
                     or arguments.training_objective
@@ -4464,6 +4684,7 @@ def parser() -> argparse.ArgumentParser:
             DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
             SPEAKER_PATH_UNPAIRED_OBJECTIVE,
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+            PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE,
             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
             PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
             PSEUDOPARALLEL_CONTINUOUS_ACOUSTIC_OBJECTIVE,
@@ -4560,6 +4781,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                             }
                             if arguments.training_objective
                             == PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE
+                            else None
+                        ),
+                        "robust_semantic": (
+                            robust_semantic_receipt(str(manifest["kind"]))
+                            if arguments.training_objective
+                            == PSEUDOPARALLEL_ROBUST_SEMANTIC_OBJECTIVE
                             else None
                         ),
                     },

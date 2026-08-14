@@ -1738,6 +1738,57 @@ def candidate_policy(kind: str) -> dict[str, str]:
             ),
         }
     if kind in {
+        "robust-semantic-pseudoparallel-ema-fresh48",
+        "robust-semantic-pseudoparallel-ema-hadou",
+        "robust-semantic-pseudoparallel-ema-stress",
+        "robust-semantic-pseudoparallel-ema-jsut",
+        "robust-semantic-pseudoparallel-ema-expanded144",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        expanded = kind.endswith("-expanded144")
+        experiment_id = (
+            "EXP-302"
+            if expanded
+            else "EXP-301"
+            if jsut
+            else "EXP-300"
+            if stress
+            else "EXP-299"
+            if hadou
+            else "EXP-298"
+        )
+        suffix = (
+            "expanded144"
+            if expanded
+            else "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": (
+                "cross-corpus170-pseudoparallel-robust-semantic-real-adv-ema170"
+            ),
+            "display_name": (
+                "EXP-297 / source-aligned targets / scale-matched robust semantic "
+                "decoder / real-adversarial / EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-robust-semantic-"
+                f"pseudoparallel-ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does scale-matched SmoothL1 semantic-decoder supervision improve "
+                "robust content across the established broad evaluation surfaces?"
+            ),
+        }
+    if kind in {
         "speaker-condition-calibrator-fresh48",
         "speaker-condition-calibrator-hadou",
         "speaker-condition-calibrator-stress",
@@ -2964,6 +3015,11 @@ def _parser() -> argparse.ArgumentParser:
             "acoustic-temporal-jitter-pseudoparallel-ema-stress",
             "acoustic-temporal-jitter-pseudoparallel-ema-jsut",
             "acoustic-temporal-jitter-pseudoparallel-ema-expanded-stress",
+            "robust-semantic-pseudoparallel-ema-fresh48",
+            "robust-semantic-pseudoparallel-ema-hadou",
+            "robust-semantic-pseudoparallel-ema-stress",
+            "robust-semantic-pseudoparallel-ema-jsut",
+            "robust-semantic-pseudoparallel-ema-expanded144",
             "speaker-condition-calibrator-fresh48",
             "speaker-condition-calibrator-hadou",
             "speaker-condition-calibrator-stress",

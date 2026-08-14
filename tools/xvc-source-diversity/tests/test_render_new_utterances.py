@@ -1278,6 +1278,64 @@ def test_acoustic_temporal_jitter_candidate_does_not_attach_inference_wrapper(
     )
 
 
+def test_robust_semantic_candidates_cover_exp298_to_exp302_without_attachment() -> None:
+    kinds = [
+        "robust-semantic-pseudoparallel-ema-fresh48",
+        "robust-semantic-pseudoparallel-ema-hadou",
+        "robust-semantic-pseudoparallel-ema-stress",
+        "robust-semantic-pseudoparallel-ema-jsut",
+        "robust-semantic-pseudoparallel-ema-expanded144",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-298",
+        "EXP-299",
+        "EXP-300",
+        "EXP-301",
+        "EXP-302",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "cross-corpus170-pseudoparallel-robust-semantic-real-adv-ema170"
+    }
+    assert {
+        policy["display_name"] for policy in policies
+    } == {
+        "EXP-297 / source-aligned targets / scale-matched robust semantic "
+        "decoder / real-adversarial / EMA"
+    }
+    assert all("candidate_attachment" not in policy for policy in policies)
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert all(kind in choices for kind in kinds)
+
+
+def test_robust_semantic_candidate_does_not_attach_inference_wrapper(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail(*args: object, **kwargs: object) -> None:
+        raise AssertionError("robust semantic attached at inference")
+
+    monkeypatch.setattr(
+        NEW.post, "attach_acoustic_temporal_jitter", fail, raising=False
+    )
+    monkeypatch.setattr(
+        NEW.post, "attach_continuous_acoustic_latent", fail, raising=False
+    )
+    candidate = object()
+    policy = NEW.candidate_policy(
+        "robust-semantic-pseudoparallel-ema-fresh48"
+    )
+
+    assert (
+        NEW._attach_candidate_representation(candidate, policy, torch=object())
+        is candidate
+    )
+
+
 def test_noncontinuous_candidate_does_not_attach_wrapper(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -5935,3 +5935,67 @@ job queue.
 - Rework: commit implementation and plan, then require exact 85/85 admission
   plus normal/shifted/inference CUDA smoke with finite nonzero gradients before
   the only full lane.
+
+## 2026-08-14T17:24:00Z - EXP-291 stopped at external7
+
+- Agent: `primary-integrator`, with one bounded implementation owner.
+- Start: 2026-08-14T17:05:00Z.
+- End: 2026-08-14T17:24:00Z.
+- Dependencies: commit `ddefe76`; exact EXP-238 curriculum/targets/control69
+  initialization/loss contract; gpu0; listener 8878.
+- Result: 141 focused runner/renderer tests, Ruff, control checks, exact CPU
+  admission, and the three-mode CUDA smoke passed. Smoke calls were one normal
+  training, one shifted training, and one normal inference; the shifted tensor
+  retained 122,866 nonzero values, gradients had 827,376 nonzero elements, and
+  peak allocation was 4,636,022,272 bytes.
+- Result: the only lane completed 170 updates in 133.40 seconds at
+  6,163,570,688 peak bytes, with exact 85 normal / 85 shifted training calls
+  and seven normal inference calls. It published 35 external7 WAVs. Exact
+  EXP-238 comparison changed all seven candidates, gross stayed `0 -> 0`, and
+  five jointly stable rows were `0.256410 -> 0.256410`, W/T/L `0/5/0`.
+- Problems: decoder instability increased `1 -> 2`; `cv45141533` became
+  unstable with unchanged source-relative distance `0.75`. The predeclared
+  external stability stop fired.
+- Rework: skip EXP-292--296, close shift length/share/direction/interpolation
+  and the acoustic representation manipulation path. Retain the external audio
+  unheard and unselected. Move to one loss/data/conditioning/target method.
+
+## 2026-08-14T17:22:35Z - Grok project-progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux
+  `liveconv-grok-auditor` (read-only, no delegation).
+- Task: judge whether EXP-291 is a justified final acoustic-robustness probe and
+  whether GPU/search direction remains aligned with broadly robust X-VC.
+- Result: `CONTINUE`. It accepted the committed 85/85 one-frame jitter as one
+  bounded lane, required immediate admission/smoke/training, and warned that a
+  failure must end `zq_a` micro-edits and redirect to data, loss, conditioning,
+  or training-target methods.
+- Adopted: yes. The audit snapshot preceded the already-running smoke. Smoke and
+  training completed safely, then external instability triggered exactly the
+  warned redirect. No broad render, dirty cleanup, or jitter sweep was added.
+- Problems: operator localStorage remained invisible and the snapshot saw an
+  idle instant between commit and CUDA startup.
+- Rework: keep the fixed evaluation surfaces, continue one committed lane, and
+  do not infer audible quality from auxiliary content diagnostics.
+
+## 2026-08-14T17:25:00Z - EXP-297 robust semantic loss prepared
+
+- Agent: `primary-integrator`, with one bounded implementation owner.
+- Task: keep normal X-VC representations and make only EXP-238's weight-1000
+  semantic reconstruction term less sensitive to large hidden-state residuals.
+- Dependencies: EXP-238 technical survivor; acoustic representation path
+  closure; unchanged 170-row curriculum and six fixed surfaces.
+- Result: the method replaces semantic MSE only with scale-matched
+  `2 * SmoothL1(beta=1)`; speaker MSE, mel, VQ, adversarial loss, data, targets,
+  control69 LoRA69 initialization/scope, LR, 170 updates, clip, discriminator,
+  EMA, and inference remain exact.
+- Result: a read-only gpu0 probe on six JSUT/CV/Hadou/JVS rows found raw
+  SmoothL1 was only `0.467720--0.492321` of MSE. The initial unscaled proposal
+  was therefore rejected as a hidden semantic-weight halving. Multiplication by
+  two preserves local MSE curvature and changes only residual tails; all probe
+  totals were finite at 2,669,201,920 peak bytes.
+- Problems: probe totals are forward diagnostics, not gradient or quality
+  evidence.
+- Rework: commit focused implementation only after component-substitution tests;
+  require a real finite nonzero-gradient CUDA smoke before the only 170-update
+  lane.

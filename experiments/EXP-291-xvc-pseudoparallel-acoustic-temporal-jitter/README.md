@@ -1,6 +1,6 @@
 # EXP-291: pseudoparallel acoustic temporal jitter
 
-Status: planned listen-now pilot; implementation and commit precede CUDA
+Status: external decoder-stability stop fired; technically rejected and unselected
 
 ## Goal
 
@@ -74,3 +74,29 @@ source-relative content distance. If it survives, the same unchanged adapter
 is evaluated on the five frozen broad surfaces. Without human hearing, all
 audio remains unselected and no naturalness, target-identity, keeper, or
 product claim is allowed.
+
+## Training and external result
+
+Commit `ddefe76` passed 141 combined runner/renderer tests, Ruff, control
+checks, exact CPU admission, and the three-mode CUDA smoke. The smoke exercised
+one normal training call, one shifted training call, and one normal inference
+call. The shifted tensor retained `122,866` nonzero values and moved RMS only
+`2.768492 -> 2.770483`; `827,376` gradient elements were nonzero with L2 norm
+approximately `5`. Peak allocation was `4,636,022,272` bytes.
+
+The only full lane completed 170 updates in 133.40 seconds at
+`6,163,570,688` peak bytes. It recorded exact 85 normal / 85 shifted training
+calls followed by seven normal inference calls. Loss moved `55.2390 ->
+140.1747`; the EMA adapter SHA-256 is
+`e1c9e1f6d7501f0fcd6b610d40178596d74973f76e258315d615abf0f12ec046`.
+It published 35 external comparison WAVs.
+
+Exact source-ID/SHA comparison with EXP-238 changed all seven candidate WAVs
+and added no gross row (`0 -> 0`). The five jointly stable/non-gross rows were
+exact content ties (`0.256410 -> 0.256410`, W/T/L `0/5/0`), but decoder
+instability increased `1 -> 2`: `cv45141533` became unstable while its
+source-relative distance stayed `0.75`. The predeclared stability stop fired,
+so EXP-292--296 were not rendered. Close one-frame jitter, shift-length/share/
+interpolation neighbors, and the broader acoustic-representation manipulation
+path. Retain the external audio unheard and unselected; do not infer audible
+quality from the machine stop.
