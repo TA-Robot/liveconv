@@ -296,6 +296,10 @@ claims from that artifact are superseded. The active join is now:
         -> fresh and expanded content/decoder stability regress; close EXP-267 family
         -> EXP-273 keep EXP-238 data/targets/loss/scope/LR/170/EMA exact
         -> replace trained control69 initialization with fresh zero-init LoRA69 only
+        -> EXP-274--278 render fresh48 / Hadou31 / stress60 / JSUT24 / expanded144
+        -> one expanded gross row; decoder instability rises fresh48 and expanded144
+        -> common-stable all-surface content is 45W/121T/60L; stress60 regresses
+        -> close fresh initialization and rank/LR/scope/horizon/EMA neighbors
         -> operator hearing when available
 ```
 

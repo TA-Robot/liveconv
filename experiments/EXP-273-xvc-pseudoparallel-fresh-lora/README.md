@@ -1,6 +1,6 @@
 # EXP-273: fresh-LoRA X-VC pseudoparallel retraining
 
-Status: committed listen-now training pilot; unheard and unselected
+Status: completed and technically rejected; unheard and unselected
 
 ## Goal
 
@@ -45,3 +45,31 @@ jointly stable/non-gross rows versus EXP-238, source distance moved `0.306410 ->
 0.312179`, W/T/L `1/2/2`; decoder instability moved `1 -> 2`. This is mixed
 and too small to classify the initialization. EXP-274--278 therefore bind the
 unchanged adapter to fresh48, Hadou31, stress60, JSUT24, and expanded144.
+
+## Broad result and decision
+
+EXP-274--278 published another 307 candidate WAVs on the five frozen broad
+surfaces. Every candidate WAV changed. Fresh48 and the candidate each had two
+gross rows, and no fresh48 gross row was added. The expanded144 candidate added
+one gross row, while decoder instability increased from `33 -> 43` there and
+from `6 -> 9` on fresh48.
+
+On exact rows whose source identity and hash matched and whose EXP-238 and
+EXP-273 outputs were both decoder-stable and non-gross, source-relative content
+moved as follows:
+
+| Surface | Common rows | EXP-238 | EXP-273 | W/T/L |
+|---|---:|---:|---:|---:|
+| fresh48 | 37 | 0.246354 | 0.291911 | 8/18/11 |
+| Hadou31 | 25 | 0.110603 | 0.097179 | 8/11/6 |
+| stress60 | 44 | 0.186276 | 0.276007 | 6/17/21 |
+| JSUT24 | 22 | 0.123253 | 0.134617 | 2/17/3 |
+| expanded144 | 98 | 0.358656 | 0.313699 | 21/58/19 |
+| all | 226 | 0.256355 | 0.261410 | 45/121/60 |
+
+Fresh initialization therefore does not remove the distributed robustness
+failures and makes stress60 and decoder stability materially worse despite the
+expanded144 common-row mean improvement. Reject this exact method. Close
+initialization, rank, LR, scope, horizon, and EMA neighbors; retain the audio
+only for later optional hearing. Machine screening does not decide audible
+naturalness, target identity, or a keeper.

@@ -5701,3 +5701,30 @@ job queue.
   initialization removes inherited broad failures.
 - Rework: bind the unchanged adapter to EXP-274--278 and render all five frozen
   surfaces before any next training method.
+
+## 2026-08-14T15:42:00Z - EXP-273--278 broad closure
+
+- Agent: `primary-integrator`.
+- Start: 2026-08-14T15:24:00Z.
+- End: 2026-08-14T15:42:00Z.
+- Dependencies: commit `4ae82f0`; exact EXP-238/273 adapters; frozen
+  fresh48/Hadou31/stress60/JSUT24/expanded144 surfaces; v4 faster-whisper;
+  gpu0; listener 8878.
+- Result: five CPU admissions passed and 307 rows / 1,535 comparison WAVs were
+  published. All 307 candidate hashes changed. Fresh48 gross rows stayed
+  `2 -> 2`, while expanded144 added one gross row and its decoder instability
+  increased `33 -> 43`; fresh48 instability increased `6 -> 9`.
+- Result: exact source-ID/hash joins restricted to jointly stable/non-gross
+  EXP-238 and EXP-273 rows gave fresh48 `0.246354 -> 0.291911`
+  (`8/18/11`), Hadou31 `0.110603 -> 0.097179` (`8/11/6`), stress60
+  `0.186276 -> 0.276007` (`6/17/21`), JSUT24 `0.123253 -> 0.134617`
+  (`2/17/3`), and expanded144 `0.358656 -> 0.313699` (`21/58/19`).
+  Aggregate was `0.256355 -> 0.261410`, W/T/L `45/121/60` on 226 rows.
+- Problems: expanded common-stable content improved, but gross/decoder
+  stability worsened and stress60 regressed substantially. Machine ASR cannot
+  decide naturalness or target identity.
+- Rework: reject fresh initialization and close rank/LR/scope/horizon/EMA
+  neighbors. Keep all audio unheard and unselected. The next training pilot
+  must change a source-representation or robustness mechanism that can explain
+  EXP-243's speaker-distributed failures, not add another identity patch or
+  condition-ratio sweep.
