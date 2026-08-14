@@ -243,6 +243,9 @@ claims from that artifact are superseded. The active join is now:
         -> 850 WAVs; external/Hadou/noise improve but JSUT regresses broadly
         -> exact discrete objective and final-WAV content-cycle representation family closed
         -> retain EXP-213 as the unheard cross-corpus technical survivor
+        -> EXP-228 return to EXP-213 MSE; split per-row content vs voice gradients with PCGrad
+        -> EXP-229--232 prebound fresh48 / Hadou31 / stress60 / JSUT24
+        -> one fixed task grouping; no loss-weight/projection/data/scope sweep
         -> operator hearing when available
 ```
 

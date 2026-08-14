@@ -926,6 +926,32 @@ def test_discrete_output_cycle_prebinds_complete_five_surface_contract() -> None
     assert all(kind in choices for kind in kinds)
 
 
+def test_content_voice_pcgrad_prebinds_complete_five_surface_contract() -> None:
+    kinds = [
+        "content-voice-pcgrad-ema-fresh48",
+        "content-voice-pcgrad-ema-hadou",
+        "content-voice-pcgrad-ema-stress",
+        "content-voice-pcgrad-ema-jsut",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-229",
+        "EXP-230",
+        "EXP-231",
+        "EXP-232",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "cross-corpus170-content-voice-pcgrad-ema170"
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert all(kind in choices for kind in kinds)
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"

@@ -176,6 +176,46 @@ def test_cross_corpus_policy_rejects_internal_semantic_objective() -> None:
         raise AssertionError("cross-corpus internal semantic objective admitted")
 
 
+def test_content_voice_pcgrad_changes_only_gradient_composition() -> None:
+    policy = post.listening_policy(
+        post.CROSS_CORPUS_UNPAIRED_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+        True,
+        post.PCGRAD_CONTENT_VOICE_OPTIMIZER,
+    )
+
+    assert policy["slug"] == "exp228"
+    assert policy["candidate_id"] == (
+        "cross-corpus170-content-voice-pcgrad-ema170"
+    )
+    assert "one optimizer step per row" in policy["independent_variable"]
+    assert "loss weights" in policy["independent_variable"]
+
+
+def test_content_voice_pcgrad_task_split_preserves_total() -> None:
+    import torch
+
+    content = torch.tensor(0.25, requires_grad=True)
+    speaker = torch.tensor(0.5, requires_grad=True)
+    adversarial = torch.tensor(7.0, requires_grad=True)
+    generator = {
+        "output_cycle_content": content,
+        "speaker": speaker,
+        "loss": 1000.0 * content + 10.0 * speaker,
+    }
+
+    content_task, voice_task = post.content_voice_task_losses(
+        generator, adversarial, torch=torch
+    )
+
+    assert content_task.item() == 250.0
+    assert voice_task.item() == 12.0
+    assert (content_task + voice_task).item() == (
+        generator["loss"] + adversarial
+    ).item()
+
+
 def test_contrastive_output_cycle_policy_changes_only_content_comparison() -> None:
     policy = post.listening_policy(
         post.CROSS_CORPUS_UNPAIRED_OUTPUT_KIND,

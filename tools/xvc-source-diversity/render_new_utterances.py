@@ -1366,6 +1366,48 @@ def candidate_policy(kind: str) -> dict[str, str]:
             ),
         }
     if kind in {
+        "content-voice-pcgrad-ema-fresh48",
+        "content-voice-pcgrad-ema-hadou",
+        "content-voice-pcgrad-ema-stress",
+        "content-voice-pcgrad-ema-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        experiment_id = (
+            "EXP-232"
+            if jsut
+            else "EXP-231"
+            if stress
+            else "EXP-230"
+            if hadou
+            else "EXP-229"
+        )
+        suffix = (
+            "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "cross-corpus170-content-voice-pcgrad-ema170",
+            "display_name": (
+                "EXP-228 / cross-corpus content-voice PCGrad / EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-content-voice-pcgrad-"
+                f"ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does per-row content-versus-voice gradient surgery retain "
+                "cross-corpus gains without the ordinary-JSUT tradeoff?"
+            ),
+        }
+    if kind in {
         "discrete-output-cycle-ema-fresh48",
         "discrete-output-cycle-ema-hadou",
         "discrete-output-cycle-ema-stress",
@@ -2113,6 +2155,10 @@ def _parser() -> argparse.ArgumentParser:
             "discrete-output-cycle-ema-hadou",
             "discrete-output-cycle-ema-stress",
             "discrete-output-cycle-ema-jsut",
+            "content-voice-pcgrad-ema-fresh48",
+            "content-voice-pcgrad-ema-hadou",
+            "content-voice-pcgrad-ema-stress",
+            "content-voice-pcgrad-ema-jsut",
         ),
         default="speaker7",
     )

@@ -5003,3 +5003,25 @@ job queue.
   discrete loss neighbors and the three-point final-WAV content-cycle family.
   Retain EXP-213 as the unheard cross-corpus technical survivor and choose a
   genuinely different retraining axis next.
+
+## 2026-08-14T10:04:00Z - EXP-228--232 content/voice PCGrad prepared
+
+- Agent: `primary-integrator`.
+- Task: choose a genuinely different retraining axis after three final-WAV
+  content representations preserved the Hadou/noise versus ordinary-JSUT
+  tradeoff.
+- Dependencies: EXP-213's best technical survivor; exact cross-corpus170 data,
+  targets, losses, LoRA69, 170-step optimizer geometry, EMA, and five surfaces;
+  the already-tested symmetric two-task projection primitive from EXP-176.
+- Result: return to EXP-213's pointwise frozen-Whisper MSE and change only
+  within-row generator gradient composition. Weighted content is task one;
+  unchanged target-speaker plus real-wave adversarial/feature loss is task two.
+  Negative-dot-product components are symmetrically projected, while aligned
+  gradients are summed unchanged. Unlike EXP-176, every source row retains one
+  optimizer step. EXP-229--232 bind the complete frozen evaluation contract.
+- Problems: two generator gradient extractions can increase peak memory and
+  wall time. PCGrad can expose conflict but cannot prove perceptual quality.
+- Rework: focused tests, exact no-CUDA admission, commit, then one two-row real
+  smoke and one 170-step lane. Stop if task-sum/geometry is nonfinite, conflicts
+  are absent, a gross row is added, or broad JSUT remains worse. Do not sweep
+  weights, grouping, projection, data, scope, LR, horizon, or EMA.

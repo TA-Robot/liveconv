@@ -109,6 +109,7 @@ OUTPUT_CYCLE_CONTENT_WEIGHT = 1000.0
 CONTRASTIVE_CONTENT_TEMPERATURE = 0.1
 SEQUENTIAL_OPTIMIZER = "sequential"
 PCGRAD_PAIRED_OPTIMIZER = "pcgrad-hard-easy-paired"
+PCGRAD_CONTENT_VOICE_OPTIMIZER = "pcgrad-content-voice"
 EMA_IMPLEMENTATION = "ema-pytorch-0.7.7-defaults-adapter-equivalent"
 EMA_BETA = 0.9999
 EMA_UPDATE_AFTER_STEP = 100
@@ -212,6 +213,39 @@ def listening_policy(
                 "curriculum, real-reference adversarial objective, 170 sequential "
                 "updates, LR, AdamW, clip, scope, zero condition, and upstream EMA "
                 "schedule stay fixed"
+            ),
+        }
+    if optimizer_mode == PCGRAD_CONTENT_VOICE_OPTIMIZER:
+        if (
+            manifest_kind != CROSS_CORPUS_UNPAIRED_OUTPUT_KIND
+            or trainable_target != LORA69_TARGET
+            or training_objective != OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+            or not use_adapter_ema
+            or parameter_anchor
+            or source_activity_envelope
+        ):
+            raise PostRehearsalError(
+                "content/voice PCGrad requires the exact EXP-213 pilot"
+            )
+        return {
+            "slug": "exp228",
+            "candidate_id": "cross-corpus170-content-voice-pcgrad-ema170",
+            "candidate_name": "EXP-228 / cross-corpus content-voice PCGrad / EMA",
+            "run_kind": "EXP-228 X-VC content-voice PCGrad evaluation",
+            "result_kind": "liveconv-exp228-xvc-content-voice-pcgrad-ema/v1",
+            "question": (
+                "Does projecting only conflicting content-versus-voice gradients "
+                "retain EXP-213's Hadou/noise gain without its ordinary-JSUT cost?"
+            ),
+            "independent_variable": (
+                "only per-row generator gradient composition changes from EXP-213: "
+                "the unchanged weighted final-WAV Whisper MSE is one task and the "
+                "unchanged target-speaker plus real-wave adversarial/feature loss is "
+                "the other; negative-dot-product components are symmetrically "
+                "projected before the same one optimizer step per row; exact "
+                "CV48/JSUT85/JVS3/Hadou34 data, Amitaro targets, loss weights, "
+                "control69 LoRA69 initialization, 170 updates, LR, clip, zero "
+                "condition, discriminator update, and EMA remain fixed"
             ),
         }
     if optimizer_mode == PCGRAD_PAIRED_OPTIMIZER:
@@ -1733,6 +1767,150 @@ def project_conflicting_pair(
     }
 
 
+def content_voice_task_losses(
+    generator_losses: Mapping[str, Any], adversarial_loss: Any, *, torch: Any
+) -> tuple[Any, Any]:
+    """Split EXP-213's unchanged generator loss into content and voice tasks."""
+    generator_loss = generator_losses.get("loss")
+    content = generator_losses.get("output_cycle_content")
+    speaker = generator_losses.get("speaker")
+    if generator_loss is None or content is None or speaker is None:
+        raise PostRehearsalError("content/voice PCGrad loss boundary drifted")
+    content_task = OUTPUT_CYCLE_CONTENT_WEIGHT * content
+    voice_task = (
+        role_mix.STANDARD_LOSS_WEIGHTS["sim_mse_loss"] * speaker
+        + adversarial_loss
+    )
+    total = content_task + voice_task
+    expected = generator_loss + adversarial_loss
+    if (
+        not bool(torch.isfinite(total))
+        or not bool(torch.isfinite(expected))
+        or not bool(torch.allclose(total, expected, rtol=1e-5, atol=1e-5))
+    ):
+        raise PostRehearsalError("content/voice PCGrad task sum drifted")
+    return content_task, voice_task
+
+
+def content_voice_pcgrad_adversarial_update(
+    trained: Any,
+    discriminator: Any,
+    generator_optimizer: Any,
+    discriminator_optimizer: Any,
+    trainable: Sequence[Any],
+    batch: Mapping[str, Any],
+    *,
+    torch: Any,
+) -> tuple[dict[str, float], dict[str, float | bool]]:
+    """Run one unchanged EXP-213 update with content/voice gradient surgery."""
+    base._set_adapter_training_only(trained)
+    discriminator.train()
+    generator_optimizer.zero_grad(set_to_none=True)
+    discriminator_optimizer.zero_grad(set_to_none=True)
+    with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+        outputs = trained(dict(batch))
+        reconstruction = outputs.get("recons") if isinstance(outputs, dict) else None
+        if reconstruction is None or not bool(torch.isfinite(reconstruction).all()):
+            raise PostRehearsalError(
+                "content/voice PCGrad reconstruction is malformed"
+            )
+        discriminator_real = batch["target_wav"][..., : reconstruction.shape[-1]]
+        outputs["audios"] = discriminator_real
+        discriminator_losses = discriminator.discriminative_loss(outputs)
+        discriminator_loss = breadth._finite_loss(
+            discriminator_losses.get("loss"),
+            torch=torch,
+            label="X-VC discriminator loss",
+        )
+    discriminator_loss.backward()
+    discriminator_norm = torch.nn.utils.clip_grad_norm_(
+        discriminator.parameters(), base.GRADIENT_CLIP_NORM
+    )
+    if not math.isfinite(float(discriminator_norm.detach().cpu())):
+        raise PostRehearsalError(
+            "content/voice PCGrad discriminator norm is non-finite"
+        )
+    discriminator_optimizer.step()
+
+    for parameter in discriminator.parameters():
+        parameter.requires_grad_(False)
+    try:
+        with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+            outputs["audios"] = batch["target_wav"][..., : reconstruction.shape[-1]]
+            generator_losses = output_cycle_unpaired_generator_loss(
+                outputs,
+                batch,
+                semantic_encoder=trained.semantic_encoder,
+                torch=torch,
+            )
+            outputs["audios"] = discriminator_real
+            adversarial_losses = discriminator.adversarial_loss(outputs)
+            adversarial_loss = breadth._finite_loss(
+                adversarial_losses.get("loss"),
+                torch=torch,
+                label="X-VC adversarial loss",
+            )
+            content_task, voice_task = content_voice_task_losses(
+                generator_losses, adversarial_loss, torch=torch
+            )
+            total_loss = content_task + voice_task
+        task_gradients: list[list[Any]] = []
+        for task_index, task_loss in enumerate((content_task, voice_task)):
+            gradients = torch.autograd.grad(
+                task_loss,
+                trainable,
+                retain_graph=task_index == 0,
+                allow_unused=True,
+            )
+            task_gradients.append(
+                [
+                    gradient.detach()
+                    if gradient is not None
+                    else torch.zeros_like(parameter)
+                    for parameter, gradient in zip(
+                        trainable, gradients, strict=True
+                    )
+                ]
+            )
+        merged_gradients, raw_geometry = project_conflicting_pair(
+            task_gradients[0], task_gradients[1], torch=torch
+        )
+        geometry = {
+            "conflict": raw_geometry["conflict"],
+            "dot": raw_geometry["dot"],
+            "cosine": raw_geometry["cosine"],
+            "content_norm": raw_geometry["hard_norm"],
+            "voice_norm": raw_geometry["easy_norm"],
+        }
+        generator_optimizer.zero_grad(set_to_none=True)
+        for parameter, gradient in zip(trainable, merged_gradients, strict=True):
+            parameter.grad = gradient
+        generator_norm = torch.nn.utils.clip_grad_norm_(
+            trainable, base.GRADIENT_CLIP_NORM
+        )
+        if not math.isfinite(float(generator_norm.detach().cpu())):
+            raise PostRehearsalError(
+                "content/voice PCGrad generator norm is non-finite"
+            )
+        generator_optimizer.step()
+    finally:
+        for parameter in discriminator.parameters():
+            parameter.requires_grad_(True)
+
+    metrics = {
+        "total": float(total_loss.detach().cpu()),
+        "generative": float(generator_losses["loss"].detach().cpu()),
+        "discriminator": float(discriminator_loss.detach().cpu()),
+        "adversarial_generator": float(adversarial_losses["adv_gen_loss"]),
+        "adversarial_feature": float(adversarial_losses["adv_feat_loss"]),
+        "generator_output_cycle_content": float(
+            generator_losses["output_cycle_content"].detach().cpu()
+        ),
+        "generator_speaker": float(generator_losses["speaker"].detach().cpu()),
+    }
+    return metrics, geometry
+
+
 def parameter_anchor_regularizer(
     parameters: Sequence[Any],
     anchors: Sequence[Any],
@@ -2070,7 +2248,24 @@ def run(
                     batch["ssl_feat"],
                     torch=torch,
                 )
-            if discriminator is not None and discriminator_optimizer is not None:
+            if (
+                arguments.optimizer_mode == PCGRAD_CONTENT_VOICE_OPTIMIZER
+                and discriminator is not None
+                and discriminator_optimizer is not None
+            ):
+                metrics, geometry = content_voice_pcgrad_adversarial_update(
+                    trained,
+                    discriminator,
+                    optimizer,
+                    discriminator_optimizer,
+                    trainable,
+                    batch,
+                    torch=torch,
+                )
+                losses.append(metrics["total"])
+                adversarial_metrics.append(metrics)
+                pcgrad_metrics.append(geometry)
+            elif discriminator is not None and discriminator_optimizer is not None:
                 metrics = breadth._adversarial_update(
                     trained,
                     discriminator,
@@ -2527,7 +2722,11 @@ def parser() -> argparse.ArgumentParser:
     )
     value.add_argument(
         "--optimizer-mode",
-        choices=(SEQUENTIAL_OPTIMIZER, PCGRAD_PAIRED_OPTIMIZER),
+        choices=(
+            SEQUENTIAL_OPTIMIZER,
+            PCGRAD_PAIRED_OPTIMIZER,
+            PCGRAD_CONTENT_VOICE_OPTIMIZER,
+        ),
         default=SEQUENTIAL_OPTIMIZER,
     )
     value.add_argument("--adapter-ema", action="store_true")
