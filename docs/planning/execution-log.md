@@ -6502,3 +6502,20 @@ job queue.
   is perceptually better.
 - Rework: continue the three predefined remaining surfaces. Do not tune around
   the noise row or call the aggregate mean a quality win.
+
+## 2026-08-14T21:36:00Z - EXP-330 matched JSUT24 broad surface
+
+- Agent: `primary-integrator`.
+- Task: compare EXP-325 and EXP-326 on the balanced frozen JSUT24 categories.
+- Dependencies: commits `7163fc6` and `4e92025`; one sequential gpu0 lease;
+  listener 8878; fixed JSUT24 input identity.
+- Result: both arms completed all 24 rows and published 240 WAVs. All 24
+  candidate hashes differ. Source-relative ASR is `0W/23T/1L`, mean
+  `0.121713 -> 0.126342`; the only changed loss is in loanword128. Auxiliary
+  known-text distance is `1W/21T/2L`, mean `0.562827 -> 0.564544`.
+- Result: gross repetition stays `0 -> 0`, decoder instability stays `2 -> 2`,
+  and there are no new or recovered unstable rows.
+- Problems: the GRL arm does not provide generic lexical-content improvement;
+  this surface is near-tied with one source-relative regression.
+- Rework: finish expanded144 and fully heldout SRC4VC30, then aggregate. Do not
+  optimize around the loanword row or infer perceptual degradation from ASR.
