@@ -925,6 +925,47 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "33 additional Common Voice speakers and utterances?"
             ),
         }
+    if kind in {
+        "jsut-retention-ema-fresh48",
+        "jsut-retention-ema-hadou",
+        "jsut-retention-ema-stress",
+        "jsut-retention-ema-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        experiment_id = (
+            "EXP-175"
+            if jsut
+            else "EXP-174"
+            if stress
+            else "EXP-173"
+            if hadou
+            else "EXP-172"
+        )
+        suffix = (
+            "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": "cv12-jsut-retention-real-adversarial-ema170",
+            "display_name": (
+                "EXP-171 / JSUT retention + real-adversarial + EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-jsut-retention-ema-"
+                f"{suffix}/v1"
+            ),
+            "question": (
+                "Does JSUT retention survive the same frozen independent gate?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1543,6 +1584,10 @@ def _parser() -> argparse.ArgumentParser:
             "real-adversarial-ema-stress",
             "real-adversarial-ema-jsut",
             "real-adversarial-ema-expanded",
+            "jsut-retention-ema-fresh48",
+            "jsut-retention-ema-hadou",
+            "jsut-retention-ema-stress",
+            "jsut-retention-ema-jsut",
         ),
         default="speaker7",
     )

@@ -3876,3 +3876,22 @@ job queue.
   the new diverse-work source/target roots.
 - Rework: make EXP-171 smoke exercise exactly one unchanged hard row and one new
   easy row; full training remains the same ordered 170 updates.
+
+## 2026-08-14T02:12:00Z - EXP-171 training and external7 completed
+
+- Agent: `primary-integrator`.
+- Task: smoke both training roots, run one 170-update JSUT-retention lane, and
+  publish the first comparison batch.
+- Dependencies: commit `8d2d3cc`; control69 initialization; exact EXP-163
+  objective and EMA controls; frozen external7.
+- Result: two-row hard/easy smoke was finite at 4.55 GB peak. Full training
+  completed 170 updates in 146.49 seconds at 6.07 GB peak; total loss moved
+  298.40 to 114.65 and every recorded objective component remained finite.
+  External7 published 35 WAVs to the 8878 library and added no gross repetition.
+  Candidate source-relative mean exactly tied control69 at 0.3596; known-text
+  mean regressed from 0.3993 to 0.4655.
+- Problems: external7 is only seven speakers and gives mixed auxiliary content
+  evidence. It cannot decide naturalness or justify rejecting a data method
+  before the broader frozen gates.
+- Rework: continue the unchanged adapter through fresh48, then Hadou31 and
+  stress60 only if no candidate-added gross corruption appears.

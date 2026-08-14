@@ -616,6 +616,26 @@ def test_real_adversarial_ema_expanded_policy_is_posthoc_exp168() -> None:
     assert "33 additional" in policy["question"]
 
 
+def test_jsut_retention_ema_policy_has_distinct_gate_identity() -> None:
+    kinds = [
+        "jsut-retention-ema-fresh48",
+        "jsut-retention-ema-hadou",
+        "jsut-retention-ema-stress",
+        "jsut-retention-ema-jsut",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-172",
+        "EXP-173",
+        "EXP-174",
+        "EXP-175",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "cv12-jsut-retention-real-adversarial-ema170"
+    }
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"
