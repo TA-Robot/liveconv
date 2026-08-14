@@ -358,8 +358,12 @@ claims from that artifact are superseded. The active join is now:
         -> Grok REDIRECT: separate new SRC4VC data admission from speaker adversary CUDA
         -> EXP325 materializes exact same 85 SRC4VC train speakers at utterances 0 and 1
         -> 170 unique rows, 85 classes x2, zero cross-utterance WAV-hash overlap
-        -> phase 1: ordinary pseudoparallel teacher/train/external7 only
-        -> phase 2 EXP326 GRL remains CUDA-deferred until the control substrate passes
+        -> phase 1 ordinary control completes 170 teachers/updates and 35 external7 WAVs
+        -> EXP238 comparison 0W/6T/1L; gross 0 -> 0; instability 1 -> 1
+        -> substrate safety gate passes without supporting a data-improvement claim
+        -> Ready: EXP326 signal/gradient/inference admission on the identical manifest
+        -> if green, change only training-only source-speaker GRL for 170 updates
+        -> external7 gate before any fixed broad surface; no weight/head/data sweep
         -> operator hearing when available
 ```
 

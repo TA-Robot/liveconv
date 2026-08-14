@@ -1,7 +1,7 @@
 # EXP-325/326: two-utterance SRC4VC source-speaker adversary
 
-Status: phase-1 control data acquired; teacher and control CUDA pending;
-EXP-326 GRL CUDA deferred until the control external7 result
+Status: phase-1 control completed and passed the coarse corruption/stability
+gate; EXP-326 GRL admission and matched training are next
 
 ## Milestone
 
@@ -86,5 +86,34 @@ The 85 train speakers exactly match EXP-244, every selected WAV hash, text, and
 ID differs from that speaker's index-0 row, and the two train sets share zero
 WAV hashes. The new rows contain 444.15 seconds of mono PCM16 speech at the
 published 24, 44.1, or 48 kHz rates. The heldout 15 speakers remain disjoint
-and their exact 30 identities, hashes, and texts are unchanged. No CUDA has
-run from this data yet.
+and their exact 30 identities, hashes, and texts are unchanged.
+
+## Phase-1 result and phase-2 admission
+
+The committed binder produced 170 rows with 85 explicit speakers and exactly
+two distinct utterances per speaker. Frozen control69 rendered all 170
+same-content teachers. The first renderer invocation finished every WAV but
+failed while assembling the final manifest because it discarded the validated
+EXP-238 target-order object. Commits `e79d9e6` and `28661c5` added an
+exact-inventory crash-recovery path and restored the required
+`source_relative_distance: 0.0`; no teacher WAV was rerendered. The final
+curriculum SHA-256 is
+`a524272f31c94fa0c32cc434e1a02fedf3ac16204272247e1056a67b35bb66e1`.
+
+EXP-325 then completed 170 ordinary pseudoparallel real-adversarial updates in
+190.20 seconds at 6,163,570,688 peak allocated GPU bytes. It published 35
+external7 WAVs on port 8878. Against the exact EXP-238 candidate on the same
+seven rows, source-relative distance was `0W/6T/1L`, mean
+`0.433150 -> 0.444139`. Both arms had one decoder-unstable row, neither had a
+gross repetition, and EXP-325 added neither a new unstable row nor a new gross
+row. Auxiliary known-text distance moved `0.504702 -> 0.480892`; it is not a
+naturalness or winner signal.
+
+The phase-1 improvement hypothesis is unsupported, but its predefined safety
+gate passes: the new substrate is finite, complete, and no less stable on
+external7. Phase 2 may therefore change only the training-only source-speaker
+GRL objective on the exact same curriculum, teachers, target order,
+initialization, LoRA69 scope, LR, 170-update horizon, EMA, and inference path.
+Run the bounded signal/gradient/inference admission before the full EXP-326
+lane. Human hearing remains unavailable, so EXP-325 stays unheard and
+unselected.

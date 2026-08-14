@@ -6340,3 +6340,31 @@ job queue.
   restored before commit; focused tests pass 12/12.
 - Rework: materialize one 170-row two-utterance pool and fresh teachers, but run
   only the ordinary EXP-325 control through external7 before GRL CUDA.
+
+## 2026-08-14T20:44:00Z - EXP-325 two-utterance SRC4VC control
+
+- Agent: `primary-integrator`; bounded owners supplied the committed fetcher,
+  binder, teacher renderer, ordinary/GRL runner, tests, and external renderer.
+- Task: obey Grok's staged resource decision by testing the new 85-speaker x2
+  SRC4VC substrate with the ordinary EXP-238 method before any GRL CUDA.
+- Dependencies: commits `00382a3`, `ff08751`, `e770e17`, `e79d9e6`, and
+  `28661c5`; exact EXP-238 target order; private two-utterance pool; one gpu0
+  lease; listener 8878.
+- Result: all 170 frozen-control69 teachers completed. EXP-325 then completed
+  170 ordinary pseudoparallel real-adversarial updates in 190.20 seconds at
+  6,163,570,688 peak allocated GPU bytes and published 35 external7 WAVs.
+- Result: exact EXP-238 comparison was `0W/6T/1L`, source-relative mean
+  `0.433150 -> 0.444139`; gross remained zero, decoder instability remained
+  one, and there were no new unstable rows. Auxiliary known-text mean improved
+  `0.504702 -> 0.480892`, but it does not authorize a perceptual claim.
+- Problems: the teacher renderer generated all 170 WAVs, then failed before
+  manifest assembly because the validated EXP-238 object had been discarded.
+  Recovery exposed one more missing rehearsal field. The exact-inventory
+  recovery and `source_relative_distance: 0.0` fixes were committed; the two
+  invalid manifests were moved to a named ignored recovery directory, and no
+  WAV was deleted or rerendered.
+- Rework: the data-only improvement hypothesis is unsupported, but the
+  predefined safety gate passes. Admit only EXP-326's bounded
+  source-speaker-signal, finite-gradient, disjoint-optimizer, and unchanged-
+  inference smoke; if green, run its sole-change GRL arm on the identical
+  manifest before any broad surface. EXP-325 remains unheard and unselected.
