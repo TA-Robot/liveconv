@@ -1971,7 +1971,7 @@ def candidate_policy(kind: str) -> dict[str, str]:
         return {
             "experiment_id": "EXP-325",
             "variant_id": (
-                "src4vc85-two-utterance-control-pseudoparallel-real-adv-ema170"
+                "src4vc170-two-utterance-pseudoparallel-real-adv-ema170"
             ),
             "display_name": (
                 "EXP-325 / SRC4VC two-utterance control / source-aligned targets / "
@@ -1993,8 +1993,8 @@ def candidate_policy(kind: str) -> dict[str, str]:
         return {
             "experiment_id": "EXP-326",
             "variant_id": (
-                "src4vc85-two-utterance-source-speaker-grl-"
-                "pseudoparallel-real-adv-ema170"
+                "src4vc170-two-utterance-pseudoparallel-source-speaker-grl-"
+                "real-adv-ema170"
             ),
             "display_name": (
                 "EXP-326 / SRC4VC two-utterance source-speaker GRL / "
@@ -2059,6 +2059,64 @@ def candidate_policy(kind: str) -> dict[str, str]:
             "question": (
                 "Does the CV26 active-window treatment preserve content across "
                 "the established broad evaluation surfaces?"
+            ),
+        }
+    if kind in {
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-fresh48",
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-hadou",
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-stress",
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-jsut",
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-expanded144",
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-heldout30",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        expanded = kind.endswith("-expanded144")
+        heldout = kind.endswith("-heldout30")
+        experiment_id = (
+            "EXP-332"
+            if heldout
+            else "EXP-331"
+            if expanded
+            else "EXP-330"
+            if jsut
+            else "EXP-329"
+            if stress
+            else "EXP-328"
+            if hadou
+            else "EXP-327"
+        )
+        suffix = (
+            "heldout30"
+            if heldout
+            else "expanded144"
+            if expanded
+            else "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": (
+                "src4vc170-two-utterance-pseudoparallel-source-speaker-grl-"
+                "real-adv-ema170"
+            ),
+            "display_name": (
+                "EXP-326 / SRC4VC two-utterance source-speaker GRL / "
+                "source-aligned targets / real-adversarial / EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-src4vc-two-utterance-"
+                f"source-speaker-grl-pseudoparallel-ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does the EXP-326 source-speaker GRL treatment preserve content "
+                "across the established fixed evaluation surfaces?"
             ),
         }
     if kind in {
@@ -3315,6 +3373,12 @@ def _parser() -> argparse.ArgumentParser:
             "cv26-active-window-pseudoparallel-ema-stress",
             "cv26-active-window-pseudoparallel-ema-jsut",
             "cv26-active-window-pseudoparallel-ema-expanded144",
+            "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-fresh48",
+            "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-hadou",
+            "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-stress",
+            "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-jsut",
+            "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-expanded144",
+            "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-heldout30",
             "speaker-condition-calibrator-fresh48",
             "speaker-condition-calibrator-hadou",
             "speaker-condition-calibrator-stress",

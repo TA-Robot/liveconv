@@ -1544,14 +1544,14 @@ def test_src4vc_two_utterance_external7_policies_prebind_exp325_and_exp326() -> 
     expected = {
         "src4vc-two-utterance-control-pseudoparallel-ema-external7": (
             "EXP-325",
-            "src4vc85-two-utterance-control-pseudoparallel-real-adv-ema170",
+            "src4vc170-two-utterance-pseudoparallel-real-adv-ema170",
             "liveconv-exp325-xvc-src4vc-two-utterance-control-"
             "pseudoparallel-real-adv-ema/v1",
         ),
         "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-external7": (
             "EXP-326",
-            "src4vc85-two-utterance-source-speaker-grl-"
-            "pseudoparallel-real-adv-ema170",
+            "src4vc170-two-utterance-pseudoparallel-source-speaker-grl-"
+            "real-adv-ema170",
             "liveconv-exp326-xvc-src4vc-two-utterance-source-speaker-grl-"
             "pseudoparallel-real-adv-ema/v1",
         ),
@@ -1590,6 +1590,93 @@ def test_src4vc_two_utterance_external7_candidates_are_normal_peft_without_attac
     for kind in (
         "src4vc-two-utterance-control-pseudoparallel-ema-external7",
         "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-external7",
+    ):
+        policy = NEW.candidate_policy(kind)
+        assert policy.get("candidate_format") is None
+        assert policy.get("candidate_attachment") is None
+        candidate = object()
+        assert (
+            NEW._attach_candidate_representation(candidate, policy, torch=object())
+            is candidate
+        )
+
+
+def test_src4vc_two_utterance_grl_broad_policies_prebind_exp327_to_exp332() -> None:
+    kinds = [
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-fresh48",
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-hadou",
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-stress",
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-jsut",
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-expanded144",
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-heldout30",
+    ]
+    expected_experiment_ids = [
+        "EXP-327",
+        "EXP-328",
+        "EXP-329",
+        "EXP-330",
+        "EXP-331",
+        "EXP-332",
+    ]
+    expected_result_kinds = [
+        "liveconv-exp-327-xvc-src4vc-two-utterance-source-speaker-grl-"
+        "pseudoparallel-ema-fresh48/v1",
+        "liveconv-exp-328-xvc-src4vc-two-utterance-source-speaker-grl-"
+        "pseudoparallel-ema-hadou31/v1",
+        "liveconv-exp-329-xvc-src4vc-two-utterance-source-speaker-grl-"
+        "pseudoparallel-ema-stress60/v1",
+        "liveconv-exp-330-xvc-src4vc-two-utterance-source-speaker-grl-"
+        "pseudoparallel-ema-jsut24/v1",
+        "liveconv-exp-331-xvc-src4vc-two-utterance-source-speaker-grl-"
+        "pseudoparallel-ema-expanded144/v1",
+        "liveconv-exp-332-xvc-src4vc-two-utterance-source-speaker-grl-"
+        "pseudoparallel-ema-heldout30/v1",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == (
+        expected_experiment_ids
+    )
+    assert {
+        policy["variant_id"] for policy in policies
+    } == {
+        "src4vc170-two-utterance-pseudoparallel-source-speaker-grl-"
+        "real-adv-ema170"
+    }
+    assert [policy["result_kind"] for policy in policies] == expected_result_kinds
+    assert {
+        policy["display_name"] for policy in policies
+    } == {
+        "EXP-326 / SRC4VC two-utterance source-speaker GRL / "
+        "source-aligned targets / real-adversarial / EMA"
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert all(kind in choices for kind in kinds)
+
+
+def test_src4vc_two_utterance_grl_broad_candidates_are_normal_peft_without_attachment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail(*args: object, **kwargs: object) -> None:
+        raise AssertionError("source-speaker GRL head attached at inference")
+
+    monkeypatch.setattr(
+        NEW.post, "attach_continuous_acoustic_latent", fail, raising=False
+    )
+    monkeypatch.setattr(
+        NEW.post, "attach_acoustic_temporal_jitter", fail, raising=False
+    )
+    for kind in (
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-fresh48",
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-hadou",
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-stress",
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-jsut",
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-expanded144",
+        "src4vc-two-utterance-source-speaker-grl-pseudoparallel-ema-heldout30",
     ):
         policy = NEW.candidate_policy(kind)
         assert policy.get("candidate_format") is None
