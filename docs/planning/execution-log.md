@@ -6481,3 +6481,24 @@ job queue.
   verdict; Hadou subsequently proved `3W/28T/0L` with unchanged instability.
 - Rework: none. Do not open GRL sweeps, another data arm, promote evidence, or
   machine naturalness/identity claims while the fixed characterization runs.
+
+## 2026-08-14T21:30:00Z - EXP-329 matched stress60 broad surface
+
+- Agent: `primary-integrator`.
+- Task: compare EXP-325 and EXP-326 on the fixed clean/noise/pitch/silence/tempo
+  stress groups without changing either adapter or render contract.
+- Dependencies: commits `7163fc6` and `4e92025`; one sequential gpu0 lease;
+  listener 8878; fixed stress60 input identity.
+- Result: both arms completed all 60 rows and published 600 WAVs. All 60
+  candidate hashes differ. The exact source-relative join is `3W/55T/2L`,
+  mean `0.366522 -> 0.346269`; auxiliary known-text is `3W/56T/1L`, mean
+  `0.670784 -> 0.647728`.
+- Result: clean, noise20, and tempo120 each have one source-relative win;
+  pitch+3 and silence300 each have one loss. Gross repetition stays `0 -> 0`.
+  Decoder instability changes `11 -> 12`, with one new unstable noise20 row
+  (`cv39005104b-noise20`) and no recovered row.
+- Problems: this is another mixed surface: aggregate distance improves but one
+  stress row loses decoder agreement. ASR cannot decide whether any difference
+  is perceptually better.
+- Rework: continue the three predefined remaining surfaces. Do not tune around
+  the noise row or call the aggregate mean a quality win.
