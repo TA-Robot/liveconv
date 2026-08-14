@@ -6224,3 +6224,39 @@ job queue.
 - Rework: none to the experiment. Keep both arms on the same 26-row
   intersection so the active-window comparison does not mix a row-count or
   admission change. Do not add broad surfaces before the external gate.
+
+## 2026-08-14T19:47:00Z - EXP-318/319 matched CV26 window comparison
+
+- Agent: `primary-integrator`; four bounded owners handled the CPU binder,
+  frozen teacher renderer, ordinary trainer admission, and external renderer
+  in separate file zones.
+- Task: separate raw-source admission from first-window versus speech-active
+  preprocessing while keeping 170 updates, 26 positions, real-target order,
+  LoRA69, losses, optimizer, EMA, and external7 fixed.
+- Dependencies: plan `2631650`; binder `09e809e`; trainer `271603f`; external
+  renderer `4ab94c7`; teacher renderer `a1e2b04`; exact EXP-238/306/317
+  artifacts; one sequential gpu0 lease.
+- Result: CPU reconstruction excluded exactly six raw recordings with zero
+  samples above the fixed activity threshold. EXP-318 retained current-window
+  source/teacher bytes at the other 26 positions; EXP-319 changed only those
+  source windows and freshly rendered 26 teachers. All 26 source hashes differ
+  between arms; the other 144 manifest rows are exact EXP-238.
+- Problems: the first binder implementation accidentally wrote active-window
+  source identities into both arms. Parent real-artifact comparison caught it
+  despite green fixture tests; the agent added cross-arm hash assertions and
+  corrected the binder before CUDA. The first EXP-318 launch and first ASR
+  screen launch used generic/wrong virtual environments and stopped before
+  CUDA with missing `peft`/`faster_whisper`; both were immediately rerun in
+  their existing dedicated runtimes. No invalid audio was produced.
+- Result: EXP-318 trained 170 updates in 148.05 seconds. EXP-319 rendered 26
+  teachers in 99.39 seconds and trained 170 updates in 157.44 seconds. Each
+  published 35 external7 WAVs; peak training allocation was 6.16 GB.
+- Result: all seven outputs changed in both arms, gross rows remained zero,
+  and instability exactly matched EXP-238 at one row. On six jointly stable
+  rows, EXP-319 versus EXP-318 source distance was `1W/5T/0L`, mean
+  `0.351496 -> 0.323718`; versus EXP-238 it was `1W/4T/1L`, mean
+  `0.338675 -> 0.323718`. Known-text movement is auxiliary only.
+- Rework: stop EXP-318 at external7 because its source-relative mean regressed.
+  EXP-319 clears the predefined external gate, so add only the five frozen
+  broad surfaces and do not sweep threshold, gain, filter, row count, horizon,
+  loss, or scope.

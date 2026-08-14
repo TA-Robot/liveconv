@@ -349,6 +349,8 @@ claims from that artifact are superseded. The active join is now:
         -> EXP-318 restore those 6 positions; retain current-window bytes for matched CV26
         -> EXP-319 keep the same 26 positions but use exact speech-active windows + fresh teachers
         -> both keep 170 updates, target order, method, and external7-only first gate
+        -> both gross 0 and instability 1; EXP319 beats EXP318 1W/5T/0L on stable source distance
+        -> EXP319 external mean 0.323718 versus EXP238 0.338675; admit five fixed broad surfaces
         -> operator hearing when available
 ```
 

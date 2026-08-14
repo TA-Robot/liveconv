@@ -1,6 +1,6 @@
 # EXP-318: 170-update Common Voice 26-row current-window control
 
-Status: planned listen-now pilot; implementation commit precedes CUDA
+Status: completed external7 control; broad rendering not required
 
 ## Milestone
 
@@ -61,3 +61,25 @@ distance is auxiliary only.
 EXP-318 is the control for EXP-319.  Its result may show whether excluding the
 six below-threshold raw recordings helps; it cannot establish the effect of
 speech-active window selection.
+
+## Result
+
+Plan commit `2631650` and implementation commits `09e809e`, `271603f`, and
+`4ab94c7` bound 170 rows with 26 retained current-window replacements and 144
+exact EXP-238 rows.  Parent integration caught and corrected an initial binder
+bug that had placed active-window sources in both arms; no CUDA ran on that
+invalid pair.  The final manifest SHA-256 is
+`e37cdc3ff5a805dbeb6f7fecaf26dd44bb19a3444c5fce2236d59e185f5577e2`.
+
+The pilot completed 170 updates in 148.05 seconds at 6,163,570,688 peak bytes
+and published 35 external7 WAVs.  Its EMA adapter SHA-256 is
+`3f114b75ebf328089b92d0ebb89894347bac15505ce6977baa361c9d8304cbfd`.
+All seven candidate WAVs changed and no consensus gross row was added.
+
+Decoder instability exactly matched EXP-238: only `cv39005101` was unstable.
+Across the six jointly stable rows, source-relative distance was `0W/5T/1L`
+and mean `0.338675 -> 0.351496`; secondary known-text distance was
+`2W/4T/0L`, `0.422152 -> 0.382470`.  The source-relative mean stop fires for
+this control, so it is not independently admitted to broad rendering.  It
+still supplies the required matched baseline for EXP-319; no audible-quality
+or winner claim is made.

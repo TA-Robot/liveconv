@@ -46,6 +46,16 @@ speech-active policy and rerenders their frozen-control69 teachers. Both stay
 at 170 updates and external7 first; no gain/filter rescue or broad sweep is
 admitted.
 
+EXP-318/319 completed the matched CV26 comparison. Both produced 35 external7
+WAVs with zero added gross rows and exactly EXP-238's one unstable row. On the
+six rows stable in all three arms, the current-window control regressed
+source-relative mean `0.338675 -> 0.351496`, while the speech-active treatment
+improved it to `0.323718`; EXP-319 versus EXP-318 was `1W/5T/0L`. Secondary
+known-text distance also moved `0.382470 -> 0.315009` (`2W/4T/0L`). Admit
+EXP-319 only to the already-frozen fresh48, Hadou31, stress60, JSUT24, and
+expanded144 surfaces. This is a machine content/corruption pass, not a keep or
+audible winner.
+
 Identity preflight stopped EXP-303/304 before CUDA. The EXP-186 `exposure=2`
 rows are exact repeats of the same source ID/SHA/text, paired only with a
 different real target; they are not second utterances and cannot test source
