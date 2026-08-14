@@ -21,12 +21,13 @@ committed, single-variable job at a time, publish its comparison on 8878, apply
 only coarse machine rejection for corruption/content failure, and replan after
 each result. Accumulated candidates remain unselected until human hearing.
 
-Current GPU lane (2026-08-14 15:42 UTC): EXP-273's fresh-LoRA retraining and
-EXP-274--278 fixed broad screens completed. The initialization hypothesis is
-closed after stress60 and decoder-stability regression. The next admitted lane
-must change a method-level source representation or robustness mechanism, not
-initialization, rank, LR, scope, horizon, speaker identity patches, or one
-condition's augmentation ratio. All hearing claims remain open.
+Current GPU lane (2026-08-14 15:53 UTC): EXP-279 keeps the exact EXP-238
+contract and changes only 85 alternating training rows by zeroing the quantized
+source-acoustic code before semantic/acoustic concatenation. The other 85 rows
+and all inference remain unmasked. CPU admission and a two-row finite CUDA
+smoke gate one 170-update lane. This is not an initialization, rank, LR, scope,
+horizon, identity-patch, or condition-augmentation neighbor. All hearing claims
+remain open.
 
 Provenance correction (2026-08-13): the retained 8.17-second recording saying
 `隣の客はよく柿食う客だ` is a local tongue-twister diagnostic, **not** audio

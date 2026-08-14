@@ -256,9 +256,69 @@ def test_pseudoparallel_fresh_lora_changes_only_initialization() -> None:
     assert "source-aligned control69 teacher targets" in policy[
         "independent_variable"
     ]
-    assert post.PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE in post.parser()._option_string_actions[
-        "--training-objective"
-    ].choices
+    choices = post.parser()._option_string_actions["--training-objective"].choices
+    assert post.PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE in choices
+
+
+def test_pseudoparallel_acoustic_code_dropout_changes_only_representation() -> None:
+    policy = post.listening_policy(
+        post.PSEUDOPARALLEL_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp279"
+    assert policy["candidate_id"] == (
+        "cross-corpus170-pseudoparallel-acoustic-dropout-real-adv-ema170"
+    )
+    assert "85 alternating training rows" in policy["independent_variable"]
+    assert "inference remain unmasked" in policy["independent_variable"]
+    assert (
+        post.PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE
+        in post.parser()._option_string_actions["--training-objective"].choices
+    )
+
+
+def test_acoustic_code_dropout_schedule_is_exactly_balanced() -> None:
+    schedule = post.acoustic_code_dropout_schedule(post.EXPECTED_ROWS)
+
+    assert schedule[:4] == [False, True, False, True]
+    assert schedule.count(False) == 85
+    assert schedule.count(True) == 85
+
+
+def test_acoustic_code_dropout_masks_only_quantized_acoustic_tensor() -> None:
+    import torch
+
+    class FakeQuantizer(torch.nn.Module):
+        def forward(self, value):
+            return value * 2, value.new_tensor([7]), value.new_tensor(3.0)
+
+    class FakeXVC(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.acoustic_quantizer = FakeQuantizer()
+
+    model = FakeXVC()
+    dropout = post.attach_acoustic_code_dropout(model, torch=torch)
+    source = torch.tensor([[[1.0, -2.0]]])
+
+    clean = model.acoustic_quantizer(source)
+    dropout.set_enabled(True)
+    masked = model.acoustic_quantizer(source)
+    dropout.set_enabled(False)
+    restored = model.acoustic_quantizer(source)
+
+    assert torch.equal(clean[0], source * 2)
+    assert torch.count_nonzero(masked[0]).item() == 0
+    assert torch.equal(masked[1], clean[1])
+    assert torch.equal(masked[2], clean[2])
+    assert torch.equal(restored[0], clean[0])
+    assert dropout.clean_calls == 2
+    assert dropout.masked_calls == 1
+    assert dropout.last_input_nonzero == 2
+    assert dropout.last_output_nonzero == 2
 
 
 def test_src4vc_pseudoparallel_policy_changes_only_source_corpus_block() -> None:

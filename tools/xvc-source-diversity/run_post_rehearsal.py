@@ -123,6 +123,9 @@ PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE = "pseudoparallel-generative-real-adve
 PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE = (
     "pseudoparallel-generative-real-adversarial-fresh-lora"
 )
+PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE = (
+    "pseudoparallel-generative-real-adversarial-acoustic-code-dropout"
+)
 PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE = (
     "pseudoparallel-generative-real-adversarial-output-speaker"
 )
@@ -161,6 +164,9 @@ LATENT_SOURCE_SPEAKER_MARGIN = 0.1
 LATENT_SOURCE_SPEAKER_MARGIN_WEIGHT = 10.0
 LATENT_SOURCE_SPEAKER_MARGIN_IMPLEMENTATION = (
     "xvc-speaker-predictor-target-over-frozen-source-eres2net-hinge/v1"
+)
+ACOUSTIC_CODE_DROPOUT_IMPLEMENTATION = (
+    "alternating-odd-row-zero-quantized-source-acoustic-code/v1"
 )
 SPEAKER_CONDITION_DIMENSION = 192
 SPEAKER_CONDITION_CALIBRATOR_KIND = (
@@ -250,6 +256,7 @@ def listening_policy(
         in {
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
+            PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
             PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
@@ -262,6 +269,7 @@ def listening_policy(
             not in {
                 PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
                 PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
+                PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
                 PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
                 PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
                 PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
@@ -281,6 +289,7 @@ def listening_policy(
                 PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
                 PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
                 PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
+                PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
             }
         ):
             raise PostRehearsalError(
@@ -338,6 +347,38 @@ def listening_policy(
                     "complete generative and real-adversarial losses, trainable "
                     "scope, LR, sequential 170 updates, clip, zero frame condition, "
                     "discriminator, and EMA remain fixed"
+                ),
+            }
+        if training_objective == PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE:
+            return {
+                "slug": "exp279",
+                "candidate_id": (
+                    "cross-corpus170-pseudoparallel-acoustic-dropout-"
+                    "real-adv-ema170"
+                ),
+                "candidate_name": (
+                    "EXP-279 / source-aligned targets / acoustic-code dropout / EMA"
+                ),
+                "run_kind": (
+                    "EXP-279 X-VC pseudoparallel acoustic-code dropout evaluation"
+                ),
+                "result_kind": (
+                    "liveconv-exp279-xvc-pseudoparallel-acoustic-code-dropout-ema/v1"
+                ),
+                "question": (
+                    "Does reducing training reliance on quantized source acoustics "
+                    "improve robust X-VC conversion across speakers and conditions?"
+                ),
+                "independent_variable": (
+                    "relative to EXP-238, only the source representation on 85 "
+                    "alternating training rows changes by zeroing the quantized "
+                    "acoustic code before concatenation with unchanged semantic "
+                    "tokens; the other 85 rows and listen-now inference remain "
+                    "unmasked; the exact CV48/JSUT85/JVS3/Hadou34 curriculum, "
+                    "source-aligned control69 teacher targets, assigned real "
+                    "Amitaro adversarial targets, control69 LoRA69 initialization "
+                    "and scope, complete losses, LR, sequential 170 updates, clip, "
+                    "zero frame condition, discriminator, and EMA remain fixed"
                 ),
             }
         if training_objective == PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE:
@@ -1785,6 +1826,65 @@ def _base_xvc(model: Any) -> Any:
     return model.get_base_model() if hasattr(model, "get_base_model") else model
 
 
+def acoustic_code_dropout_schedule(row_count: int) -> list[bool]:
+    """Alternate exact clean/masked rows without adding training randomness."""
+
+    if row_count not in {2, EXPECTED_ROWS} or row_count % 2:
+        raise PostRehearsalError("acoustic-code dropout row count drifted")
+    schedule = [bool(index % 2) for index in range(row_count)]
+    if schedule.count(False) != schedule.count(True):
+        raise PostRehearsalError("acoustic-code dropout balance drifted")
+    return schedule
+
+
+def attach_acoustic_code_dropout(model: Any, *, torch: Any) -> Any:
+    """Mask only the quantized source-acoustic tensor for selected forwards."""
+
+    xvc = _base_xvc(model)
+    quantizer = getattr(xvc, "acoustic_quantizer", None)
+    if quantizer is None or hasattr(quantizer, "acoustic_code_dropout"):
+        raise PostRehearsalError("acoustic quantizer topology drifted")
+
+    class AcousticCodeDropout(torch.nn.Module):
+        def __init__(self, base_quantizer: Any) -> None:
+            super().__init__()
+            self.base_quantizer = base_quantizer
+            self.acoustic_code_dropout = ACOUSTIC_CODE_DROPOUT_IMPLEMENTATION
+            self.enabled = False
+            self.clean_calls = 0
+            self.masked_calls = 0
+            self.last_input_nonzero = 0
+            self.last_output_nonzero = 0
+
+        def set_enabled(self, enabled: bool) -> None:
+            self.enabled = bool(enabled)
+
+        def forward(self, *args: Any, **kwargs: Any) -> Any:
+            output = self.base_quantizer(*args, **kwargs)
+            if not isinstance(output, (tuple, list)) or not output:
+                raise PostRehearsalError("acoustic quantizer output drifted")
+            quantized = output[0]
+            if not hasattr(quantized, "shape") or not bool(
+                torch.isfinite(quantized).all()
+            ):
+                raise PostRehearsalError("quantized acoustic code is malformed")
+            self.last_input_nonzero = int(torch.count_nonzero(quantized).detach().cpu())
+            values = list(output)
+            if self.enabled:
+                values[0] = torch.zeros_like(quantized)
+                self.masked_calls += 1
+            else:
+                self.clean_calls += 1
+            self.last_output_nonzero = int(
+                torch.count_nonzero(values[0]).detach().cpu()
+            )
+            return tuple(values) if isinstance(output, tuple) else values
+
+    wrapped = AcousticCodeDropout(quantizer)
+    xvc.acoustic_quantizer = wrapped
+    return wrapped
+
+
 def attach_speaker_condition_calibrator(model: Any, *, torch: Any) -> Any:
     """Insert one zero-delta speaker calibration before the frozen converter."""
 
@@ -2784,6 +2884,17 @@ def run(
         if arguments.smoke
         else manifest["items"]
     )
+    acoustic_code_dropout = (
+        attach_acoustic_code_dropout(trained, torch=torch)
+        if arguments.training_objective
+        == PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE
+        else None
+    )
+    acoustic_code_dropout_modes = (
+        acoustic_code_dropout_schedule(len(rows))
+        if acoustic_code_dropout is not None
+        else [False] * len(rows)
+    )
     discriminator = None
     discriminator_optimizer = None
     realism_targets: dict[str, Any] = {}
@@ -2796,6 +2907,7 @@ def run(
         SPEAKER_PATH_UNPAIRED_OBJECTIVE,
         PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
         PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
+        PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
         PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
         PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
         PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
@@ -2808,6 +2920,7 @@ def run(
             REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
+            PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
             PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
@@ -2824,6 +2937,7 @@ def run(
                     in {
                         PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
                         PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
+                        PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
                         PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
                         PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
                         PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
@@ -2950,6 +3064,9 @@ def run(
                 optimizer_steps += 1
     else:
         for row_index, item in enumerate(rows):
+            acoustic_code_dropout_mode = acoustic_code_dropout_modes[row_index]
+            if acoustic_code_dropout is not None:
+                acoustic_code_dropout.set_enabled(acoustic_code_dropout_mode)
             negative_item = (
                 rows[(row_index + 1) % len(rows)]
                 if arguments.training_objective
@@ -3007,6 +3124,7 @@ def run(
                             REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
                             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
                             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
+                            PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
                             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
                             PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
                             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
@@ -3159,6 +3277,29 @@ def run(
                         else None
                     ),
                 )
+                if acoustic_code_dropout is not None:
+                    if acoustic_code_dropout.last_input_nonzero <= 0:
+                        raise PostRehearsalError(
+                            "quantized acoustic code unexpectedly contains no signal"
+                        )
+                    expected_nonzero = (
+                        0
+                        if acoustic_code_dropout_mode
+                        else acoustic_code_dropout.last_input_nonzero
+                    )
+                    if acoustic_code_dropout.last_output_nonzero != expected_nonzero:
+                        raise PostRehearsalError(
+                            "acoustic-code dropout did not match its schedule"
+                        )
+                    metrics["acoustic_code_dropout_masked"] = float(
+                        acoustic_code_dropout_mode
+                    )
+                    metrics["acoustic_code_input_nonzero"] = float(
+                        acoustic_code_dropout.last_input_nonzero
+                    )
+                    metrics["acoustic_code_output_nonzero"] = float(
+                        acoustic_code_dropout.last_output_nonzero
+                    )
                 if calibrator is not None:
                     delta_norm = float(
                         torch.linalg.vector_norm(
@@ -3197,12 +3338,23 @@ def run(
                 optimizer_steps += 1
             if adapter_ema is not None:
                 adapter_ema.update()
+    if acoustic_code_dropout is not None:
+        expected_each = len(rows) // 2
+        if (
+            acoustic_code_dropout.clean_calls != expected_each
+            or acoustic_code_dropout.masked_calls != expected_each
+        ):
+            raise PostRehearsalError("acoustic-code dropout call count drifted")
+        acoustic_code_dropout.set_enabled(False)
     if arguments.smoke:
         smoke = {
             "status": (
                 "smoked-fresh-lora-pseudoparallel"
                 if arguments.training_objective
                 == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE
+                else "smoked-acoustic-code-dropout-pseudoparallel"
+                if arguments.training_objective
+                == PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE
                 else "smoked-control69-clean-post-rehearsal"
             ),
             "loss": losses[0],
@@ -3217,6 +3369,16 @@ def run(
             "optimizer_mode": arguments.optimizer_mode,
             "parameter_anchor": arguments.parameter_anchor,
             "output_cycle_frontend": output_cycle_frontend_metrics,
+            "acoustic_code_dropout": (
+                {
+                    "implementation": ACOUSTIC_CODE_DROPOUT_IMPLEMENTATION,
+                    "clean_rows": acoustic_code_dropout.clean_calls,
+                    "masked_rows": acoustic_code_dropout.masked_calls,
+                    "inference": "unmasked",
+                }
+                if acoustic_code_dropout is not None
+                else None
+            ),
             "prospective_optimizer_steps": (
                 1 if arguments.optimizer_mode == PCGRAD_PAIRED_OPTIMIZER else len(rows)
             ),
@@ -3436,6 +3598,23 @@ def run(
             if arguments.source_activity_envelope
             else None
         ),
+        "acoustic_code_dropout": (
+            {
+                "implementation": ACOUSTIC_CODE_DROPOUT_IMPLEMENTATION,
+                "clean_rows": acoustic_code_dropout.clean_calls,
+                "masked_rows": acoustic_code_dropout.masked_calls,
+                "training_only": True,
+                "inference": "unmasked",
+                "first_row_masked": bool(
+                    adversarial_metrics[0]["acoustic_code_dropout_masked"]
+                ),
+                "last_row_masked": bool(
+                    adversarial_metrics[-1]["acoustic_code_dropout_masked"]
+                ),
+            }
+            if acoustic_code_dropout is not None
+            else None
+        ),
         "output_speaker_identity": (
             {
                 "implementation": OUTPUT_SPEAKER_IDENTITY_IMPLEMENTATION,
@@ -3530,6 +3709,8 @@ def run(
                     or arguments.training_objective
                     == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE
                     or arguments.training_objective
+                    == PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE
+                    or arguments.training_objective
                     == PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE
                     or arguments.training_objective
                     == PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE
@@ -3621,6 +3802,7 @@ def parser() -> argparse.ArgumentParser:
             SPEAKER_PATH_UNPAIRED_OBJECTIVE,
             PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
             PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE,
+            PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE,
             PSEUDOPARALLEL_OUTPUT_SPEAKER_OBJECTIVE,
             PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
@@ -3676,6 +3858,17 @@ def main(argv: Sequence[str] | None = None) -> int:
                             if arguments.training_objective
                             == PSEUDOPARALLEL_FRESH_LORA_OBJECTIVE
                             else "EXP-035-control69"
+                        ),
+                        "acoustic_code_dropout": (
+                            {
+                                "implementation": ACOUSTIC_CODE_DROPOUT_IMPLEMENTATION,
+                                "clean_rows": EXPECTED_ROWS // 2,
+                                "masked_rows": EXPECTED_ROWS // 2,
+                                "inference": "unmasked",
+                            }
+                            if arguments.training_objective
+                            == PSEUDOPARALLEL_ACOUSTIC_CODE_DROPOUT_OBJECTIVE
+                            else None
                         ),
                     },
                     sort_keys=True,

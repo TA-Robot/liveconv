@@ -5728,3 +5728,42 @@ job queue.
   must change a source-representation or robustness mechanism that can explain
   EXP-243's speaker-distributed failures, not add another identity patch or
   condition-ratio sweep.
+
+## 2026-08-14T15:52:29Z - Grok audit continues one method-level pilot
+
+- Agent: `grok-4.6-project-progress-auditor` in tmux
+  `liveconv-grok-auditor`; independent, read-only, and no delegation.
+- Task: decide whether closing fresh initialization and continuing GPU search
+  without operator hearing still follows the shortest path to robust X-VC.
+- Result: `CONTINUE`. The auditor accepted the 307-row broad render, exact
+  fresh-initialization closure, fixed six-surface evaluation, and continued
+  one-lane GPU use. It required the next source-representation or robustness
+  idea to become one testable variable before resource admission.
+- Adopted: yes. EXP-279 now names that variable: only the quantized
+  source-acoustic code is zeroed on 85 alternating training rows; data,
+  targets, losses, initialization, scope, LR, horizon, EMA, and inference stay
+  fixed. Commit before CPU admission or CUDA.
+- Problems: the audit snapshot preceded the concrete EXP-279 plan and therefore
+  did not review this implementation. Operator hearing remains unavailable and
+  gpu0 was idle during the bounded test-first slice.
+- Rework: skip dirty-tree cleanup, closed-family neighbors, new evaluation,
+  identity patches, and automatic quality claims. Admit only CPU check and a
+  two-row clean/masked CUDA smoke after commit.
+
+## 2026-08-14T15:53:00Z - EXP-279 acoustic-code dropout pilot prepared
+
+- Agent: `primary-integrator`.
+- Task: reduce reliance on the source-acoustic branch without changing the
+  retained EXP-238 pseudoparallel target contract or inference inputs.
+- Dependencies: EXP-238 technical survivor; EXP-243 speaker-distributed losses;
+  EXP-273 closure; Grok `CONTINUE`; fixed six evaluation surfaces.
+- Result: added an exact 85-clean / 85-masked alternating schedule and a
+  training-only quantizer wrapper that zeros only `zq_a` while preserving all
+  other quantizer outputs. Candidate inference disables the wrapper. Policy,
+  smoke/result receipts, parser identity, and one-page listen-now plan are
+  bound to EXP-279. All 61 focused runner tests and Ruff pass.
+- Problems: unit evidence does not establish the real X-VC quantizer shape,
+  nonzero code, call count, finite generator gradient, or memory behavior.
+- Rework: commit the slice, run exact CPU admission, then one two-row CUDA smoke
+  containing one clean and one masked row. Stop before full training if any
+  mask, gradient, loss, or memory invariant fails.

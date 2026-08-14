@@ -300,6 +300,9 @@ claims from that artifact are superseded. The active join is now:
         -> one expanded gross row; decoder instability rises fresh48 and expanded144
         -> common-stable all-surface content is 45W/121T/60L; stress60 regresses
         -> close fresh initialization and rank/LR/scope/horizon/EMA neighbors
+        -> EXP-279 keep EXP-238 data/targets/loss/init/scope/LR/170/EMA exact
+        -> zero only quantized source-acoustic code on 85 alternating train rows
+        -> inference stays unmasked; CPU admission + two-row CUDA smoke gates one lane
         -> operator hearing when available
 ```
 
