@@ -283,6 +283,8 @@ def run(
             "source_id",
             "exposure",
             "client_id_sha256",
+            "condition",
+            "condition_index",
         ):
             if name in item:
                 output_row[name] = item[name]

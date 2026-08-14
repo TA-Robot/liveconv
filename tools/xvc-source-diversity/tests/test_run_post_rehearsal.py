@@ -133,6 +133,21 @@ def test_commonvoice_retention_changes_only_easy_data_identity() -> None:
     assert "48 precommitted Common Voice" in policy["independent_variable"]
 
 
+def test_conditioned_retention_changes_only_easy_condition_identity() -> None:
+    policy = post.listening_policy(
+        post.CONDITIONED_RETENTION_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.REAL_REFERENCE_ADVERSARIAL_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp191"
+    assert policy["candidate_id"] == (
+        "cv12-conditioned-retention-real-adversarial-ema170"
+    )
+    assert "17 each clean" in policy["independent_variable"]
+
+
 def test_paired_pcgrad_has_distinct_listener_identity() -> None:
     policy = post.listening_policy(
         post.SELECTIVE_OUTPUT_KIND,

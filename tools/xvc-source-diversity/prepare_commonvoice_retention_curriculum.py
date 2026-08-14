@@ -56,6 +56,10 @@ def build_curriculum(
     retention_sources: Mapping[str, Any],
     target_result: Mapping[str, Any],
     teacher_screen: Mapping[str, Any],
+    *,
+    source_kind: str = SOURCE_KIND,
+    target_kind: str = TARGET_KIND,
+    output_kind: str = OUTPUT_KIND,
 ) -> dict[str, Any]:
     selective_items = selective.get("items")
     if (
@@ -66,13 +70,13 @@ def build_curriculum(
         raise CommonVoiceCurriculumError("selective curriculum identity drifted")
     sources = keyed_rows(
         retention_sources,
-        kind=SOURCE_KIND,
+        kind=source_kind,
         key="curriculum_position",
         expected=RETENTION_ROWS,
     )
     targets = keyed_rows(
         target_result,
-        kind=TARGET_KIND,
+        kind=target_kind,
         key="curriculum_position",
         expected=RETENTION_ROWS,
         field="rows",
@@ -114,8 +118,7 @@ def build_curriculum(
             or not isinstance(target.get("output_sha256"), str)
         ):
             raise CommonVoiceCurriculumError("source/target/screen binding drifted")
-        output_items.append(
-            {
+        output_row = {
                 "id": f"{position:03d}-easy-{target_id}--{teacher_id}",
                 "curriculum_role": "easy",
                 "learning_target": RETENTION_TARGET,
@@ -144,7 +147,12 @@ def build_curriculum(
                 ),
                 "target_sha256": target["output_sha256"],
             }
-        )
+        if "condition" in source:
+            if target.get("condition") != source["condition"]:
+                raise CommonVoiceCurriculumError("conditioned target binding drifted")
+            output_row["source_condition"] = source["condition"]
+            output_row["source_condition_index"] = source["condition_index"]
+        output_items.append(output_row)
     composition = dict(Counter(str(item["domain"]) for item in output_items))
     targets_by_role = dict(
         Counter(str(item["learning_target"]) for item in output_items)
@@ -153,7 +161,7 @@ def build_curriculum(
         raise CommonVoiceCurriculumError("Common Voice curriculum composition drifted")
     return {
         "schema_version": 1,
-        "kind": OUTPUT_KIND,
+        "kind": output_kind,
         "source": {
             "selection": (
                 "EXP-150 hard85 unchanged; easy85 replaced position-for-position "

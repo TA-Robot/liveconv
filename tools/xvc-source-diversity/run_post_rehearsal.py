@@ -52,6 +52,12 @@ from prepare_commonvoice_retention_curriculum import (  # noqa: E402
 from prepare_commonvoice_retention_curriculum import (  # noqa: E402
     OUTPUT_KIND as COMMONVOICE_RETENTION_OUTPUT_KIND,
 )
+from prepare_conditioned_retention_curriculum import (  # noqa: E402
+    EXPECTED_COMPOSITION as CONDITIONED_RETENTION_EXPECTED_DOMAINS,
+)
+from prepare_conditioned_retention_curriculum import (  # noqa: E402
+    OUTPUT_KIND as CONDITIONED_RETENTION_OUTPUT_KIND,
+)
 from prepare_selective_retention_curriculum import (  # noqa: E402
     OUTPUT_KIND as SELECTIVE_OUTPUT_KIND,
 )
@@ -84,6 +90,7 @@ PARAMETER_ANCHOR_IMPLEMENTATION = "l2-sp-control69-trainable-parameters/v1"
 DIVERSE_RETENTION_KINDS = {
     JSUT_RETENTION_OUTPUT_KIND,
     COMMONVOICE_RETENTION_OUTPUT_KIND,
+    CONDITIONED_RETENTION_OUTPUT_KIND,
 }
 
 
@@ -171,6 +178,7 @@ def listening_policy(
                 SELECTIVE_OUTPUT_KIND,
                 JSUT_RETENTION_OUTPUT_KIND,
                 COMMONVOICE_RETENTION_OUTPUT_KIND,
+                CONDITIONED_RETENTION_OUTPUT_KIND,
             }
             or trainable_target != LORA69_TARGET
             or training_objective != REAL_REFERENCE_ADVERSARIAL_OBJECTIVE
@@ -224,6 +232,32 @@ def listening_policy(
                     "85 balanced exposures from 48 precommitted Common Voice "
                     "speakers; hard85, target IDs, updates, scope, objective, "
                     "optimizer, clip, condition, and upstream EMA remain fixed"
+                ),
+            }
+        if manifest_kind == CONDITIONED_RETENTION_OUTPUT_KIND:
+            return {
+                "slug": "exp191",
+                "candidate_id": (
+                    "cv12-conditioned-retention-real-adversarial-ema170"
+                ),
+                "candidate_name": (
+                    "EXP-191 / condition-balanced control69 retention + "
+                    "real-adversarial + EMA"
+                ),
+                "run_kind": "EXP-191 X-VC conditioned retention evaluation",
+                "result_kind": "liveconv-exp191-xvc-conditioned-retention-ema/v1",
+                "question": (
+                    "Does control69 retention replay on conditioned real sources "
+                    "preserve ordinary content while reducing route-condition "
+                    "forgetting?"
+                ),
+                "independent_variable": (
+                    "only EXP-186's easy85 source/teacher condition policy changes "
+                    "from all-clean to 17 each clean, noise15, tempo1.1, pitch+2, "
+                    "and leading150ms; each retention target is a frozen control69 "
+                    "output from that conditioned source, while hard85, speaker "
+                    "identities, target IDs, updates, scope, objective, optimizer, "
+                    "clip, zero condition, and upstream EMA remain fixed"
                 ),
             }
         return {
@@ -374,6 +408,8 @@ def load_manifest(
         expected_domains = JSUT_EXPECTED_DOMAINS
     elif kind == COMMONVOICE_RETENTION_OUTPUT_KIND:
         expected_domains = COMMONVOICE_RETENTION_EXPECTED_DOMAINS
+    elif kind == CONDITIONED_RETENTION_OUTPUT_KIND:
+        expected_domains = CONDITIONED_RETENTION_EXPECTED_DOMAINS
     elif kind in {HARD_OUTPUT_KIND, SELECTIVE_OUTPUT_KIND}:
         expected_domains = HARD_EXPECTED_DOMAINS
     else:
@@ -386,6 +422,7 @@ def load_manifest(
             SELECTIVE_OUTPUT_KIND,
             JSUT_RETENTION_OUTPUT_KIND,
             COMMONVOICE_RETENTION_OUTPUT_KIND,
+            CONDITIONED_RETENTION_OUTPUT_KIND,
         }
         or value.get("composition") != expected_domains
         or not isinstance(items, list)
@@ -427,6 +464,7 @@ def load_manifest(
             SELECTIVE_OUTPUT_KIND,
             JSUT_RETENTION_OUTPUT_KIND,
             COMMONVOICE_RETENTION_OUTPUT_KIND,
+            CONDITIONED_RETENTION_OUTPUT_KIND,
         } and (
             item.get("curriculum_role") not in {"hard", "easy"}
             or not isinstance(item.get("source_manifest_id"), str)
@@ -442,6 +480,7 @@ def load_manifest(
             SELECTIVE_OUTPUT_KIND,
             JSUT_RETENTION_OUTPUT_KIND,
             COMMONVOICE_RETENTION_OUTPUT_KIND,
+            CONDITIONED_RETENTION_OUTPUT_KIND,
         }:
             learning_target = item.get("learning_target")
             base_target_file = item.get("base_teacher_target_file")
