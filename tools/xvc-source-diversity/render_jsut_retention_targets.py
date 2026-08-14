@@ -8,6 +8,7 @@ import json
 import os
 import sys
 import time
+import wave
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -43,14 +44,41 @@ def pair(identifier: str, path: Path, digest: str) -> base.MaterializedPair:
     return base.MaterializedPair(identifier, path, path, digest, digest)
 
 
-def model_window(samples: np.ndarray) -> np.ndarray:
-    """Fit one 48 kHz mono source to X-VC's exact 2.4-second window."""
+def model_window(
+    samples: np.ndarray, window_samples: int = base.WINDOW_48K
+) -> np.ndarray:
+    """Fit one mono source to X-VC's exact 2.4-second window."""
 
     if samples.ndim != 1 or samples.size == 0:
         raise JsutTargetError("JSUT retention PCM shape drifted")
-    if samples.size >= base.WINDOW_48K:
-        return np.ascontiguousarray(samples[: base.WINDOW_48K])
-    return base._right_pad(samples, base.WINDOW_48K)
+    if samples.size >= window_samples:
+        return np.ascontiguousarray(samples[:window_samples])
+    return base._right_pad(samples, window_samples)
+
+
+def parse_pcm16_at_rate(data: bytes, label: str, sample_rate: int) -> np.ndarray:
+    """Read mono PCM16 without forcing the historical 48 kHz source rate."""
+
+    try:
+        import io
+
+        with wave.open(io.BytesIO(data), "rb") as reader:
+            if (
+                reader.getnchannels() != 1
+                or reader.getsampwidth() != 2
+                or reader.getframerate() != sample_rate
+            ):
+                raise JsutTargetError(
+                    f"{label} must be mono PCM16 at {sample_rate} Hz"
+                )
+            frames = reader.getnframes()
+            payload = reader.readframes(frames)
+    except (OSError, EOFError, wave.Error) as error:
+        raise JsutTargetError(f"cannot read {label}") from error
+    samples = np.frombuffer(payload, dtype="<i2").copy()
+    if samples.size != frames or samples.size == 0:
+        raise JsutTargetError(f"{label} PCM payload drifted")
+    return samples
 
 
 def source_pool(manifest: Mapping[str, Any]) -> dict[str, Any]:
@@ -152,6 +180,8 @@ def run(
         "behavior under the surviving EXP-163 method?"
     ),
     experiment_id: str = "EXP-170",
+    source_sample_rate: int = base.SAMPLE_RATE_48K,
+    source_window_samples: int = base.WINDOW_48K,
 ) -> int:
     for name in ("HF_DATASETS_OFFLINE", "HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"):
         if os.environ.get(name) != "1":
@@ -168,9 +198,15 @@ def run(
     for item in pool["items"]:
         teacher_id = str(item["id"])
         source_path = arguments.source_root / str(item["filename"])
-        samples = base._parse_pcm16_wav(source_path.read_bytes(), teacher_id)
+        samples = parse_pcm16_at_rate(
+            source_path.read_bytes(), teacher_id, source_sample_rate
+        )
         model_path = model_source_root / f"{teacher_id}.wav"
-        base._write_pcm16(model_path, model_window(samples))
+        base._write_pcm16(
+            model_path,
+            model_window(samples, source_window_samples),
+            rate=source_sample_rate,
+        )
         model_sources[teacher_id] = (model_path, base.sha256_file(model_path))
 
     import torch

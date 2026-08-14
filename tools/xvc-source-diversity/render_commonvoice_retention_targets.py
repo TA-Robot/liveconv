@@ -194,6 +194,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "ordinary behavior under the surviving EXP-163 method?"
             ),
             experiment_id="EXP-186",
+            source_sample_rate=16_000,
+            source_window_samples=38_400,
         )
     except (
         CommonVoiceRetentionError,

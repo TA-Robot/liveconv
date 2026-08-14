@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import sys
+import io
+import wave
 from pathlib import Path
 
 import numpy as np
@@ -65,3 +67,16 @@ def test_model_window_truncates_long_audio_deterministically() -> None:
     window = render.model_window(samples)
 
     assert np.array_equal(window, samples[: render.base.WINDOW_48K])
+
+
+def test_pcm_reader_accepts_an_explicit_16khz_window() -> None:
+    payload = io.BytesIO()
+    with wave.open(payload, "wb") as output:
+        output.setnchannels(1)
+        output.setsampwidth(2)
+        output.setframerate(16_000)
+        output.writeframes(np.arange(10, dtype="<i2").tobytes())
+
+    samples = render.parse_pcm16_at_rate(payload.getvalue(), "source", 16_000)
+
+    assert np.array_equal(samples, np.arange(10, dtype=np.int16))
