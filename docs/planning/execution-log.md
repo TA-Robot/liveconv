@@ -4178,3 +4178,20 @@ job queue.
 - Rework: keep the adapter unchanged, bind EXP-182--185 follow-up identities,
   and render frozen fresh48 next. Stop on gross corruption or broad common-row
   regression; do not tune anchor coefficient.
+
+## 2026-08-14T03:42:00Z - EXP-182 fresh48 completed
+
+- Agent: `primary-integrator`.
+- Task: test the unchanged EXP-181 EMA adapter on 48 disjoint Common Voice
+  speakers and sentences.
+- Dependencies: commit `9a62118`; frozen EXP-112 manifest; no retraining.
+- Result: published 240 more WAVs. Candidate and control69 had the same two
+  consensus gross rows, so the candidate added none. Across 36 cross-arm common
+  stable, non-gross rows, source-relative mean moved `0.216 -> 0.240` with W/T/L
+  `4/23/9`; known-text mean moved `0.568 -> 0.563` with W/T/L `7/22/7`.
+- Problems: the anchor did not remove fresh source-relative forgetting, though
+  the known-text diagnostic is neutral and most rows tie. This is directional
+  weakness rather than an across-metric catastrophic failure.
+- Rework: do not tune the coefficient. Run the already-bound Hadou31 gate once
+  to test the hypothesized hard-repair retention; reject the method if that
+  signal is absent or a candidate-only gross row appears.

@@ -1,6 +1,6 @@
 # EXP-181: control69 parameter anchor on the surviving X-VC method
 
-Status: external7 complete; fresh48 pending
+Status: external7 and fresh48 complete; Hadou31 pending
 
 ## Goal
 
@@ -59,3 +59,12 @@ common decoder-stable rows, source-relative mean moved slightly from control69
 had W/T/L `2/1/2`. This mixed small set does not trigger a broad-regression stop
 and cannot decide perceptual quality. Continue the unchanged checkpoint to
 frozen fresh48 as EXP-182.
+
+EXP-182 then published 240 fresh48 WAVs. The candidate added no consensus gross
+row: its two gross rows were the same two already present in control69. Across
+36 cross-arm common stable, non-gross rows, source-relative mean regressed
+`0.216 -> 0.240` with W/T/L `4/23/9`, while known-text mean was near-neutral
+`0.568 -> 0.563` with W/T/L `7/22/7`. This is a concerning source-relative
+direction but not an across-metric broad collapse. Continue once to Hadou31 to
+test whether the constrained update retained the method's intended hard-repair
+signal; do not tune the anchor.
