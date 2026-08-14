@@ -1048,6 +1048,51 @@ def candidate_policy(kind: str) -> dict[str, str]:
                 "content and corruption gate?"
             ),
         }
+    if kind in {
+        "commonvoice48-retention-ema-fresh48",
+        "commonvoice48-retention-ema-hadou",
+        "commonvoice48-retention-ema-stress",
+        "commonvoice48-retention-ema-jsut",
+    }:
+        hadou = kind.endswith("-hadou")
+        stress = kind.endswith("-stress")
+        jsut = kind.endswith("-jsut")
+        experiment_id = (
+            "EXP-190"
+            if jsut
+            else "EXP-189"
+            if stress
+            else "EXP-188"
+            if hadou
+            else "EXP-187"
+        )
+        suffix = (
+            "jsut24"
+            if jsut
+            else "stress60"
+            if stress
+            else "hadou31"
+            if hadou
+            else "fresh48"
+        )
+        return {
+            "experiment_id": experiment_id,
+            "variant_id": (
+                "cv12-commonvoice48-retention-real-adversarial-ema170"
+            ),
+            "display_name": (
+                "EXP-186 / Common Voice 48-speaker retention + "
+                "real-adversarial + EMA"
+            ),
+            "result_kind": (
+                f"liveconv-{experiment_id.lower()}-xvc-commonvoice48-"
+                f"retention-ema-{suffix}/v1"
+            ),
+            "question": (
+                "Does the speech-active 48-speaker retention method survive "
+                "the same frozen independent gate?"
+            ),
+        }
     raise NewUtteranceError(f"unknown candidate kind: {kind}")
 
 
@@ -1678,6 +1723,10 @@ def _parser() -> argparse.ArgumentParser:
             "parameter-anchor-ema-hadou",
             "parameter-anchor-ema-stress",
             "parameter-anchor-ema-jsut",
+            "commonvoice48-retention-ema-fresh48",
+            "commonvoice48-retention-ema-hadou",
+            "commonvoice48-retention-ema-stress",
+            "commonvoice48-retention-ema-jsut",
         ),
         default="speaker7",
     )

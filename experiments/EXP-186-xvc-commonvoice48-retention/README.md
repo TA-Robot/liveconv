@@ -1,6 +1,6 @@
 # EXP-186: speaker-balanced Common Voice retention under the X-VC EMA method
 
-Status: v1 source-window preflight stopped; speech-active v2 prepared
+Status: speech-active v2 trained; external7 technical gate passed; hearing pending
 
 ## Goal
 
@@ -62,3 +62,21 @@ all 48 original MP3s by signal only; for the gross row it moves the frozen
 window from 0.0 to 3.7 seconds. This is part of the one data-construction method,
 not an ASR-selected repair. Render all 85 v2 control targets and enforce the
 same zero-consensus-gross admission rule before the single 170-update lane.
+
+## Training and external7
+
+V2 rendered all 85 targets in 98.4 seconds at 2.49 GiB peak with zero
+consensus gross row. The final curriculum contains Common Voice 125 and Hadou
+45 rows while retaining the exact 85 repair / 85 retention split. A hard/easy
+smoke was finite, then the one committed lane completed 170 optimizer updates
+in 125.9 seconds at 5.74 GiB peak. Total recorded loss moved from 298.40 to
+140.30; the upstream-equivalent EMA made 170 calls and six moving-average
+updates. Adapter SHA-256 is
+`a505c8eda3bf2cffe588cdf4a340733b5799a2392a33b4cb8bc02cfcd8cf0102`.
+
+External7 adds 35 WAVs on port 8878 and zero consensus gross rows. Across the
+five control69/candidate rows that are decoder-stable and non-gross in both
+arms, source-relative distance moves `0.256 -> 0.206` and known-text distance
+moves `0.371 -> 0.254`; both have win/tie/loss `3/1/1`. This admits the frozen
+fresh48 gate as EXP-187. It is auxiliary content evidence, not naturalness,
+target identity, a keeper, or a product winner.

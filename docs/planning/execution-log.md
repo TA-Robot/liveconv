@@ -4278,3 +4278,38 @@ job queue.
   second waveform normalization or treat raw ASR silence as model-input silence.
 - Rework: commit the v2 source construction, rerender all 85 control69 targets,
   and require zero candidate-added consensus gross rows before training.
+
+## 2026-08-14T04:20:25Z - Grok progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux `liveconv-grok-auditor`.
+- Task: independent 30-minute direction, evidence-cost, and idle-resource audit.
+- Result: `SIMPLIFY`. It accepted EXP-186 as a distinct data-construction lane
+  and the v1 gross preflight stop, but required ending source construction at
+  committed v2. It explicitly rejected window/threshold/normalization tuning,
+  quiet-source exceptions, v3, symmetric gate filling, and machine winners.
+- Problems: the audit snapshot ended while v2 target work was in flight and
+  therefore did not observe the zero-gross result or hard/easy smoke.
+- Rework: verdict adopted. V2 completed 85 targets in 98.4 seconds at 2.49 GiB
+  peak with zero consensus gross rows. The 170-row curriculum validates as
+  Common Voice 125 / Hadou 45; its two-row hard/easy smoke was finite at 4.32
+  GiB peak. Start the one 170-update lane immediately with no v3 preprocessing.
+
+## 2026-08-14T04:28:00Z - EXP-186 training and external7 completed
+
+- Agent: `primary-integrator`.
+- Task: run the one admitted speech-active 48-speaker retention lane and publish
+  its first independent comparison audio.
+- Dependencies: commit `5158e1a`; v2 teacher gross 0/85; finite hard/easy smoke;
+  exact EXP-163 objective, scope, optimizer, and upstream EMA controls.
+- Result: completed 170 updates in 125.9 seconds at 5.74 GiB peak. Loss moved
+  `298.40 -> 140.30`. Published 35 external7 WAVs to port 8878 with zero gross
+  row. Across five cross-arm common stable rows, control69 to EXP-186 moves
+  source distance `0.256 -> 0.206` and known-text `0.371 -> 0.254`; both W/T/L
+  are `3/1/1`.
+- Problems: external7 has only seven speakers and cannot establish naturalness,
+  identity, or a winner. The method changes both speaker composition and source
+  window policy relative to EXP-163, so it is evidence for the combined data
+  construction, not speaker count alone.
+- Rework: bind EXP-187--190 identities and render the unchanged adapter on
+  frozen fresh48 next. Stop on candidate-added gross corruption or broad common
+  stable regression; do not tune the source policy or training method.

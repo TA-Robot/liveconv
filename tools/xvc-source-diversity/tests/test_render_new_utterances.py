@@ -688,6 +688,32 @@ def test_parameter_anchor_ema_policy_has_distinct_gate_identity() -> None:
     assert "parameter-anchor-ema-stress" in choices
 
 
+def test_commonvoice48_retention_policy_has_distinct_gate_identity() -> None:
+    kinds = [
+        "commonvoice48-retention-ema-fresh48",
+        "commonvoice48-retention-ema-hadou",
+        "commonvoice48-retention-ema-stress",
+        "commonvoice48-retention-ema-jsut",
+    ]
+    policies = [NEW.candidate_policy(kind) for kind in kinds]
+
+    assert [policy["experiment_id"] for policy in policies] == [
+        "EXP-187",
+        "EXP-188",
+        "EXP-189",
+        "EXP-190",
+    ]
+    assert {policy["variant_id"] for policy in policies} == {
+        "cv12-commonvoice48-retention-real-adversarial-ema170"
+    }
+    choices = next(
+        action.choices
+        for action in NEW._parser()._actions
+        if action.dest == "candidate_kind"
+    )
+    assert "commonvoice48-retention-ema-stress" in choices
+
+
 def test_materialized_hadou_manifest_is_admitted() -> None:
     path = Path(
         "artifacts/xvc-source-diversity/exp060-hadou31-inputs-v1/evaluation.json"
