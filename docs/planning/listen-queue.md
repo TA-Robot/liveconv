@@ -34,8 +34,11 @@ Identity preflight stopped EXP-303/304 before CUDA. The EXP-186 `exposure=2`
 rows are exact repeats of the same source ID/SHA/text, paired only with a
 different real target; they are not second utterances and cannot test source
 breadth. The next data lane is being rebuilt from genuinely unused Common
-Voice audio, with fixed-evaluation client exclusion and an exposure-matched
-control proven before target rendering. External7 still precedes broad
+Voice audio. EXP-305/306 now compare 32 matched added positions at 202 updates:
+old-row repeats versus 32 new speakers and new texts, with identical ordered
+real Amitaro references. `cv27706775u` is excluded because its client overlaps
+external7/stress60; the remaining 32 clients overlap neither EXP-238 training
+nor the fixed Common Voice evaluation surfaces. External7 still precedes broad
 rendering.
 
 Provenance correction (2026-08-13): the retained 8.17-second recording saying
@@ -76,6 +79,7 @@ target.
 | EXP-291 X-VC acoustic temporal jitter | EXP-238 versus the exact pseudoparallel contract with only odd training rows' quantized `zq_a` shifted right one frame; inference remains normal | optional external7 diagnosis after hearing returns; do not nominate this arm | 7/7 candidates changed with no added gross and five common-stable content ties, but instability rose `1 -> 2`; EXP-292--296 and shift/share/direction neighbors were skipped, and acoustic representation manipulation is closed |
 | EXP-297 X-VC robust semantic loss | EXP-238 versus the exact pseudoparallel contract with only weight-1000 semantic MSE replaced by scale-matched `2 * SmoothL1(beta=1)` | optional external7 diagnosis after hearing returns; do not nominate this arm | 7/7 candidates changed with no added gross and five common-stable content ties, but instability rose `1 -> 2`; EXP-298--302 and beta/scale/weight/blend neighbors were skipped |
 | EXP-303/304 stopped CV breadth premise | Planned EXP-238 plus 37 repeats versus purported second utterances | none; no audio was produced | CPU identity join proved all 37 `exposure=2` rows repeat the same source ID/SHA/text and change only the real target; stopped before CUDA and retracted the new-audio claim |
+| EXP-305/306 X-VC matched new-speaker breadth | Exact EXP-238 first170 plus 32 old-row repeats versus 32 new Common Voice speakers/texts, both at 202 updates and matched real-target assignment | after hearing returns, compare naturalness and target fit only if the new-data arm survives machine corruption/content gates | implementation in progress; new32 is 116.46 seconds, disjoint from EXP-238 training and current fixed evaluation clients, and retired from future expanded33 evaluation |
 | EXP-033 source diversity | Base vs legacy human87 control69-e12 vs JVS3 generated-pair X-VC on ten fixed cross-speaker/constraint rows | after hearing returns: prefer one arm per group or reject all; judge naturalness and target voice by ear | machine ASR may reject corruption only; a consistent audible result admits the next method decision, not promotion |
 | EXP-023 | 12 Qwen3-TTS Ono_Anna texts | per text: `continue` or `rejected` | one `rejected` stops this exact TTS profile; all `continue` only admits later TTS transport work, not a VC win |
 | EXP-025 whole-short 87 | Frozen base vs human-paired adapted X-VC on three public heldout source-only utterances | `keep` only if adapted is clearly preferable on the set; otherwise `rejected` | `keep` admits a separate promote pass; `rejected` closes this exact 87-pair schedule |

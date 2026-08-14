@@ -333,7 +333,11 @@ claims from that artifact are superseded. The active join is now:
         -> retract 88.8 s new-audio claim; do not retry repeat-count/order neighbors
         -> prove genuinely unused source IDs/audio/text and evaluation-client exclusion
         -> pair one equal-update repeat control with one new-data lane
-        -> commit, CUDA smoke, sequential external7, then broad render only if safe
+        -> EXP-305 exact first170 + 32 matched old-row repeats (202 updates)
+        -> EXP-306 exact first170 + 32 new CV speakers/texts (202 updates)
+        -> exclude cv27706775u; remaining clients disjoint from train and fixed eval
+        -> same ordered real Amitaro assignment; render 32 new control69 teachers
+        -> commit, CUDA smoke, sequential external7, then both arms broad if safe
         -> operator hearing when available
 ```
 

@@ -6085,3 +6085,28 @@ job queue.
   (about 102 MB). Original audio and tracked inputs remain intact; the removed
   cache is reproducible. The next lane must prove genuinely new source IDs,
   hashes, text, and evaluation-client exclusion before rendering targets.
+
+## 2026-08-14T18:14:00Z - EXP-305/306 genuine CV32 matched lane admitted
+
+- Agent: `primary-integrator`; one read-only source-location audit and three
+  bounded implementation owners for data, trainer, and renderer.
+- Task: replace the invalid same-source exposure comparison with genuinely new
+  speakers/content while controlling both update count and real-target order.
+- Dependencies: EXP-238 curriculum and control69 teachers; EXP-055 expanded33
+  metadata; EXP-168 deterministic 16 kHz evaluation sources; fixed external7,
+  fresh48, stress60, and expanded144 client identities.
+- Result: all 33 raw MP3 files exist and match the frozen EXP-055 hashes; all
+  33 preprocessed WAVs exist at 16 kHz, mono, and 38,400 frames. Their clients
+  overlap EXP-238's 48 Common Voice training clients `0/33` and fresh48/
+  expanded144 `0/33`.
+- Problems: `cv27706775u` shares a client with external7 `cv27706769` and a
+  stress60 base row. It is excluded rather than weakening the fixed evaluation
+  boundary.
+- Result: the admitted treatment is 32 new IDs, audio hashes, texts, clients,
+  and 116.46 seconds of original audio. EXP-305 appends 32 matched repeats to
+  exact EXP-238; EXP-306 appends the new32. Both use 202 updates and the same
+  ordered real Amitaro references at appended positions.
+- Rework: retire those 32 historical expanded33 rows from future evaluation of
+  this data lineage, keep expanded144 as the disjoint broad surface, implement
+  only the materializer, ordinary runner, and ordinary renderer, then commit
+  before the sequential gpu0 teacher render and training lanes.
