@@ -40,7 +40,8 @@ Official page:
 - Commit the pinned byte-range fetcher, deterministic 85-train/15-heldout
   speaker split, focused tests, and this plan before materializing audio.
 - Fetch and validate exactly 85 train and 30 evaluation WAVs as mono PCM16 at
-  48 kHz, with transcripts and speaker metadata.
+  their published native 44.1 or 48 kHz rate, with transcripts and speaker
+  metadata. The active-window path preserves native rate.
 - Materialize exactly 170 fixed curriculum rows by replacing only JSUT85 and
   preserve the original target sequence and all non-JSUT sources byte-for-byte.
 - Render 170 source-aligned control69 targets, pass a two-row smoke, and run one

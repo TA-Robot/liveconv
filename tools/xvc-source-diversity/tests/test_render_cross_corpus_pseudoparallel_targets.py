@@ -33,9 +33,7 @@ def source_manifest() -> dict[str, object]:
                     "target_root": "diverse-work",
                     "target_file": f"targets/{position:03d}.wav",
                     "target_sha256": f"{position + 1000:064x}",
-                    "learning_target": (
-                        "source-content-plus-unpaired-target-identity"
-                    ),
+                    "learning_target": ("source-content-plus-unpaired-target-identity"),
                 }
             )
             position += 1
@@ -44,6 +42,25 @@ def source_manifest() -> dict[str, object]:
         "composition": render.EXPECTED_COMPOSITION,
         "items": items,
     }
+
+
+def src4vc_source_manifest() -> dict[str, object]:
+    manifest = source_manifest()
+    items = manifest["items"]
+    assert isinstance(items, list)
+    replacements = iter(
+        (
+            "src4vc-smartphone-unpaired",
+            f"src4vc-smartphone-unpaired-{index:03d}",
+        )
+        for index in range(85)
+    )
+    for item in items:
+        if item["domain"] == "jsut-unpaired":
+            item["domain"], item["teacher_id"] = next(replacements)
+    manifest["kind"] = render.SRC4VC_SOURCE_KIND
+    manifest["composition"] = render.SRC4VC_EXPECTED_COMPOSITION
+    return manifest
 
 
 def output_rows(pool: dict[str, object]) -> list[dict[str, object]]:
@@ -83,6 +100,16 @@ def test_curriculum_rejects_output_target_assignment_drift() -> None:
 
     with pytest.raises(render.PseudoparallelTargetError, match="identity"):
         render.curriculum(pool, outputs)
+
+
+def test_src4vc_policy_changes_only_admitted_source_composition() -> None:
+    pool = render.source_pool(src4vc_source_manifest())
+
+    manifest = render.curriculum(pool, output_rows(pool))
+
+    assert manifest["kind"] == render.SRC4VC_OUTPUT_KIND
+    assert manifest["composition"] == render.SRC4VC_EXPECTED_COMPOSITION
+    assert len(manifest["items"]) == render.EXPECTED_ROWS
 
 
 def test_source_pool_rejects_unrelated_contract_drift() -> None:

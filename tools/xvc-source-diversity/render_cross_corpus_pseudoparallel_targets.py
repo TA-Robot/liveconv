@@ -26,11 +26,23 @@ from prepare_clean_post_rehearsal import load_json  # noqa: E402
 from prepare_cross_corpus_unpaired_curriculum import (  # noqa: E402
     EXPECTED_COMPOSITION,
     EXPECTED_ROWS,
+)
+from prepare_cross_corpus_unpaired_curriculum import (  # noqa: E402
     OUTPUT_KIND as SOURCE_KIND,
+)
+from prepare_src4vc_cross_corpus_curriculum import (  # noqa: E402
+    EXPECTED_COMPOSITION as SRC4VC_EXPECTED_COMPOSITION,
+)
+from prepare_src4vc_cross_corpus_curriculum import (  # noqa: E402
+    OUTPUT_KIND as SRC4VC_SOURCE_KIND,
 )
 
 OUTPUT_KIND = "liveconv-exp238-cross-corpus-control69-pseudoparallel-inputs/v1"
 RESULT_KIND = "liveconv-exp238-cross-corpus-control69-target-render/v1"
+SRC4VC_OUTPUT_KIND = (
+    "liveconv-exp244-src4vc-cross-corpus-control69-pseudoparallel-inputs/v1"
+)
+SRC4VC_RESULT_KIND = "liveconv-exp244-src4vc-control69-target-render/v1"
 LEARNING_TARGET = "source-aligned-control69-plus-real-target-adversarial"
 
 
@@ -38,17 +50,54 @@ class PseudoparallelTargetError(RuntimeError):
     """The bounded source-aligned target render cannot continue safely."""
 
 
+def source_policy(kind: object) -> dict[str, Any]:
+    if kind == SOURCE_KIND:
+        return {
+            "source_kind": SOURCE_KIND,
+            "composition": EXPECTED_COMPOSITION,
+            "output_kind": OUTPUT_KIND,
+            "result_kind": RESULT_KIND,
+            "experiment_id": "EXP-238",
+            "selection": (
+                "exact EXP-213 source order and Amitaro target assignment; target "
+                "WAV is the frozen control69 conversion of the same source"
+            ),
+            "question": (
+                "Does removing the unrelated-content target contradiction through "
+                "source-aligned control69 supervision improve X-VC retraining?"
+            ),
+        }
+    if kind == SRC4VC_SOURCE_KIND:
+        return {
+            "source_kind": SRC4VC_SOURCE_KIND,
+            "composition": SRC4VC_EXPECTED_COMPOSITION,
+            "output_kind": SRC4VC_OUTPUT_KIND,
+            "result_kind": SRC4VC_RESULT_KIND,
+            "experiment_id": "EXP-244",
+            "selection": (
+                "exact EXP-244 source order and predecessor Amitaro target "
+                "assignment; target WAV is the frozen control69 conversion of the "
+                "same source"
+            ),
+            "question": (
+                "Does replacing only JSUT85 with 85 distinct SRC4VC smartphone "
+                "speakers improve the fixed pseudoparallel X-VC retraining method?"
+            ),
+        }
+    raise PseudoparallelTargetError("cross-corpus source identity drifted")
+
+
 def pair(identifier: str, path: Path, digest: str) -> base.MaterializedPair:
     return base.MaterializedPair(identifier, path, path, digest, digest)
 
 
 def source_pool(manifest: Mapping[str, Any]) -> dict[str, Any]:
-    """Freeze the exact EXP-213 source order and real target assignment."""
+    """Freeze one admitted source order and its real target assignment."""
 
     items = manifest.get("items")
+    policy = source_policy(manifest.get("kind"))
     if (
-        manifest.get("kind") != SOURCE_KIND
-        or manifest.get("composition") != EXPECTED_COMPOSITION
+        manifest.get("composition") != policy["composition"]
         or not isinstance(items, list)
         or len(items) != EXPECTED_ROWS
     ):
@@ -101,12 +150,12 @@ def source_pool(manifest: Mapping[str, Any]) -> dict[str, Any]:
                 "real_target_sha256": item["target_sha256"],
             }
         )
-    if dict(domains) != EXPECTED_COMPOSITION:
+    if dict(domains) != policy["composition"]:
         raise PseudoparallelTargetError("cross-corpus composition drifted")
     return {
         "schema_version": 1,
-        "kind": SOURCE_KIND,
-        "composition": EXPECTED_COMPOSITION,
+        "kind": policy["source_kind"],
+        "composition": policy["composition"],
         "items": rows,
     }
 
@@ -116,6 +165,9 @@ def curriculum(
 ) -> dict[str, Any]:
     """Bind every source to its same-content frozen-control69 target WAV."""
 
+    policy = source_policy(pool.get("kind"))
+    if pool.get("composition") != policy["composition"]:
+        raise PseudoparallelTargetError("pseudoparallel pool identity drifted")
     if len(output_rows) != EXPECTED_ROWS:
         raise PseudoparallelTargetError("pseudoparallel output count drifted")
     output_by_position = {int(row["position"]): row for row in output_rows}
@@ -164,17 +216,14 @@ def curriculum(
                 "real_target_sha256": source["real_target_sha256"],
             }
         )
-    if dict(domains) != EXPECTED_COMPOSITION:
+    if dict(domains) != policy["composition"]:
         raise PseudoparallelTargetError("pseudoparallel composition drifted")
     return {
         "schema_version": 1,
-        "kind": OUTPUT_KIND,
-        "selection": (
-            "exact EXP-213 source order and Amitaro target assignment; target WAV "
-            "is the frozen control69 conversion of the same source"
-        ),
+        "kind": policy["output_kind"],
+        "selection": policy["selection"],
         "learning_target_counts": {LEARNING_TARGET: EXPECTED_ROWS},
-        "composition": EXPECTED_COMPOSITION,
+        "composition": policy["composition"],
         "items": items,
     }
 
@@ -200,15 +249,16 @@ def validate_inputs(
                     f"cross-corpus {label} audio drifted: {row['teacher_id']}"
                 )
     targets = method.target_inventory(arguments.pair_root)
-    if arguments.control_adapter.is_symlink() or not (
-        arguments.control_adapter / "adapter_model.safetensors"
-    ).is_file():
+    if (
+        arguments.control_adapter.is_symlink()
+        or not (arguments.control_adapter / "adapter_model.safetensors").is_file()
+    ):
         raise PseudoparallelTargetError("control69 adapter is unavailable")
     method._validate_xvc(arguments)
     base._require_new_output(
         arguments.work_dir,
         REPO_ROOT / "artifacts" / "xvc-source-diversity",
-        "EXP-238 work directory",
+        f"{source_policy(pool['kind'])['experiment_id']} work directory",
     )
     return pool, targets
 
@@ -222,7 +272,10 @@ def run(
         if os.environ.get(name) != "1":
             raise PseudoparallelTargetError(f"{name}=1 is required before model import")
     if arguments.confirm_gpu_lease != "gpu0" or arguments.device != "cuda:0":
-        raise PseudoparallelTargetError("EXP-238 requires the explicit gpu0 lease")
+        raise PseudoparallelTargetError(
+            f"{source_policy(pool['kind'])['experiment_id']} requires the explicit "
+            "gpu0 lease"
+        )
     started = time.monotonic()
     arguments.work_dir.mkdir()
     output_root = arguments.work_dir / "control-outputs"
@@ -276,14 +329,18 @@ def run(
                 torch=torch,
                 device=device,
             )
-        waveform = base._inference(
-            control,
-            source,
-            target_cache[target_id],
-            seed=base.SEED + index,
-            torch=torch,
-            device=device,
-        ).detach().cpu()
+        waveform = (
+            base._inference(
+                control,
+                source,
+                target_cache[target_id],
+                seed=base.SEED + index,
+                torch=torch,
+                device=device,
+            )
+            .detach()
+            .cpu()
+        )
         output_path = output_root / f"{index:03d}-{teacher_id}-16k.wav"
         output_rows.append(
             {
@@ -297,24 +354,22 @@ def run(
             }
         )
 
+    policy = source_policy(pool["kind"])
     manifest = curriculum(pool, output_rows)
     method._write_json(arguments.work_dir / "pool.json", pool)
     method._write_json(arguments.work_dir / "curriculum.json", manifest)
     result = {
         "schema_version": 1,
-        "kind": RESULT_KIND,
+        "kind": policy["result_kind"],
         "status": "completed-training-only-target-render",
         "git_commit": base._git_output(
             ["git", "rev-parse", "HEAD"], "repository commit"
         ),
-        "question": (
-            "Does removing the unrelated-content target contradiction through "
-            "source-aligned control69 supervision improve X-VC retraining?"
-        ),
+        "question": policy["question"],
         "source_manifest_sha256": base.sha256_file(arguments.source_manifest),
         "control_adapter": str(arguments.control_adapter),
         "rows": output_rows,
-        "composition": EXPECTED_COMPOSITION,
+        "composition": policy["composition"],
         "elapsed_seconds": time.monotonic() - started,
         "peak_gpu_bytes": int(torch.cuda.max_memory_allocated(device)),
         "boundary": (

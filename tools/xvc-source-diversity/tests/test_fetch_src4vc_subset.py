@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import io
 import sys
+import wave
 import zipfile
 from collections import Counter
 from pathlib import Path
@@ -129,3 +130,18 @@ unknown: value
 
     with pytest.raises(FETCH.Src4vcFetchError, match="shape"):
         FETCH.parse_metadata(value)
+
+
+@pytest.mark.parametrize("sample_rate", [44_100, 48_000])
+def test_wav_validator_preserves_published_native_rates(sample_rate: int) -> None:
+    value = io.BytesIO()
+    with wave.open(value, "wb") as handle:
+        handle.setnchannels(1)
+        handle.setsampwidth(2)
+        handle.setframerate(sample_rate)
+        handle.writeframes(b"\x00\x00" * sample_rate)
+
+    duration, actual_rate = FETCH.validate_wav(value.getvalue(), label="fixture")
+
+    assert duration == 1.0
+    assert actual_rate == sample_rate

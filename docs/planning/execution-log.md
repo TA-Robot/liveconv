@@ -5245,3 +5245,42 @@ job queue.
   materialization. Stop on archive identity drift, invalid WAV, metadata drift,
   or train/evaluation speaker overlap. Do not vary corpus ratio, horizon, loss,
   scope, LR, or EMA in this lane.
+
+## 2026-08-14T11:52:12Z - Grok progress audit admits EXP-244 lane
+
+- Agent: `grok-4.6-project-progress-auditor` in tmux
+  `liveconv-grok-auditor`; independent, read-only, and no delegation.
+- Task: decide whether the expanded evaluation followed by a one-block SRC4VC
+  source substitution is the shortest route to improved voice quality.
+- Result: `CONTINUE`. The auditor accepted that EXP-243 first broadened the
+  fixed evaluation, found distributed failures, and selected one new
+  recording-domain data variable while retaining the pseudoparallel method and
+  every optimizer choice.
+- Adopted: yes. Stop evaluation redesign and move the committed bounded fetcher
+  directly into one gpu0 EXP-244 lane. Human hearing remains deferred; coarse
+  ASR remains content/corruption screening only.
+- Problems: gpu0 remains idle until private data acquisition and runner
+  admission complete. The auditor cannot observe operator localStorage and did
+  not inspect the listening UI index.
+- Rework: discard additional conditions, corpus-ratio neighbors, promotion
+  ceremony, human87/DTW retries, multiple lanes, and automatic naturalness
+  claims. Record acquisition drift without expanding the training variable.
+
+## 2026-08-14T12:00:00Z - SRC4VC acquisition drift handled
+
+- Agent: `primary-integrator`.
+- Task: materialize the exact 115-row private research subset after commit
+  `d4f89ec`.
+- Result: archive identity, central directory, selected member inventory, ZIP
+  CRCs, transcripts, and most audio passed. Two real corpus shapes required a
+  bounded parser correction: three speaker metadata files contain quoted
+  indented continuation lines, and SRC4VC025 RECITATION audio is native
+  44.1 kHz rather than 48 kHz. Both rates remain mono PCM16 and the existing
+  curriculum window preserves native rate.
+- Problems: the first two attempts stopped safely after writing 3 files/8.3 MB
+  and 28 files/44 MB. Neither wrote `subset.json`.
+- Rework: moved the incomplete outputs to explicit recoverable
+  `.partial-metadata-shape` and `.partial-native-rate` directories. Added a
+  strict flat multiline parser and admitted only native 44.1/48 kHz mono PCM16,
+  recording each row's actual rate. No resampling, row substitution, training
+  method, or split changed.

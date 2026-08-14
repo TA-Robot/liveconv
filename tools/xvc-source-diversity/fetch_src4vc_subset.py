@@ -239,18 +239,19 @@ def parse_mos(value: bytes) -> dict[str, float]:
     return result
 
 
-def validate_wav(value: bytes, *, label: str) -> float:
+def validate_wav(value: bytes, *, label: str) -> tuple[float, int]:
     try:
         with wave.open(io.BytesIO(value), "rb") as handle:
+            sample_rate = handle.getframerate()
             if (
                 handle.getnchannels() != 1
                 or handle.getsampwidth() != 2
-                or handle.getframerate() != 48_000
+                or sample_rate not in {44_100, 48_000}
                 or handle.getcomptype() != "NONE"
                 or handle.getnframes() <= 0
             ):
                 raise Src4vcFetchError(f"{label}: WAV format drifted")
-            return handle.getnframes() / 48_000
+            return handle.getnframes() / sample_rate, sample_rate
     except (EOFError, wave.Error) as error:
         raise Src4vcFetchError(f"{label}: WAV is invalid") from error
 
@@ -338,7 +339,7 @@ def run(arguments: argparse.Namespace) -> int:
     arguments.output_root.mkdir(parents=True)
     for row in rows:
         audio = payloads[row["wav_entry"]]
-        duration = validate_wav(audio, label=row["id"])
+        duration, sample_rate = validate_wav(audio, label=row["id"])
         try:
             transcript = payloads[row["text_entry"]].decode("utf-8").strip()
         except UnicodeDecodeError as error:
@@ -355,7 +356,7 @@ def run(arguments: argparse.Namespace) -> int:
                 "filename": relative.as_posix(),
                 "sha256": sha256_bytes(audio),
                 "duration_seconds": duration,
-                "sample_rate": 48_000,
+                "sample_rate": sample_rate,
                 "text": transcript,
                 "text_sha256": sha256_bytes(payloads[row["text_entry"]]),
                 "speaker_mos": mos[row["speaker_id"]],

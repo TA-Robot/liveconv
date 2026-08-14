@@ -155,9 +155,7 @@ def test_cross_corpus_policy_changes_only_source_distribution() -> None:
     )
 
     assert policy["slug"] == "exp213"
-    assert policy["candidate_id"] == (
-        "cross-corpus170-unpaired-output-cycle-ema170"
-    )
+    assert policy["candidate_id"] == ("cross-corpus170-unpaired-output-cycle-ema170")
     assert "Common Voice 48" in policy["independent_variable"]
     assert "exact 170 unrelated Amitaro" in policy["independent_variable"]
 
@@ -186,9 +184,7 @@ def test_content_voice_pcgrad_changes_only_gradient_composition() -> None:
     )
 
     assert policy["slug"] == "exp228"
-    assert policy["candidate_id"] == (
-        "cross-corpus170-content-voice-pcgrad-ema170"
-    )
+    assert policy["candidate_id"] == ("cross-corpus170-content-voice-pcgrad-ema170")
     assert "one optimizer step per row" in policy["independent_variable"]
     assert "loss weights" in policy["independent_variable"]
 
@@ -239,11 +235,23 @@ def test_pseudoparallel_policy_restores_complete_same_content_targets() -> None:
     )
 
     assert policy["slug"] == "exp238"
-    assert policy["candidate_id"] == (
-        "cross-corpus170-pseudoparallel-real-adv-ema170"
-    )
+    assert policy["candidate_id"] == ("cross-corpus170-pseudoparallel-real-adv-ema170")
     assert "same source" in policy["independent_variable"]
     assert "real side" in policy["independent_variable"]
+
+
+def test_src4vc_pseudoparallel_policy_changes_only_source_corpus_block() -> None:
+    policy = post.listening_policy(
+        post.SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+        True,
+    )
+
+    assert policy["slug"] == "exp244"
+    assert policy["candidate_id"] == "src4vc85-pseudoparallel-real-adv-ema170"
+    assert "only the 85" in policy["independent_variable"]
+    assert "LR" in policy["independent_variable"]
 
 
 def test_speaker_path_loss_contains_only_the_weighted_voice_target() -> None:
@@ -272,9 +280,7 @@ def test_contrastive_output_cycle_policy_changes_only_content_comparison() -> No
     )
 
     assert policy["slug"] == "exp218"
-    assert policy["candidate_id"] == (
-        "cross-corpus170-contrastive-output-cycle-ema170"
-    )
+    assert policy["candidate_id"] == ("cross-corpus170-contrastive-output-cycle-ema170")
     assert "two-way framewise cosine InfoNCE" in policy["independent_variable"]
     assert "temperature 0.1" in policy["independent_variable"]
 
@@ -322,9 +328,7 @@ def test_discrete_output_cycle_policy_uses_frozen_source_tokens() -> None:
     )
 
     assert policy["slug"] == "exp223"
-    assert policy["candidate_id"] == (
-        "cross-corpus170-discrete-output-cycle-ema170"
-    )
+    assert policy["candidate_id"] == ("cross-corpus170-discrete-output-cycle-ema170")
     assert "16,384-entry WhisperVQ codebook" in policy["independent_variable"]
     assert "source semantic-token IDs" in policy["independent_variable"]
 
@@ -387,9 +391,7 @@ def test_factorized_loss_uses_source_semantics_and_target_speaker() -> None:
     }
     batch = {"ssl_feat": torch.tensor([[[0.0, 1.0]]])}
 
-    losses = post.factorized_unpaired_generator_loss(
-        outputs, batch, torch=torch
-    )
+    losses = post.factorized_unpaired_generator_loss(outputs, batch, torch=torch)
 
     assert losses["semantic"].item() == 2.5
     assert losses["speaker"].item() == 5.0
@@ -482,9 +484,7 @@ def test_output_cycle_frontend_equivalence_rejects_drift(monkeypatch) -> None:
     assert metrics["maximum_absolute_hidden_difference"] < 1e-3
 
     try:
-        post.validate_output_cycle_frontend(
-            object(), source, source + 0.1, torch=torch
-        )
+        post.validate_output_cycle_frontend(object(), source, source + 0.1, torch=torch)
     except post.PostRehearsalError as error:
         assert "frontend mismatch" in str(error)
     else:
@@ -615,12 +615,18 @@ def test_existing_adapter_scope_freezes_lora_outside_selected_path() -> None:
 
         def named_modules(self):
             yield f"base_model.model.{target}.lora_A.default", FakeModule()
-            yield "base_model.model.acoustic_converter.proj_out.lora_A.default", FakeModule()
+            yield (
+                "base_model.model.acoustic_converter.proj_out.lora_A.default",
+                FakeModule(),
+            )
 
         def named_parameters(self):
             yield f"base_model.model.{target}.lora_A.default.weight", selected_a
             yield f"base_model.model.{target}.lora_B.default.weight", selected_b
-            yield "base_model.model.acoustic_converter.proj_out.lora_A.default.weight", excluded
+            yield (
+                "base_model.model.acoustic_converter.proj_out.lora_A.default.weight",
+                excluded,
+            )
 
     trainable = post._set_existing_adapter_scope_training_only(
         FakeModel(),
@@ -673,9 +679,7 @@ def test_parameter_anchor_changes_only_exp163_objective_identity() -> None:
     )
 
     assert policy["slug"] == "exp181"
-    assert policy["candidate_id"] == (
-        "cv12-selective-real-adversarial-anchor-ema170"
-    )
+    assert policy["candidate_id"] == ("cv12-selective-real-adversarial-anchor-ema170")
     assert "L2-SP" in policy["independent_variable"]
 
 

@@ -34,18 +34,6 @@ from prepare_clean_post_rehearsal import (  # noqa: E402
     load_json,
     sha256_file,
 )
-from prepare_hard_negative_curriculum import (  # noqa: E402
-    EXPECTED_COMPOSITION as HARD_EXPECTED_DOMAINS,
-)
-from prepare_hard_negative_curriculum import (  # noqa: E402
-    OUTPUT_KIND as HARD_OUTPUT_KIND,
-)
-from prepare_jsut_retention_curriculum import (  # noqa: E402
-    EXPECTED_COMPOSITION as JSUT_EXPECTED_DOMAINS,
-)
-from prepare_jsut_retention_curriculum import (  # noqa: E402
-    OUTPUT_KIND as JSUT_RETENTION_OUTPUT_KIND,
-)
 from prepare_commonvoice_retention_curriculum import (  # noqa: E402
     EXPECTED_COMPOSITION as COMMONVOICE_RETENTION_EXPECTED_DOMAINS,
 )
@@ -58,17 +46,39 @@ from prepare_conditioned_retention_curriculum import (  # noqa: E402
 from prepare_conditioned_retention_curriculum import (  # noqa: E402
     OUTPUT_KIND as CONDITIONED_RETENTION_OUTPUT_KIND,
 )
-from prepare_unpaired_human_curriculum import (  # noqa: E402
-    EXPECTED_COMPOSITION as UNPAIRED_HUMAN_EXPECTED_DOMAINS,
-)
-from prepare_unpaired_human_curriculum import (  # noqa: E402
-    OUTPUT_KIND as UNPAIRED_HUMAN_OUTPUT_KIND,
-)
 from prepare_cross_corpus_unpaired_curriculum import (  # noqa: E402
     EXPECTED_COMPOSITION as CROSS_CORPUS_UNPAIRED_EXPECTED_DOMAINS,
 )
 from prepare_cross_corpus_unpaired_curriculum import (  # noqa: E402
     OUTPUT_KIND as CROSS_CORPUS_UNPAIRED_OUTPUT_KIND,
+)
+from prepare_hard_negative_curriculum import (  # noqa: E402
+    EXPECTED_COMPOSITION as HARD_EXPECTED_DOMAINS,
+)
+from prepare_hard_negative_curriculum import (  # noqa: E402
+    OUTPUT_KIND as HARD_OUTPUT_KIND,
+)
+from prepare_jsut_retention_curriculum import (  # noqa: E402
+    EXPECTED_COMPOSITION as JSUT_EXPECTED_DOMAINS,
+)
+from prepare_jsut_retention_curriculum import (  # noqa: E402
+    OUTPUT_KIND as JSUT_RETENTION_OUTPUT_KIND,
+)
+from prepare_selective_retention_curriculum import (  # noqa: E402
+    OUTPUT_KIND as SELECTIVE_OUTPUT_KIND,
+)
+from prepare_selective_retention_curriculum import (  # noqa: E402
+    REPAIR_TARGET,
+    RETENTION_TARGET,
+)
+from prepare_src4vc_cross_corpus_curriculum import (  # noqa: E402
+    EXPECTED_COMPOSITION as SRC4VC_PSEUDOPARALLEL_EXPECTED_DOMAINS,
+)
+from prepare_unpaired_human_curriculum import (  # noqa: E402
+    EXPECTED_COMPOSITION as UNPAIRED_HUMAN_EXPECTED_DOMAINS,
+)
+from prepare_unpaired_human_curriculum import (  # noqa: E402
+    OUTPUT_KIND as UNPAIRED_HUMAN_OUTPUT_KIND,
 )
 from render_cross_corpus_pseudoparallel_targets import (  # noqa: E402
     EXPECTED_COMPOSITION as PSEUDOPARALLEL_EXPECTED_DOMAINS,
@@ -79,12 +89,8 @@ from render_cross_corpus_pseudoparallel_targets import (  # noqa: E402
 from render_cross_corpus_pseudoparallel_targets import (  # noqa: E402
     OUTPUT_KIND as PSEUDOPARALLEL_OUTPUT_KIND,
 )
-from prepare_selective_retention_curriculum import (  # noqa: E402
-    OUTPUT_KIND as SELECTIVE_OUTPUT_KIND,
-)
-from prepare_selective_retention_curriculum import (  # noqa: E402
-    REPAIR_TARGET,
-    RETENTION_TARGET,
+from render_cross_corpus_pseudoparallel_targets import (  # noqa: E402
+    SRC4VC_OUTPUT_KIND as SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND,
 )
 
 CANDIDATE_ID = "cv12-clean-post-rehearsal170"
@@ -100,27 +106,19 @@ EXPECTED_CONVERTER_PARAMETERS = 42_357_760
 CONVERTER_CHECKPOINT_KIND = "liveconv-xvc-merged-control69-converter/v1"
 ACOUSTIC_ENCODER_PREFIX = "acoustic_encoder"
 EXPECTED_ACOUSTIC_ENCODER_PARAMETERS = 21_521_536
-ACOUSTIC_ENCODER_CHECKPOINT_KIND = (
-    "liveconv-xvc-merged-control69-acoustic-encoder/v1"
-)
+ACOUSTIC_ENCODER_CHECKPOINT_KIND = "liveconv-xvc-merged-control69-acoustic-encoder/v1"
 GENERATIVE_OBJECTIVE = "generative-only"
 REAL_REFERENCE_ADVERSARIAL_OBJECTIVE = "real-reference-adversarial"
 FACTORIZED_UNPAIRED_OBJECTIVE = "factorized-unpaired-human-adversarial"
-OUTPUT_CYCLE_UNPAIRED_OBJECTIVE = (
-    "factorized-unpaired-human-output-cycle-adversarial"
-)
+OUTPUT_CYCLE_UNPAIRED_OBJECTIVE = "factorized-unpaired-human-output-cycle-adversarial"
 CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE = (
     "factorized-unpaired-human-contrastive-output-cycle-adversarial"
 )
 DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE = (
     "factorized-unpaired-human-discrete-output-cycle-adversarial"
 )
-SPEAKER_PATH_UNPAIRED_OBJECTIVE = (
-    "factorized-unpaired-human-speaker-path-adversarial"
-)
-PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE = (
-    "pseudoparallel-generative-real-adversarial"
-)
+SPEAKER_PATH_UNPAIRED_OBJECTIVE = "factorized-unpaired-human-speaker-path-adversarial"
+PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE = "pseudoparallel-generative-real-adversarial"
 OUTPUT_CYCLE_CONTENT_WEIGHT = 1000.0
 CONTRASTIVE_CONTENT_TEMPERATURE = 0.1
 SEQUENTIAL_OPTIMIZER = "sequential"
@@ -148,6 +146,10 @@ UNPAIRED_HUMAN_KINDS = {
     UNPAIRED_HUMAN_OUTPUT_KIND,
     CROSS_CORPUS_UNPAIRED_OUTPUT_KIND,
 }
+PSEUDOPARALLEL_KINDS = {
+    PSEUDOPARALLEL_OUTPUT_KIND,
+    SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND,
+}
 
 
 class PostRehearsalError(RuntimeError):
@@ -166,11 +168,11 @@ def listening_policy(
     """Return the complete shared-listener identity for the admitted method."""
 
     if (
-        manifest_kind == PSEUDOPARALLEL_OUTPUT_KIND
+        manifest_kind in PSEUDOPARALLEL_KINDS
         or training_objective == PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE
     ):
         if (
-            manifest_kind != PSEUDOPARALLEL_OUTPUT_KIND
+            manifest_kind not in PSEUDOPARALLEL_KINDS
             or trainable_target != LORA69_TARGET
             or training_objective != PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE
             or not use_adapter_ema
@@ -179,8 +181,34 @@ def listening_policy(
             or source_activity_envelope
         ):
             raise PostRehearsalError(
-                "pseudoparallel supervision requires the exact EXP-238 pilot"
+                "pseudoparallel supervision requires an exact admitted pilot"
             )
+        if manifest_kind == SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND:
+            return {
+                "slug": "exp244",
+                "candidate_id": ("src4vc85-pseudoparallel-real-adv-ema170"),
+                "candidate_name": (
+                    "EXP-244 / SRC4VC85 source substitution / "
+                    "pseudoparallel / real-adversarial / EMA"
+                ),
+                "run_kind": "EXP-244 X-VC SRC4VC source-substitution evaluation",
+                "result_kind": (
+                    "liveconv-exp244-xvc-src4vc-pseudoparallel-real-adv-ema/v1"
+                ),
+                "question": (
+                    "Does replacing only the JSUT85 source block with 85 distinct "
+                    "SRC4VC smartphone speakers improve robust X-VC conversion?"
+                ),
+                "independent_variable": (
+                    "relative to EXP-238, only the 85 single-speaker JSUT source "
+                    "rows change to one RECITATION row from each of 85 distinct "
+                    "SRC4VC smartphone speakers; CV48/JVS3/Hadou34, exact ordered "
+                    "Amitaro references, frozen-control69 same-content targets, "
+                    "control69 LoRA69 initialization, complete generative and real "
+                    "adversarial losses, LR, sequential optimizer, 170 updates, "
+                    "gradient clip, zero condition, and EMA remain fixed"
+                ),
+            }
         return {
             "slug": "exp238",
             "candidate_id": "cross-corpus170-pseudoparallel-real-adv-ema170",
@@ -392,14 +420,10 @@ def listening_policy(
                 raise PostRehearsalError(
                     "unpaired human EMA requires the exact factorized LoRA69 pilot"
                 )
-            if (
-                manifest_kind == UNPAIRED_HUMAN_OUTPUT_KIND
-                and training_objective
-                in {
-                    CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
-                    DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
-                }
-            ):
+            if manifest_kind == UNPAIRED_HUMAN_OUTPUT_KIND and training_objective in {
+                CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+                DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE,
+            }:
                 raise PostRehearsalError(
                     "contrastive output cycle requires the fixed cross-corpus data"
                 )
@@ -417,20 +441,15 @@ def listening_policy(
                 )
             if (
                 manifest_kind == CROSS_CORPUS_UNPAIRED_OUTPUT_KIND
-                and training_objective
-                == CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+                and training_objective == CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
             ):
                 return {
                     "slug": "exp218",
-                    "candidate_id": (
-                        "cross-corpus170-contrastive-output-cycle-ema170"
-                    ),
+                    "candidate_id": ("cross-corpus170-contrastive-output-cycle-ema170"),
                     "candidate_name": (
                         "EXP-218 / cross-corpus contrastive output-cycle / EMA"
                     ),
-                    "run_kind": (
-                        "EXP-218 X-VC contrastive output-cycle evaluation"
-                    ),
+                    "run_kind": ("EXP-218 X-VC contrastive output-cycle evaluation"),
                     "result_kind": (
                         "liveconv-exp218-xvc-contrastive-output-cycle-ema/v1"
                     ),
@@ -451,23 +470,16 @@ def listening_policy(
                 }
             if (
                 manifest_kind == CROSS_CORPUS_UNPAIRED_OUTPUT_KIND
-                and training_objective
-                == DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+                and training_objective == DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
             ):
                 return {
                     "slug": "exp223",
-                    "candidate_id": (
-                        "cross-corpus170-discrete-output-cycle-ema170"
-                    ),
+                    "candidate_id": ("cross-corpus170-discrete-output-cycle-ema170"),
                     "candidate_name": (
                         "EXP-223 / cross-corpus discrete output-cycle / EMA"
                     ),
-                    "run_kind": (
-                        "EXP-223 X-VC discrete output-cycle evaluation"
-                    ),
-                    "result_kind": (
-                        "liveconv-exp223-xvc-discrete-output-cycle-ema/v1"
-                    ),
+                    "run_kind": ("EXP-223 X-VC discrete output-cycle evaluation"),
+                    "result_kind": ("liveconv-exp223-xvc-discrete-output-cycle-ema/v1"),
                     "question": (
                         "Can direct frozen WhisperVQ token classification on the "
                         "final WAV preserve categorical content without MSE "
@@ -490,15 +502,11 @@ def listening_policy(
             ):
                 return {
                     "slug": "exp213",
-                    "candidate_id": (
-                        "cross-corpus170-unpaired-output-cycle-ema170"
-                    ),
+                    "candidate_id": ("cross-corpus170-unpaired-output-cycle-ema170"),
                     "candidate_name": (
                         "EXP-213 / cross-corpus unpaired output-cycle / EMA"
                     ),
-                    "run_kind": (
-                        "EXP-213 X-VC cross-corpus output-cycle evaluation"
-                    ),
+                    "run_kind": ("EXP-213 X-VC cross-corpus output-cycle evaluation"),
                     "result_kind": (
                         "liveconv-exp213-xvc-cross-corpus-output-cycle-ema/v1"
                     ),
@@ -525,9 +533,7 @@ def listening_policy(
                     "candidate_name": (
                         "EXP-208 / unpaired human output-cycle content / EMA"
                     ),
-                    "run_kind": (
-                        "EXP-208 X-VC unpaired-human output-cycle evaluation"
-                    ),
+                    "run_kind": ("EXP-208 X-VC unpaired-human output-cycle evaluation"),
                     "result_kind": (
                         "liveconv-exp208-xvc-unpaired-human-output-cycle-ema/v1"
                     ),
@@ -613,9 +619,7 @@ def listening_policy(
                 )
             return {
                 "slug": "exp194",
-                "candidate_id": (
-                    "cv12-commonvoice48-source36-real-adversarial-ema170"
-                ),
+                "candidate_id": ("cv12-commonvoice48-source36-real-adversarial-ema170"),
                 "candidate_name": (
                     "EXP-194 / Common Voice 48-speaker retention / "
                     "source36 / real-adversarial / EMA"
@@ -679,12 +683,9 @@ def listening_policy(
                     "real-adversarial + EMA"
                 ),
                 "run_kind": (
-                    "EXP-186 X-VC Common Voice 48-speaker retention "
-                    "external evaluation"
+                    "EXP-186 X-VC Common Voice 48-speaker retention external evaluation"
                 ),
-                "result_kind": (
-                    "liveconv-exp186-xvc-commonvoice48-retention-ema/v1"
-                ),
+                "result_kind": ("liveconv-exp186-xvc-commonvoice48-retention-ema/v1"),
                 "question": (
                     "Does speaker-balanced retention data improve the surviving "
                     "EXP-163 method across independent frozen gates?"
@@ -700,9 +701,7 @@ def listening_policy(
         if manifest_kind == CONDITIONED_RETENTION_OUTPUT_KIND:
             return {
                 "slug": "exp191",
-                "candidate_id": (
-                    "cv12-conditioned-retention-real-adversarial-ema170"
-                ),
+                "candidate_id": ("cv12-conditioned-retention-real-adversarial-ema170"),
                 "candidate_name": (
                     "EXP-191 / condition-balanced control69 retention + "
                     "real-adversarial + EMA"
@@ -875,6 +874,8 @@ def load_manifest(
         expected_domains = CROSS_CORPUS_UNPAIRED_EXPECTED_DOMAINS
     elif kind == PSEUDOPARALLEL_OUTPUT_KIND:
         expected_domains = PSEUDOPARALLEL_EXPECTED_DOMAINS
+    elif kind == SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND:
+        expected_domains = SRC4VC_PSEUDOPARALLEL_EXPECTED_DOMAINS
     elif kind == COMMONVOICE_RETENTION_OUTPUT_KIND:
         expected_domains = COMMONVOICE_RETENTION_EXPECTED_DOMAINS
     elif kind == CONDITIONED_RETENTION_OUTPUT_KIND:
@@ -895,6 +896,7 @@ def load_manifest(
             UNPAIRED_HUMAN_OUTPUT_KIND,
             CROSS_CORPUS_UNPAIRED_OUTPUT_KIND,
             PSEUDOPARALLEL_OUTPUT_KIND,
+            SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND,
         }
         or value.get("composition") != expected_domains
         or not isinstance(items, list)
@@ -959,7 +961,7 @@ def load_manifest(
             target_root = diverse_work
             if target_root is None:
                 raise PostRehearsalError("unpaired human work is required")
-        if kind == PSEUDOPARALLEL_OUTPUT_KIND:
+        if kind in PSEUDOPARALLEL_KINDS:
             real_target_file = item.get("real_target_file")
             if (
                 item.get("source_root") != "source-work"
@@ -1155,9 +1157,7 @@ def _batch_from_item(
         "source_wav": source["source_wav"],
         "semantic_tokens": source["semantic_tokens"],
         "target_wav": target["target_wav"],
-        "ssl_feat": (
-            source["ssl_feat"] if factorized_unpaired else target["ssl_feat"]
-        ),
+        "ssl_feat": (source["ssl_feat"] if factorized_unpaired else target["ssl_feat"]),
     }
 
 
@@ -1461,7 +1461,7 @@ def source_receipt_identities(
     manifest_kind: str, source_work: Path, training_manifest: Path
 ) -> dict[str, str | None]:
     """Bind either a predecessor result or the standalone human curriculum."""
-    if manifest_kind in UNPAIRED_HUMAN_KINDS | {PSEUDOPARALLEL_OUTPUT_KIND}:
+    if manifest_kind in UNPAIRED_HUMAN_KINDS | PSEUDOPARALLEL_KINDS:
         return {
             "source_result_sha256": None,
             "unpaired_human_curriculum_sha256": sha256_file(training_manifest),
@@ -1523,17 +1523,17 @@ def _set_existing_adapter_scope_training_only(
     model.eval()
     active = 0
     for name, module in model.named_modules():
-        selected = (
-            ".lora_A" in name or ".lora_B" in name
-        ) and any(f".{target}." in f".{name}." for target in targets)
+        selected = (".lora_A" in name or ".lora_B" in name) and any(
+            f".{target}." in f".{name}." for target in targets
+        )
         if selected:
             module.train(True)
             active += 1
     trainable: list[Any] = []
     for name, parameter in model.named_parameters():
-        selected = (
-            ".lora_A." in name or ".lora_B." in name
-        ) and any(f".{target}." in f".{name}." for target in targets)
+        selected = (".lora_A." in name or ".lora_B." in name) and any(
+            f".{target}." in f".{name}." for target in targets
+        )
         parameter.requires_grad_(selected)
         if selected:
             trainable.append(parameter)
@@ -1729,9 +1729,7 @@ def load_acoustic_encoder_checkpoint(
         for name, value in stored.items():
             destination = destinations[name]
             if tuple(value.shape) != tuple(destination.shape):
-                raise PostRehearsalError(
-                    f"acoustic encoder shape drifted: {name}"
-                )
+                raise PostRehearsalError(f"acoustic encoder shape drifted: {name}")
             destination.copy_(value.to(device=device, dtype=destination.dtype))
     actual = _acoustic_encoder_snapshot(model, torch)
     if any(not torch.equal(actual[name], stored[name]) for name in stored):
@@ -1822,14 +1820,9 @@ def smoke_rows(
         return items[:2]
     if parameter_anchor:
         return items[:2]
-    if manifest.get("kind") in UNPAIRED_HUMAN_KINDS | {
-        PSEUDOPARALLEL_OUTPUT_KIND
-    }:
+    if manifest.get("kind") in UNPAIRED_HUMAN_KINDS | PSEUDOPARALLEL_KINDS:
         return items[:2]
-    if (
-        manifest.get("kind") not in DIVERSE_RETENTION_KINDS
-        and not require_hard_easy
-    ):
+    if manifest.get("kind") not in DIVERSE_RETENTION_KINDS and not require_hard_easy:
         return items[:1]
     hard = next(item for item in items if item.get("curriculum_role") == "hard")
     easy = next(item for item in items if item.get("curriculum_role") == "easy")
@@ -1918,8 +1911,7 @@ def content_voice_task_losses(
         raise PostRehearsalError("content/voice PCGrad loss boundary drifted")
     content_task = OUTPUT_CYCLE_CONTENT_WEIGHT * content
     voice_task = (
-        role_mix.STANDARD_LOSS_WEIGHTS["sim_mse_loss"] * speaker
-        + adversarial_loss
+        role_mix.STANDARD_LOSS_WEIGHTS["sim_mse_loss"] * speaker + adversarial_loss
     )
     total = content_task + voice_task
     expected = generator_loss + adversarial_loss
@@ -1951,9 +1943,7 @@ def content_voice_pcgrad_adversarial_update(
         outputs = trained(dict(batch))
         reconstruction = outputs.get("recons") if isinstance(outputs, dict) else None
         if reconstruction is None or not bool(torch.isfinite(reconstruction).all()):
-            raise PostRehearsalError(
-                "content/voice PCGrad reconstruction is malformed"
-            )
+            raise PostRehearsalError("content/voice PCGrad reconstruction is malformed")
         discriminator_real = batch["target_wav"][..., : reconstruction.shape[-1]]
         outputs["audios"] = discriminator_real
         discriminator_losses = discriminator.discriminative_loss(outputs)
@@ -2007,9 +1997,7 @@ def content_voice_pcgrad_adversarial_update(
                     gradient.detach()
                     if gradient is not None
                     else torch.zeros_like(parameter)
-                    for parameter, gradient in zip(
-                        trainable, gradients, strict=True
-                    )
+                    for parameter, gradient in zip(trainable, gradients, strict=True)
                 ]
             )
         merged_gradients, raw_geometry = project_conflicting_pair(
@@ -2076,9 +2064,7 @@ def parameter_anchor_regularizer(
         raise PostRehearsalError("parameter anchor loss is non-finite")
     return loss, {
         "parameter_anchor_loss": float(loss.detach().cpu()),
-        "parameter_anchor_squared_distance": float(
-            squared_distance.detach().cpu()
-        ),
+        "parameter_anchor_squared_distance": float(squared_distance.detach().cpu()),
     }
 
 
@@ -2283,9 +2269,7 @@ def run(
                     arguments.training_objective
                     == PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE
                 ):
-                    real_target = arguments.source_work / str(
-                        item["real_target_file"]
-                    )
+                    real_target = arguments.source_work / str(item["real_target_file"])
                     pair = _pair(
                         target_id,
                         real_target,
@@ -2327,14 +2311,9 @@ def run(
             config=config,
             torch=torch,
             device=device,
-            factorized_unpaired=(
-                manifest.get("kind") in UNPAIRED_HUMAN_KINDS
-            ),
+            factorized_unpaired=(manifest.get("kind") in UNPAIRED_HUMAN_KINDS),
         )
-        if (
-            arguments.training_objective
-            == CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
-        ):
+        if arguments.training_objective == CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE:
             if negative_item is None or negative_item.get("id") == item.get("id"):
                 raise PostRehearsalError(
                     "contrastive output cycle requires a distinct negative row"
@@ -2352,9 +2331,7 @@ def run(
                 factorized_unpaired=True,
             )
             if negative["ssl_feat"].shape != tensors["ssl_feat"].shape:
-                raise PostRehearsalError(
-                    "contrastive negative content shape drifted"
-                )
+                raise PostRehearsalError("contrastive negative content shape drifted")
             tensors["negative_ssl_feat"] = negative["ssl_feat"]
         gpu_batch = base._gpu_batch(tensors, torch=torch, device=device)
         if "negative_ssl_feat" in tensors:
@@ -2488,12 +2465,11 @@ def run(
                         )
                         if arguments.trainable_target == SOURCE36_TARGET
                         else (
-                            lambda current: _set_acoustic_encoder_training_only(
-                                current
+                            lambda current: (
+                                _set_acoustic_encoder_training_only(current)
+                                if arguments.trainable_target == ACOUSTIC_ENCODER_TARGET
+                                else None
                             )
-                            if arguments.trainable_target
-                            == ACOUSTIC_ENCODER_TARGET
-                            else None
                         )
                     ),
                     output_regularizer=(
@@ -2530,8 +2506,7 @@ def run(
                                 )
                             )
                         )
-                        if arguments.training_objective
-                        == FACTORIZED_UNPAIRED_OBJECTIVE
+                        if arguments.training_objective == FACTORIZED_UNPAIRED_OBJECTIVE
                         else (
                             lambda outputs, current_batch: (
                                 output_cycle_unpaired_generator_loss(
@@ -2819,11 +2794,9 @@ def run(
                 "real_audio": "authorized-original-Amitaro-target",
                 "generative_audio": (
                     "speaker-path-target-voice-plus-real-wave-adversarial"
-                    if arguments.training_objective
-                    == SPEAKER_PATH_UNPAIRED_OBJECTIVE
+                    if arguments.training_objective == SPEAKER_PATH_UNPAIRED_OBJECTIVE
                     else "final-waveform-source-content-cycle-plus-target-speaker"
-                    if arguments.training_objective
-                    == OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
+                    if arguments.training_objective == OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
                     else (
                         "final-waveform-contrastive-source-content-cycle-plus-"
                         "target-speaker"
@@ -2831,14 +2804,12 @@ def run(
                     if arguments.training_objective
                     == CONTRASTIVE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
                     else (
-                        "final-waveform-discrete-source-token-cycle-plus-"
-                        "target-speaker"
+                        "final-waveform-discrete-source-token-cycle-plus-target-speaker"
                     )
                     if arguments.training_objective
                     == DISCRETE_OUTPUT_CYCLE_UNPAIRED_OBJECTIVE
                     else "source-semantic-plus-target-speaker-factorization"
-                    if arguments.training_objective
-                    == FACTORIZED_UNPAIRED_OBJECTIVE
+                    if arguments.training_objective == FACTORIZED_UNPAIRED_OBJECTIVE
                     else "source-aligned-control69-complete-generative-target"
                     if arguments.training_objective
                     == PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE
