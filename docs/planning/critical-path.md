@@ -345,6 +345,10 @@ claims from that artifact are superseded. The active join is now:
         -> 170 updates complete; gross 0 -> 0; stable source distance 0W/5T/0L
         -> instability 1 -> 2 on cv45195640; stop broad fixed surfaces
         -> isolate evaluation-style first-window/pad versus EXP238 speech-active windows
+        -> CPU admission: 6/32 raw MP3 have zero samples above the fixed activity threshold
+        -> EXP-318 restore those 6 positions; retain current-window bytes for matched CV26
+        -> EXP-319 keep the same 26 positions but use exact speech-active windows + fresh teachers
+        -> both keep 170 updates, target order, method, and external7-only first gate
         -> operator hearing when available
 ```
 

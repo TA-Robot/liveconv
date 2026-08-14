@@ -38,6 +38,13 @@ instability still increased `1 -> 2` on `cv45195640`; broad rendering stopped.
 Its new CV32 sources used historical evaluation-style first-2.4-second/right-
 pad WAVs, unlike EXP-238's speech-active Common Voice windows. Test that
 preprocessing difference once before changing row count, loss, or scope.
+CPU reconstruction found that six of the 32 raw recordings never exceed the
+fixed EXP-186 activity threshold. EXP-318 therefore restores those six
+positions and keeps the remaining 26 existing source/teacher bytes as the
+matched control. EXP-319 changes only those same 26 source windows to the exact
+speech-active policy and rerenders their frozen-control69 teachers. Both stay
+at 170 updates and external7 first; no gain/filter rescue or broad sweep is
+admitted.
 
 Identity preflight stopped EXP-303/304 before CUDA. The EXP-186 `exposure=2`
 rows are exact repeats of the same source ID/SHA/text, paired only with a

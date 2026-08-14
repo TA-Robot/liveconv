@@ -6204,3 +6204,23 @@ job queue.
   source-window construction: CV32 reused first-2.4/right-pad evaluation WAVs,
   while EXP-238 used speech-active Common Voice windows. Isolate that
   preprocessing difference once before changing data count, loss, or scope.
+
+## 2026-08-14T19:25:48Z - Grok project-progress audit
+
+- Agent: `grok-project-progress-auditor` in tmux
+  `liveconv-grok-auditor` (read-only, no tools or delegation).
+- Task: judge whether splitting the failed EXP-317 window mismatch into a
+  matched CV26 pair is the shortest route toward broadly better X-VC audio.
+- Result: `CONTINUE`. The auditor counted EXP-317's 19:09 external7 WAVs and
+  the `2631650` matched-pair plan as forward progress. It accepted the chain
+  from the 202-update confound, through the 170-update failure, to the remaining
+  first-window versus speech-active preprocessing hypothesis.
+- Adopted: yes. Finish and commit only the CV26 binder, frozen teacher render,
+  ordinary 170-update trainer bindings, and external7-only renderer. Run one
+  gpu0 lane sequentially and replan from coarse corruption/content evidence.
+- Problems: the auditor's pre-snapshot audio scan initially blocked on the
+  large artifact tree. The read-only scan was released and capped at 20
+  seconds for future audits; no GPU job was interrupted.
+- Rework: none to the experiment. Keep both arms on the same 26-row
+  intersection so the active-window comparison does not mix a row-count or
+  admission change. Do not add broad surfaces before the external gate.
