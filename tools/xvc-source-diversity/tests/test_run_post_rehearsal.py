@@ -124,6 +124,23 @@ def test_jsut_retention_changes_only_easy_data_identity() -> None:
     assert "easy85" in policy["independent_variable"]
 
 
+def test_jsut_smoke_exercises_hard_and_diverse_easy_roots() -> None:
+    manifest = {
+        "kind": post.JSUT_RETENTION_OUTPUT_KIND,
+        "items": [
+            {"curriculum_role": "hard", "source_root": "source-work"},
+            {"curriculum_role": "easy", "source_root": "diverse-work"},
+        ],
+    }
+
+    rows = post.smoke_rows(manifest)
+
+    assert [row["source_root"] for row in rows] == [
+        "source-work",
+        "diverse-work",
+    ]
+
+
 def test_adapter_ema_matches_pinned_default_update_schedule() -> None:
     import torch
 

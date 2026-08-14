@@ -3862,3 +3862,17 @@ job queue.
   method-level pilot.
 - Rework: bind EXP-150 hard85 unchanged and replace easy85 position-for-position;
   run one smoke before the full EXP-171 training lane.
+
+## 2026-08-14T02:05:00Z - EXP-171 curriculum admitted for smoke
+
+- Agent: `primary-integrator`.
+- Task: bind and validate the one-variable JSUT retention training lane.
+- Dependencies: commit `fe89222`; EXP-150 hard rows; EXP-169 sources; EXP-170
+  generated targets and screen; frozen external7.
+- Result: all 170 source/target hashes validate with composition Common Voice
+  40, Hadou 45, and JSUT 85. The no-CUDA runner check admits the exact LoRA69,
+  real-reference adversarial, upstream-EMA method.
+- Problems: the inherited one-row smoke would cover only a hard row and miss
+  the new diverse-work source/target roots.
+- Rework: make EXP-171 smoke exercise exactly one unchanged hard row and one new
+  easy row; full training remains the same ordered 170 updates.

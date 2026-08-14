@@ -686,6 +686,15 @@ class AdapterEMA:
         }
 
 
+def smoke_rows(manifest: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    items = manifest["items"]
+    if manifest.get("kind") != JSUT_RETENTION_OUTPUT_KIND:
+        return items[:1]
+    hard = next(item for item in items if item.get("curriculum_role") == "hard")
+    easy = next(item for item in items if item.get("curriculum_role") == "easy")
+    return [hard, easy]
+
+
 def run(
     arguments: argparse.Namespace,
     manifest: Mapping[str, Any],
@@ -754,7 +763,7 @@ def run(
     adapter_ema = AdapterEMA(trained, torch) if arguments.adapter_ema else None
     losses: list[float] = []
     adversarial_metrics: list[dict[str, float]] = []
-    rows = manifest["items"][:1] if arguments.smoke else manifest["items"]
+    rows = smoke_rows(manifest) if arguments.smoke else manifest["items"]
     discriminator = None
     discriminator_optimizer = None
     realism_targets: dict[str, Any] = {}
