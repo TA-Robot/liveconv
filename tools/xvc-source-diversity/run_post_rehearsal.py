@@ -164,6 +164,41 @@ PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE = (
 PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE = (
     "pseudoparallel-generative-real-adversarial-real-speaker-condition"
 )
+# EXP-325/326 deliberately share one ordered 170-row manifest.  Keep the
+# objective names separate so the control and treatment can be admitted from
+# the same bytes while the treatment changes only the generator gradient.
+PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE = (
+    "pseudoparallel-generative-real-adversarial-source-speaker-grl"
+)
+SOURCE_SPEAKER_GRL_OBJECTIVE = PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE
+SRC4VC_TWO_UTTERANCE_OUTPUT_KIND = (
+    "liveconv-exp325-exp326-xvc-src4vc-two-utterance-inputs/v1"
+)
+# The short spellings were used by early CPU materializers.  Accepting them is
+# harmless, but all result identities below remain explicitly EXP-325/326.
+SRC4VC_TWO_UTTERANCE_KINDS = {
+    SRC4VC_TWO_UTTERANCE_OUTPUT_KIND,
+    "liveconv-exp325-xvc-src4vc-two-utterance-inputs/v1",
+    "liveconv-exp325-src4vc-two-utterance-inputs/v1",
+    "liveconv-exp325-exp326-src4vc-two-utterance-inputs/v1",
+}
+SRC4VC_TWO_UTTERANCE_COMPOSITION = {
+    "src4vc-smartphone-unpaired": 170,
+}
+SOURCE_SPEAKER_CLASS_COUNT = 85
+SOURCE_SPEAKER_FEATURE_DIMENSION = 2048
+SOURCE_SPEAKER_GRL_WEIGHT = 1.0
+SOURCE_SPEAKER_POOL_IMPLEMENTATION = (
+    "mean-std-pool-acoustic-converter-x-1024xT/v1"
+)
+SOURCE_SPEAKER_GRL_IMPLEMENTATION = (
+    "normalized-cross-entropy-gradient-reversal/v1"
+)
+SOURCE_SPEAKER_PROBE_IMPLEMENTATION = (
+    "frozen-control69-cross-utterance-acoustic-converter-centroid/v1"
+)
+SOURCE_SPEAKER_PROBE_MIN_TOP1_MULTIPLE = 2.0
+SOURCE_SPEAKER_PROBE_MIN_TOP5_MULTIPLE = 2.0
 OUTPUT_CYCLE_CONTENT_WEIGHT = 1000.0
 CONTRASTIVE_CONTENT_TEMPERATURE = 0.1
 SEQUENTIAL_OPTIMIZER = "sequential"
@@ -225,6 +260,7 @@ UNPAIRED_HUMAN_KINDS = {
 PSEUDOPARALLEL_KINDS = {
     PSEUDOPARALLEL_OUTPUT_KIND,
     SRC4VC_PSEUDOPARALLEL_OUTPUT_KIND,
+    *SRC4VC_TWO_UTTERANCE_KINDS,
     CV32_REPEAT_OUTPUT_KIND,
     CV32_BREADTH_OUTPUT_KIND,
     CV32_REPLACEMENT_OUTPUT_KIND,
@@ -846,6 +882,97 @@ def validate_cv26_manifest(
     }
 
 
+def validate_source_speaker_manifest(
+    manifest: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Admit the shared EXP-325/326 85-speaker, two-utterance substrate.
+
+    The source-speaker label is an explicit corpus identity, never inferred
+    from a filename or from the Common Voice client hash.  Keeping this gate
+    here means both the ordinary control and the GRL treatment consume the
+    exact same ordered bytes and label map.
+    """
+
+    kind = manifest.get("kind")
+    if kind not in SRC4VC_TWO_UTTERANCE_KINDS:
+        return None
+    items = manifest.get("items")
+    if (
+        not isinstance(items, list)
+        or len(items) != EXPECTED_ROWS
+        or manifest.get("composition") != SRC4VC_TWO_UTTERANCE_COMPOSITION
+    ):
+        raise PostRehearsalError(
+            "EXP-325/326 manifest must contain exactly 170 SRC4VC rows"
+        )
+    labels: dict[str, list[int]] = {}
+    source_hashes: set[str] = set()
+    for position, row in enumerate(items):
+        if not isinstance(row, Mapping):
+            raise PostRehearsalError("EXP-325/326 source row is malformed")
+        speaker = row.get("source_speaker_id")
+        source_hash = row.get("source_sha256")
+        if (
+            not isinstance(speaker, str)
+            or not speaker
+            or not base._is_sha256(source_hash)
+            or source_hash in source_hashes
+        ):
+            raise PostRehearsalError(
+                "EXP-325/326 requires distinct hashed source rows and explicit "
+                "source_speaker_id values"
+            )
+        source_hashes.add(source_hash)
+        labels.setdefault(speaker, []).append(position)
+    if len(labels) != SOURCE_SPEAKER_CLASS_COUNT or any(
+        len(positions) != 2 for positions in labels.values()
+    ):
+        raise PostRehearsalError(
+            "EXP-325/326 requires exactly 85 source-speaker classes x2 rows"
+        )
+    # If a materializer records the selected RECITATION index, enforce the
+    # intended zero/one pair.  Older receipts omitted this redundant field, so
+    # absence remains accepted while present metadata is strict.
+    for speaker, positions in labels.items():
+        values: list[Any] = []
+        for position in positions:
+            row = items[position]
+            value = row.get("source_utterance_index", row.get("utterance_index"))
+            if value is not None:
+                values.append(value)
+        if values and sorted(values) != [0, 1]:
+            raise PostRehearsalError(
+                f"EXP-325/326 utterance zero/one metadata drifted for {speaker}"
+            )
+    ordered_speakers = sorted(labels)
+    label_map = {speaker: index for index, speaker in enumerate(ordered_speakers)}
+    return {
+        "manifest_kind": kind,
+        "manifest_row_count": EXPECTED_ROWS,
+        "source_speaker_class_count": len(label_map),
+        "rows_per_source_speaker": 2,
+        "source_speaker_label_map": label_map,
+        "source_speaker_label_map_sha256": hashlib.sha256(
+            json.dumps(label_map, ensure_ascii=True, sort_keys=True).encode("utf-8")
+        ).hexdigest(),
+        "source_hash_count": len(source_hashes),
+        "ordered_pair_positions": {
+            speaker: positions for speaker, positions in sorted(labels.items())
+        },
+        "same_manifest_for_control_and_treatment": True,
+        "inference_attachment": None,
+    }
+
+
+def source_speaker_label_map(manifest: Mapping[str, Any]) -> dict[str, int]:
+    """Return the deterministic sorted source-speaker class map."""
+
+    receipt = validate_source_speaker_manifest(manifest)
+    if receipt is None:
+        raise PostRehearsalError("source-speaker labels require EXP-325/326 rows")
+    return dict(receipt["source_speaker_label_map"])
+
+
 def _load_exp238_manifest() -> Mapping[str, Any] | None:
     path = (
         REPO_ROOT
@@ -878,8 +1005,92 @@ def listening_policy(
     optimizer_mode: str = SEQUENTIAL_OPTIMIZER,
     parameter_anchor: bool = False,
     source_activity_envelope: bool = False,
-) -> dict[str, str]:
+) -> dict[str, Any]:
     """Return the complete shared-listener identity for the admitted method."""
+
+    if manifest_kind in SRC4VC_TWO_UTTERANCE_KINDS:
+        if (
+            trainable_target != LORA69_TARGET
+            or training_objective
+            not in {
+                PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+                PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE,
+            }
+            or not use_adapter_ema
+            or optimizer_mode != SEQUENTIAL_OPTIMIZER
+            or parameter_anchor
+            or source_activity_envelope
+        ):
+            raise PostRehearsalError(
+                "EXP-325/326 requires control69 LoRA69, ordinary real-adversarial "
+                "loss, EMA, and the fixed sequential 170-update contract"
+            )
+        if training_objective == PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE:
+            return {
+                "slug": "exp326",
+                "candidate_id": (
+                    "src4vc170-two-utterance-pseudoparallel-source-speaker-"
+                    "grl-real-adv-ema170"
+                ),
+                "candidate_name": (
+                    "EXP-326 / SRC4VC two-utterance source-speaker GRL / "
+                    "real-adversarial / EMA"
+                ),
+                "run_kind": (
+                    "EXP-326 X-VC SRC4VC two-utterance source-speaker GRL "
+                    "external7 evaluation"
+                ),
+                "result_kind": (
+                    "liveconv-exp326-xvc-src4vc-two-utterance-source-speaker-"
+                    "grl-real-adv-ema/v1"
+                ),
+                "question": (
+                    "Does reversing normalized source-speaker CE from the "
+                    "post-converter latent improve robust target-voice conversion "
+                    "without adding content corruption?"
+                ),
+                "independent_variable": (
+                    "relative to matched EXP-325 on the exact same ordered 170 "
+                    "SRC4VC rows (85 explicit source speakers x2), only a "
+                    "training-only 2048-value mean/std pooled acoustic-converter "
+                    "latent head changes the generator gradient: its detached-x "
+                    "classifier step is separate, then its normalized 85-class CE "
+                    "gradient is reversed into the existing control69 LoRA69; "
+                    "ordinary composite plus real-adversarial losses, target order, "
+                    "LR, 170 updates, EMA, zero frame condition, normal quantized "
+                    "inference, and export remain fixed; the head is not exported"
+                ),
+                "source_speaker_grl": True,
+            }
+        return {
+            "slug": "exp325",
+            "candidate_id": (
+                "src4vc170-two-utterance-pseudoparallel-real-adv-ema170"
+            ),
+            "candidate_name": (
+                "EXP-325 / matched SRC4VC two-utterance control / "
+                "real-adversarial / EMA"
+            ),
+            "run_kind": (
+                "EXP-325 X-VC SRC4VC two-utterance matched control external7 "
+                "evaluation"
+            ),
+            "result_kind": (
+                "liveconv-exp325-xvc-src4vc-two-utterance-real-adv-ema/v1"
+            ),
+            "question": (
+                "What does ordinary source-aligned pseudoparallel training do on "
+                "the fixed two-utterance-per-speaker SRC4VC substrate?"
+            ),
+            "independent_variable": (
+                "the exact 170-row, 85-speaker x2 SRC4VC source manifest is used "
+                "as the matched EXP-326 control; control69 LoRA69 initialization, "
+                "ordinary complete generative plus real-adversarial loss, LR, "
+                "sequential 170 updates, EMA, zero frame condition, normal "
+                "quantized source acoustics, and ordinary inference remain fixed"
+            ),
+            "source_speaker_grl": False,
+        }
 
     if manifest_kind in CV26_KINDS:
         if (
@@ -2153,6 +2364,8 @@ def load_manifest(
         expected_domains = CV32_REPLACEMENT_COMPOSITION
     elif kind in CV26_KINDS:
         expected_domains = CV26_COMPOSITION
+    elif kind in SRC4VC_TWO_UTTERANCE_KINDS:
+        expected_domains = SRC4VC_TWO_UTTERANCE_COMPOSITION
     elif kind == COMMONVOICE_RETENTION_OUTPUT_KIND:
         expected_domains = COMMONVOICE_RETENTION_EXPECTED_DOMAINS
     elif kind == CONDITIONED_RETENTION_OUTPUT_KIND:
@@ -2179,6 +2392,7 @@ def load_manifest(
             CV32_BREADTH_OUTPUT_KIND,
             CV32_REPLACEMENT_OUTPUT_KIND,
             *CV26_KINDS,
+            *SRC4VC_TWO_UTTERANCE_KINDS,
         }
         or value.get("composition") != expected_domains
         or not isinstance(items, list)
@@ -2336,6 +2550,7 @@ def load_manifest(
     validate_cv32_manifest(value)
     validate_cv32_replacement_manifest(value)
     validate_cv26_manifest(value)
+    validate_source_speaker_manifest(value)
     return value
 
 
@@ -2995,6 +3210,337 @@ def finite_nonzero_gradient_diagnostics(
         "finite": True,
         "nonzero_elements": nonzero_elements,
         "l2_norm": norm,
+    }
+
+
+def source_speaker_pooled_features(x: Any, *, torch: Any) -> Any:
+    """Mean/std-pool an acoustic-converter latent ``[B,1024,T]`` to 2048."""
+
+    if (
+        not hasattr(x, "ndim")
+        or x.ndim != 3
+        or x.shape[1] != 1024
+        or x.shape[-1] < 1
+        or not bool(torch.isfinite(x).all())
+    ):
+        raise PostRehearsalError(
+            "source-speaker acoustic-converter latent must be finite [B,1024,T]"
+        )
+    value = x.float()
+    pooled = torch.cat(
+        (value.mean(dim=-1), value.std(dim=-1, unbiased=False)), dim=-1
+    )
+    if pooled.shape[-1] != SOURCE_SPEAKER_FEATURE_DIMENSION or not bool(
+        torch.isfinite(pooled).all()
+    ):
+        raise PostRehearsalError("source-speaker pooled feature shape drifted")
+    return pooled
+
+
+def source_speaker_signal_probe(
+    features: Any,
+    source_speaker_ids: Sequence[str],
+    *,
+    torch: Any,
+) -> dict[str, Any]:
+    """Identify each speaker's second utterance from its first latent centroid."""
+
+    if (
+        not hasattr(features, "ndim")
+        or features.ndim != 2
+        or features.shape[-1] != SOURCE_SPEAKER_FEATURE_DIMENSION
+        or len(source_speaker_ids) != int(features.shape[0])
+    ):
+        raise PostRehearsalError("source-speaker probe feature shape drifted")
+    positions: dict[str, list[int]] = {}
+    for position, speaker in enumerate(source_speaker_ids):
+        if not isinstance(speaker, str) or not speaker:
+            raise PostRehearsalError("source-speaker probe label is malformed")
+        positions.setdefault(speaker, []).append(position)
+    if len(positions) != SOURCE_SPEAKER_CLASS_COUNT or any(
+        len(value) != 2 for value in positions.values()
+    ):
+        raise PostRehearsalError("source-speaker probe requires 85 classes x2")
+    ordered = sorted(positions)
+    centroids = torch.stack([features[positions[key][0]] for key in ordered]).float()
+    queries = torch.stack([features[positions[key][1]] for key in ordered]).float()
+    centroids = torch.nn.functional.normalize(centroids, dim=-1)
+    queries = torch.nn.functional.normalize(queries, dim=-1)
+    similarities = queries @ centroids.transpose(0, 1)
+    if not bool(torch.isfinite(similarities).all()):
+        raise PostRehearsalError("source-speaker probe similarities are non-finite")
+    ranks = similarities.argsort(dim=-1, descending=True)
+    truth = torch.arange(len(ordered), device=ranks.device).unsqueeze(1)
+    top1 = (ranks[:, :1] == truth).any(dim=1).float().mean()
+    top5 = (ranks[:, :5] == truth).any(dim=1).float().mean()
+    top1_value = float(top1.detach().cpu())
+    top5_value = float(top5.detach().cpu())
+    chance_top1 = 1.0 / SOURCE_SPEAKER_CLASS_COUNT
+    chance_top5 = 5.0 / SOURCE_SPEAKER_CLASS_COUNT
+    materially_above_chance = (
+        top1_value >= SOURCE_SPEAKER_PROBE_MIN_TOP1_MULTIPLE * chance_top1
+        and top5_value >= SOURCE_SPEAKER_PROBE_MIN_TOP5_MULTIPLE * chance_top5
+    )
+    return {
+        "implementation": SOURCE_SPEAKER_PROBE_IMPLEMENTATION,
+        "class_count": SOURCE_SPEAKER_CLASS_COUNT,
+        "reference_utterance": 0,
+        "query_utterance": 1,
+        "top1_accuracy": top1_value,
+        "top5_accuracy": top5_value,
+        "chance_top1": chance_top1,
+        "chance_top5": chance_top5,
+        "top1_over_chance": top1_value / chance_top1,
+        "top5_over_chance": top5_value / chance_top5,
+        "materially_above_chance": materially_above_chance,
+    }
+
+
+def attach_source_speaker_adversary(
+    model: Any,
+    *,
+    torch: Any,
+) -> Any:
+    """Capture converter latents only while the EXP-326 training hook is live."""
+
+    xvc = _base_xvc(model)
+    converter = getattr(xvc, CONVERTER_PREFIX, None)
+    if converter is None:
+        raise PostRehearsalError("source-speaker converter hook is unavailable")
+
+    class SourceSpeakerAdversary:
+        def __init__(self, target: Any) -> None:
+            self.target = target
+            self.enabled = False
+            self.latest = None
+            self.training_calls = 0
+            self.inference_calls = 0
+            self.removed = False
+            self._handle = target.register_forward_hook(self._capture)
+
+        def _capture(self, _module: Any, _inputs: Any, output: Any) -> None:
+            if not self.enabled:
+                self.inference_calls += 1
+                return
+            if not hasattr(output, "shape"):
+                raise PostRehearsalError(
+                    "source-speaker converter hook output is malformed"
+                )
+            self.latest = output
+            self.training_calls += 1
+
+        def set_enabled(self, enabled: bool) -> None:
+            self.enabled = bool(enabled)
+            if not self.enabled:
+                self.latest = None
+
+        def clear(self) -> None:
+            self.latest = None
+
+        def pooled(self) -> Any:
+            if self.latest is None:
+                raise PostRehearsalError(
+                    "source-speaker converter hook captured no training latent"
+                )
+            return source_speaker_pooled_features(self.latest, torch=torch)
+
+        def diagnostics(self) -> dict[str, Any]:
+            return {
+                "implementation": SOURCE_SPEAKER_POOL_IMPLEMENTATION,
+                "training_only": True,
+                "training_calls": self.training_calls,
+                "inference_calls": self.inference_calls,
+                "hook_removed_before_inference": self.removed,
+            }
+
+        def close(self) -> None:
+            self.enabled = False
+            self.latest = None
+            self._handle.remove()
+            self.removed = True
+
+    return SourceSpeakerAdversary(converter)
+
+
+def source_speaker_classifier(
+    *,
+    torch: Any,
+    device: Any = None,
+) -> Any:
+    """Create the training-only 2048 -> 85 source-speaker head."""
+
+    head = torch.nn.Linear(
+        SOURCE_SPEAKER_FEATURE_DIMENSION,
+        SOURCE_SPEAKER_CLASS_COUNT,
+        bias=True,
+    )
+    if device is not None:
+        head = head.to(device=device)
+    return head
+
+
+def _optimizer_parameter_ids(optimizer: Any) -> set[int]:
+    return {
+        id(parameter)
+        for group in optimizer.param_groups
+        for parameter in group.get("params", ())
+    }
+
+
+def source_speaker_grl_adversarial_update(
+    trained: Any,
+    discriminator: Any,
+    generator_optimizer: Any,
+    discriminator_optimizer: Any,
+    classifier: Any,
+    classifier_optimizer: Any,
+    trainable: Sequence[Any],
+    batch: Mapping[str, Any],
+    hook: Any,
+    *,
+    torch: Any,
+) -> dict[str, float]:
+    """Run one EXP-326 discriminator, classifier, and reversed-generator step."""
+
+    labels = batch.get("source_speaker_label")
+    if labels is None or labels.ndim != 1 or labels.dtype != torch.long:
+        raise PostRehearsalError("source-speaker class labels are malformed")
+    if labels.numel() != batch["source_wav"].shape[0]:
+        raise PostRehearsalError("source-speaker class batch size drifted")
+    if _optimizer_parameter_ids(generator_optimizer) & _optimizer_parameter_ids(
+        classifier_optimizer
+    ):
+        raise PostRehearsalError("source-speaker classifier leaked into LoRA optimizer")
+    base._set_adapter_training_only(trained)
+    discriminator.train()
+    hook.set_enabled(True)
+    generator_optimizer.zero_grad(set_to_none=True)
+    discriminator_optimizer.zero_grad(set_to_none=True)
+    with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+        hook.clear()
+        outputs = trained(breadth._generator_model_inputs(batch))
+        reconstruction = outputs.get("recons") if isinstance(outputs, dict) else None
+        if reconstruction is None or not bool(torch.isfinite(reconstruction).all()):
+            raise PostRehearsalError("source-speaker discriminator reconstruction malformed")
+        discriminator_real = batch["target_wav"][..., : reconstruction.shape[-1]]
+        outputs["audios"] = discriminator_real
+        discriminator_losses = discriminator.discriminative_loss(outputs)
+        discriminator_loss = breadth._finite_loss(
+            discriminator_losses.get("loss"),
+            torch=torch,
+            label="X-VC discriminator loss",
+        )
+    discriminator_loss.backward()
+    discriminator_norm = torch.nn.utils.clip_grad_norm_(
+        discriminator.parameters(), base.GRADIENT_CLIP_NORM
+    )
+    if not math.isfinite(float(discriminator_norm.detach().cpu())):
+        raise PostRehearsalError("source-speaker discriminator norm is non-finite")
+    discriminator_optimizer.step()
+
+    # Classifier update receives no graph into the converter.  It is deliberately
+    # a separate optimization step, so its parameters cannot enter the LoRA
+    # update by accidental optimizer grouping.
+    classifier.train(True)
+    for parameter in classifier.parameters():
+        parameter.requires_grad_(True)
+    classifier_optimizer.zero_grad(set_to_none=True)
+    with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+        hook.clear()
+        classifier_outputs = trained(breadth._generator_model_inputs(batch))
+        del classifier_outputs
+        classifier_features = hook.pooled().detach()
+        classifier_logits = classifier(classifier_features)
+        classifier_ce = torch.nn.functional.cross_entropy(classifier_logits, labels)
+        classifier_loss = classifier_ce / math.log(float(SOURCE_SPEAKER_CLASS_COUNT))
+    if not bool(torch.isfinite(classifier_loss)):
+        raise PostRehearsalError("source-speaker classifier loss is non-finite")
+    classifier_loss.backward()
+    classifier_norm = torch.nn.utils.clip_grad_norm_(
+        classifier.parameters(), base.GRADIENT_CLIP_NORM
+    )
+    if not math.isfinite(float(classifier_norm.detach().cpu())):
+        raise PostRehearsalError("source-speaker classifier gradient is non-finite")
+    classifier_nonzero = sum(
+        int(torch.count_nonzero(parameter.grad).detach().cpu())
+        for parameter in classifier.parameters()
+        if parameter.grad is not None
+    )
+    if classifier_nonzero <= 0:
+        raise PostRehearsalError("source-speaker classifier gradient is zero")
+    classifier_optimizer.step()
+
+    # Freeze the head for the generator step.  A fresh forward is intentional:
+    # the classifier has just been updated, while the CE gradient still travels
+    # through the frozen linear operation into the converter latent.
+    for parameter in classifier.parameters():
+        parameter.requires_grad_(False)
+    classifier.zero_grad(set_to_none=True)
+    try:
+        with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+            hook.clear()
+            outputs = trained(breadth._generator_model_inputs(batch))
+            reconstruction = outputs.get("recons")
+            if reconstruction is None or not bool(torch.isfinite(reconstruction).all()):
+                raise PostRehearsalError("source-speaker generator reconstruction malformed")
+            outputs["audios"] = batch["target_wav"][..., : reconstruction.shape[-1]]
+            generator_losses = trained.generative_loss(outputs)
+            outputs["audios"] = discriminator_real
+            adversarial_losses = discriminator.adversarial_loss(outputs)
+            generator_loss = breadth._finite_loss(
+                generator_losses.get("loss"),
+                torch=torch,
+                label="X-VC generative loss",
+            )
+            adversarial_loss = breadth._finite_loss(
+                adversarial_losses.get("loss"),
+                torch=torch,
+                label="X-VC adversarial loss",
+            )
+            features = hook.pooled()
+            logits = classifier(features)
+            normalized_ce = torch.nn.functional.cross_entropy(logits, labels) / math.log(
+                float(SOURCE_SPEAKER_CLASS_COUNT)
+            )
+            reversed_loss = -SOURCE_SPEAKER_GRL_WEIGHT * normalized_ce
+            total_loss = generator_loss + adversarial_loss + reversed_loss
+        if not bool(torch.isfinite(total_loss)):
+            raise PostRehearsalError("source-speaker GRL total is non-finite")
+        total_loss.backward()
+        generator_norm = torch.nn.utils.clip_grad_norm_(
+            trainable, base.GRADIENT_CLIP_NORM
+        )
+        if not math.isfinite(float(generator_norm.detach().cpu())):
+            raise PostRehearsalError("source-speaker GRL-to-LoRA gradient is non-finite")
+        generator_nonzero = sum(
+            int(torch.count_nonzero(parameter.grad).detach().cpu())
+            for parameter in trainable
+            if parameter.grad is not None
+        )
+        if generator_nonzero <= 0:
+            raise PostRehearsalError("source-speaker GRL-to-LoRA gradient is zero")
+        generator_optimizer.step()
+    finally:
+        for parameter in classifier.parameters():
+            parameter.requires_grad_(True)
+        hook.clear()
+    return {
+        "total": float(total_loss.detach().cpu()),
+        "generative": float(generator_loss.detach().cpu()),
+        "discriminator": float(discriminator_loss.detach().cpu()),
+        "adversarial_generator": float(adversarial_losses["adv_gen_loss"]),
+        "adversarial_feature": float(adversarial_losses["adv_feat_loss"]),
+        "source_speaker_classifier_loss": float(classifier_loss.detach().cpu()),
+        "source_speaker_normalized_ce": float(normalized_ce.detach().cpu()),
+        "source_speaker_reversed_loss": float(reversed_loss.detach().cpu()),
+        "source_speaker_classifier_gradient_norm": float(
+            classifier_norm.detach().cpu()
+        ),
+        "source_speaker_grl_to_lora_gradient_norm": float(
+            generator_norm.detach().cpu()
+        ),
+        "source_speaker_classifier_gradient_nonzero": float(classifier_nonzero),
+        "source_speaker_grl_to_lora_gradient_nonzero": float(generator_nonzero),
     }
 
 
@@ -3735,6 +4281,20 @@ def smoke_rows(
         return items[:2]
     if manifest.get("kind") in CV26_KINDS:
         return items[:1]
+    if manifest.get("kind") in SRC4VC_TWO_UTTERANCE_KINDS:
+        selected: list[Mapping[str, Any]] = []
+        seen: set[str] = set()
+        for item in items:
+            speaker = item.get("source_speaker_id")
+            if speaker in seen:
+                continue
+            selected.append(item)
+            seen.add(str(speaker))
+            if len(selected) == 2:
+                break
+        if len(selected) != 2:
+            raise PostRehearsalError("EXP-326 smoke requires two speakers")
+        return selected
     if manifest.get("kind") in UNPAIRED_HUMAN_KINDS | PSEUDOPARALLEL_KINDS:
         return items[:2]
     if manifest.get("kind") not in DIVERSE_RETENTION_KINDS and not require_hard_easy:
@@ -4355,6 +4915,16 @@ def run(
     adversarial_metrics: list[dict[str, float]] = []
     output_cycle_frontend_metrics: dict[str, float] | None = None
     pcgrad_metrics: list[dict[str, float | bool]] = []
+    source_speaker_receipt = validate_source_speaker_manifest(manifest)
+    source_speaker_labels = (
+        source_speaker_label_map(manifest)
+        if arguments.training_objective == PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE
+        else {}
+    )
+    source_speaker_classifier_head = None
+    source_speaker_classifier_optimizer = None
+    source_speaker_hook = None
+    source_speaker_probe: dict[str, Any] | None = None
     optimizer_steps = 0
     rows = (
         smoke_rows(
@@ -4427,6 +4997,7 @@ def run(
         PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
         PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
         PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
+        PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE,
     }:
         discriminator, discriminator_optimizer = breadth._load_pretrained_discriminator(
             arguments, config, torch=torch, device=device
@@ -4443,6 +5014,7 @@ def run(
             PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
             PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
+            PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE,
         }:
             target_by_id = {
                 target_id: _pair(target_id, path, digest)
@@ -4539,9 +5111,83 @@ def run(
             gpu_batch["negative_ssl_feat"] = tensors["negative_ssl_feat"].to(
                 device=device, dtype=torch.float32
             )
+        if arguments.training_objective == PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE:
+            speaker_id = item.get("source_speaker_id")
+            if speaker_id not in source_speaker_labels:
+                raise PostRehearsalError("source-speaker label map drifted")
+            gpu_batch["source_speaker_label"] = torch.tensor(
+                [source_speaker_labels[str(speaker_id)]],
+                device=device,
+                dtype=torch.long,
+            )
         return gpu_batch
 
-    if arguments.optimizer_mode == PCGRAD_PAIRED_OPTIMIZER:
+    if arguments.training_objective == PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE:
+        source_speaker_classifier_head = source_speaker_classifier(
+            torch=torch, device=device
+        )
+        source_speaker_classifier_optimizer = torch.optim.AdamW(
+            source_speaker_classifier_head.parameters(), lr=LEARNING_RATE
+        )
+        source_speaker_hook = attach_source_speaker_adversary(trained, torch=torch)
+        source_speaker_hook.set_enabled(True)
+        if arguments.smoke:
+            source_speaker_probe = {
+                "implementation": SOURCE_SPEAKER_PROBE_IMPLEMENTATION,
+                "status": "skipped-in-two-speaker-cuda-smoke",
+                "class_count": SOURCE_SPEAKER_CLASS_COUNT,
+                "reference_utterance": 0,
+                "query_utterance": 1,
+            }
+        else:
+            probe_features: list[Any] = []
+            probe_labels: list[str] = []
+            trained.eval()
+            with torch.no_grad():
+                for item in manifest["items"]:
+                    probe_batch = batch_for(item)
+                    source_speaker_hook.clear()
+                    with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+                        trained(breadth._generator_model_inputs(probe_batch))
+                    probe_features.append(source_speaker_hook.pooled().detach())
+                    probe_labels.append(str(item["source_speaker_id"]))
+            source_speaker_hook.clear()
+            source_speaker_probe = source_speaker_signal_probe(
+                torch.cat(probe_features, dim=0), probe_labels, torch=torch
+            )
+            if not source_speaker_probe["materially_above_chance"]:
+                raise PostRehearsalError(
+                    "frozen control69 source-speaker signal is not materially above chance"
+                )
+
+    if arguments.training_objective == PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE:
+        if (
+            source_speaker_classifier_head is None
+            or source_speaker_classifier_optimizer is None
+            or source_speaker_hook is None
+        ):
+            raise PostRehearsalError("source-speaker GRL components are unavailable")
+        for row_index, item in enumerate(rows):
+            batch = batch_for(item)
+            metrics = source_speaker_grl_adversarial_update(
+                trained,
+                discriminator,
+                optimizer,
+                discriminator_optimizer,
+                source_speaker_classifier_head,
+                source_speaker_classifier_optimizer,
+                trainable,
+                batch,
+                source_speaker_hook,
+                torch=torch,
+            )
+            losses.append(metrics["total"])
+            adversarial_metrics.append(metrics)
+            if not arguments.smoke:
+                optimizer_steps += 1
+            if adapter_ema is not None:
+                adapter_ema.update()
+    elif arguments.optimizer_mode == PCGRAD_PAIRED_OPTIMIZER:
         for hard_item, easy_item in paired_hard_easy_rows(rows):
             task_gradients: list[list[Any]] = []
             for item in (hard_item, easy_item):
@@ -4942,6 +5588,12 @@ def run(
                 optimizer_steps += 1
             if adapter_ema is not None:
                 adapter_ema.update()
+    if source_speaker_hook is not None:
+        source_speaker_hook.close()
+        if source_speaker_hook.inference_calls != 0:
+            raise PostRehearsalError(
+                "source-speaker inference hook captured an unexpected call"
+            )
     if acoustic_temporal_jitter is not None:
         expected_each = len(rows) // 2
         if (
@@ -5003,6 +5655,30 @@ def run(
             raise PostRehearsalError(
                 "continuous acoustic smoke requires one train and one inference call"
             )
+    source_speaker_inference_shape: list[int] | None = None
+    if (
+        arguments.training_objective == PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE
+        and arguments.smoke
+    ):
+        rendered = base._inference(
+            trained,
+            {
+                "source_wav": batch["source_wav"],
+                "semantic_tokens": batch["semantic_tokens"],
+            },
+            {
+                "target_wav": batch["target_wav"],
+                "ssl_feat": batch["ssl_feat"],
+            },
+            seed=base.SEED,
+            torch=torch,
+            device=device,
+        )
+        if rendered.ndim != 3 or tuple(rendered.shape[:2]) != (1, 1):
+            raise PostRehearsalError(
+                "source-speaker GRL inference output shape changed"
+            )
+        source_speaker_inference_shape = list(rendered.shape)
     if arguments.smoke:
         smoke = {
             "status": (
@@ -5021,6 +5697,9 @@ def run(
                 else "smoked-acoustic-temporal-jitter-pseudoparallel"
                 if arguments.training_objective
                 == PSEUDOPARALLEL_ACOUSTIC_TEMPORAL_JITTER_OBJECTIVE
+                else "smoked-source-speaker-grl-pseudoparallel"
+                if arguments.training_objective
+                == PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE
                 else "smoked-control69-clean-post-rehearsal"
             ),
             "loss": losses[0],
@@ -5034,6 +5713,33 @@ def run(
             "training_objective": arguments.training_objective,
             "optimizer_mode": arguments.optimizer_mode,
             "parameter_anchor": arguments.parameter_anchor,
+            "source_speaker": (
+                {
+                    **(source_speaker_receipt or {}),
+                    "objective": (
+                        PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE
+                        if arguments.training_objective
+                        == PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE
+                        else "ordinary-matched-control"
+                    ),
+                    "pool_implementation": SOURCE_SPEAKER_POOL_IMPLEMENTATION,
+                    "grl_implementation": SOURCE_SPEAKER_GRL_IMPLEMENTATION,
+                    "grl_weight": SOURCE_SPEAKER_GRL_WEIGHT,
+                    "classifier_feature_dimension": SOURCE_SPEAKER_FEATURE_DIMENSION,
+                    "classifier_class_count": SOURCE_SPEAKER_CLASS_COUNT,
+                    "probe": source_speaker_probe,
+                    "head_exported": False,
+                    "head_inference_attachment": None,
+                    "inference_output_shape": source_speaker_inference_shape,
+                    "hook": (
+                        source_speaker_hook.diagnostics()
+                        if source_speaker_hook is not None
+                        else None
+                    ),
+                }
+                if source_speaker_receipt is not None
+                else None
+            ),
             "output_cycle_frontend": output_cycle_frontend_metrics,
             "acoustic_code_dropout": (
                 {
@@ -5273,6 +5979,33 @@ def run(
         ),
         "trainable_target": arguments.trainable_target,
         "training_objective": arguments.training_objective,
+        "source_speaker": (
+            {
+                **(source_speaker_receipt or {}),
+                "objective": (
+                    PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE
+                    if arguments.training_objective
+                    == PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE
+                    else "ordinary-matched-control"
+                ),
+                "pool_implementation": SOURCE_SPEAKER_POOL_IMPLEMENTATION,
+                "grl_implementation": SOURCE_SPEAKER_GRL_IMPLEMENTATION,
+                "grl_weight": SOURCE_SPEAKER_GRL_WEIGHT,
+                "classifier_feature_dimension": SOURCE_SPEAKER_FEATURE_DIMENSION,
+                "classifier_class_count": SOURCE_SPEAKER_CLASS_COUNT,
+                "probe": source_speaker_probe,
+                "head_exported": False,
+                "head_inference_attachment": None,
+                "inference_output_shape": None,
+                "hook": (
+                    source_speaker_hook.diagnostics()
+                    if source_speaker_hook is not None
+                    else None
+                ),
+            }
+            if source_speaker_receipt is not None
+            else None
+        ),
         "optimizer_mode": arguments.optimizer_mode,
         "parameter_anchor": (
             {
@@ -5469,6 +6202,8 @@ def run(
                     == PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE
                     or arguments.training_objective
                     == PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE
+                    or arguments.training_objective
+                    == PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE
                     else "selective-repair-or-retention-target"
                 ),
             }
@@ -5561,6 +6296,7 @@ def parser() -> argparse.ArgumentParser:
             PSEUDOPARALLEL_CONDITION_CALIBRATOR_OBJECTIVE,
             PSEUDOPARALLEL_LATENT_SPEAKER_MARGIN_OBJECTIVE,
             PSEUDOPARALLEL_REAL_SPEAKER_CONDITION_OBJECTIVE,
+            PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE,
         ),
         default=GENERATIVE_OBJECTIVE,
     )
@@ -5662,6 +6398,26 @@ def main(argv: Sequence[str] | None = None) -> int:
                             manifest
                         ),
                         "cv26": validate_cv26_manifest(manifest),
+                        "source_speaker": (
+                            {
+                                **validate_source_speaker_manifest(manifest),
+                                "objective": (
+                                    PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE
+                                    if arguments.training_objective
+                                    == PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE
+                                    else "ordinary-matched-control"
+                                ),
+                                "pool_implementation": SOURCE_SPEAKER_POOL_IMPLEMENTATION,
+                                "grl_implementation": SOURCE_SPEAKER_GRL_IMPLEMENTATION,
+                                "grl_weight": SOURCE_SPEAKER_GRL_WEIGHT,
+                                "classifier_feature_dimension": SOURCE_SPEAKER_FEATURE_DIMENSION,
+                                "classifier_class_count": SOURCE_SPEAKER_CLASS_COUNT,
+                                "head_exported": False,
+                                "head_inference_attachment": None,
+                            }
+                            if manifest.get("kind") in SRC4VC_TWO_UTTERANCE_KINDS
+                            else None
+                        ),
                     },
                     sort_keys=True,
                 )

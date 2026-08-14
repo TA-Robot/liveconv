@@ -1110,6 +1110,109 @@ def test_latent_source_speaker_margin_is_zero_when_satisfied(monkeypatch) -> Non
     assert losses["loss"].item() == 2.0
 
 
+def test_exp325_exp326_share_manifest_and_bind_only_grl_as_treatment() -> None:
+    control = post.listening_policy(
+        post.SRC4VC_TWO_UTTERANCE_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.PSEUDOPARALLEL_REAL_ADVERSARIAL_OBJECTIVE,
+        True,
+    )
+    treatment = post.listening_policy(
+        post.SRC4VC_TWO_UTTERANCE_OUTPUT_KIND,
+        post.LORA69_TARGET,
+        post.PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE,
+        True,
+    )
+
+    assert control["slug"] == "exp325"
+    assert treatment["slug"] == "exp326"
+    assert control["source_speaker_grl"] is False
+    assert treatment["source_speaker_grl"] is True
+    assert "same ordered 170" in treatment["independent_variable"]
+    assert post.PSEUDOPARALLEL_SOURCE_SPEAKER_GRL_OBJECTIVE in post.parser()._option_string_actions[
+        "--training-objective"
+    ].choices
+
+
+def test_exp325_exp326_manifest_has_deterministic_85_x2_labels() -> None:
+    items = []
+    for speaker_index in range(post.SOURCE_SPEAKER_CLASS_COUNT):
+        for utterance_index in (0, 1):
+            items.append(
+                {
+                    "source_speaker_id": f"SRC4VC{speaker_index:03d}",
+                    "source_sha256": f"{len(items) + 1:064x}",
+                    "source_utterance_index": utterance_index,
+                }
+            )
+    manifest = {
+        "kind": post.SRC4VC_TWO_UTTERANCE_OUTPUT_KIND,
+        "composition": post.SRC4VC_TWO_UTTERANCE_COMPOSITION,
+        "items": items,
+    }
+    receipt = post.validate_source_speaker_manifest(manifest)
+
+    assert receipt is not None
+    assert receipt["source_speaker_class_count"] == 85
+    assert receipt["rows_per_source_speaker"] == 2
+    labels = post.source_speaker_label_map(manifest)
+    assert labels["SRC4VC000"] == 0
+    assert labels["SRC4VC084"] == 84
+    assert receipt["same_manifest_for_control_and_treatment"] is True
+
+
+def test_source_speaker_mean_std_pool_and_cross_utterance_probe() -> None:
+    import torch
+
+    latent = torch.arange(2 * 1024 * 3, dtype=torch.float32).reshape(2, 1024, 3)
+    pooled = post.source_speaker_pooled_features(latent, torch=torch)
+    assert pooled.shape == (2, post.SOURCE_SPEAKER_FEATURE_DIMENSION)
+    assert torch.allclose(pooled[:, :1024], latent.mean(dim=-1))
+    assert torch.allclose(
+        pooled[:, 1024:], latent.std(dim=-1, unbiased=False)
+    )
+
+    basis = torch.eye(post.SOURCE_SPEAKER_FEATURE_DIMENSION)[:85]
+    features = torch.stack(
+        [
+            basis[index] + (0.001 * torch.roll(basis[index], 1))
+            for index in range(85)
+            for _ in (0, 1)
+        ]
+    )
+    labels = [f"speaker-{index:03d}" for index in range(85) for _ in (0, 1)]
+    probe = post.source_speaker_signal_probe(features, labels, torch=torch)
+    assert probe["top1_accuracy"] == 1.0
+    assert probe["top5_accuracy"] == 1.0
+    assert probe["materially_above_chance"] is True
+
+
+def test_source_speaker_hook_is_training_only_and_pools_converter_output() -> None:
+    import torch
+
+    class FakeConverter(torch.nn.Module):
+        def forward(self, value):
+            return value
+
+    class FakeModel(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.acoustic_converter = FakeConverter()
+
+    model = FakeModel()
+    hook = post.attach_source_speaker_adversary(model, torch=torch)
+    value = torch.randn(1, 1024, 4, requires_grad=True)
+    model.acoustic_converter(value)
+    assert hook.inference_calls == 1
+    hook.set_enabled(True)
+    model.acoustic_converter(value)
+    pooled = hook.pooled()
+    assert pooled.shape == (1, 2048)
+    assert hook.training_calls == 1
+    hook.close()
+    assert hook.diagnostics()["training_only"] is True
+
+
 def test_speaker_path_loss_contains_only_the_weighted_voice_target() -> None:
     import torch
 
