@@ -2934,6 +2934,17 @@ def run(
                         else None
                     ),
                 )
+                if calibrator is not None:
+                    delta_norm = float(
+                        torch.linalg.vector_norm(
+                            calibrator.speaker_condition_delta.detach().float()
+                        ).cpu()
+                    )
+                    if not math.isfinite(delta_norm) or delta_norm <= 0.0:
+                        raise PostRehearsalError(
+                            "speaker-condition delta did not receive a finite update"
+                        )
+                    metrics["speaker_condition_delta_l2_norm"] = delta_norm
                 losses.append(metrics["total"])
                 adversarial_metrics.append(metrics)
             else:
