@@ -1,7 +1,7 @@
 # Listen queue
 
 Status: Active board
-Updated: 2026-08-14
+Updated: 2026-08-15
 
 This is the MS-3 Ready board for quality search. Agents read it before opening
 an experiment or sealing a hash. The process is
@@ -21,7 +21,21 @@ committed, single-variable job at a time, publish its comparison on 8878, apply
 only coarse machine rejection for corruption/content failure, and replan after
 each result. Accumulated candidates remain unselected until human hearing.
 
-Current GPU lane (2026-08-14 23:32 UTC): EXP-340 completed its sole 170-update
+Paused GPU lane (2026-08-15 00:03 UTC): EXP-346 has a tested runner for one
+target-specific Beatrice 2 training run from the pinned MIT trainer. No CUDA
+smoke or training started. It admits only
+the 334 `split=train` Amitaro runrun targets in the existing 424-row sealed
+manifest: 20.73 minutes of target speech. The 36 validation and 54 heldout
+targets remain unopened. The scientific lane retains the upstream 10,000-step
+fine-tuning method; a one-step run is only an execution-path smoke. The
+auxiliary asset download and Grok tmux auditor were stopped for the handoff.
+Resume from
+[`2026-08-15-quality-search-handoff.md`](2026-08-15-quality-search-handoff.md),
+complete the official assets, run one committed sequential `gpu0` job, and
+render Japanese comparison audio to 8878. This is a listen-now alternate
+realtime VC family, not an X-VC winner, product approval, or license promotion.
+
+Previous GPU lane (2026-08-14 23:32 UTC): EXP-340 completed its sole 170-update
 lane, external7, and all five predeclared broad surfaces. It published 1,570
 listener WAVs and changed all 314 candidate outputs versus EXP-238. Aggregate
 jointly stable/non-gross content is `14W/220T/8L`, mean `0.241776 ->

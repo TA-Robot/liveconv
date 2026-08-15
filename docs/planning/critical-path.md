@@ -385,8 +385,19 @@ claims from that artifact are superseded. The active join is now:
         -> content 14W/220T/8L, mean 0.241776 -> 0.238999 on stable/non-gross rows
         -> gross 2 -> 3; instability 60 -> 66 with 9 new / 3 recovered
         -> close prenet rank/location neighbors; replan a different method
+        -> Ready but paused: EXP346 changes model family to target-specific Beatrice 2
+        -> sealed Amitaro manifest train split only: 334 WAVs / 20.73 minutes
+        -> preserve 36 validation + 54 heldout targets; restore official trainer augment assets separately
+        -> commit runner -> one-step execution smoke -> upstream 10,000-step gpu0 lane
+        -> render named Japanese inputs on 8878; coarse corruption/content screen only
+        -> if technically viable, consider its outputs as one later independent X-VC teacher hypothesis
         -> operator hearing when available
 ```
+
+The paused EXP-346 restart boundary, stopped processes, incomplete ignored
+assets, and exact continuation order are recorded in
+[`2026-08-15-quality-search-handoff.md`](2026-08-15-quality-search-handoff.md).
+No EXP-346 CUDA run or audio exists at this handoff.
 
 EXP-035 held target text exposure and 1,044 updates fixed while replacing
 EXP-033's three donor speakers repeated four times with twelve distinct donor

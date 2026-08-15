@@ -6761,3 +6761,58 @@ job queue.
 - Rework: reject the exact prenet input-fusion topology and close rank, alpha,
   and location neighbors. Preserve all audio unheard on 8878. Replan the next
   single-variable lane at the data/input-construction or method level.
+
+## 2026-08-14T23:54:40Z - Grok accepts a method-level redirect
+
+- Agent: `grok-project-progress-auditor` in tmux
+  `liveconv-grok-auditor` (read-only, no tools, web, or delegation).
+- Task: judge whether closing prenet fusion and moving to a different data or
+  method family remains the shortest route toward robust Japanese audio and a
+  personally usable realtime conversation system.
+- Result: `CONTINUE`. Grok counted the 1,535 new broad WAVs and closure commit
+  `e7aca97`, accepted the frozen diverse evaluation surfaces, and rejected a
+  prenet location/rank walk, evaluation redesign, promotion ceremony, and
+  parallel GPU sweep.
+- Adopted: partially. Adopt the method-level redirect and immediate sequential
+  GPU lane. Do not adopt Grok's suggested EXP-305/306 Common Voice lane: that
+  lane already completed external7 and raised decoder instability, while the
+  snapshot repeated an older board paragraph.
+- Changed action: prepare EXP-346 with the pinned MIT Beatrice 2 trainer and
+  only the 334 `split=train` Amitaro runrun targets from the existing sealed
+  424-row manifest. This provides 20.73 minutes of authorized target speech,
+  preserves all 36 validation and 54 heldout targets, and changes the model
+  family rather than reopening a closed X-VC neighbor.
+- Problems: `gpu0` remains idle while the official IR/noise/test assets and the
+  bounded runner are prepared. The existing inference source tree intentionally
+  omits those trainer assets, so a separate ignored training checkout is used
+  to avoid invalidating the live worker identity.
+- Rework: commit only the listen-now plan and runner, execute a one-step CUDA
+  path smoke, then the unchanged upstream 10,000-step method. Render named
+  Japanese inputs to 8878 afterward; make no naturalness, identity, keeper,
+  license-approval, or product-selection claim without human hearing.
+
+## 2026-08-15T00:03:31Z - Quality search paused for handoff
+
+- Agent: `primary-integrator`; bounded EXP-346 runner supplied by
+  `implement_beatrice_pilot`.
+- Task: stop active orchestration, summarize the completed X-VC work and the
+  next Beatrice lane, and publish a reproducible restart point.
+- Dependencies: EXP-340 broad closure commit `e7aca97`; the 23:52 Grok
+  `CONTINUE`; user instruction to document, commit, push, and end.
+- Result: EXP-346 now has a one-page plan and CPU-only runner that admits
+  exactly 334 train targets, preserves validation/heldout, validates identities
+  and audio format, retains the upstream 10,000-step method, and requires both
+  `gpu0` and the committed workspace HEAD. Six focused tests, `py_compile`, and
+  path-scoped diff checks pass.
+- Result: no EXP-346 CUDA job or audio render started. The auxiliary-download
+  and Grok tmux sessions were stopped; GPU 0 was idle at 2 MiB. The complete
+  restart state is in
+  `docs/planning/2026-08-15-quality-search-handoff.md`.
+- Problems: the interrupted ignored trainer checkout is incomplete (703 real
+  IR, zero real noise/test, missing trainer module). A separate smoke asset set
+  has one official IR/noise/test file, but the 10,000-step run must wait for a
+  complete intended auxiliary set. A checkpoint renderer is not implemented.
+- Rework: on resume, restart the 30-minute Grok auditor, finish auxiliary asset
+  materialization, execute only the committed one-step smoke, then the exact
+  10,000-step lane and a seven-input 8878 render. Do not interpret the paused
+  preparation as training or new audio.
